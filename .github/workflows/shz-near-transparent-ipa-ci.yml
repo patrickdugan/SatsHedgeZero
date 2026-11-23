@@ -30,7 +30,9 @@ jobs:
         run: npm --prefix research/near_nova_ipa test
       - name: Native NEAR host cryptography and adversarial proof tests
         run: cargo test --manifest-path research/near_nova_ipa/near_contract/Cargo.toml -- --nocapture
-      - name: Compile transparent IPA contract for WASM
+      - name: Compile transparent IPA contract for NEAR-compatible WASM
+        env:
+          RUSTFLAGS: "-C target-feature=-reference-types,-bulk-memory,-multivalue,-nontrapping-fptoint,-sign-ext,-extended-const"
         run: cargo build --release --manifest-path research/near_nova_ipa/near_contract/Cargo.toml --target wasm32-unknown-unknown
       - name: Enforce fail-closed settlement gate
         run: |
