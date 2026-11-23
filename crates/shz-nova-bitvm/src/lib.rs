@@ -18,6 +18,7 @@ pub mod codec;
 pub mod error;
 pub mod fixture;
 pub mod merkle;
+pub mod mnr04;
 pub mod nova;
 pub mod oracle_epoch_bridge;
 pub mod secq_claim;

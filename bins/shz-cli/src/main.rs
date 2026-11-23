@@ -2,6 +2,7 @@
 
 mod mnr02_regtest;
 mod mnr03_harness;
+mod mnr04;
 mod testnet_clearing;
 
 use std::path::PathBuf;
@@ -559,6 +560,12 @@ fn main() {
                 bundle_dir.as_deref(),
             );
             println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
+        }
+        "mnr04-native" | "mnr04-regtest" | "mnr04-prove" | "mnr04-verify" | "mnr04-key-hash" | "mnr04-oracle-external" => {
+            if let Err(error) = mnr04::run(cmd, &args[1..]) {
+                eprintln!("MNR-04: {error}");
+                std::process::exit(1);
+            }
         }
         "mnr03-regtest" => {
             let default_bitcoind = std::env::var("BITCOIND_BIN")

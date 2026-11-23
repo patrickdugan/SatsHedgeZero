@@ -11,6 +11,9 @@ description = "CLI and deterministic verification harness for SatsHedgeZero non-
 name = "shz"
 path = "src/main.rs"
 
+[features]
+mnr04-nova = ["shz-nova-bitvm/mnr04-nova"]
+
 [dependencies]
 borsh.workspace = true
 hex.workspace = true
