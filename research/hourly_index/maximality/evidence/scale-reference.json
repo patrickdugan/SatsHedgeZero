@@ -1,0 +1,20 @@
+{
+  "schema": "shz/index-max/scale-reference/v1",
+  "synthetic": true,
+  "node": "v22.16.0",
+  "observations": 144000,
+  "depth": 18,
+  "period_us": 200000,
+  "valid_hourly_paths": 8,
+  "authentic_earlier_paths_rejected": 8,
+  "per_path_sibling_bytes": 720,
+  "naive_two_path_sibling_bytes": 1152,
+  "generation_ms": 359,
+  "tree_build_ms": 1876,
+  "eight_selections_and_negative_controls_ms": 6,
+  "rss_bytes": 173322240,
+  "root": "38541961b23a4d5a7b724b6ed4b0b7863c2a5f8bdc9b2d415030ec57d0364b45",
+  "source_authentication": false,
+  "nova_verified": false,
+  "provider_completeness": false
+}

@@ -1,0 +1,83 @@
+{
+  "hour_id": "498001",
+  "pyth": {
+    "header": {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+      "source": "pyth",
+      "depth": 4,
+      "count": "12",
+      "last_time": "1792832395000000",
+      "sealed_through": "1792828800000000",
+      "root": {
+        "min": "0",
+        "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+      }
+    },
+    "index": "2",
+    "candidate": {
+      "present": true,
+      "price_e8": "9990100000000",
+      "publish_us": "1792807150000000",
+      "report_hash": "630d14afc1d6caff09ccdb5a4527cf626c663cac1aae7e40bc562e9e08a8ed81"
+    },
+    "siblings": [
+      {
+        "min": "1792807195000000",
+        "digest": "f48e20231a4054a5029cdf24e926f34d46737e1a6aa53808e98acd5f0ac762f9"
+      },
+      {
+        "min": "0",
+        "digest": "ba408141794348a5159fbe9567a40f1b26af0453f27484dca55297948b991adb"
+      },
+      {
+        "min": "1792810750000000",
+        "digest": "c34c6774921a6878430090a19b0e3f551acfeb27f178d361b35295bf77e6ed88"
+      },
+      {
+        "min": "1792817699000000",
+        "digest": "1414873142cf49dfcbaf740f42bacf78fd6e094e7ca5ccf9335118fe255b2aab"
+      }
+    ]
+  },
+  "chainlink": {
+    "header": {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+      "source": "chainlink",
+      "depth": 4,
+      "count": "7",
+      "last_time": "1792832380000000",
+      "sealed_through": "1792828800000000",
+      "root": {
+        "min": "0",
+        "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+      }
+    },
+    "index": "1",
+    "candidate": {
+      "present": true,
+      "price_e8": "10020100000000",
+      "publish_us": "1792807180000000",
+      "report_hash": "8c0e90f961e0b71ae4ed09f20f0b1ba29a1e5294617d3f56b792cce98723f7da"
+    },
+    "siblings": [
+      {
+        "min": "0",
+        "digest": "4ea14fef799a1f375e3ed982eb131f26dded2e51ab24405c81919cee5a1c14f1"
+      },
+      {
+        "min": "1792810780000000",
+        "digest": "f4df93cb070208c0cbcc707d68b28fec7b332fde137cc974429c14cc1428f87c"
+      },
+      {
+        "min": "1792817700000000",
+        "digest": "2cb4d90841eaabed976a0fdca162b60154a98585cfc0893bfb8fe2fe5b6bc7e9"
+      },
+      {
+        "min": "18446744073709551615",
+        "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+      }
+    ]
+  }
+}

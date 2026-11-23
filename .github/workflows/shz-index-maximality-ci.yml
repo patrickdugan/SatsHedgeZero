@@ -1,0 +1,51 @@
+name: shz-index-maximality-transparent-nova
+on:
+  push:
+    branches: ["research/shz-index-maximality-*"]
+  pull_request:
+    paths: ["research/hourly_index/maximality/**", "docs/SHZ_INDEX_MAXIMALITY_01.md", ".github/workflows/shz-index-maximality-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  maximality-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify reference and frozen exact policy-evidence bridge
+        run: |
+          node research/hourly_index/maximality/fixtures/build.mjs
+          git diff --exit-code -- research/hourly_index/maximality/fixtures
+          node --test research/hourly_index/maximality/tests/log.test.mjs
+      - name: Exercise actual depth-4 R1CS with authentic earlier-path attack
+        run: |
+          rustc -Vv
+          cargo generate-lockfile --manifest-path research/hourly_index/maximality/Cargo.toml
+          cargo test --release --locked --manifest-path research/hourly_index/maximality/Cargo.toml -- --test-threads=1 --nocapture
+      - name: Build native prover and verifier
+        run: cargo build --release --locked --manifest-path research/hourly_index/maximality/Cargo.toml
+      - name: Prove and compress eight paired selections
+        run: |
+          B=research/hourly_index/maximality
+          /usr/bin/time -v "$B/target/release/shz-hourly-index-maximality-nova" prove "$B/fixtures/openings.json" "$B/fixtures/expected.json" "$RUNNER_TEMP/shz-max-proof" 2> "$RUNNER_TEMP/shz-max-prove-time.txt"
+      - name: Independently verify persisted proof and reject substituted pins
+        run: |
+          set -o pipefail
+          B=research/hourly_index/maximality
+          /usr/bin/time -v "$B/target/release/shz-hourly-index-maximality-nova" verify "$B/fixtures/openings.json" "$B/fixtures/expected.json" "$RUNNER_TEMP/shz-max-proof" 2> "$RUNNER_TEMP/shz-max-verify-time.txt" | tee "$RUNNER_TEMP/shz-max-proof/verification.json"
+          cp "$RUNNER_TEMP"/shz-max-*-time.txt "$RUNNER_TEMP/shz-max-proof/"
+          cp "$B/Cargo.lock" "$RUNNER_TEMP/shz-max-proof/Cargo.lock"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: shz-index-maximality-transparent-proof
+          path: ${{ runner.temp }}/shz-max-proof
+          retention-days: 7
