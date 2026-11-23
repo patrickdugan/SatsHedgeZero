@@ -1,0 +1,30 @@
+name: SHZ-MNR-01 deterministic research kernel
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'examples/**'
+      - 'package.json'
+      - '.github/workflows/mnr-01.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'examples/**'
+      - 'package.json'
+      - '.github/workflows/mnr-01.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm test
+      - run: node examples/mnr01.js > /tmp/shz-mnr01-fixture.json
+      - run: node -e "const p=require('/tmp/shz-mnr01-fixture.json'); if(p.routing.status !== 'CAPACITY_FEASIBLE_PROPOSAL' || p.routing.productionReady !== false) process.exit(1)"

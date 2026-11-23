@@ -1,0 +1,13 @@
+{
+  "name": "satshedgezero-mnr",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SHZ-MNR-01: deterministic multilateral closeout research kernel",
+  "type": "commonjs",
+  "engines": {"node": ">=20"},
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "demo": "node examples/mnr01.js"
+  },
+  "license": "MIT"
+}
