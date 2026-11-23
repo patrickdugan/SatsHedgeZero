@@ -1,0 +1,46 @@
+{
+  "schema": "shz/admission-hash-work-model/v1",
+  "measured": false,
+  "models": [
+    {
+      "reports": "12",
+      "depth": 4,
+      "seals": 2,
+      "merges": "10",
+      "folds": "36",
+      "frontierSha256CompressionBlocks": "144",
+      "oldNewPathCompressionBlocksLowerBound": "216",
+      "note": "Frontier counts two fixed-shape two-block hashes per fold; old/new paths count two two-block node hashes per level plus one two-block leaf, excluding seal work. Not measured constraints or gas."
+    },
+    {
+      "reports": "7",
+      "depth": 4,
+      "seals": 2,
+      "merges": "7",
+      "folds": "23",
+      "frontierSha256CompressionBlocks": "92",
+      "oldNewPathCompressionBlocksLowerBound": "126",
+      "note": "Frontier counts two fixed-shape two-block hashes per fold; old/new paths count two two-block node hashes per level plus one two-block leaf, excluding seal work. Not measured constraints or gas."
+    },
+    {
+      "reports": "144000",
+      "depth": 18,
+      "seals": 1,
+      "merges": "143995",
+      "folds": "431996",
+      "frontierSha256CompressionBlocks": "1727984",
+      "oldNewPathCompressionBlocksLowerBound": "10656000",
+      "note": "Frontier counts two fixed-shape two-block hashes per fold; old/new paths count two two-block node hashes per level plus one two-block leaf, excluding seal work. Not measured constraints or gas."
+    },
+    {
+      "reports": "262143",
+      "depth": 18,
+      "seals": 1,
+      "merges": "262143",
+      "folds": "786430",
+      "frontierSha256CompressionBlocks": "3145720",
+      "oldNewPathCompressionBlocksLowerBound": "19398582",
+      "note": "Frontier counts two fixed-shape two-block hashes per fold; old/new paths count two two-block node hashes per level plus one two-block leaf, excluding seal work. Not measured constraints or gas."
+    }
+  ]
+}
