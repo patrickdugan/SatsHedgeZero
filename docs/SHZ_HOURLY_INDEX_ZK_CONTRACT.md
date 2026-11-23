@@ -65,7 +65,7 @@ The intended prover is Nova with a transparent Spartan/IPA compression or an ind
 
 ### Current native NEAR contract acceptance boundary
 
-`research/hourly_index/near_contract` uses native SHA256 to validate the eight-hour root, selected record, 3-sibling Merkle path, two-source midpoint and freshness rules. An owner may stage **research** checkpoints; that act does not authenticate the root or prove Bitcoin finality. All source, anchor, ZK, Nova and DLC settlement authorization flags remain `false`.
+`research/hourly_index/near_contract` uses native SHA256 to validate the eight-hour root, selected record, 3-sibling Merkle path, two-source midpoint and freshness rules. An owner may publish the hourly **research** records individually as soon as each epoch closes. A checkpoint only stages after all eight previously posted hours are present, consecutively ordered, and recompute to exactly the same Merkle root. Owner publication and matched checkpoint staging still do not authenticate oracle sources or prove Bitcoin finality. All source, anchor, ZK, Nova and DLC settlement authorization flags remain `false`.
 
 The latest-Pyth / latest-Chainlink eligible observation completeness problem, source key rotation, report signature verification, challenge timeouts and an independently verified Bitcoin header must be resolved before turning on any of those flags. A 40-byte `OP_RETURN` packet itself stores a commitment, and a DLC settlement still requires its separate oracle adaptor/FROST scalar authorization and BIP341 transaction constraints.
 

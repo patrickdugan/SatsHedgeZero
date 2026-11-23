@@ -20,7 +20,11 @@ try {
  await acct.deployContract(wasm);
  const init=await acct.callFunction({contractId:'sandbox',methodName:'new',args:{},gas:teraToGas('60')});
  assert.equal(Boolean(init?.status?.Failure),false,'initialize checkpoint registry');
- const staged=await acct.callFunction({contractId:'sandbox',methodName:'stage_checkpoint',args:{cp},gas:teraToGas('60')});
+ for (const record of records){
+   const posted=await acct.callFunction({contractId:'sandbox',methodName:'publish_hour',args:{record},gas:teraToGas('100')});
+   assert.equal(Boolean(posted?.status?.Failure),false,'publish hourly research record');
+ }
+ const staged=await acct.callFunction({contractId:'sandbox',methodName:'stage_checkpoint',args:{cp},gas:teraToGas('200')});
  assert.equal(Boolean(staged?.status?.Failure),false,'stage research root');
  for(let i=0;i<8;i++){
   const args={record:records[i],start_hour, siblings:inclusion[i].siblings};
@@ -37,7 +41,7 @@ try {
  const receipts=receipt?.receipts_outcome??receipt?.receipts_outcomes??[];
  const receiptGas=receipts.reduce((a,x)=>a+BigInt(x?.outcome?.gas_burnt??x?.gas_burnt??0),0n);
  assert.ok(receiptGas>0n,'measurable receipt gas');
- const report={schema:'shz/near-8h-public-checkpoint-sandbox/v1',network:'near-sandbox',checkpoint_root,packet_hex,authenticated_sources:false,bitcoin_header_finality:false,zk_witness_verified:false,nova_verified:false,dlc_authorized:false,valid_inclusion_checks:8,qualified_hours:7,hold_hours:1,tampered_report_rejected:true,receipt_gas_burnt:receiptGas.toString(),receipt_TGas:Number(receiptGas)/1e12};
+ const report={schema:'shz/near-8h-public-checkpoint-sandbox/v1',network:'near-sandbox',checkpoint_root,packet_hex,authenticated_sources:false,bitcoin_header_finality:false,zk_witness_verified:false,nova_verified:false,dlc_authorized:false,public_hours_published:8,valid_inclusion_checks:8,qualified_hours:7,hold_hours:1,tampered_report_rejected:true,receipt_gas_burnt:receiptGas.toString(),receipt_TGas:Number(receiptGas)/1e12};
  console.log(JSON.stringify(report,null,2));
  if(process.env.SHZ_HOURLY_SANDBOX_REPORT)writeFileSync(process.env.SHZ_HOURLY_SANDBOX_REPORT,JSON.stringify(report,null,2)+'\n');
 } finally {await sandbox.tearDown()}

@@ -30,7 +30,8 @@ pub struct Checkpoint {
     pub packet_hex: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
+#[borsh(crate = "near_sdk::borsh")]
 #[serde(crate = "near_sdk::serde")]
 pub struct HourRecord {
     pub genesis: String,
@@ -145,20 +146,60 @@ fn verify_hour(cp: &Checkpoint,record: &HourRecord,siblings: &[String]) -> bool 
 pub struct ShzHourlyIndex {
     pub owner: AccountId,
     checkpoints: LookupMap<String,Checkpoint>,
+    hours: LookupMap<String,HourRecord>,
+    pub latest_hour:Option<u64>,
     pub latest_start_hour:Option<u64>,
+}
+
+impl ShzHourlyIndex {
+    /// A research checkpoint must be the actual Merkle root of the eight previously
+    /// published on-NEAR hours. This *still* does not authenticate source signatures.
+    fn built_root(&self,cp:&Checkpoint,start:u64)->Option<[u8;32]> {
+        let mut row:Vec<[u8;32]>=Vec::with_capacity(8);
+        for i in 0..8u64 {
+            let id=start.checked_add(i)?.to_string();
+            let r=self.hours.get(&id)?;
+            if r.genesis!=cp.genesis || r.policy_hash!=cp.policy_hash {return None}
+            let (hash,actual)=leaf(&r)?;
+            if actual!=start+i{return None}
+            row.push(hash);
+        }
+        while row.len()>1 {
+            let mut next=Vec::with_capacity(row.len()/2);
+            for i in (0..row.len()).step_by(2){next.push(node(&row[i],&row[i+1]));}
+            row=next;
+        }
+        row.first().copied()
+    }
 }
 
 #[near_bindgen]
 impl ShzHourlyIndex {
     #[init]
     pub fn new()->Self {
-        Self {owner:env::predecessor_account_id(),checkpoints:LookupMap::new(b"hour-v1".to_vec()),latest_start_hour:None}
+        Self {owner:env::predecessor_account_id(),checkpoints:LookupMap::new(b"batch-v1".to_vec()),hours:LookupMap::new(b"hours-v1".to_vec()),latest_hour:None,latest_start_hour:None}
     }
+    /// Immediate public hourly record, under owner-only RESEARCH admission.
+    /// Source authenticity remains unproved. The hour must advance exactly by one.
+    pub fn publish_hour(&mut self,record:HourRecord)->bool {
+        assert_eq!(env::predecessor_account_id(),self.owner,"owner-only research hour");
+        let Some((_,hour))=leaf(&record) else{return false};
+        if let Some(last)=self.latest_hour {
+            if last.checked_add(1)!=Some(hour){return false}
+        } else if hour%8!=0 {return false}
+        if self.hours.get(&record.hour_id).is_some(){return false}
+        self.hours.insert(&record.hour_id,&record);
+        self.latest_hour=Some(hour);
+        true
+    }
+    pub fn hour_record(&self,hour_id:String)->Option<HourRecord>{self.hours.get(&hour_id)}
     /// Research-only authorization: this owner-staged root is *not* proven Bitcoin-anchored.
     pub fn stage_checkpoint(&mut self, cp:Checkpoint) -> bool {
         assert_eq!(env::predecessor_account_id(),self.owner,"owner-only research checkpoint");
         let Some((_,start))=checkpoint_hash(&cp) else{return false};
         if self.checkpoints.get(&cp.start_hour).is_some(){return false}
+        let Some(computed)=self.built_root(&cp,start) else{return false};
+        if Some(computed)!=parsed_hex32(&cp.merkle_root){return false}
         if let Some(previous)=self.latest_start_hour {
             if previous.checked_add(8)!=Some(start){return false}
         }
@@ -198,6 +239,7 @@ mod tests {
     #[test]
     fn accepts_eight_sharable_hourly_membership_proofs() {
         let(mut contract,records,cp,siblings)=fixture();
+        for record in &records { assert!(contract.publish_hour(record.clone())); }
         assert!(contract.stage_checkpoint(cp));
         for i in 0..8 {
             assert!(contract.verify_hour_inclusion(records[i].clone(),"498000".into(),siblings[i].clone()));
@@ -210,15 +252,28 @@ mod tests {
     }
     #[test]
     fn changed_report_and_wrong_index_fail() {
-        let(mut contract,mut records,cp,siblings)=fixture();assert!(contract.stage_checkpoint(cp));
+        let(mut contract,mut records,cp,siblings)=fixture();
+        for record in &records { assert!(contract.publish_hour(record.clone())); }
+        assert!(contract.stage_checkpoint(cp));
         records[0].pyth_report_hash="ff".repeat(32);
         assert!(!contract.verify_hour_inclusion(records[0].clone(),"498000".into(),siblings[0].clone()));
         records[1].index_price_e8="10010000000001".into();
         assert!(!contract.verify_hour_inclusion(records[1].clone(),"498000".into(),siblings[1].clone()));
     }
     #[test]
+    fn checkpoint_requires_eight_published_hours_and_detects_partial_data(){
+        let(mut contract,records,cp,_)=fixture();
+        for record in records.iter().take(7) { assert!(contract.publish_hour(record.clone())); }
+        assert!(!contract.stage_checkpoint(cp.clone()));
+        assert!(contract.publish_hour(records[7].clone()));
+        assert!(contract.stage_checkpoint(cp));
+        assert_eq!(contract.hour_record("498004".into()).unwrap().status,2);
+    }
+    #[test]
     fn owner_cannot_stage_tampered_root(){
-        let(mut contract,_,mut cp,_)=fixture();cp.checkpoint_root="00".repeat(32);
+        let(mut contract,records,mut cp,_)=fixture();
+        for record in &records { assert!(contract.publish_hour(record.clone())); }
+        cp.checkpoint_root="00".repeat(32);
         assert!(!contract.stage_checkpoint(cp));
     }
 }
