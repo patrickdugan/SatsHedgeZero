@@ -1,0 +1,49 @@
+name: shz-hourly-index-policy-evidence-nova
+on:
+  push:
+    branches: ["research/shz-index-policy-*"]
+  pull_request:
+    paths: ["research/hourly_index/policy_nova/**", ".github/workflows/shz-hourly-index-policy-nova-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  policy-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify independent reference and frozen evidence
+        run: |
+          node research/hourly_index/policy_nova/fixtures/build.mjs
+          git diff --exit-code -- research/hourly_index/policy_nova/fixtures
+          node --test research/hourly_index/policy_nova/tests/*.test.mjs
+      - name: Resolve dependencies and exercise actual R1CS
+        run: |
+          rustc -Vv
+          cargo generate-lockfile --manifest-path research/hourly_index/policy_nova/Cargo.toml
+          cargo test --release --locked --manifest-path research/hourly_index/policy_nova/Cargo.toml -- --test-threads=1 --nocapture
+      - name: Build native prover and verifier
+        run: cargo build --release --locked --manifest-path research/hourly_index/policy_nova/Cargo.toml
+      - name: Prove exact eight-hour policy relation and compress transparently
+        run: |
+          /usr/bin/time -v research/hourly_index/policy_nova/target/release/shz-hourly-index-policy-nova prove research/hourly_index/policy_nova/fixtures/checkpoint.json research/hourly_index/policy_nova/fixtures/expected.json "$RUNNER_TEMP/shz-policy-proof" 2> "$RUNNER_TEMP/shz-policy-prove-time.txt"
+      - name: Independently verify persisted proof and wrong root, evidence, fold count controls
+        run: |
+          set -o pipefail
+          /usr/bin/time -v research/hourly_index/policy_nova/target/release/shz-hourly-index-policy-nova verify research/hourly_index/policy_nova/fixtures/checkpoint.json research/hourly_index/policy_nova/fixtures/expected.json "$RUNNER_TEMP/shz-policy-proof" 2> "$RUNNER_TEMP/shz-policy-verify-time.txt" | tee "$RUNNER_TEMP/shz-policy-proof/verification.json"
+          cp "$RUNNER_TEMP"/shz-policy-*-time.txt "$RUNNER_TEMP/shz-policy-proof/"
+          cp research/hourly_index/policy_nova/Cargo.lock "$RUNNER_TEMP/shz-policy-proof/Cargo.lock"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: shz-index-policy-transparent-nova-evidence
+          path: ${{ runner.temp }}/shz-policy-proof
+          retention-days: 7
