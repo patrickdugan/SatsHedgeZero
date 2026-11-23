@@ -1,0 +1,60 @@
+name: shz-index-admission-transparent-nova
+on:
+  push:
+    branches: ["research/shz-index-admission-*"]
+  pull_request:
+    paths: ["research/hourly_index/admission/**", "docs/SHZ_INDEX_ADMISSION_01.md", ".github/workflows/shz-index-admission-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  admission-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify exact frozen MAX-01 snapshot bridge and all prefixes
+        run: |
+          node research/hourly_index/admission/fixtures/build.mjs
+          git diff --exit-code -- research/hourly_index/admission/fixtures research/hourly_index/admission/evidence
+          node --test research/hourly_index/admission/tests/frontier.test.mjs
+      - name: Exercise actual fixed-shape R1CS and malicious transitions
+        run: |
+          B=research/hourly_index/admission
+          rustc -Vv
+          cargo generate-lockfile --manifest-path "$B/Cargo.toml"
+          cargo test --release --locked --manifest-path "$B/Cargo.toml" -- --test-threads=1 --nocapture
+      - name: Build native prover and verifier
+        run: cargo build --release --locked --manifest-path research/hourly_index/admission/Cargo.toml
+      - name: Prove and independently verify both source histories
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission
+          exe="$B/target/release/shz-hourly-index-admission-nova"
+          for source in pyth chainlink; do
+            out="$RUNNER_TEMP/shz-admission-$source"
+            /usr/bin/time -v "$exe" prove "$B/fixtures/$source-steps.json" "$B/fixtures/$source-expected.json" "$out" 2> "$RUNNER_TEMP/$source-prove-time.txt"
+            /usr/bin/time -v "$exe" verify "$B/fixtures/$source-expected.json" "$out" 2> "$RUNNER_TEMP/$source-verify-time.txt" | tee "$out/verification.json"
+            cp "$RUNNER_TEMP/$source-"*-time.txt "$B/Cargo.lock" "$out/"
+          done
+          node --input-type=module - <<'JS'
+          import {readFileSync} from 'node:fs';
+          const max=JSON.parse(readFileSync('research/hourly_index/maximality/fixtures/expected.json','utf8'));
+          for(const source of ['pyth','chainlink']) {
+            const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/shz-admission-'+source+'/verification.json','utf8'));
+            if(!r.independent_compressed_verified || r.snapshot_pin!==max.pins[source] || r.flags.near_nova_verified || r.flags.source_authentication || r.flags.can_authorize_dlc_settlement)throw Error('unproven or inconsistent source history');
+          }
+          JS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: shz-index-admission-transparent-proofs
+          path: ${{ runner.temp }}/shz-admission-*
+          retention-days: 7
