@@ -35,6 +35,9 @@ jobs:
       - name: Run Deribit terminal HTTP API and workbench tests
         run: npm --prefix ui test
 
+      - name: Verify NEAR/Pyth provenance and multi-channel closeout research gates
+        run: npm --prefix research/near_pyth_channel test
+
       - name: Install SHA256-pinned Bitcoin Core 31.1 and execute SHZ-MNR-02 regtest
         run: |
           curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz

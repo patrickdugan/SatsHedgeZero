@@ -1,0 +1,16 @@
+[package]
+name = "shz-near-fraud-guard"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Experimental native NEAR Ed25519 Pyth envelope verifier and bonded relay equivocation challenge"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { version = "5.17", features = ["legacy"] }
+hex = "0.4"
+
+# Standalone contract; intentionally excluded from SatsHedgeZero's Cargo workspace.
+[workspace]
