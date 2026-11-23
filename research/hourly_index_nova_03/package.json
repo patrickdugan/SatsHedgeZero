@@ -1,0 +1,12 @@
+{
+  "name": "shz-hourly-index-nova-03-sandbox",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "near-api-js": "7.5.3",
+    "near-sandbox": "0.3.5"
+  },
+  "scripts": {
+    "sandbox": "node sandbox.mjs"
+  }
+}

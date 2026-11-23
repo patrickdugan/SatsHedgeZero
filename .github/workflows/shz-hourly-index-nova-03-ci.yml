@@ -1,0 +1,94 @@
+name: shz-hourly-index-nova-03
+on:
+  push:
+    branches: ["research/shz-hourly-index-nova-03-*"]
+  pull_request:
+    paths:
+      - "research/hourly_index_nova_03/**"
+      - "docs/SHZ_INDEX03_TRANSPARENT_NEAR_VERIFIER.md"
+      - ".github/workflows/shz-hourly-index-nova-03-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transparent-near-nova-verifier:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "2"
+      RAYON_NUM_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run 18-case R1CS, NIFS, Spartan/IPA, source-auth, and Bitcoin-SPV adversarial suite
+        run: |
+          cargo test --release --locked --manifest-path research/hourly_index_nova_03/prover/Cargo.toml -- --nocapture
+
+      - name: Build independent prover/verifier CLI and reconstruct Merkle VK chunks
+        run: |
+          mkdir -p "$RUNNER_TEMP/shz-index03"
+          cargo build --release --locked --manifest-path research/hourly_index_nova_03/prover/Cargo.toml --bin shz-index03-prover
+          cp research/hourly_index_nova_03/artifacts/proof.bin "$RUNNER_TEMP/shz-index03/proof.bin"
+          cp research/hourly_index_nova_03/artifacts/claim.json "$RUNNER_TEMP/shz-index03/claim.json"
+          research/hourly_index_nova_03/prover/target/release/shz-index03-prover export-vk-chunks \
+            "$RUNNER_TEMP/shz-index03/vk_chunks.bin" \
+            "$RUNNER_TEMP/shz-index03/compact_vk.json" \
+            "$RUNNER_TEMP/shz-index03/route_profile.json"
+          diff -u research/hourly_index_nova_03/artifacts/compact_vk.json "$RUNNER_TEMP/shz-index03/compact_vk.json"
+          research/hourly_index_nova_03/prover/target/release/shz-index03-prover verify-bn254 \
+            "$RUNNER_TEMP/shz-index03/proof.bin" \
+            "$RUNNER_TEMP/shz-index03/vk_chunks.bin" \
+            "$RUNNER_TEMP/shz-index03/claim.json" \
+            "$RUNNER_TEMP/shz-index03/independent_verification.json"
+          research/hourly_index_nova_03/prover/target/release/shz-index03-prover verify-evidence-gates \
+            "$RUNNER_TEMP/shz-index03/evidence_gates.json" \
+            research/hourly_index/fixtures/checkpoint.json
+          research/hourly_index_nova_03/prover/target/release/shz-index03-prover export-sandbox-vectors \
+            "$RUNNER_TEMP/shz-index03/sandbox_vectors.json" \
+            research/hourly_index/fixtures/checkpoint.json
+
+      - name: Build transparent NEAR WASM verifier contract
+        working-directory: research/hourly_index_nova_03/near_contract
+        run: |
+          cargo build --release --locked --target wasm32-unknown-unknown
+
+      - name: Install near-sandbox dependencies and execute full 1,129-tx NEAR WASM verification
+        run: |
+          npm --prefix research/hourly_index_nova_03 install --no-audit --no-fund
+          SHZ_INDEX03_PROOF_DIR="$RUNNER_TEMP/shz-index03" \
+          SHZ_INDEX03_VECTORS="$RUNNER_TEMP/shz-index03/sandbox_vectors.json" \
+          SHZ_INDEX03_SANDBOX_REPORT="$RUNNER_TEMP/shz-index03/near_sandbox_receipt.json" \
+            npm --prefix research/hourly_index_nova_03 run sandbox
+          node -e '
+            const fs = require("node:fs");
+            const r = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (!r.nova_verification_metrics.near_nova_verified) process.exit(1);
+            if (r.checkpoint_root !== "c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5") process.exit(1);
+            if (r.nova_verification_metrics.r1cs_chunks !== 103 || r.nova_verification_metrics.msm_chunks !== 1024) process.exit(1);
+            if (r.honesty_flags.production_ready || r.honesty_flags.can_authorize_dlc_settlement) process.exit(1);
+            for (const [k, v] of Object.entries(r.adversarial_controls_on_near_wasm)) {
+              if (v !== true) { console.error("failed control:", k); process.exit(1); }
+            }
+          ' "$RUNNER_TEMP/shz-index03/near_sandbox_receipt.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-index03-near-nova-evidence
+          path: |
+            ${{ runner.temp }}/shz-index03/independent_verification.json
+            ${{ runner.temp }}/shz-index03/evidence_gates.json
+            ${{ runner.temp }}/shz-index03/route_profile.json
+            ${{ runner.temp }}/shz-index03/near_sandbox_receipt.json
+          retention-days: 10
+          if-no-files-found: ignore

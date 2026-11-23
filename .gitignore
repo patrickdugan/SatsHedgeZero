@@ -1,5 +1,6 @@
 /target
-research/near_pyth_channel/near_contract/target/
+research/**/target/
+research/**/node_modules/
 **/*.rs.bk
 .DS_Store
 

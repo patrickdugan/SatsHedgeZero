@@ -1,0 +1,70 @@
+{
+  "schema": "shz/index03-transparent-near-nova-sandbox-receipt/v1",
+  "network": "near-sandbox@0.3.5",
+  "relation": "shz/hourly-index-checkpoint-nova/v1",
+  "checkpoint_root": "c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5",
+  "start_hour": "498000",
+  "wasm_binary_bytes": 598063,
+  "proof_bincode_bytes": 10003,
+  "compact_onchain_vk_json_bytes": 2248,
+  "vk_chunks_stream_bytes": 59541176,
+  "vk_chunks_merkle_root_hex": "2158dc26c6ca786c60004ac5264f05aca8704bc059474db270a73131c0b4ce2f",
+  "storage_bytes": {
+    "contract_code_delta_bytes": 598063,
+    "pinned_init_state_delta_bytes": 1782,
+    "active_session_delta_bytes": 5291,
+    "finalized_checkpoint_delta_bytes": 2153
+  },
+  "nova_verification_metrics": {
+    "near_nova_verified": true,
+    "transactions_total": 1129,
+    "r1cs_chunks": 103,
+    "msm_chunks": 1024,
+    "begin_receipt_tgas": 151.52564890978,
+    "begin_total_tx_tgas": 151.856664744158,
+    "r1cs_chunk_mean_receipt_tgas": 161.5252937518145,
+    "r1cs_chunk_max_receipt_tgas": 211.615840465436,
+    "r1cs_chunks_total_receipt_tgas": 16637.10525643689,
+    "msm_chunk_mean_receipt_tgas": 175.37884619490004,
+    "msm_chunk_max_receipt_tgas": 175.386844755479,
+    "msm_chunks_total_receipt_tgas": 179587.93850357764,
+    "finalize_receipt_tgas": 4.584668543104,
+    "cumulative_nova_receipt_gas_burnt": "196381154077467396",
+    "cumulative_nova_receipt_tgas": 196381.1540774674,
+    "sandbox_verify_wall_seconds": 43.343285267999995
+  },
+  "source_authentication_metrics": {
+    "operational_pyth_solana_storage_verified": true,
+    "operational_pyth_trusted_signer_hex": "80efc1f480c5615af3fb673d42287e993da9fbc3506b6e41dfa32950820c2e6c",
+    "operational_pyth_verify_receipt_tgas": 2.102772162824,
+    "synthetic_pyth_under_operational_rejected": true,
+    "chainlink_v3_ecrecover_quorum_verified": true,
+    "chainlink_v3_verify_receipt_tgas": 2.835892389397,
+    "unauthorized_chainlink_signer_rejected": true,
+    "cherry_pick_challenge_invalidated_checkpoint": true
+  },
+  "bitcoin_anchor_metrics": {
+    "anchor_txid_hex": "cc3de42af1ef1b98aac19eb836446090ffd920238b8c62fb01e44fade5ae6a0c",
+    "anchor_block_hash_hex": "61c1b36fd30eb5567bfb002e951cba0dcf798de67a52c4a540afd8b0c48e1463",
+    "anchor_verify_receipt_tgas": 2.813121719538,
+    "unconfirmed_anchor_rejected": true,
+    "substituted_btc_tx_rejected": true,
+    "reorg_orphaned_anchor_revoked_eligibility": true,
+    "canonical_recovery_restored_eligibility": true
+  },
+  "adversarial_controls_on_near_wasm": {
+    "wrong_checkpoint_root_rejected": true,
+    "wrong_nova_step_count_rejected": true,
+    "tampered_compressed_proof_rejected": true,
+    "duplicate_chunk_replay_rejected": true,
+    "substituted_r1cs_vk_chunk_rejected": true,
+    "substituted_msm_vk_chunk_rejected": true,
+    "premature_incomplete_state_finalize_rejected": true,
+    "replayed_proof_nullifier_rejected": true
+  },
+  "honesty_flags": {
+    "production_ready": false,
+    "can_authorize_dlc_settlement": false
+  },
+  "total_harness_wall_seconds": 55.823158934
+}
