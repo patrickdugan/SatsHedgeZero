@@ -561,7 +561,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]"
+                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]\n  testnet4-live env: SHZ_CHAIN (default testnet4; e.g. signet), SHZ_BITCOIN_CLI_DIRECT=1, SHZ_WSL_BITCOIN_CLI, SHZ_WSL_BITCOIN_DATADIR, SHZ_BITCOIN_CLI_EXTRA_ARGS"
             );
             std::process::exit(1);
         }

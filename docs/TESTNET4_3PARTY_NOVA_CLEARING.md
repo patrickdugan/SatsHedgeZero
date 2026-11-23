@@ -59,3 +59,22 @@ Both 3-row `LNMBAT01` witnesses (`evidence/testnet4_live_nova_bundle/` and `evid
 - **Pinned Verifier Key SHA-256:** `4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b` (`101,826,448` serialized bytes)
 - **304-Byte `UTXOREF_L2_SETTLEMENT_GROTH16_V0` Statement:** `network_code = 1` (`Testnet4`), `settlement_txid = journal.batch_txid`, `verifying_key_hash = 4eafbd22...e38b`.
 - **Honesty Boundary:** `native_statement_verified: true`, `nova_snark_verified: true`, `bitvm3_onchain_verified: false`, `production_ready: false`.
+
+---
+
+## 5. Running the live flow against another chain (private Signet dry run)
+
+`shz testnet4-live` takes its chain and `bitcoin-cli` invocation from the environment:
+
+- `SHZ_CHAIN`: Core chain name, default `testnet4` (e.g. `signet`); the flow asserts `getblockchaininfo.chain` equals it.
+- `SHZ_BITCOIN_CLI_DIRECT=1`: run `SHZ_WSL_BITCOIN_CLI` directly instead of through `wsl -e` (inside WSL or on Linux).
+- `SHZ_WSL_BITCOIN_DATADIR`: `-datadir=` as before.
+- `SHZ_BITCOIN_CLI_EXTRA_ARGS`: whitespace-separated extra arguments, e.g. `-signetchallenge=<hex> -rpcport=<port>`.
+
+Explorer URIs are empty off Testnet4. The receipt's top-level `network` is `bitcoin-<chain>`.
+
+The flow was run on a private custom Signet (stock Core 31.1, Spiral `Private Signet/ab/run_signet_shz_prototype.py`): funding `2a22549cfeb1bc8ecf03718523c8dc92c927ad1f87bc8bca4b1279b97edceb70`, clearing `cb2430ff487199f4233a437beb2176309c85c6e649c731db35d25645baa7deec` (505 vB), both confirmed in one signed block; all four clearing outputs unspent on the miner and the observer; both 1-sat shave probes refused (`Invalid Schnorr signature`).
+
+On any chain other than Testnet4 the embedded `clearing_report` still says `bitcoin-testnet4` and its 304-byte BitVM3 statement carries `network_code = Testnet4`, because `build_live_testnet4_micro_clearing_ceremony` hard-codes them; the anchor height and hash are those of the chain actually used. Such a statement names the wrong network and is not a Testnet4 statement.
+
+A keyless variant of these contracts (same `InverseContractSpec`, compression and `oracle_digit_message`; settlement enforced by TXCOMMIT + OP_CAT + P2MR + research OP_CHECKSIGFROMSTACK on a patched Core, positions transferable without the counterparty) is in Spiral `Private Signet/ab/shz_k1.py`, with results in `Private Signet/RESULTS.md`.

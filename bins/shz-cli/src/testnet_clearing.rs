@@ -570,7 +570,7 @@ pub fn run_testnet_three_party_clearing(
 #[derive(Serialize)]
 pub struct LiveTestnet4BroadcastReceipt {
     pub scenario: &'static str,
-    pub network: &'static str,
+    pub network: String,
     pub core_version: String,
     pub testnet4_tip_height: u32,
     pub testnet4_tip_block_hash: String,
@@ -591,15 +591,37 @@ pub struct LiveTestnet4BroadcastReceipt {
     pub clearing_report: ThreePartyClearingReport,
 }
 
+/// Chain the live flow runs against: `SHZ_CHAIN` (default `testnet4`). Any
+/// Core chain name works; `signet` with a custom challenge is the private
+/// dry-run target.
+fn live_chain() -> String {
+    std::env::var("SHZ_CHAIN").unwrap_or_else(|_| "testnet4".to_owned())
+}
+
+/// `bitcoin-cli` for the live flow. By default it runs inside WSL
+/// (`wsl -e $SHZ_WSL_BITCOIN_CLI`); `SHZ_BITCOIN_CLI_DIRECT=1` runs the binary
+/// directly (inside WSL or Linux). `SHZ_BITCOIN_CLI_EXTRA_ARGS` adds
+/// whitespace-separated arguments such as `-rpcport=` or `-signetchallenge=`.
 fn wsl_testnet4_cli(wallet: Option<&str>, args: &[&str]) -> Result<String, String> {
     let cli_bin =
         std::env::var("SHZ_WSL_BITCOIN_CLI").unwrap_or_else(|_| "bitcoin-cli".to_owned());
-    let mut cmd = Command::new("wsl");
-    cmd.arg("-e").arg(&cli_bin);
+    let mut cmd = if std::env::var("SHZ_BITCOIN_CLI_DIRECT").as_deref() == Ok("1") {
+        Command::new(&cli_bin)
+    } else {
+        let mut c = Command::new("wsl");
+        c.arg("-e").arg(&cli_bin);
+        c
+    };
     if let Ok(datadir) = std::env::var("SHZ_WSL_BITCOIN_DATADIR") {
         cmd.arg(format!("-datadir={datadir}"));
     }
-    cmd.arg("-testnet4");
+    let chain = live_chain();
+    if chain != "main" {
+        cmd.arg(format!("-{chain}"));
+    }
+    if let Ok(extra) = std::env::var("SHZ_BITCOIN_CLI_EXTRA_ARGS") {
+        cmd.args(extra.split_whitespace());
+    }
     if let Some(w) = wallet {
         cmd.arg(format!("-rpcwallet={w}"));
     }
@@ -626,8 +648,9 @@ pub fn run_wsl_testnet4_live_broadcast(
     lnm_nova_bin: Option<&Path>,
     persist_bundle_dir: Option<&Path>,
 ) -> LiveTestnet4BroadcastReceipt {
+    let chain = live_chain();
     let chain_info = wsl_testnet4_json(None, &["getblockchaininfo"]);
-    assert_eq!(chain_info["chain"].as_str(), Some("testnet4"));
+    assert_eq!(chain_info["chain"].as_str(), Some(chain.as_str()));
     assert_eq!(chain_info["initialblockdownload"].as_bool(), Some(false));
     let tip_height = chain_info["blocks"].as_u64().expect("tip height") as u32;
     let tip_hash = chain_info["bestblockhash"]
@@ -649,7 +672,7 @@ pub fn run_wsl_testnet4_live_broadcast(
     );
     assert!(
         sats_before >= 5_400,
-        "wallet {wallet_name} needs >= 5,400 sats on Testnet4 (got {sats_before})"
+        "wallet {wallet_name} needs >= 5,400 sats on {chain} (got {sats_before})"
     );
 
     // 1. Derive 4 fresh bech32m P2TR payout addresses inside the live Testnet4 wallet
@@ -881,17 +904,27 @@ pub fn run_wsl_testnet4_live_broadcast(
         }
     }
 
+    // Public explorers index testnet4 only; a private Signet has none.
+    let explorer = |txid: &str| {
+        if chain == "testnet4" {
+            format!("https://mempool.space/testnet4/tx/{txid}")
+        } else {
+            String::new()
+        }
+    };
     LiveTestnet4BroadcastReceipt {
-        scenario: "Live Public Bitcoin Testnet4 3-Party, 3-Trade ($80k -> $100k -> $125k) Collated DLC Margin Clearing + BitVM3 Nova CompressedSNARK",
-        network: "bitcoin-testnet4",
+        scenario: if chain == "testnet4" {
+            "Live Public Bitcoin Testnet4 3-Party, 3-Trade ($80k -> $100k -> $125k) Collated DLC Margin Clearing + BitVM3 Nova CompressedSNARK"
+        } else {
+            "Live 3-Party, 3-Trade ($80k -> $100k -> $125k) Collated DLC Margin Clearing + BitVM3 Nova CompressedSNARK (non-testnet4 chain; see network)"
+        },
+        network: format!("bitcoin-{chain}"),
         core_version,
         testnet4_tip_height: tip_height,
         testnet4_tip_block_hash: tip_hash,
-        funding_tx_explorer_uri: format!("https://mempool.space/testnet4/tx/{broadcast_fund_txid}"),
+        funding_tx_explorer_uri: explorer(&broadcast_fund_txid),
         funding_txid: broadcast_fund_txid,
-        atomic_clearing_tx_explorer_uri: format!(
-            "https://mempool.space/testnet4/tx/{broadcast_clear_txid}"
-        ),
+        atomic_clearing_tx_explorer_uri: explorer(&broadcast_clear_txid),
         atomic_clearing_txid: broadcast_clear_txid,
         atomic_clearing_wtxid: artifacts.signed_clearing_tx.wtxid_hex(),
         atomic_clearing_vsize: artifacts.signed_clearing_tx.vsize(),
