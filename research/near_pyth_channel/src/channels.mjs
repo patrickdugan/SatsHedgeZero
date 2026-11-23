@@ -151,6 +151,7 @@ export function buildCloseoutProposal({routeId,markUsd,oracleImport,trades,vault
     trades:trades.map(t=>({id:t.id,fundingTxid:t.fundingTxid,fundingVout:t.fundingVout})),
     payout:accounting.parties,routes,channelHops};
   return {routeId,proposalHash:sha(Buffer.from(JSON.stringify(core))),accounting,funding,
+    channelHops:channelHops.map(h=>({...h})),
     status:'PROPOSED_ONLY', requiredProofs:[
       'independently-verified-Pyth-source', 'NEAR-state-finality-or-fallback',
       'complete-bilateral-CET-and-recovery-signatures',

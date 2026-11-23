@@ -1,12 +1,14 @@
 //! Experimental NEAR contract. Reviews and NEAR testnet execution remain pending.
 //! Checks Pyth Pro Solana Ed25519 envelope authenticity and objective relay
-//! double-signing. Decoding the authenticated Pyth inner price payload is TODO.
-//! It must never assert that signed JSON is a native Pyth price proof.
+//! double-signing. The signed BTC/USD inner-price decoder is implemented;
+//! the owner-pinned signer registry, external NEAR finality and Bitcoin enforcement remain separate.
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
     env, near_bindgen, AccountId, NearToken, PanicOnDefault, Promise,
     serde::{Deserialize, Serialize}, serde_json,
 };
+
+mod pyth_payload;
 
 const PYTH_SOLANA_FORMAT_MAGIC: u32 = 2_182_742_457;
 const RELAY_DOMAIN: &str = "SHZ/NEAR-PRICE-IMPORT/V1";
@@ -27,6 +29,21 @@ pub struct SignedRelayClaim {
     pub signature_hex: String,
 }
 
+#[derive(Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[borsh(crate="near_sdk::borsh")]
+#[serde(crate="near_sdk::serde",rename_all="camelCase")]
+pub struct StoredPythEpoch {
+    pub epoch: u64,
+    pub event_id: String,
+    pub price_e8: String,
+    pub signed_payload_sha256_hex: String,
+    pub signer_hex: String,
+    pub publish_time_us: String,
+    pub feed_update_time_us: String,
+    pub challenge_end_block: u64,
+    pub challenge_window_closed: bool,
+}
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate="near_sdk::borsh")]
@@ -39,6 +56,7 @@ pub struct ShzNearFraudGuard {
     pub relayer_signer: [u8; 32],
     pub relayer_bond_yocto: u128,
     pub slashed: bool,
+    pub latest_pyth_epoch: Option<StoredPythEpoch>,
 }
 
 fn signer32(value: &str) -> [u8;32] {
@@ -76,7 +94,7 @@ impl ShzNearFraudGuard {
         assert!(!relayer_id.is_empty() && relayer_id.len()<=128,"invalid relayer id");
         Self {owner,relayer_account,near_chain_id,relayer_id,
               pyth_signer:signer32(&pyth_signer_hex),relayer_signer:signer32(&relayer_signer_hex),
-              relayer_bond_yocto:0,slashed:false}
+              relayer_bond_yocto:0,slashed:false,latest_pyth_epoch:None}
     }
     /// Verification authenticates the bytes. It does not parse the BTC/USD price
     /// or prove freshness. The signer must be pinned from an independently audited
@@ -89,6 +107,77 @@ impl ShzNearFraudGuard {
         if &raw[68..100]!=self.pyth_signer.as_slice(){return false}
         let sig: [u8;64]=raw[4..68].try_into().unwrap();
         env::ed25519_verify(&sig,&raw[102..],&self.pyth_signer)
+    }
+    /// Parse fields *inside* the already authenticated Ed25519 Solana payload.
+    /// Signed feed ID 1 is Crypto.BTC/USD in Pyth Pro, distinct from Hermes.
+    /// This view uses NEAR block timestamp for replay/freshness protection and
+    /// returns None until a pinned signer and exact signed fields pass.
+    /// No Bitcoin spend authority or cross-chain NEAR finality proof is implied.
+    pub fn verify_pyth_btc_usd_price(
+        &self, raw: Vec<u8>, max_age_us: u64,
+        max_carry_forward_us: u64, max_conf_bps: u64,
+    ) -> Option<pyth_payload::BtcUsdSignedPoint> {
+        if max_age_us==0 || max_age_us>60_000_000 ||
+           max_carry_forward_us>60_000_000 || max_conf_bps>10_000 {return None;}
+        if !self.verify_pyth_pro_solana_envelope(raw.clone()) {return None;}
+        let point=pyth_payload::parse_btc_usd_signed_price(&raw[102..])?;
+        let now=env::block_timestamp()/1_000;
+        let stamp=point.publish_time_us.parse::<u64>().ok()?;
+        let feed_time=point.feed_update_time_us.parse::<u64>().ok()?;
+        let conf=point.confidence_bps.parse::<u64>().ok()?;
+        if stamp>now.saturating_add(100_000) || now.saturating_sub(stamp)>max_age_us ||
+           stamp.saturating_sub(feed_time)>max_carry_forward_us ||conf>max_conf_bps {
+            return None;
+        }
+        Some(point)
+    }
+    /// State-changing Pyth import requires an independently pinned Ed25519
+    /// signing key, the signed inner BTC/USD fields and the bonded NEAR relayer.
+    /// Epochs are monotone and carry a fixed challenge delay. `challenge_window_closed`
+    /// is an on-NEAR policy flag, not evidence of NEAR finality on Bitcoin.
+    pub fn post_pyth_btc_usd_epoch(
+        &mut self, raw: Vec<u8>, epoch: u64, event_id: String,
+    ) -> StoredPythEpoch {
+        assert_eq!(env::predecessor_account_id(),self.relayer_account,"relayer only");
+        assert!(!self.slashed && self.relayer_bond_yocto>0,"relayer requires active bond");
+        assert!(!event_id.is_empty() && event_id.len()<=128,"invalid event id");
+        if let Some(previous)=&self.latest_pyth_epoch {
+            assert!(previous.challenge_window_closed,"prior oracle challenge window remains open");
+            assert!(epoch>previous.epoch,"duplicate or reversed oracle epoch");
+        }
+        let point=self.verify_pyth_btc_usd_price(raw,5_000_000,2_000_000,100)
+            .expect("signed Pyth price, timestamp or confidence policy rejected");
+        assert_eq!(point.channel_id,3,"require Pyth fixed_rate@200ms");
+        if let Some(previous)=&self.latest_pyth_epoch {
+            let prev=previous.publish_time_us.parse::<u64>().expect("stored publish timestamp");
+            let current=point.publish_time_us.parse::<u64>().expect("signed publish timestamp");
+            assert!(current>prev,"replayed or non-monotone signed Pyth update");
+        }
+        let price=StoredPythEpoch{
+            epoch,event_id,price_e8:point.price_e8,
+            signed_payload_sha256_hex:point.signed_payload_sha256_hex,
+            signer_hex:hex::encode(self.pyth_signer),
+            publish_time_us:point.publish_time_us,
+            feed_update_time_us:point.feed_update_time_us,
+            challenge_end_block:env::block_height().saturating_add(20),
+            challenge_window_closed:false,
+        };
+        self.latest_pyth_epoch=Some(price.clone());
+        env::log_str(&format!("SHZ_PYTH_EPOCH:{epoch}:{}",price.signed_payload_sha256_hex));
+        price
+    }
+    /// A challenge window closure on NEAR remains subject to light-client
+    /// finality evidence when consumed outside NEAR. It never signs a DLC.
+    pub fn close_pyth_epoch_challenge_window(&mut self,epoch:u64)->StoredPythEpoch {
+        assert!(!self.slashed,"slashed oracle guard");
+        let stored=self.latest_pyth_epoch.as_mut().expect("missing Pyth epoch");
+        assert_eq!(stored.epoch,epoch,"wrong oracle epoch");
+        assert!(env::block_height()>=stored.challenge_end_block,"challenge window open");
+        stored.challenge_window_closed=true;
+        stored.clone()
+    }
+    pub fn latest_pyth_epoch(&self)->Option<StoredPythEpoch>{
+        self.latest_pyth_epoch.clone()
     }
     #[payable]
     pub fn post_relayer_bond(&mut self) {

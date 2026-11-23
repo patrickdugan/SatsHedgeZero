@@ -88,3 +88,8 @@ The existing SHZ-MNR-02 three-leaf Taproot tree has a presigned `0x83` Bob outpu
 - Nadav Kohen, transferring in-channel Lightning DLCs: https://nkohen.github.io/blog/transferring-lightning-dlcs/
 - SHZ-MNR-02 regtest: docs/SHZ_MNR_02_BOB_OFFLINE_CLOSEOUT.md
 - SHZ 3-party Testnet4 receipt: docs/TESTNET4_3PARTY_NOVA_CLEARING.md
+
+
+## Update: ORACLE-02 / CHANNEL-02 (2026-11-23)
+
+The inner Pyth `PayloadData` parser and signed-price binding have now been implemented in the JS research module and experimental NEAR Rust contract, using the official `pyth-network/pyth-lazer-public` standard LE wire layout. `closeout_epoch.mjs` binds that signed price to a multi-channel, wallet-approved closeout epoch; its signed ECDSA approvals are intent receipts for research coordination, with Bitcoin and Lightning execution still separately gated. See [SHZ_ORACLE02_CHANNEL02_ACCEPTANCE.md](SHZ_ORACLE02_CHANNEL02_ACCEPTANCE.md) for verified scope and the remaining cross-chain and watchtower experiments. The earlier v0.1 plan above remains preserved as the historical design.
