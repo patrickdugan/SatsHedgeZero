@@ -1,0 +1,201 @@
+{
+  "records": [
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498000",
+      "status": 1,
+      "hold_reason": 0,
+      "pyth_price_e8": "10000000000000",
+      "chainlink_price_e8": "10020000000000",
+      "index_price_e8": "10010000000000",
+      "pyth_publish_us": "1792803595000000",
+      "chainlink_publish_us": "1792803580000000",
+      "pyth_report_hash": "19374756d2fe950e72e845a63070c1d251687327f4fb731e9845db073d044b78",
+      "chainlink_report_hash": "f4a27d56578fcb3f05b40d62210bc0296f1697a101df5eeafb64009f2c20269a"
+    },
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498001",
+      "status": 1,
+      "hold_reason": 0,
+      "pyth_price_e8": "10001000000000",
+      "chainlink_price_e8": "10021000000000",
+      "index_price_e8": "10011000000000",
+      "pyth_publish_us": "1792807195000000",
+      "chainlink_publish_us": "1792807180000000",
+      "pyth_report_hash": "8b8346f3f83502d4130ff3ef0437910b4ba448bd018abb83dd110325e05aa58d",
+      "chainlink_report_hash": "80a05497351afb333fbcb0efa200f01548c72ef15a4263dfdf35fe131efa7688"
+    },
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498002",
+      "status": 1,
+      "hold_reason": 0,
+      "pyth_price_e8": "10002000000000",
+      "chainlink_price_e8": "10022000000000",
+      "index_price_e8": "10012000000000",
+      "pyth_publish_us": "1792810795000000",
+      "chainlink_publish_us": "1792810780000000",
+      "pyth_report_hash": "4d3f9e0f875dfe014e7a9901e74eb6a2aae38ec3e59a94188b633cd95cb18bf8",
+      "chainlink_report_hash": "0cf01f2821f9ca1da60684fbf97d1177027f30292c351e715cecb7ccd22263a1"
+    },
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498003",
+      "status": 1,
+      "hold_reason": 0,
+      "pyth_price_e8": "10003000000000",
+      "chainlink_price_e8": "10023000000000",
+      "index_price_e8": "10013000000000",
+      "pyth_publish_us": "1792814395000000",
+      "chainlink_publish_us": "1792814380000000",
+      "pyth_report_hash": "04002a5586bddf64cd605a04d28271f78fdba3ecceda4f4322de65943bec1f82",
+      "chainlink_report_hash": "f1e2afa50c04024022f768f6bfc166ac7ac49f5630d5aa7a34fb6f985221bd98"
+    },
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498004",
+      "status": 2,
+      "hold_reason": 2,
+      "pyth_price_e8": "0",
+      "chainlink_price_e8": "0",
+      "index_price_e8": "0",
+      "pyth_publish_us": "0",
+      "chainlink_publish_us": "0",
+      "pyth_report_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "chainlink_report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498005",
+      "status": 1,
+      "hold_reason": 0,
+      "pyth_price_e8": "10005000000000",
+      "chainlink_price_e8": "10025000000000",
+      "index_price_e8": "10015000000000",
+      "pyth_publish_us": "1792821595000000",
+      "chainlink_publish_us": "1792821580000000",
+      "pyth_report_hash": "3837ad3a5b37b22a2a90702f13e054625c25c8521fac519b234354e509b719c6",
+      "chainlink_report_hash": "e3ac56ee52f99402836a0cc8b39cbf3c4e5b2f599a041d0fb270864f379607e2"
+    },
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498006",
+      "status": 1,
+      "hold_reason": 0,
+      "pyth_price_e8": "10006000000000",
+      "chainlink_price_e8": "10026000000000",
+      "index_price_e8": "10016000000000",
+      "pyth_publish_us": "1792825195000000",
+      "chainlink_publish_us": "1792825180000000",
+      "pyth_report_hash": "01e8fbd7f68b98f9b7b41c76cc0d0b25c8bd802a580f67912a8be0a6e6921e74",
+      "chainlink_report_hash": "d2503bf34dbf0d3feceb8e66abdb552c8dbd5e42184d676f7542956456fa1587"
+    },
+    {
+      "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+      "hour_id": "498007",
+      "status": 1,
+      "hold_reason": 0,
+      "pyth_price_e8": "10007000000000",
+      "chainlink_price_e8": "10027000000000",
+      "index_price_e8": "10017000000000",
+      "pyth_publish_us": "1792828795000000",
+      "chainlink_publish_us": "1792828780000000",
+      "pyth_report_hash": "5e6eb6b3074c78c4fc338785ee864031d771c5b07fdea788465cafba79763b08",
+      "chainlink_report_hash": "e201ff70161f22ff2d62ae7f8da1a4bace248912e2f595e834e9bd064b5e5210"
+    }
+  ],
+  "checkpoint": {
+    "schema": "shz/hourly-checkpoint/v1",
+    "start_hour": "498000",
+    "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+    "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+    "merkle_root": "e7bc5a91b614c22791357fc35355fc807e43003a41aa13ebf4f73c4670935b0d",
+    "checkpoint_root": "c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5",
+    "packet_hex": "53485a4944583031c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5",
+    "leaves": [
+      "3d6db4e91829d02e6054fea6709b0fc0c14ed7b8476712abc79a01415178c2a9",
+      "bc8f1a59db67c1908e7deb9436e9ec3d611d65cf2718f57344d672bc7a8ceff0",
+      "9966eda6adeed0debc159103487eeee865a71036319fb9f2067c8dea47b9f8be",
+      "2395d5c1062e5d020495c8c8f13c2bb44b928d6a1fdd65f6ef45b94622088d88",
+      "157c39bc41b573022ffd81140481fdeb88dc800f999794eba28b9399c3da40fd",
+      "ef9fb9995eb0aaf8aacba0b630dc13af031053c0b69f8d6d87ae393a8cf88656",
+      "fecb5273d05e0c952137b8cf9f021a7450af91f22d5df573b702c94f15292bd4",
+      "7b8a35c13dd4335955a087283884f20b97401402ccb4eb8703f0b938a79a457a"
+    ],
+    "inclusion": [
+      {
+        "hour_id": "498000",
+        "siblings": [
+          "bc8f1a59db67c1908e7deb9436e9ec3d611d65cf2718f57344d672bc7a8ceff0",
+          "fe8e6f29fffd8cd2577cbbfb500f5ddf77e37ab9658c127ac81ee97dc2bee975",
+          "b736a593337c05444451ed33e31969dbe07fc384002003969fb52961294272cc"
+        ]
+      },
+      {
+        "hour_id": "498001",
+        "siblings": [
+          "3d6db4e91829d02e6054fea6709b0fc0c14ed7b8476712abc79a01415178c2a9",
+          "fe8e6f29fffd8cd2577cbbfb500f5ddf77e37ab9658c127ac81ee97dc2bee975",
+          "b736a593337c05444451ed33e31969dbe07fc384002003969fb52961294272cc"
+        ]
+      },
+      {
+        "hour_id": "498002",
+        "siblings": [
+          "2395d5c1062e5d020495c8c8f13c2bb44b928d6a1fdd65f6ef45b94622088d88",
+          "94a41ed400068559a7840248004a7ce8bf5a51c76c6f8a0b18a68a2b3d2c0aec",
+          "b736a593337c05444451ed33e31969dbe07fc384002003969fb52961294272cc"
+        ]
+      },
+      {
+        "hour_id": "498003",
+        "siblings": [
+          "9966eda6adeed0debc159103487eeee865a71036319fb9f2067c8dea47b9f8be",
+          "94a41ed400068559a7840248004a7ce8bf5a51c76c6f8a0b18a68a2b3d2c0aec",
+          "b736a593337c05444451ed33e31969dbe07fc384002003969fb52961294272cc"
+        ]
+      },
+      {
+        "hour_id": "498004",
+        "siblings": [
+          "ef9fb9995eb0aaf8aacba0b630dc13af031053c0b69f8d6d87ae393a8cf88656",
+          "6f14ef3ebc012e09aabd967b11dde5eaf4fdfa4681508385e2dca0634df88d31",
+          "c0d132cfb382345c6d63ad0f83523911c8afca67cab13e52cee132e14f3e5b2b"
+        ]
+      },
+      {
+        "hour_id": "498005",
+        "siblings": [
+          "157c39bc41b573022ffd81140481fdeb88dc800f999794eba28b9399c3da40fd",
+          "6f14ef3ebc012e09aabd967b11dde5eaf4fdfa4681508385e2dca0634df88d31",
+          "c0d132cfb382345c6d63ad0f83523911c8afca67cab13e52cee132e14f3e5b2b"
+        ]
+      },
+      {
+        "hour_id": "498006",
+        "siblings": [
+          "7b8a35c13dd4335955a087283884f20b97401402ccb4eb8703f0b938a79a457a",
+          "b0b1c41763f50df9662e409655bd05736f35a3051aaf8ee3d08f25b748e98ea2",
+          "c0d132cfb382345c6d63ad0f83523911c8afca67cab13e52cee132e14f3e5b2b"
+        ]
+      },
+      {
+        "hour_id": "498007",
+        "siblings": [
+          "fecb5273d05e0c952137b8cf9f021a7450af91f22d5df573b702c94f15292bd4",
+          "b0b1c41763f50df9662e409655bd05736f35a3051aaf8ee3d08f25b748e98ea2",
+          "c0d132cfb382345c6d63ad0f83523911c8afca67cab13e52cee132e14f3e5b2b"
+        ]
+      }
+    ]
+  }
+}

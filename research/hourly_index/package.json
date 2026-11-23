@@ -1,0 +1,12 @@
+{
+  "name":"shz-hourly-index-checkpoint-research",
+  "version":"0.1.0",
+  "private":true,
+  "type":"module",
+  "scripts":{
+    "fixture":"node fixtures/generate.mjs",
+    "test":"node --test test/*.test.mjs",
+    "sandbox":"node sandbox.mjs"
+  },
+  "devDependencies": {"near-api-js":"7.5.3","near-sandbox":"0.3.5"}
+}
