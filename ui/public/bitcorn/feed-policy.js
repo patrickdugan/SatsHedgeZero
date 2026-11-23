@@ -39,7 +39,7 @@ export const INSTRUMENTS = Object.freeze({
 });
 
 export const MAX_RELAYS = 2;
-export const EMBED_THEMES = Object.freeze(['shz', 'darkDesk', 'noir', 'synth', 'verdigris']);
+export const EMBED_THEMES = Object.freeze(['og-wisdom', 'shz', 'darkDesk', 'noir', 'synth', 'verdigris']);
 
 function venueSupportsInterval(market, interval) {
   if (market === 'kraken') return Object.hasOwn(KRAKEN_INTERVALS, interval);

@@ -1,7 +1,7 @@
 // Vendored & adapted from patrickdugan/BitcornWisdom (MIT License, Copyright (c) 2026 Patrick Dugan).
-// Small, framework-free workspace preferences and command search primitives.
-export const THEME_IDS = Object.freeze(['shz', 'darkDesk', 'noir', 'synth', 'verdigris']);
+export const THEME_IDS = Object.freeze(['og-wisdom', 'shz', 'darkDesk', 'noir', 'synth', 'verdigris']);
 export const THEME_NAMES = Object.freeze({
+  'og-wisdom': 'OG BitcoinWisdom (2013–16)',
   shz: 'SatsHedgeZero / Dark Desk',
   darkDesk: 'SatsHedgeZero / Dark Desk',
   noir: 'Noir / copper',
@@ -25,7 +25,7 @@ export const MARKET_PRESETS = Object.freeze([
 export const MAX_FAVORITES = 32;
 
 export function normalTheme(input) {
-  return THEME_IDS.includes(input) ? input : 'shz';
+  return THEME_IDS.includes(input) ? input : 'og-wisdom';
 }
 export function marketKey(market) {
   return market.market + ':' + market.symbol;
@@ -90,6 +90,38 @@ export function searchPalette(entries, input = '', limit = 12) {
     .slice(0, limit).map((x) => x.entry);
 }
 
+const OG_WISDOM_PALETTE = Object.freeze({
+  bg: '#0a0c0e',
+  axis: '#111418',
+  grid: '#232830',
+  labels: '#8e97a4',
+  cross: '#9aa4b2',
+  up: '#66cc66',
+  down: '#dd4444',
+  upWick: '#5cb85c',
+  downWick: '#cc3333',
+  upBody: 'rgba(102, 204, 102, 0.80)',
+  downBody: 'rgba(221, 68, 68, 0.82)',
+  volUp: 'rgba(102, 204, 102, 0.44)',
+  volDown: 'rgba(221, 68, 68, 0.44)',
+  ma7: '#ff9900',
+  ma25: '#cc66ff',
+  ma99: '#4ea1ff',
+  ema: '#ff9900',
+  sma: '#cc66ff',
+  bb: '#4ea1ff',
+  rsi: '#ff9900',
+  last: '#ff9900',
+  lastUp: '#66cc66',
+  lastDown: '#dd4444',
+  lastFlat: '#ff9900',
+  lastText: '#0a0c0e',
+  drawing: '#ff9900',
+  hoverBg: '#171b22',
+  hoverText: '#e6ebf2',
+  guide: '#ff9900'
+});
+
 const SHZ_PALETTE = Object.freeze({
   bg: '#0a0e14',
   axis: '#0e131b',
@@ -102,6 +134,9 @@ const SHZ_PALETTE = Object.freeze({
   downBody: 'rgba(255, 77, 109, 0.30)',
   volUp: 'rgba(0, 210, 133, 0.32)',
   volDown: 'rgba(255, 77, 109, 0.32)',
+  ma7: '#ff9900',
+  ma25: '#cc66ff',
+  ma99: '#4ea1ff',
   ema: '#38bdf8',
   sma: '#f59e0b',
   bb: '#818cf8',
@@ -115,6 +150,7 @@ const SHZ_PALETTE = Object.freeze({
 });
 
 export const CHART_COLORS = Object.freeze({
+  'og-wisdom': OG_WISDOM_PALETTE,
   shz: SHZ_PALETTE,
   darkDesk: SHZ_PALETTE,
   noir: {
@@ -122,6 +158,7 @@ export const CHART_COLORS = Object.freeze({
     labels: '#8194ad', cross: '#798da4', up: '#00d285', down: '#ff4d6d',
     upBody: 'rgba(0,210,133,.26)', downBody: 'rgba(255,77,109,.30)',
     volUp: 'rgba(0,210,133,.34)', volDown: 'rgba(255,77,109,.34)',
+    ma7: '#ff9900', ma25: '#cc66ff', ma99: '#4ea1ff',
     ema: '#38bdf8', sma: '#f59e0b', bb: '#a99df4', rsi: '#bca4ff',
     last: '#d7ac72', lastText: '#131922', drawing: '#e7bd89',
     hoverBg: '#1c2a39', hoverText: '#eaf0f7', guide: '#8da1bb'
@@ -131,6 +168,7 @@ export const CHART_COLORS = Object.freeze({
     labels: '#ab9ac7', cross: '#ac95d3', up: '#54e8e2', down: '#ff7caf',
     upBody: 'rgba(49,177,180,.24)', downBody: 'rgba(220,66,127,.31)',
     volUp: 'rgba(85,218,212,.38)', volDown: 'rgba(253,118,176,.37)',
+    ma7: '#ff9900', ma25: '#cc66ff', ma99: '#4ea1ff',
     ema: '#ffcb91', sma: '#b3a4ff', bb: '#d89ae9', rsi: '#fe9ed4',
     last: '#c7a5ff', lastText: '#171125', drawing: '#feb9d1',
     hoverBg: '#2a2042', hoverText: '#f1e8ff', guide: '#b4a3d2'
@@ -140,6 +178,7 @@ export const CHART_COLORS = Object.freeze({
     labels: '#8eafa7', cross: '#7ebcad', up: '#9ded9e', down: '#ff9c7a',
     upBody: 'rgba(120,203,115,.26)', downBody: 'rgba(230,113,73,.29)',
     volUp: 'rgba(147,220,148,.43)', volDown: 'rgba(241,139,107,.39)',
+    ma7: '#ff9900', ma25: '#cc66ff', ma99: '#4ea1ff',
     ema: '#ead588', sma: '#78c5c2', bb: '#a0aaed', rsi: '#b9d395',
     last: '#d9d18f', lastText: '#0c241b', drawing: '#e4d5a8',
     hoverBg: '#16362c', hoverText: '#e1fff0', guide: '#9bcbbb'

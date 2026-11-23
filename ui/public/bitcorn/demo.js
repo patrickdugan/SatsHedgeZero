@@ -1,8 +1,6 @@
 // Vendored & adapted from patrickdugan/BitcornWisdom (MIT License, Copyright (c) 2026 Patrick Dugan).
 import { INTERVAL_MS, clamp } from './core.js';
 
-// Deterministic offline market feed for UI development and network-blocked regions.
-// When anchorClose is provided, shifts the deterministic series so the final close lands on anchorClose.
 export function makeDemoCandles(interval = '1m', count = 900, now = Date.now(), anchorClose = null) {
   const duration = INTERVAL_MS[interval] || INTERVAL_MS['1m'];
   const end = Math.floor(now / duration) * duration;
@@ -37,11 +35,18 @@ export function makeDemoCandles(interval = '1m', count = 900, now = Date.now(), 
 
 export function makeDemoDepth(mid, time = Date.now()) {
   const bids = [], asks = [];
+  const anchor = Math.round(mid / 2) * 2;
+  const step = Math.floor(time / 1000);
+  const sweptBidIdx = (step % 5) + 1;
+  const sweptAskIdx = ((step + 2) % 5) + 1;
   for (let i = 1; i <= 20; i++) {
-    const delta = 0.5 + i * 0.85;
-    const qty = 0.1 + Math.abs(Math.sin(time / 13_000 + i * 2.4) * 2.5);
-    bids.push([mid - delta, qty]);
-    asks.push([mid + delta, qty * (0.75 + Math.sin(i) * 0.2)]);
+    const delta = i * 1.0;
+    const baseQty = 0.22 + Math.abs(Math.sin(i * 2.1 + Math.floor(time / 6000) * 0.4) * 2.4);
+    const bidQty = i === sweptBidIdx && step % 2 === 0 ? baseQty * 0.35 : baseQty;
+    const askBase = baseQty * (0.78 + Math.sin(i) * 0.2);
+    const askQty = i === sweptAskIdx && step % 2 === 1 ? askBase * 0.32 : askBase;
+    bids.push([anchor - delta, bidQty]);
+    asks.push([anchor + delta, askQty]);
   }
   return { time, lastUpdateId: 0, bids, asks };
 }

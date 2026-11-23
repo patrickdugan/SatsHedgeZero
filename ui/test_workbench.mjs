@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 
 import {
   ShzChartController,
+  THEME,
   buildInverseSpec,
   compressDyadicCetRanges,
   computeInversePayout,
@@ -12,6 +13,20 @@ import {
   generateInversePayoffCurve,
   lookupCetForPrice,
 } from "./public/charts.js";
+
+import {
+  CandleTickAnimator,
+  CLEARED_LEVEL_TTL_MS,
+} from "./public/bitcorn/market-motion.js";
+
+import {
+  OrderBookLevelTracker,
+  annotateOrderBookLadder,
+  diffOrderBookLevels,
+} from "./public/bitcorn/orderbook.js";
+
+import { CHART_COLORS } from "./public/bitcorn/workspace.js";
+import { createAppServer, createSession } from "./server.mjs";
 
 import {
   BITVM3_STATEMENT_MAGIC,
@@ -25,7 +40,9 @@ import {
   buildNovaTranscript600B,
   buildSecqBip340Claim,
   bytesToHex,
+  computeEdmondsKarpClearingPreview,
   computeMnr02CloseoutPreview,
+  computePositionNovationPreview,
   encodeBitvm3SettlementStatement304B,
   formatBitvm3Groth16PublicInputs,
   formatExtractedKeyHex,
@@ -398,4 +415,362 @@ test("ShzChartController renders both candles and payoff modes with crosshair ho
   assert.ok(drawnTexts.some((t) => /SHORT USD \(\$1(?:\.0)?k FLAT\)/.test(t)));
   assert.ok(drawnTexts.some((t) => t.includes("0 sats (0 bps)")));
   ctrl.destroy();
+});
+
+test("OG bitcoinwisdom.com palette, 60fps CandleTickAnimator, OrderBookLevelTracker, and Option Strike chart overlays", () => {
+  // 1. OG bitcoinwisdom.com color palette parity
+  assert.equal(THEME.bg, "#0a0c0e");
+  assert.equal(THEME.panel, "#111418");
+  assert.equal(THEME.border, "#232830");
+  assert.equal(THEME.long, "#66cc66");
+  assert.equal(THEME.short, "#dd4444");
+  assert.equal(THEME.amber, "#ff9900");
+  assert.ok(THEME.fontMono.includes("Tahoma"));
+  assert.equal(CHART_COLORS["og-wisdom"].bg, "#0a0c0e");
+  assert.equal(CHART_COLORS["og-wisdom"].ma7, "#ff9900");
+  assert.equal(CHART_COLORS["og-wisdom"].ma25, "#cc66ff");
+  assert.equal(CHART_COLORS["og-wisdom"].ma99, "#4ea1ff");
+
+  // 2. 60fps CandleTickAnimator smooth lerping + flash & volume pulse
+  const tickAnim = new CandleTickAnimator({ lerpDurationMs: 220, flashDurationMs: 380 });
+  tickAnim.seed({ time: 1_700_000_000_000, open: 100_000, high: 100_050, low: 99_950, close: 100_000, volume: 12 });
+  tickAnim.onTrade({ time: 1_700_000_000_050, price: 100_200, quantity: 1.5, side: "buy" }, null, 1_000);
+
+  const midFrame = tickAnim.sample(1_080);
+  assert.ok(midFrame.displayedClose > 100_000 && midFrame.displayedClose < 100_200);
+  assert.equal(midFrame.direction, "up");
+  assert.ok(midFrame.flashIntensity > 0 && midFrame.flashIntensity <= 1);
+  assert.ok(midFrame.volumePulse > 0);
+  assert.equal(tickAnim.isActive(1_080), true);
+
+  const settledFrame = tickAnim.sample(1_500);
+  assert.equal(settledFrame.displayedClose, 100_200);
+  assert.equal(settledFrame.displayedHigh, 100_200);
+  assert.equal(settledFrame.displayedVolume, 13.5);
+  assert.equal(tickAnim.isActive(1_500), false);
+
+  // 3. OrderBookLevelTracker wiped (prev > 0 -> 0) and swept (>= 25% reduction) diff & TTL decay
+  assert.ok(CLEARED_LEVEL_TTL_MS >= 350 && CLEARED_LEVEL_TTL_MS <= 500);
+  const diff = diffOrderBookLevels(
+    {
+      asks: [
+        [100_010, 25_000],
+        [100_030, 40_000],
+        [100_060, 68_000],
+      ],
+      bids: [[99_990, 28_000]],
+    },
+    {
+      asks: [
+        [100_030, 20_000], // 50% swept (>= 25%)
+        [100_060, 68_000], // unchanged
+      ],
+      bids: [[99_990, 28_000]],
+    },
+    { now: 5_000, ttlMs: 420 }
+  );
+  const wipedAsk = diff.clearedLevels.find((c) => c.price === 100_010);
+  const sweptAsk = diff.clearedLevels.find((c) => c.price === 100_030);
+  assert.ok(wipedAsk && wipedAsk.kind === "wiped" && wipedAsk.clearedRatio === 1);
+  assert.ok(sweptAsk && sweptAsk.kind === "swept" && Math.abs(sweptAsk.clearedRatio - 0.5) < 1e-6);
+
+  const tracker = new OrderBookLevelTracker({ ttlMs: 420 });
+  tracker.observe(
+    {
+      asks: [
+        [100_010, 25_000],
+        [100_030, 40_000],
+        [100_060, 68_000],
+        [100_100, 95_000],
+      ],
+      bids: [[99_990, 28_000]],
+    },
+    10_000
+  );
+  const observed = tracker.observe(
+    {
+      asks: [
+        [100_030, 20_000],
+        [100_060, 68_000],
+        [100_100, 95_000],
+      ],
+      bids: [[99_990, 28_000]],
+    },
+    10_100
+  );
+  const ladderAt150ms = annotateOrderBookLadder(
+    [
+      [100_030, 20_000],
+      [100_060, 68_000],
+      [100_100, 95_000],
+    ],
+    "ask",
+    observed.activeCleared,
+    observed.activeWalls,
+    8
+  );
+  assert.ok(ladderAt150ms.some((r) => r.price === 100_010 && r.status === "wiped" && r.decay > 0));
+  assert.ok(ladderAt150ms.some((r) => r.price === 100_030 && r.status === "swept" && r.decay > 0));
+  tracker.prune(10_600);
+  assert.equal(tracker.clearedByKey.size, 0);
+
+  // 4. ShzChartController renders MA(7)/MA(25)/MA(99), Option Strike/Breakeven, and L2 SWEPT overlays
+  const drawnTexts = [];
+  const noop = () => {};
+  const ctxStub = {
+    save: noop,
+    restore: noop,
+    setTransform: noop,
+    clearRect: noop,
+    fillRect: noop,
+    strokeRect: noop,
+    beginPath: noop,
+    closePath: noop,
+    moveTo: noop,
+    lineTo: noop,
+    quadraticCurveTo: noop,
+    arc: noop,
+    fill: noop,
+    stroke: noop,
+    setLineDash: noop,
+    createLinearGradient: () => ({ addColorStop: noop }),
+    measureText: (txt) => ({ width: String(txt).length * 6.5 }),
+    fillText: (txt) => drawnTexts.push(String(txt)),
+    fillStyle: "",
+    strokeStyle: "",
+    lineWidth: 1,
+    font: "",
+    textAlign: "left",
+    textBaseline: "middle",
+  };
+  const canvasStub = {
+    width: 0,
+    height: 0,
+    clientWidth: 920,
+    clientHeight: 420,
+    style: {},
+    parentElement: { clientWidth: 920, clientHeight: 420 },
+    getContext: () => ctxStub,
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 920, height: 420 }),
+    addEventListener: noop,
+    removeEventListener: noop,
+  };
+
+  const ctrl = new ShzChartController(canvasStub, { liveFeed: false });
+  ctrl.setState({
+    chartMode: "candles",
+    market: {
+      symbol: "BTC-27DEC26-110000-C",
+      contractKind: "Option",
+      markPriceUsd: 100_000,
+      tradelayerVwapUsd: 108_200,
+      pythConfBps: 20,
+    },
+    quote: { usdNotional: 2_000, entryPriceUsd: 100_000, longLevX: 5, shortLevX: 1 },
+    optionQuote: {
+      symbol: "BTC-27DEC26-110000-C",
+      optionType: "Call",
+      strikeUsd: 110_000,
+      breakevenUsd: 114_820,
+      ivPct: 58.2,
+    },
+    orderbook: {
+      asks: [
+        { priceUsd: 100_020, sizeUsd: 30_000 },
+        { priceUsd: 100_080, sizeUsd: 55_000 },
+      ],
+      bids: [
+        { priceUsd: 99_980, sizeUsd: 32_000 },
+        { priceUsd: 99_920, sizeUsd: 60_000 },
+      ],
+    },
+  });
+  ctrl.ingestClearedLevels([
+    { side: "ask", price: 100_010, prevSize: 25_000, nextSize: 0, deltaSize: 25_000, clearedRatio: 1, kind: "wiped" },
+  ]);
+  ctrl.candleChart.draw();
+
+  assert.ok(ctrl.getActiveClearedLevels().length >= 1);
+  assert.ok(ctrl.getTickState() !== null);
+  assert.ok(drawnTexts.some((t) => t.includes("MA(7)")));
+  assert.ok(drawnTexts.some((t) => t.includes("MA(25)")));
+  assert.ok(drawnTexts.some((t) => t.includes("MA(99)")));
+  assert.ok(drawnTexts.some((t) => t.includes("OPT STRIKE")));
+  assert.ok(drawnTexts.some((t) => t.includes("OPT BREAKEVEN")));
+  assert.ok(drawnTexts.some((t) => t.includes("SWEPT · P2P L2")));
+  ctrl.destroy();
+});
+
+test("Deribit-style Options Chain ($90k-$125k), Oracle Checker, L2 Sweep, Novation & Edmonds-Karp API + UI", async () => {
+  const app = createAppServer(createSession());
+  const server = app.server;
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    // 1. Static OG bitcoinwisdom.com + Deribit Options & Oracle Checker UI shell verification
+    const [htmlRes, cssRes] = await Promise.all([
+      fetch(`${baseUrl}/`),
+      fetch(`${baseUrl}/styles.css`),
+    ]);
+    assert.equal(htmlRes.status, 200);
+    assert.equal(cssRes.status, 200);
+    const html = await htmlRes.text();
+    const css = await cssRes.text();
+    assert.match(html, /id="shz-options-chain-panel"/);
+    assert.match(html, /id="shz-oracle-strip"/);
+    assert.match(html, /id="btn-sweep-book"/);
+    assert.match(html, /data-bc-toggle="ma"/);
+    assert.ok(css.includes("#0a0c0e"));
+    assert.ok(css.includes("#111418"));
+    assert.ok(css.includes("#232830"));
+    assert.ok(css.includes("#66cc66"));
+    assert.ok(css.includes("#dd4444"));
+    assert.ok(css.includes("#ff9900"));
+
+    // 2. GET /api/options + POST /api/options/quote across $90k, $100k, $110k, $120k, $125k Calls & Puts
+    const optRes = await fetch(`${baseUrl}/api/options`);
+    assert.equal(optRes.status, 200);
+    const optData = await optRes.json();
+    assert.equal(optData.feeBps, 0);
+    assert.deepEqual(optData.strikes, [90_000, 100_000, 110_000, 120_000, 125_000]);
+    assert.equal(optData.optionChain.length, 5);
+    for (const row of optData.optionChain) {
+      assert.ok(row.call.markBtc > 0 && row.call.delta > 0 && row.call.openInterestBtc > 0);
+      assert.ok(row.put.markBtc > 0 && row.put.delta < 0 && row.put.openInterestBtc > 0);
+      assert.equal(row.call.protocolFeeSats, 0);
+      assert.equal(row.put.protocolFeeSats, 0);
+    }
+
+    const optQuoteRes = await fetch(`${baseUrl}/api/options/quote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        optionType: "Call",
+        strikeUsd: 110_000,
+        spotUsd: 100_000,
+        ivPct: 58.2,
+        daysToExpiry: 34,
+        contractsBtc: 0.25,
+      }),
+    });
+    assert.equal(optQuoteRes.status, 200);
+    const oq = await optQuoteRes.json();
+    assert.equal(oq.symbol, "BTC-27DEC26-110000-C");
+    assert.equal(oq.protocolFeeSats, 0);
+    assert.equal(oq.buyerPremiumSats + oq.writerCollateralSats, oq.totalP2trFundingSats);
+
+    // 3. Bilateral Taproot Option order matching + L2 Orderbook Sweep emitting clearedLevels
+    const optOrderRes = await fetch(`${baseUrl}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instrument: "BTC-27DEC26-110000-C",
+        side: "Long",
+        orderType: "rfq",
+        usdNotional: 30_000,
+        leverageX: 5,
+        collateral: "VanillaBtc",
+      }),
+    });
+    assert.equal(optOrderRes.status, 200);
+    const optOrder = await optOrderRes.json();
+    assert.equal(optOrder.contractKind, "Option");
+    assert.equal(optOrder.protocolFeeSats, 0);
+    assert.ok(optOrder.filledUsdNotional > 0);
+    assert.ok(Array.isArray(optOrder.clearedLevels) && optOrder.clearedLevels.length >= 1);
+
+    const sweepRes = await fetch(`${baseUrl}/api/orderbook/sweep`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instrument: "BTC-INVERSE-PERP", side: "Long" }),
+    });
+    assert.equal(sweepRes.status, 200);
+    const sweepData = await sweepRes.json();
+    assert.equal(sweepData.protocolFeeSats, 0);
+    assert.ok(sweepData.clearedLevels.some((c) => c.kind === "wiped" || c.kind === "swept"));
+
+    // 4. Oracle Checker System endpoint (Pyth Pro Ed25519 #1, TradeLayer tx14 VWAP, 3-of-5 FROST, NEAR IPA/Groth16)
+    const ocRes = await fetch(`${baseUrl}/api/oracle-check`, { method: "POST", body: "{}" });
+    assert.equal(ocRes.status, 200);
+    const oc = await ocRes.json();
+    assert.equal(oc.allHealthy, true);
+    assert.equal(oc.pythPro.channel, "pyth-lazer");
+    assert.equal(oc.pythPro.scheme, "Ed25519");
+    assert.equal(oc.pythPro.feedId, 1);
+    assert.equal(oc.tradelayerVwap.txType, "tx14");
+    assert.equal(oc.frostQuorum.threshold, 3);
+    assert.equal(oc.frostQuorum.total, 5);
+    assert.equal(oc.nearGateways.fraudGuard.bondedStakeNear, 10_000);
+    assert.equal(oc.nearGateways.transparentIpa.gasUsedTGas, 21.69);
+    assert.equal(oc.nearGateways.groth16Gateway.statementBytes, 304);
+
+    // 5. P2TR Position Transfer / Novation + Edmonds-Karp Margin Clearing (Bob 0x83 offline + online)
+    const xferRes = await fetch(`${baseUrl}/api/positions/transfer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ positionId: "pos-opt-110k-c", assignee: "dave-lp-desk.p2tr" }),
+    });
+    assert.equal(xferRes.status, 200);
+    const xfer = await xferRes.json();
+    assert.equal(xfer.positionId, "pos-opt-110k-c");
+    assert.equal(xfer.assignee, "dave-lp-desk.p2tr");
+    assert.equal(xfer.protocolFeeSats, 0);
+    assert.equal(xfer.conservationVerified, true);
+
+    const ekRes = await fetch(`${baseUrl}/api/clearing/edmonds-karp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ includeOfflineBob: true }),
+    });
+    assert.equal(ekRes.status, 200);
+    const ek = await ekRes.json();
+    assert.equal(ek.bobFreedCollateralSats, 90_000_000);
+    assert.equal(ek.onlineCounterpartiesFreedSats, 42_000_000);
+    assert.equal(ek.totalFreedMarginSats, 132_000_000);
+    assert.equal(ek.protocolFeeSats, 0);
+
+    // 6. Workbench UI actions for Transfer/Novation, Edmonds-Karp Clearing, and Oracle Checker strip
+    const listeners = new Map();
+    const rootStub = {
+      innerHTML: "",
+      addEventListener(type, fn) {
+        listeners.set(type, fn);
+      },
+    };
+    const wb = mountWorkbench(rootStub, {
+      market: { symbol: "BTC-INVERSE-PERP", markPriceUsd: 100_000 },
+      oracleChecker: oc,
+    });
+    assert.ok(rootStub.innerHTML.includes("Transfer / Novate P2TR"));
+    assert.ok(rootStub.innerHTML.includes("Edmonds-Karp Margin Clearing"));
+    assert.ok(rootStub.innerHTML.includes("BTC-27DEC26-110000-C"));
+
+    wb.openTransferNovation("pos-opt-110k-c", "dave-lp-desk.p2tr");
+    assert.ok(rootStub.innerHTML.includes('data-novation-inspector="open"'));
+    assert.ok(rootStub.innerHTML.includes("dave-lp-desk.p2tr"));
+    assert.ok(rootStub.innerHTML.includes("0x83 SIGHASH_SINGLE|ANYONECANPAY"));
+
+    wb.runEdmondsKarpClearing();
+    assert.ok(rootStub.innerHTML.includes('data-clearing-inspector="open"'));
+    assert.ok(rootStub.innerHTML.includes("90,000,000"));
+    assert.ok(rootStub.innerHTML.includes("132,000,000"));
+
+    const fireClick = (attrs) => {
+      listeners.get("click")({
+        target: { closest: () => ({ getAttribute: (k) => attrs[k] ?? null }) },
+      });
+    };
+    fireClick({ "data-action": "switch-tab", "data-tab": "fraud" });
+    assert.ok(rootStub.innerHTML.includes('data-oracle-checker-strip="true"'));
+    assert.ok(rootStub.innerHTML.includes("pyth-lazer"));
+    assert.ok(rootStub.innerHTML.includes("21.69 TGas"));
+
+    const novPreview = computePositionNovationPreview({ id: "pos-1", marginSats: 500_000, counterpartyMarginSats: 500_000 });
+    assert.equal(novPreview.totalP2trCollateralSats, 1_000_000);
+    const ekPreview = computeEdmondsKarpClearingPreview([]);
+    assert.equal(ekPreview.totalFreedCollateralSats, 132_000_000);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });

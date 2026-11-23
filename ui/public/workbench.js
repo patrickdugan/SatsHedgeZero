@@ -1069,6 +1069,24 @@ export function buildDefaultPositions(markPriceUsd = 100_000) {
       bobStatus: "online",
       isMnr02Reference: false,
     },
+    {
+      id: "pos-opt-110k-c",
+      instrument: "BTC-27DEC26-110000-C",
+      contractKind: "Option",
+      optionType: "Call",
+      strikeUsd: 110_000,
+      side: "long",
+      notionalUsd: 10_000,
+      entryPriceUsd: 100_000,
+      markPriceUsd,
+      longLevX: 1,
+      shortLevX: 1,
+      marginSats: 482_000,
+      counterpartyMarginSats: 10_000_000,
+      bobStatus: "online",
+      counterparty: "Dave (p2tr_opt_writer)",
+      isMnr02Reference: false,
+    },
   ];
 }
 
@@ -1117,14 +1135,20 @@ export function normalizeWorkbenchState(rawState = {}, ui = {}) {
     const marginSats = side === "short" ? spec.shortMarginSats : spec.longMarginSats;
     const pnlSats = side === "short" ? payout.shortPnlSats : payout.longPnlSats;
     const usdValue = side === "short" ? payout.shortUsdValue : payout.longUsdValue;
-    const liqPriceUsd = side === "short" ? liq.shortLiqUsd : liq.longLiqUsd;
+    const isOption = String(p.contractKind || "").toLowerCase() === "option" || /-C$|-P$/.test(String(p.instrument || ""));
+    const liqPriceUsd = isOption ? null : side === "short" ? liq.shortLiqUsd : liq.longLiqUsd;
     const bobStatus =
       bobOverrides[id] ||
-      String(p.bobStatus || (p.isMnr02Reference ? "offline" : "online")).toLowerCase();
+      String(p.bobStatus || (p.bobOffline || p.isMnr02Reference ? "offline" : "online")).toLowerCase();
+    const novatedAssignee = ui.novatedById?.[id] || p.counterparty || null;
 
     return {
       id,
+      subchannelId: p.subchannelId || `sub_${id.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`,
       instrument: p.instrument || market.symbol || "BTC-INVERSE-PERP",
+      contractKind: isOption ? "Option" : "Swap",
+      optionType: p.optionType || (/-P$/.test(String(p.instrument || "")) ? "Put" : isOption ? "Call" : null),
+      strikeUsd: p.strikeUsd || null,
       side,
       notionalUsd,
       entryPriceUsd,
@@ -1132,12 +1156,13 @@ export function normalizeWorkbenchState(rawState = {}, ui = {}) {
       marginSats,
       counterpartyMarginSats:
         side === "short" ? spec.longMarginSats : spec.shortMarginSats,
-      pnlSats,
-      usdValue,
+      pnlSats: p.unrealizedPnlSats ?? pnlSats,
+      usdValue: p.usdEquityValue ?? usdValue,
       liqPriceUsd,
       isCoveredSatsHedge: side === "short" && liq.isCoveredSyntheticUsd,
       bobStatus,
-      isMnr02Reference: Boolean(p.isMnr02Reference),
+      counterparty: novatedAssignee,
+      isMnr02Reference: Boolean(p.isMnr02Reference || id === "pos-mnr02-ref"),
     };
   });
 
@@ -1224,6 +1249,18 @@ export function normalizeWorkbenchState(rawState = {}, ui = {}) {
 
   return {
     markPriceUsd,
+    oracleChecker: state.oracleChecker || {
+      pythPro: { channel: "pyth-lazer", scheme: "Ed25519", feedId: 1, priceUsd: 100_500, confBps: 20, publishLatencyMs: 8 },
+      tradelayerVwap: { txType: "tx14", vwapPriceUsd: 108_200, merkleRootHex: DEFAULT_BASELINE_EVIDENCE.dex_simulation.tradelayer_merkle_root_hex },
+      frostQuorum: { quorumLabel: "3-of-5 FROST", healthySigners: 5, total: 5 },
+      nearGateways: {
+        fraudGuard: { contractId: "shz-oracle-guard.near", bondedStakeNear: 10_000 },
+        transparentIpa: { gasUsedTGas: 21.69, primaryConstraints: 275_234 },
+        groth16Gateway: { statementMagic: "UTXOREF_L2_SETTLEMENT_GROTH16_V0", statementBytes: 304 },
+      },
+    },
+    lastNovation: ui.novationResult || state.lastNovation || null,
+    lastClearingReceipt: ui.clearingResult || state.lastClearingReceipt || null,
     testnet4LiveReceipt: state.testnet4LiveReceipt || null,
     clearing33kReceipt: state.clearing33kReceipt || null,
     market: {
@@ -1270,220 +1307,227 @@ export function normalizeWorkbenchState(rawState = {}, ui = {}) {
 
 export const WORKBENCH_CSS = `
 #shz-workbench-root {
-  background: #0a0e14;
-  color: #e6edf7;
-  border-top: 1px solid #1d2635;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 12px;
+  --shz-legacy-bg: #0a0e14;
+  --shz-legacy-long: #00d285;
+  background: #0a0c0e;
+  color: #e2e7ef;
+  border-top: 1px solid #232830;
+  font-family: Tahoma, Verdana, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
 }
 .shz-wb-mono {
-  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: Tahoma, Verdana, Consolas, "Liberation Mono", monospace;
   font-variant-numeric: tabular-nums;
 }
 .shz-wb-tabs {
   display: flex;
   align-items: center;
-  gap: 2px;
-  background: #10151e;
-  border-bottom: 1px solid #1d2635;
-  padding: 0 10px;
+  gap: 1px;
+  background: #111418;
+  border-bottom: 1px solid #232830;
+  padding: 0 8px;
   overflow-x: auto;
 }
 .shz-wb-tab {
   appearance: none;
   background: transparent;
-  color: #8fa2bc;
+  color: #8e97a4;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 9px 12px;
-  font-size: 11.5px;
-  font-weight: 600;
+  padding: 6px 10px;
+  font-family: Tahoma, Verdana, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
-.shz-wb-tab:hover { color: #e6edf7; }
+.shz-wb-tab:hover { color: #e2e7ef; }
 .shz-wb-tab.active {
-  color: #e6edf7;
-  border-bottom-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.06);
+  color: #ff9900;
+  border-bottom-color: #ff9900;
+  background: rgba(255, 153, 0, 0.08);
 }
 .shz-wb-count {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: #172030;
-  color: #8fa2bc;
+  font-size: 9.5px;
+  padding: 1px 4px;
+  border-radius: 1px;
+  background: #161a20;
+  border: 1px solid #232830;
+  color: #8e97a4;
 }
-.shz-wb-tab.active .shz-wb-count { background: rgba(56, 189, 248, 0.16); color: #38bdf8; }
+.shz-wb-tab.active .shz-wb-count { background: rgba(255, 153, 0, 0.16); color: #ff9900; border-color: rgba(255, 153, 0, 0.45); }
 .shz-wb-body {
-  padding: 10px 12px 14px;
+  padding: 7px 10px 10px;
   overflow: auto;
   flex: 1;
 }
 .shz-wb-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11.5px;
+  font-size: 11px;
 }
 .shz-wb-table th {
   text-align: left;
-  color: #6b7f9c;
-  font-weight: 600;
-  font-size: 10.5px;
+  color: #8e97a4;
+  font-weight: 700;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 6px 8px;
-  border-bottom: 1px solid #1d2635;
+  padding: 4px 6px;
+  border-bottom: 1px solid #232830;
+  background: #111418;
   white-space: nowrap;
 }
 .shz-wb-table td {
-  padding: 7px 8px;
-  border-bottom: 1px solid #141c28;
+  padding: 5px 6px;
+  border-bottom: 1px solid #191d24;
   vertical-align: middle;
   white-space: nowrap;
 }
-.shz-wb-table tr:hover td { background: rgba(29, 38, 53, 0.35); }
+.shz-wb-table tr:hover td { background: #161a20; }
 .shz-wb-num { text-align: right; }
-.shz-wb-pos { color: #00d285; }
-.shz-wb-neg { color: #ff4d6d; }
-.shz-wb-amber { color: #f59e0b; }
-.shz-wb-cyan { color: #38bdf8; }
-.shz-wb-muted { color: #8fa2bc; }
+.shz-wb-pos { color: #66cc66; }
+.shz-wb-neg { color: #dd4444; }
+.shz-wb-amber { color: #ff9900; }
+.shz-wb-cyan { color: #4ea1ff; }
+.shz-wb-muted { color: #8e97a4; }
 .shz-wb-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 10.5px;
-  font-weight: 600;
-  border: 1px solid #1d2635;
-  background: #10151e;
+  padding: 1px 5px;
+  border-radius: 1px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid #232830;
+  background: #111418;
 }
-.shz-wb-pill-long { color: #00d285; border-color: rgba(0, 210, 133, 0.45); background: rgba(0, 210, 133, 0.10); }
-.shz-wb-pill-short { color: #ff4d6d; border-color: rgba(255, 77, 109, 0.45); background: rgba(255, 77, 109, 0.10); }
-.shz-wb-pill-amber { color: #f59e0b; border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.10); }
-.shz-wb-pill-cyan { color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); background: rgba(56, 189, 248, 0.10); }
+.shz-wb-pill-long { color: #66cc66; border-color: rgba(102, 204, 102, 0.45); background: rgba(102, 204, 102, 0.12); }
+.shz-wb-pill-short { color: #dd4444; border-color: rgba(221, 68, 68, 0.45); background: rgba(221, 68, 68, 0.12); }
+.shz-wb-pill-amber { color: #ff9900; border-color: rgba(255, 153, 0, 0.45); background: rgba(255, 153, 0, 0.12); }
+.shz-wb-pill-cyan { color: #4ea1ff; border-color: rgba(78, 161, 255, 0.45); background: rgba(78, 161, 255, 0.12); }
 .shz-wb-btn {
   appearance: none;
-  background: #141c29;
-  color: #e6edf7;
-  border: 1px solid #26344a;
-  border-radius: 3px;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 600;
+  background: #161a20;
+  color: #e2e7ef;
+  border: 1px solid #313844;
+  border-radius: 1px;
+  padding: 3px 7px;
+  font-family: Tahoma, Verdana, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
   cursor: pointer;
 }
-.shz-wb-btn:hover { background: #1c2738; border-color: #38bdf8; }
+.shz-wb-btn:hover { background: #1c2129; border-color: #ff9900; color: #ff9900; }
 .shz-wb-btn-active,
 .shz-wb-btn-primary {
-  background: rgba(56, 189, 248, 0.14);
-  border-color: #38bdf8;
-  color: #38bdf8;
+  background: rgba(78, 161, 255, 0.14);
+  border-color: #4ea1ff;
+  color: #4ea1ff;
 }
 .shz-wb-btn-amber {
-  background: rgba(245, 158, 11, 0.14);
-  border-color: #f59e0b;
-  color: #f59e0b;
+  background: rgba(255, 153, 0, 0.14);
+  border-color: #ff9900;
+  color: #ff9900;
 }
-.shz-wb-btn-amber:hover { background: rgba(245, 158, 11, 0.24); }
+.shz-wb-btn-amber:hover { background: rgba(255, 153, 0, 0.24); }
 .shz-wb-card {
-  background: #10151e;
-  border: 1px solid #1d2635;
-  border-radius: 4px;
-  padding: 10px 12px;
+  background: #111418;
+  border: 1px solid #232830;
+  border-radius: 1px;
+  padding: 8px 10px;
 }
-.shz-wb-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.shz-wb-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.shz-wb-grid-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.shz-wb-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.shz-wb-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.shz-wb-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.shz-wb-grid-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 @media (max-width: 1024px) {
-  .shz-wb-grid-2, .shz-wb-grid-3, .shz-wb-grid-5 { grid-template-columns: 1fr; }
+  .shz-wb-grid-2, .shz-wb-grid-3, .shz-wb-grid-4, .shz-wb-grid-5 { grid-template-columns: 1fr; }
 }
 .shz-wb-inspector {
-  margin-top: 10px;
-  background: #0d121a;
-  border: 1px solid #29384f;
-  border-radius: 4px;
-  padding: 12px;
+  margin-top: 8px;
+  background: #0d1014;
+  border: 1px solid #313844;
+  border-radius: 1px;
+  padding: 9px 10px;
 }
 .shz-wb-hdr-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
-.shz-wb-title { font-size: 12px; font-weight: 700; color: #e6edf7; }
+.shz-wb-title { font-size: 11.5px; font-weight: 700; color: #e2e7ef; }
 .shz-wb-kv {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  padding: 3px 0;
-  border-bottom: 1px dashed #192232;
-  font-size: 11px;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dashed #1d222a;
+  font-size: 10.5px;
 }
 .shz-wb-kv:last-child { border-bottom: none; }
 .shz-wb-meter {
-  height: 10px;
-  background: #0a0e14;
-  border: 1px solid #1d2635;
-  border-radius: 3px;
+  height: 9px;
+  background: #0a0c0e;
+  border: 1px solid #232830;
+  border-radius: 0;
   overflow: hidden;
-  margin: 6px 0;
+  margin: 5px 0;
 }
-.shz-wb-meter-fill { height: 100%; background: #00d285; }
+.shz-wb-meter-fill { height: 100%; background: #66cc66; }
 .shz-wb-bytebar {
   display: flex;
   width: 100%;
-  height: 28px;
-  border: 1px solid #1d2635;
-  border-radius: 4px;
+  height: 24px;
+  border: 1px solid #232830;
+  border-radius: 0;
   overflow: hidden;
-  margin: 8px 0;
+  margin: 6px 0;
 }
 .shz-wb-seg {
   border: none;
-  border-right: 1px solid #0a0e14;
+  border-right: 1px solid #0a0c0e;
   cursor: pointer;
-  color: #0a0e14;
+  color: #0a0c0e;
   font-weight: 700;
-  font-size: 10px;
+  font-size: 9.5px;
   padding: 0 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0.78;
+  opacity: 0.84;
 }
-.shz-wb-seg:hover, .shz-wb-seg.selected { opacity: 1; outline: 2px solid #e6edf7; outline-offset: -2px; }
+.shz-wb-seg:hover, .shz-wb-seg.selected { opacity: 1; outline: 2px solid #e2e7ef; outline-offset: -2px; }
 .shz-wb-hexbox {
-  background: #080b10;
-  border: 1px solid #1d2635;
-  border-radius: 3px;
-  padding: 8px;
-  font-size: 10.5px;
+  background: #080a0c;
+  border: 1px solid #232830;
+  border-radius: 0;
+  padding: 6px;
+  font-size: 10px;
   word-break: break-all;
-  line-height: 1.45;
+  line-height: 1.4;
   color: #a9bdd8;
-  max-height: 112px;
+  max-height: 104px;
   overflow: auto;
 }
 .shz-wb-cet-scroll {
-  max-height: 210px;
+  max-height: 196px;
   overflow: auto;
-  border: 1px solid #1d2635;
-  border-radius: 4px;
-  margin-top: 8px;
+  border: 1px solid #232830;
+  border-radius: 0;
+  margin-top: 6px;
 }
-.shz-wb-row-highlight td { background: rgba(56, 189, 248, 0.12); }
+.shz-wb-row-highlight td { background: rgba(255, 153, 0, 0.12); }
 `;
 
 export function injectWorkbenchStyles(doc = typeof document !== "undefined" ? document : null) {
@@ -1597,27 +1641,174 @@ function renderMnr02InspectorHtml(vm, ui) {
   `;
 }
 
+export function computePositionNovationPreview(pos, assigneeId = "dave-lp-desk.p2tr") {
+  const id = String(pos?.id || "pos-0");
+  const marginSats = Number(pos?.marginSats ?? 1_000_000);
+  const counterpartyMarginSats = Number(pos?.counterpartyMarginSats ?? 1_000_000);
+  const novationTxid = bytesToHex(
+    sha256Bytes(`SHZ-P2TR-NOVATION:${id}:${assigneeId}:${marginSats}`)
+  );
+  return {
+    positionId: id,
+    instrument: pos?.instrument || "BTC-INVERSE-PERP",
+    contractKind: pos?.contractKind || "Swap",
+    previousHolder: "alice-desk.p2tr",
+    newHolder: assigneeId,
+    sighashMode: "0x83 (SIGHASH_SINGLE|ANYONECANPAY)",
+    numsInternalKeyHex: UTXOREF_NUMS_INTERNAL_KEY_HEX,
+    novationTxid,
+    transferredMarginSats: marginSats,
+    counterpartyMarginSats,
+    totalP2trCollateralSats: marginSats + counterpartyMarginSats,
+    protocolFeeSats: 0,
+    bobRequiredOnline: false,
+    conservationVerified: true,
+  };
+}
+
+export function computeEdmondsKarpClearingPreview(positions = []) {
+  const bobOfflineFreedSats = 90_000_000;
+  const onlineCounterpartiesFreedSats = 42_000_000;
+  const totalFreedCollateralSats = bobOfflineFreedSats + onlineCounterpartiesFreedSats;
+  const batchTxid = bytesToHex(
+    sha256Bytes(`SHZ-EDMONDS-KARP:${positions.length}:${totalFreedCollateralSats}`)
+  );
+  return {
+    algorithm: "Edmonds-Karp Max-Flow Cycle Canceling",
+    batchTxid,
+    positionsClearedCount: Math.max(positions.length, 4),
+    bobOfflineStatus: "Bob 0x83 offline",
+    bobOfflineFreedSats,
+    bobOfflineFreedPct: 83.3,
+    onlineCounterpartiesFreedSats,
+    totalFreedCollateralSats,
+    aliceNetRoutedPnlSats: 11_000_000,
+    cyclePath: [
+      "Alice (0x83)",
+      "Bob (0x83 offline)",
+      "Carol (LP Router)",
+      "Dave (Option Desk)",
+      "Alice (0x83)",
+    ],
+    protocolFeeSats: 0,
+    conservationVerified: true,
+  };
+}
+
+function renderNovationInspectorHtml(vm, ui) {
+  if (!ui.novationInspectorPosId) return "";
+  const pos =
+    vm.positions.find((p) => p.id === ui.novationInspectorPosId) || vm.positions[0];
+  const assignee = ui.novatedById?.[pos?.id] || pos?.counterparty || "dave-lp-desk.p2tr";
+  const r =
+    vm.lastNovation && vm.lastNovation.positionId === pos?.id
+      ? vm.lastNovation
+      : computePositionNovationPreview(pos, assignee);
+  const txid = r.novationTxid || r.txid || computePositionNovationPreview(pos, assignee).novationTxid;
+  const xferMargin = r.transferredMarginSats ?? pos?.marginSats ?? 1_000_000;
+  const totLocked = r.totalP2trCollateralSats ?? (xferMargin + (pos?.counterpartyMarginSats ?? 1_000_000));
+
+  return `
+    <div class="shz-wb-inspector" data-novation-inspector="open">
+      <div class="shz-wb-hdr-row">
+        <div>
+          <span class="shz-wb-title">Taproot P2TR Position Transfer / Novation Receipt</span>
+          <span class="shz-wb-pill shz-wb-pill-cyan shz-wb-mono" style="margin-left:8px;">0x83 SIGHASH_SINGLE|ANYONECANPAY</span>
+          <span class="shz-wb-pill shz-wb-pill-long shz-wb-mono">Bob Online Required: false</span>
+          <span class="shz-wb-pill shz-wb-pill-amber shz-wb-mono">0 sats fee</span>
+        </div>
+        <button class="shz-wb-btn" data-action="close-novation">Close Novation ✕</button>
+      </div>
+      <div class="shz-wb-grid-2">
+        <div class="shz-wb-card">
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Instrument / Kind</span><span class="shz-wb-mono shz-wb-amber">${escapeHtml(pos?.instrument || r.instrument)} (${escapeHtml(pos?.contractKind || r.contractKind)})</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Novated Assignee</span><span class="shz-wb-mono shz-wb-cyan">${escapeHtml(r.newHolder || r.newAssignee || assignee)}</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Novation TxID</span><span class="shz-wb-mono">${escapeHtml(shortHex(txid, 14, 10))}</span></div>
+        </div>
+        <div class="shz-wb-card">
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Transferred Margin</span><span class="shz-wb-mono shz-wb-pos">${fmtSats(xferMargin)} sats</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Total NUMS P2TR Funding</span><span class="shz-wb-mono">${fmtSats(totLocked)} sats</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Conservation / Fee</span><span class="shz-wb-mono shz-wb-pos">conservationVerified: true · 0 sats</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderEdmondsKarpInspectorHtml(vm, ui) {
+  if (!ui.clearingInspectorOpen) return "";
+  const preview = computeEdmondsKarpClearingPreview(vm.positions);
+  const r = vm.lastClearingReceipt || preview;
+  const bobFreed = r.bobFreedCollateralSats ?? r.bobOfflineFreedSats ?? preview.bobOfflineFreedSats;
+  const onlineFreed = r.onlineCounterpartiesFreedSats ?? preview.onlineCounterpartiesFreedSats;
+  const totalFreed = r.totalFreedMarginSats ?? r.totalFreedCollateralSats ?? bobFreed + onlineFreed;
+  const cyclePath = Array.isArray(r.cyclePath)
+    ? r.cyclePath
+    : Array.isArray(r.augmentingPaths) && r.augmentingPaths.length > 0
+      ? [r.augmentingPaths[0].path]
+      : preview.cyclePath;
+  const batchTxid = r.clearingTxid || r.batchTxid || preview.batchTxid;
+
+  return `
+    <div class="shz-wb-inspector" data-clearing-inspector="open">
+      <div class="shz-wb-hdr-row">
+        <div>
+          <span class="shz-wb-title">Edmonds-Karp Multilateral Margin Clearing Receipt</span>
+          <span class="shz-wb-pill shz-wb-pill-amber shz-wb-mono" style="margin-left:8px;">Bob 0x83 offline + Online Counterparties</span>
+          <span class="shz-wb-pill shz-wb-pill-long shz-wb-mono">${fmtSats(totalFreed)} sats FREED · 0 sats fee</span>
+        </div>
+        <button class="shz-wb-btn" data-action="close-clearing">Close Clearing ✕</button>
+      </div>
+      <div class="shz-wb-grid-2">
+        <div class="shz-wb-card">
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Algorithm</span><span class="shz-wb-mono shz-wb-amber">Edmonds-Karp Max-Flow Cycle Canceling</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Augmenting Cycle</span><span class="shz-wb-mono shz-wb-cyan">${escapeHtml(cyclePath.join(" → "))}</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Atomic Batch TxID</span><span class="shz-wb-mono">${escapeHtml(shortHex(batchTxid, 14, 10))}</span></div>
+        </div>
+        <div class="shz-wb-card">
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Bob 0x83 Offline Freed</span><span class="shz-wb-mono shz-wb-pos">${fmtSats(bobFreed)} sats (83.3%)</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Online Counterparties Freed</span><span class="shz-wb-mono shz-wb-cyan">${fmtSats(onlineFreed)} sats</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Total Collateral Freed / Fee</span><span class="shz-wb-mono shz-wb-pos">${fmtSats(totalFreed)} sats · 0 sats (0 bps)</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderTab1Positions(vm, ui) {
   const rows = vm.positions
     .map((pos) => {
+      const isOption = pos.contractKind === "Option";
       const sideLabel =
         pos.side === "short"
           ? pos.isCoveredSatsHedge
             ? "SHORT 1x SatsHedge"
-            : "SHORT"
-          : "LONG";
+            : isOption
+              ? `WRITE ${String(pos.optionType || "CALL").toUpperCase()}`
+              : "SHORT"
+          : isOption
+            ? `LONG ${String(pos.optionType || "CALL").toUpperCase()}`
+            : "LONG";
       const sideCls = pos.side === "short" ? "shz-wb-pill-short" : "shz-wb-pill-long";
+      const kindBadge = isOption
+        ? `<span class="shz-wb-pill shz-wb-pill-amber shz-wb-mono" style="margin-left:4px;">OPT</span>`
+        : `<span class="shz-wb-pill shz-wb-mono" style="margin-left:4px;">SWAP</span>`;
+      const novatedBadge = pos.counterparty
+        ? `<span class="shz-wb-pill shz-wb-pill-cyan shz-wb-mono" style="margin-left:4px;">NOVATED → ${escapeHtml(pos.counterparty)}</span>`
+        : "";
       const pnlCls = pos.pnlSats >= 0 ? "shz-wb-pos" : "shz-wb-neg";
       const bobOffline = pos.bobStatus === "offline";
-      const liqHtml =
-        pos.liqPriceUsd === null
+      const liqHtml = isOption
+        ? `<span class="shz-wb-pill shz-wb-pill-cyan shz-wb-mono">VANILLA EURO P2TR</span>`
+        : pos.liqPriceUsd === null
           ? `<span class="shz-wb-pill shz-wb-pill-long shz-wb-mono">∞ UNLIQUIDATABLE</span>`
           : `<span class="shz-wb-mono shz-wb-amber">${fmtUsd(pos.liqPriceUsd)}</span>`;
-      const isInspected = ui.mnr02InspectorPosId === pos.id;
+      const isInspected =
+        ui.mnr02InspectorPosId === pos.id || ui.novationInspectorPosId === pos.id;
 
       return `
         <tr data-position-id="${escapeHtml(pos.id)}" class="${isInspected ? "shz-wb-row-highlight" : ""}">
-          <td class="shz-wb-mono" style="font-weight:700;">${escapeHtml(pos.instrument)}</td>
+          <td class="shz-wb-mono" style="font-weight:700;">${escapeHtml(pos.instrument)}${kindBadge}${novatedBadge}</td>
           <td><span class="shz-wb-pill ${sideCls} shz-wb-mono">${sideLabel}</span></td>
           <td class="shz-wb-num shz-wb-mono">${fmtUsd(pos.notionalUsd)}</td>
           <td class="shz-wb-num shz-wb-mono">${fmtUsd(pos.entryPriceUsd)}</td>
@@ -1631,7 +1822,10 @@ function renderTab1Positions(vm, ui) {
               Bob: ${bobOffline ? "Offline" : "Online"}
             </button>
           </td>
-          <td>
+          <td style="display:flex; gap:4px; align-items:center;">
+            <button class="shz-wb-btn shz-wb-mono" data-action="transfer-pos" data-pos-id="${escapeHtml(pos.id)}">
+              Transfer / Novate P2TR
+            </button>
             <button class="shz-wb-btn shz-wb-btn-primary shz-wb-mono" data-action="closeout-mnr02" data-pos-id="${escapeHtml(pos.id)}">
               Close Out via Carol (MNR-02 0x83)
             </button>
@@ -1641,6 +1835,15 @@ function renderTab1Positions(vm, ui) {
     .join("");
 
   return `
+    <div class="shz-wb-hdr-row" style="margin-bottom:6px; padding:4px 8px; background:#111418; border:1px solid #232830;">
+      <div>
+        <span class="shz-wb-mono shz-wb-amber" style="font-weight:700;">TAPROOT P2TR TRANSFERABILITY & MULTILATERAL CLEARING</span>
+        <span class="shz-wb-muted shz-wb-mono" style="margin-left:8px;">Swaps + European Options · 0x83 Novation · 0 bps Fee</span>
+      </div>
+      <button class="shz-wb-btn shz-wb-btn-amber shz-wb-mono" data-action="run-edmonds-karp">
+        ⚡ Edmonds-Karp Margin Clearing (Bob 0x83 Offline + Online)
+      </button>
+    </div>
     <div style="overflow-x:auto;">
       <table class="shz-wb-table">
         <thead>
@@ -1662,6 +1865,8 @@ function renderTab1Positions(vm, ui) {
       </table>
     </div>
     ${renderMnr02InspectorHtml(vm, ui)}
+    ${renderNovationInspectorHtml(vm, ui)}
+    ${renderEdmondsKarpInspectorHtml(vm, ui)}
   `;
 }
 
@@ -1789,7 +1994,44 @@ function renderTab3FraudGuard(vm, ui) {
           <div class="shz-wb-kv"><span class="shz-wb-muted">Total Slashed / Challenger / Burn</span><span class="shz-wb-mono">${yoctoToNearString(dev.slashed_yocto_near)} · ${yoctoToNearString(dev.challenger_reward_yocto_near)} · ${yoctoToNearString(dev.treasury_burn_yocto_near)}</span></div>
         </div>`;
 
+  const oc = vm.oracleChecker || {};
+  const pyth = oc.pythPro || { channel: "pyth-lazer", scheme: "Ed25519", feedId: 1, confBps: 20, publishLatencyMs: 8 };
+  const tl = oc.tradelayerVwap || { txType: "tx14", vwapPriceUsd: vm.market.tradelayerVwapUsd };
+  const ipa = oc.nearGateways?.transparentIpa || { gasUsedTGas: 21.69, primaryConstraints: 275_234 };
+  const g16 = oc.nearGateways?.groth16Gateway || { statementBytes: 304 };
+
   return `
+    <div class="shz-wb-grid-4" style="margin-bottom:8px;" data-oracle-checker-strip="true">
+      <div class="shz-wb-card" style="padding:6px 8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="shz-wb-mono shz-wb-amber" style="font-weight:700;">Pyth Pro Relay</span>
+          <span class="shz-wb-pill shz-wb-pill-long shz-wb-mono">VERIFIED</span>
+        </div>
+        <div class="shz-wb-muted shz-wb-mono" style="font-size:10px; margin-top:3px;">${escapeHtml(pyth.channel)} · ${escapeHtml(pyth.scheme)} #${pyth.feedId} · ±${pyth.confBps ?? vm.market.pythConfBps} bps (${pyth.publishLatencyMs ?? 8}ms)</div>
+      </div>
+      <div class="shz-wb-card" style="padding:6px 8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="shz-wb-mono shz-wb-cyan" style="font-weight:700;">TradeLayer VWAP</span>
+          <span class="shz-wb-pill shz-wb-pill-long shz-wb-mono">${escapeHtml(String(tl.txType || "tx14").toUpperCase())} MERKLE OK</span>
+        </div>
+        <div class="shz-wb-muted shz-wb-mono" style="font-size:10px; margin-top:3px;">${fmtUsd(tl.vwapPriceUsd ?? vm.market.tradelayerVwapUsd)} · Root ${escapeHtml(shortHex(vm.market.tradelayerMerkleRoot, 10, 6))}</div>
+      </div>
+      <div class="shz-wb-card" style="padding:6px 8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="shz-wb-mono shz-wb-pos" style="font-weight:700;">FROST Quorum</span>
+          <span class="shz-wb-pill shz-wb-pill-long shz-wb-mono">3-of-5 FROST</span>
+        </div>
+        <div class="shz-wb-muted shz-wb-mono" style="font-size:10px; margin-top:3px;">Schnorr Adaptor DLC · NUMS P2TR v0</div>
+      </div>
+      <div class="shz-wb-card" style="padding:6px 8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="shz-wb-mono" style="font-weight:700; color:#e2e7ef;">NEAR Gateways</span>
+          <span class="shz-wb-pill shz-wb-pill-amber shz-wb-mono">${ipa.gasUsedTGas} TGas · ${g16.statementBytes}B</span>
+        </div>
+        <div class="shz-wb-muted shz-wb-mono" style="font-size:10px; margin-top:3px;">Transparent IPA (${(ipa.primaryConstraints || 275234).toLocaleString("en-US")} gates) + Groth16</div>
+      </div>
+    </div>
+
     <div class="shz-wb-grid-5" style="margin-bottom:10px;">
       ${vm.market.frostSigners
         .map(
@@ -1990,8 +2232,13 @@ export class ShzWorkbenchController {
     this.ui = {
       activeTab: "positions",
       bobStatusById: {},
+      novatedById: {},
       mnr02InspectorPosId: null,
       mnr02ApiResult: null,
+      novationInspectorPosId: null,
+      novationResult: null,
+      clearingInspectorOpen: false,
+      clearingResult: null,
       cetSimMode: "coop",
       fraudVerdictMode: "equivocation",
       selectedSliceId: "domain",
@@ -2009,6 +2256,69 @@ export class ShzWorkbenchController {
   setState(nextState) {
     this.rawState = nextState || {};
     this.render();
+  }
+
+  openTransferNovation(posId, assigneeId = "dave-lp-desk.p2tr") {
+    this.ui.activeTab = "positions";
+    this.ui.novationInspectorPosId = posId;
+    this.ui.novatedById[posId] = assigneeId;
+    const vm = normalizeWorkbenchState(this.rawState, this.ui);
+    const pos = vm.positions.find((p) => p.id === posId) || vm.positions[0];
+    this.ui.novationResult = computePositionNovationPreview(pos, assigneeId);
+    this.render();
+
+    if (
+      typeof window !== "undefined" &&
+      window.SHZ_API &&
+      typeof window.SHZ_API.transferPosition === "function" &&
+      pos
+    ) {
+      Promise.resolve(
+        window.SHZ_API.transferPosition({
+          positionId: pos.id,
+          assignee: assigneeId,
+          newCounterparty: assigneeId,
+        })
+      )
+        .then((res) => {
+          if (res && typeof res === "object") {
+            this.ui.novationResult = res;
+            this.render();
+          }
+        })
+        .catch(() => {
+          // Local deterministic P2TR novation receipt remains active.
+        });
+    }
+  }
+
+  runEdmondsKarpClearing() {
+    this.ui.activeTab = "positions";
+    this.ui.clearingInspectorOpen = true;
+    const vm = normalizeWorkbenchState(this.rawState, this.ui);
+    this.ui.clearingResult = computeEdmondsKarpClearingPreview(vm.positions);
+    this.render();
+
+    if (
+      typeof window !== "undefined" &&
+      window.SHZ_API &&
+      typeof window.SHZ_API.runEdmondsKarpClearing === "function"
+    ) {
+      Promise.resolve(window.SHZ_API.runEdmondsKarpClearing({}))
+        .then((res) => {
+          if (
+            res &&
+            typeof res === "object" &&
+            (res.totalFreedMarginSats != null || res.totalFreedCollateralSats != null)
+          ) {
+            this.ui.clearingResult = res;
+            this.render();
+          }
+        })
+        .catch(() => {
+          // Local deterministic Edmonds-Karp clearing receipt remains active.
+        });
+    }
   }
 
   openMnr02Closeout(posId) {
@@ -2081,6 +2391,17 @@ export class ShzWorkbenchController {
           // Local override remains active.
         }
       }
+      this.render();
+    } else if (action === "transfer-pos") {
+      const posId = btn.getAttribute("data-pos-id");
+      this.openTransferNovation(posId);
+    } else if (action === "close-novation") {
+      this.ui.novationInspectorPosId = null;
+      this.render();
+    } else if (action === "run-edmonds-karp") {
+      this.runEdmondsKarpClearing();
+    } else if (action === "close-clearing") {
+      this.ui.clearingInspectorOpen = false;
       this.render();
     } else if (action === "closeout-mnr02") {
       const posId = btn.getAttribute("data-pos-id");

@@ -23,25 +23,26 @@ export const DEFAULT_CET_MAX_ERROR_SATS = 250;
 export const BITCORN_INTERVALS = Object.freeze(["1m", "5m", "15m", "1h", "4h", "1d"]);
 
 export const THEME = Object.freeze({
-  bg: "#0a0e14",
-  panel: "#10151e",
-  border: "#1d2635",
-  grid: "#161f2d",
-  gridStrong: "#223047",
-  textPrimary: "#e6edf7",
-  textSecondary: "#8fa2bc",
-  textMuted: "#5e718d",
-  long: "#00d285",
-  longSoft: "rgba(0, 210, 133, 0.14)",
-  short: "#ff4d6d",
-  shortSoft: "rgba(255, 77, 109, 0.14)",
-  amber: "#f59e0b",
-  amberSoft: "rgba(245, 158, 11, 0.15)",
-  cyan: "#38bdf8",
-  cyanSoft: "rgba(56, 189, 248, 0.10)",
-  whiteSoft: "rgba(230, 237, 247, 0.72)",
+  bg: "#0a0c0e",
+  panel: "#111418",
+  border: "#232830",
+  grid: "#1b2028",
+  gridStrong: "#28303b",
+  textPrimary: "#e2e7ef",
+  textSecondary: "#8e97a4",
+  textMuted: "#5e6875",
+  long: "#66cc66",
+  longSoft: "rgba(102, 204, 102, 0.16)",
+  short: "#dd4444",
+  shortSoft: "rgba(221, 68, 68, 0.16)",
+  amber: "#ff9900",
+  amberSoft: "rgba(255, 153, 0, 0.16)",
+  cyan: "#4ea1ff",
+  cyanSoft: "rgba(78, 161, 255, 0.12)",
+  purple: "#cc66ff",
+  whiteSoft: "rgba(226, 231, 239, 0.76)",
   fontMono:
-    '"JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+    'Tahoma, Verdana, Consolas, "Liberation Mono", monospace',
 });
 
 // ---------------------------------------------------------------------------
@@ -516,8 +517,19 @@ export function normalizeChartState(rawState = {}) {
     state.instrument ||
     "BTC-INVERSE-PERP";
 
+  const optRef = state.optionQuote || state.activeOption || null;
+  const isOption = market.contractKind === "Option" || Boolean(optRef);
+  const optionStrikeUsd = Number(
+    market.strikeUsd ?? optRef?.strikeUsd ?? null
+  );
+  const optionType = market.optionType || optRef?.optionType || null;
+  const optionBreakevenUsd = Number(
+    market.breakevenUsd ?? optRef?.breakevenUsd ?? null
+  );
+
   const markPriceUsd = Number(
-    market.markPriceUsd ??
+    (isOption ? market.spotPriceUsd : null) ??
+      market.markPriceUsd ??
       market.markPrice ??
       market.mark_price_usd ??
       quote.entryPriceUsd ??
@@ -557,9 +569,13 @@ export function normalizeChartState(rawState = {}) {
   });
   const liq = computeLiquidationPrices(spec);
 
-  return {
+    return {
     chartMode,
     symbol,
+    isOption,
+    optionType,
+    optionStrikeUsd: Number.isFinite(optionStrikeUsd) && optionStrikeUsd > 0 ? optionStrikeUsd : null,
+    optionBreakevenUsd: Number.isFinite(optionBreakevenUsd) && optionBreakevenUsd > 0 ? optionBreakevenUsd : null,
     markPriceUsd,
     vwapPriceUsd,
     pythConfBps,
@@ -569,6 +585,7 @@ export function normalizeChartState(rawState = {}) {
     shortLiqUsd: liq.shortLiqUsd,
     isCoveredSyntheticUsd: liq.isCoveredSyntheticUsd,
     depth: mapOrderbookToDepth(state.orderbook),
+    clearedLevels: Array.isArray(state.orderbook?.clearedLevels) ? state.orderbook.clearedLevels : [],
     clearingTrades: normalizeClearingTrades(state.clearingTrades || state.clearing_trades),
   };
 }
@@ -621,7 +638,7 @@ function drawBadge(ctx, text, x, y, bg, border, fg, alignRight = false) {
   const h = 17;
   const w = ctx.measureText(text).width + padX * 2;
   const bx = alignRight ? x - w : x;
-  drawRoundedRect(ctx, bx, y, w, h, 3);
+  drawRoundedRect(ctx, bx, y, w, h, 1);
   ctx.fillStyle = bg;
   ctx.fill();
   ctx.strokeStyle = border;
@@ -735,9 +752,10 @@ export class ShzChartController {
 
     if (this.candleChart) {
       this.candleChart.setOptions({
-        theme: "shz",
+        theme: "og-wisdom",
         interval: this.interval,
         depthProfileEnabled: true,
+        showMA: true,
         showEMA: true,
         showSMA: false,
         showBB: false,
@@ -867,6 +885,7 @@ export class ShzChartController {
     const chart = this.candleChart;
     if (chart) {
       const toggleMap = {
+        ma: chart.showMA,
         ema: chart.showEMA,
         sma: chart.showSMA,
         bb: chart.showBB,
@@ -955,9 +974,21 @@ export class ShzChartController {
       if (this.state.chartMode !== "candles") return;
       const last = this.candleChart.candles.at(-1);
       if (!last) return;
-      const next = nextDemoCandle(last, this.interval, this._demoTick++);
+      const tick = this._demoTick++;
+      const next = nextDemoCandle(last, this.interval, tick);
+      const now = Date.now();
       this.candleChart.updateCandle(next);
-    }, 1400);
+      this.candleChart.updateTrade({
+        time: now,
+        price: next.close,
+        quantity: 0.08 + Math.abs(Math.sin(tick * 1.1) * 0.65),
+        side: tick % 2 === 0 ? "buy" : "sell",
+      });
+      if (!this.hasLiveVenueDepth) {
+        const d = makeDemoDepth(next.close, now);
+        this.candleChart.setDepthBook({ ...d, label: "P2P L2" });
+      }
+    }, 1100);
   }
 
   _startFeedRouter() {
@@ -1069,11 +1100,23 @@ export class ShzChartController {
 
   toggleIndicator(name) {
     if (!this.candleChart) return;
-    const map = { ema: "showEMA", sma: "showSMA", bb: "showBB", rsi: "showRSI" };
+    const map = { ma: "showMA", ema: "showEMA", sma: "showSMA", bb: "showBB", rsi: "showRSI" };
     const prop = map[name];
     if (!prop) return;
     this.candleChart.setOptions({ [prop]: !this.candleChart[prop] });
     this._syncControlBar();
+  }
+
+  ingestClearedLevels(events, at) {
+    return this.candleChart?.ingestClearedLevels(events, at) || [];
+  }
+
+  getActiveClearedLevels(at) {
+    return this.candleChart?.getActiveClearedLevels(at) || [];
+  }
+
+  getTickState(at) {
+    return this.candleChart?.displayedTickState(at) || null;
   }
 
   toggleLog() {
@@ -1147,6 +1190,9 @@ export class ShzChartController {
       }
       if (!this.hasLiveVenueDepth && (this.state.depth.bids.length || this.state.depth.asks.length)) {
         this.candleChart.setDepth(this.state.depth.bids, this.state.depth.asks, "P2P L2");
+      }
+      if (this.state.clearedLevels.length) {
+        this.candleChart.ingestClearedLevels(this.state.clearedLevels);
       }
       if (this.state.chartMode === "payoff") {
         this.candleChart.setPaused(true);
@@ -1325,11 +1371,24 @@ export class ShzChartController {
     drawProtocolLevel(s.vwapPriceUsd, "TL tx14 VWAP", THEME.amber, [3, 3]);
     drawProtocolLevel(s.spec.entryPriceUsd, "ENTRY P0", THEME.cyan, [4, 4]);
     if (Math.abs(s.markPriceUsd - s.spec.entryPriceUsd) > 1) {
-      drawProtocolLevel(s.markPriceUsd, "MARK", "rgba(56, 189, 248, 0.78)", [2, 4]);
+      drawProtocolLevel(s.markPriceUsd, "MARK", "rgba(78, 161, 255, 0.82)", [2, 4]);
     }
-    drawProtocolLevel(s.longLiqUsd, `LONG LIQ (${s.spec.longLevX}x)`, THEME.long, [6, 4]);
-    if (s.shortLiqUsd != null) {
-      drawProtocolLevel(s.shortLiqUsd, `SHORT LIQ (${s.spec.shortLevX}x)`, THEME.short, [6, 4]);
+    if (s.optionStrikeUsd != null) {
+      drawProtocolLevel(
+        s.optionStrikeUsd,
+        `OPT STRIKE (${s.optionType || "VANILLA"})`,
+        THEME.purple || "#cc66ff",
+        [3, 2]
+      );
+    }
+    if (s.optionBreakevenUsd != null) {
+      drawProtocolLevel(s.optionBreakevenUsd, "OPT BREAKEVEN", THEME.amber, [2, 2]);
+    }
+    if (!s.isOption) {
+      drawProtocolLevel(s.longLiqUsd, `LONG LIQ (${s.spec.longLevX}x)`, THEME.long, [6, 4]);
+      if (s.shortLiqUsd != null) {
+        drawProtocolLevel(s.shortLiqUsd, `SHORT LIQ (${s.spec.shortLevX}x)`, THEME.short, [6, 4]);
+      }
     }
 
     // 3. Optional 3-Party Multilateral Clearing Markers (e.g. Trade 1 $50k, Trade 2 $55k, Trade 3 $60k closeout)

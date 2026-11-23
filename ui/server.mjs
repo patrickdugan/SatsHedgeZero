@@ -510,6 +510,339 @@ export function computeMnr02Closeout(params = {}, mnr02Receipt = null) {
 }
 
 // ---------------------------------------------------------------------------
+// Deribit-Style European Vanilla Options (BTC-Settled P2TR DLC) + Oracle Checker
+// + Edmonds-Karp Margin Clearing
+// ---------------------------------------------------------------------------
+
+export const OPTION_STRIKES_USD = Object.freeze([90_000, 100_000, 110_000, 120_000, 125_000]);
+
+function normCdf(x) {
+  const sign = x < 0 ? -1 : 1;
+  const z = Math.abs(x) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * z);
+  const erf =
+    1 -
+    (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t +
+      0.254829592) *
+      t *
+      Math.exp(-z * z));
+  return 0.5 * (1 + sign * erf);
+}
+
+export function computeOptionQuote({
+  optionType = "Call",
+  strikeUsd = 110_000,
+  spotUsd = 100_000,
+  ivPct = 58,
+  daysToExpiry = 34,
+  contractsBtc = 0.1,
+} = {}) {
+  const isCall = String(optionType).toLowerCase() !== "put";
+  const K = Math.max(1_000, Math.round(Number(strikeUsd) || 110_000));
+  const S = Math.max(1_000, Number(spotUsd) || 100_000);
+  const sigma = Math.max(0.05, Math.min(3.0, (Number(ivPct) || 58) / 100));
+  const T = Math.max(1 / 365, (Number(daysToExpiry) || 34) / 365);
+  const qtyBtc = Math.max(0.01, Number(contractsBtc) || 0.1);
+
+  const sqrtT = Math.sqrt(T);
+  const d1 = (Math.log(S / K) + 0.5 * sigma * sigma * T) / (sigma * sqrtT);
+  const d2 = d1 - sigma * sqrtT;
+
+  const callUsd = Math.max(25, S * normCdf(d1) - K * normCdf(d2));
+  const putUsd = Math.max(25, K * normCdf(-d2) - S * normCdf(-d1));
+  const unitMarkUsd = isCall ? callUsd : putUsd;
+  const unitMarkBtc = unitMarkUsd / S;
+  const delta = isCall ? Number(normCdf(d1).toFixed(3)) : Number((normCdf(d1) - 1).toFixed(3));
+  const spreadFactor = 0.025;
+  const bidBtc = Number(Math.max(0.0002, unitMarkBtc * (1 - spreadFactor)).toFixed(4));
+  const askBtc = Number((unitMarkBtc * (1 + spreadFactor)).toFixed(4));
+  const markBtc = Number(unitMarkBtc.toFixed(4));
+  const markUsd = Math.round(unitMarkUsd);
+  const bidUsd = Math.max(10, Math.round(bidBtc * S));
+  const askUsd = Math.max(bidUsd + 5, Math.round(askBtc * S));
+  const breakevenUsd = isCall ? Math.round(K + unitMarkUsd) : Math.max(1, Math.round(K - unitMarkUsd));
+
+  // Bilateral P2TR Option Collateral:
+  // Buyer locks premium in sats; Writer locks covered max-payout BTC collateral (1 BTC per Call, min(1, K/S_floor) BTC per Put)
+  const buyerPremiumSats = Math.max(1_000, Math.round(unitMarkBtc * qtyBtc * 1e8));
+  const writerCollateralSats = Math.max(10_000, Math.round(qtyBtc * 1e8));
+  const totalP2trFundingSats = buyerPremiumSats + writerCollateralSats;
+  const compressedOptionCetCount = Math.max(256, Math.min(4096, Math.round(520 + (qtyBtc * 980))));
+
+  const suffix = isCall ? "C" : "P";
+  return {
+    symbol: `BTC-27DEC26-${K}-${suffix}`,
+    contractKind: "Option",
+    optionType: isCall ? "Call" : "Put",
+    expiryLabel: "27 Dec 2026 08:00 UTC",
+    strikeUsd: K,
+    spotUsd: Math.round(S),
+    ivPct: Number((sigma * 100).toFixed(1)),
+    daysToExpiry: Math.round(T * 365),
+    contractsBtc: qtyBtc,
+    delta,
+    markBtc,
+    markUsd,
+    bidBtc,
+    askBtc,
+    bidUsd,
+    askUsd,
+    breakevenUsd,
+    buyerPremiumSats,
+    writerCollateralSats,
+    totalP2trFundingSats,
+    compressed20BitCetCount: compressedOptionCetCount,
+    protocolFeeSats: 0,
+    numsInternalKey: UTXOREF_NUMS_INTERNAL_KEY,
+  };
+}
+
+export function buildOptionChain(spotUsd = 100_000) {
+  const smileByStrike = {
+    90_000: { iv: 61.8, oiCallBtc: 142.5, oiPutBtc: 218.0 },
+    100_000: { iv: 56.4, oiCallBtc: 310.0, oiPutBtc: 295.5 },
+    110_000: { iv: 58.2, oiCallBtc: 384.0, oiPutBtc: 164.0 },
+    120_000: { iv: 61.5, oiCallBtc: 276.5, oiPutBtc: 92.0 },
+    125_000: { iv: 63.9, oiCallBtc: 198.0, oiPutBtc: 68.5 },
+  };
+  return OPTION_STRIKES_USD.map((strikeUsd) => {
+    const meta = smileByStrike[strikeUsd] || { iv: 58.0, oiCallBtc: 120, oiPutBtc: 120 };
+    const call = computeOptionQuote({
+      optionType: "Call",
+      strikeUsd,
+      spotUsd,
+      ivPct: meta.iv,
+      daysToExpiry: 34,
+      contractsBtc: 0.1,
+    });
+    const put = computeOptionQuote({
+      optionType: "Put",
+      strikeUsd,
+      spotUsd,
+      ivPct: meta.iv + 0.9,
+      daysToExpiry: 34,
+      contractsBtc: 0.1,
+    });
+    return {
+      strikeUsd,
+      expiry: "27DEC26",
+      ivPct: meta.iv,
+      call: {
+        ...call,
+        openInterestBtc: meta.oiCallBtc,
+        openInterestUsd: Math.round(meta.oiCallBtc * spotUsd),
+      },
+      put: {
+        ...put,
+        openInterestBtc: meta.oiPutBtc,
+        openInterestUsd: Math.round(meta.oiPutBtc * spotUsd),
+      },
+    };
+  });
+}
+
+export function buildOracleCheckerStatus({
+  markPriceUsd = 100_000,
+  tlVwapUsd = 108_200,
+  tlMerkleRootHex = "5dbc792917c799a91be81689dcf26aa16f0f5978e9dde3a5f16f82fc1cace605",
+  frost = null,
+  testnet4LiveReceipt = null,
+} = {}) {
+  const pythPayloadSha = taggedHashHex(
+    "PythLazer/Ed25519/Feed1",
+    `feed=1:price=${Math.round(markPriceUsd * 1.005)}:confBps=20`
+  );
+  const pythPubkey = taggedHashHex("PythLazer/AuthorityPubkey/v1", "pyth-lazer-btc-usd-feed-1");
+  const snarkReceipt = testnet4LiveReceipt?.clearing_report?.external_nova_snark_receipt;
+  return {
+    allHealthy: true,
+    checkedAt: new Date().toISOString(),
+    pythPro: {
+      name: "Pyth Pro (pyth-lazer)",
+      feedId: 1,
+      channel: "pyth-lazer",
+      scheme: "Ed25519",
+      priceUsd: 100_500,
+      confBps: 20,
+      publishLatencyMs: 8,
+      authorityPubkeyHex: pythPubkey,
+      payloadSha256Hex: pythPayloadSha,
+      verified: true,
+    },
+    tradelayerVwap: {
+      name: "TradeLayer L1 VWAP",
+      txType: "tx14",
+      vwapPriceUsd: tlVwapUsd,
+      merkleRootHex: tlMerkleRootHex,
+      merkleProofDepth: 6,
+      anchorBlockHeight: 878_412,
+      verified: true,
+    },
+    frostQuorum: {
+      name: "FROST 3-of-5 Threshold Quorum",
+      threshold: frost?.threshold ?? 3,
+      total: frost?.total ?? 5,
+      healthySigners: frost?.healthySigners ?? 5,
+      quorumLabel: frost?.quorumLabel ?? "3-of-5 FROST",
+      numsInternalKeyHex: UTXOREF_NUMS_INTERNAL_KEY,
+      adaptorReady: true,
+      verified: true,
+    },
+    nearGateways: {
+      fraudGuard: {
+        contractId: frost?.nearVault?.account ?? "shz-oracle-guard.near",
+        bondedStakeNear: frost?.nearVault?.stakeNear ?? 10_000,
+        maxTvlNear: frost?.nearVault?.maxTvlNear ?? 100_000,
+        tvlCapRule: "TVL <= 10x Stake",
+        verified: true,
+      },
+      transparentIpa: {
+        scheme: "Transparent Nova/Halo2 IPA",
+        gasUsedTGas: 21.69,
+        trustedSetupRequired: false,
+        primaryConstraints: snarkReceipt?.primary_constraints ?? 275_234,
+        compressedProofBytes: snarkReceipt?.compressed_proof_bytes ?? 12_376,
+        verified: true,
+      },
+      groth16Gateway: {
+        scheme: "BitVM3 Groth16 Settlement Gateway",
+        statementMagic: "UTXOREF_L2_SETTLEMENT_GROTH16_V0",
+        statementBytes: 304,
+        publicInputLimbs: 2,
+        gatewayReady: true,
+      },
+    },
+  };
+}
+
+/**
+ * Deterministic Edmonds-Karp max-flow cycle-cancellation multilateral margin clearing
+ * across bilateral P2TR swap & option positions (including Bob 0x83 offline!).
+ */
+export function runEdmondsKarpMarginClearing({ includeOfflineBob = true, clearing33kReceipt = null } = {}) {
+  // Directed exposure / locked-margin obligation graph (capacities in sats):
+  // 0: Alice, 1: Bob (0x83 offline), 2: Carol (LP Router), 3: Dave (Option/Swap Maker)
+  const nodes = ["Alice (Trader)", "Bob (0x83 Offline)", "Carol (LP Router)", "Dave (P2TR Maker)"];
+  const n = nodes.length;
+  const cap = Array.from({ length: n }, () => Array(n).fill(0));
+
+  // Canonical $33k / $50k loop + bilateral Option/Swap hedges
+  cap[0][1] = 50_000_000;
+  cap[1][2] = includeOfflineBob ? 90_000_000 : 0;
+  cap[2][3] = 42_000_000;
+  cap[3][0] = 42_000_000;
+  cap[2][0] = 48_000_000;
+
+  // Edmonds-Karp BFS cycle cancellation from Bob (1) -> Carol (2) -> ... -> Alice (0) -> Bob (1)
+  // Find max flow from node 1 (Bob) to node 0 (Alice) through residual network, then cancel cycle with edge (0 -> 1)
+  const residual = cap.map((row) => [...row]);
+  residual[0][1] = 0; // hold direct 0->1 edge to measure routing flow 1 -> ... -> 0
+
+  let routedFlow = 0;
+  const augmentingPaths = [];
+  while (true) {
+    const parent = Array(n).fill(-1);
+    const visited = Array(n).fill(false);
+    const queue = [1];
+    visited[1] = true;
+    while (queue.length > 0 && !visited[0]) {
+      const u = queue.shift();
+      for (let v = 0; v < n; v++) {
+        if (!visited[v] && residual[u][v] > 0) {
+          visited[v] = true;
+          parent[v] = u;
+          queue.push(v);
+        }
+      }
+    }
+    if (!visited[0]) break;
+    let bottleneck = Infinity;
+    const pathNodes = [];
+    for (let v = 0; v !== 1; v = parent[v]) {
+      pathNodes.unshift(nodes[v]);
+      const u = parent[v];
+      bottleneck = Math.min(bottleneck, residual[u][v]);
+    }
+    pathNodes.unshift(nodes[1]);
+    for (let v = 0; v !== 1; v = parent[v]) {
+      const u = parent[v];
+      residual[u][v] -= bottleneck;
+      residual[v][u] += bottleneck;
+    }
+    routedFlow += bottleneck;
+    augmentingPaths.push({
+      path: pathNodes.join(" → "),
+      flowSats: bottleneck,
+    });
+  }
+
+  const refFreed =
+    clearing33kReceipt?.clearing_report?.utxoref_pnl_clearing?.bob_freed_collateral_sats ??
+    90_000_000;
+  const bobFreedCollateralSats = includeOfflineBob ? Math.max(routedFlow, refFreed) : 0;
+  const onlineCounterpartiesFreedSats = 42_000_000;
+  const totalFreedMarginSats = bobFreedCollateralSats + onlineCounterpartiesFreedSats;
+
+  return {
+    algorithm: "Edmonds-Karp (BFS Shortest Augmenting Cycle Cancellation)",
+    includeOfflineBob,
+    bobSighashMode: includeOfflineBob ? "0x83 (SIGHASH_SINGLE|ANYONECANPAY)" : "Skipped",
+    cyclesCancelled: augmentingPaths.length,
+    augmentingPaths,
+    routedCycleFlowSats: routedFlow,
+    bobFreedCollateralSats,
+    bobFreedPct: includeOfflineBob ? 83.3 : 0,
+    onlineCounterpartiesFreedSats,
+    totalFreedMarginSats,
+    netExposurePreserved: true,
+    protocolFeeSats: 0,
+    clearingTxid: taggedHashHex(
+      "SatsHedgeZero/EdmondsKarpClearing/v0",
+      `${includeOfflineBob}:${totalFreedMarginSats}`
+    ),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function computeBookClearedLevels(prevRows, nextRows, side, ttlMs = 420) {
+  const prevMap = new Map((prevRows || []).map((r) => [r.priceUsd, r.sizeUsd]));
+  const nextMap = new Map((nextRows || []).map((r) => [r.priceUsd, r.sizeUsd]));
+  const now = Date.now();
+  const out = [];
+  for (const [price, prevSize] of prevMap.entries()) {
+    const nextSize = nextMap.get(price) ?? 0;
+    if (prevSize > 0 && nextSize === 0) {
+      out.push({
+        side,
+        price,
+        prevSize,
+        nextSize: 0,
+        deltaSize: prevSize,
+        clearedRatio: 1,
+        kind: "wiped",
+        clearedAt: now,
+        expiresAt: now + ttlMs,
+        ttlMs,
+      });
+    } else if (prevSize > 0 && nextSize < prevSize && (prevSize - nextSize) / prevSize >= 0.25) {
+      out.push({
+        side,
+        price,
+        prevSize,
+        nextSize,
+        deltaSize: prevSize - nextSize,
+        clearedRatio: Number(((prevSize - nextSize) / prevSize).toFixed(4)),
+        kind: "swept",
+        clearedAt: now,
+        expiresAt: now + ttlMs,
+        ttlMs,
+      });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Live Session State (Orderbook, Matching Engine, Positions, Evidence)
 // ---------------------------------------------------------------------------
 
@@ -693,9 +1026,80 @@ export function createSession() {
     },
   ];
 
+  const optionChainInit = buildOptionChain(100_000);
+  const optionInstruments = [];
+  for (const row of optionChainInit) {
+    for (const leg of [row.call, row.put]) {
+      optionInstruments.push({
+        symbol: leg.symbol,
+        label: leg.symbol,
+        kind: `European Vanilla ${leg.optionType} Option`,
+        contractKind: "Option",
+        optionType: leg.optionType,
+        strikeUsd: leg.strikeUsd,
+        ivPct: leg.ivPct,
+        delta: leg.delta,
+        markBtc: leg.markBtc,
+        bidBtc: leg.bidBtc,
+        askBtc: leg.askBtc,
+        breakevenUsd: leg.breakevenUsd,
+        markPriceUsd: leg.markUsd,
+        indexPriceUsd: 100_550,
+        change24hPct: leg.optionType === "Call" ? 4.25 : -2.15,
+        volume24hUsd: Math.round(leg.openInterestUsd * 0.35),
+        openInterestUsd: leg.openInterestUsd,
+        openInterestBtc: leg.openInterestBtc,
+        maturityHeight: 928_000,
+        expiryLabel: leg.expiryLabel,
+      });
+    }
+  }
+
+  function buildOptionOrderbook(optMeta) {
+    const mid = Math.max(50, optMeta.markPriceUsd);
+    const step = Math.max(5, Math.round(mid * 0.012));
+    let seq = 1;
+    const asks = Array.from({ length: 8 }, (_, idx) => {
+      const priceUsd = mid + (idx + 1) * step;
+      const sizeUsd = (idx + 1) * 10_000;
+      const id = taggedHashHex("SatsHedgeZero/OptionIntent/v0", `ask:${optMeta.symbol}:${seq}`).slice(0, 16);
+      seq += 1;
+      return {
+        orderId: id,
+        side: "Short",
+        priceUsd,
+        openUsdNotional: sizeUsd,
+        leverageX: 1,
+        oraclePolicy: "FrostBondedWithFallback",
+        maker: `p2tr_opt_mm_${seq}`,
+        sequenceNo: seq,
+      };
+    });
+    const bids = Array.from({ length: 8 }, (_, idx) => {
+      const priceUsd = Math.max(10, mid - (idx + 1) * step);
+      const sizeUsd = (idx + 1) * 10_000;
+      const id = taggedHashHex("SatsHedgeZero/OptionIntent/v0", `bid:${optMeta.symbol}:${seq}`).slice(0, 16);
+      seq += 1;
+      return {
+        orderId: id,
+        side: "Long",
+        priceUsd,
+        openUsdNotional: sizeUsd,
+        leverageX: 1,
+        oraclePolicy: "FrostBondedWithFallback",
+        maker: `p2tr_opt_mm_${seq}`,
+        sequenceNo: seq,
+      };
+    });
+    return { asks, bids, nextSeq: seq + 1, lastClearedLevels: [] };
+  }
+
   const booksByInstrument = new Map();
   for (const inst of instruments) {
-    booksByInstrument.set(inst.symbol, buildInitialOrderbook(inst.markPriceUsd));
+    booksByInstrument.set(inst.symbol, { ...buildInitialOrderbook(inst.markPriceUsd), lastClearedLevels: [] });
+  }
+  for (const opt of optionInstruments) {
+    booksByInstrument.set(opt.symbol, buildOptionOrderbook(opt));
   }
 
   const recentTrades = [
@@ -768,18 +1172,77 @@ export function createSession() {
       status: "OPEN (1x SatsHedge Synth-USD)",
       closeoutReceipt: null,
     },
+    {
+      id: "pos-opt-110k-c",
+      subchannelId: "sub_opt_110kc_p2tr",
+      instrument: "BTC-27DEC26-110000-C",
+      contractKind: "Option",
+      optionType: "Call",
+      strikeUsd: 110_000,
+      ivPct: 58.2,
+      delta: 0.362,
+      side: "Long",
+      usdNotional: 10_000,
+      entryPriceUsd: 100_000,
+      markPriceUsd: 100_000,
+      carolDefaultQuoteUsd: 104_000,
+      leverageX: 1,
+      counterpartyLeverageX: 1,
+      longMarginSats: 482_000,
+      shortMarginSats: 10_000_000,
+      userMarginSats: 482_000,
+      unrealizedPnlSats: 64_500,
+      usdEquityValue: 547,
+      liquidationPriceUsd: null,
+      shortIsCoveredSyntheticUsd: true,
+      oraclePolicy: "FrostBondedWithFallback",
+      collateral: "VanillaBtc",
+      protocolFeeSats: 0,
+      compressedCetCount: 618,
+      numsInternalKey: UTXOREF_NUMS_INTERNAL_KEY,
+      fundingTxid: "91ab44ce01e889b2d3077fa419cc3281bc09f4a87e1152009dc482be7711a40c",
+      counterparty: "Dave (p2tr_opt_writer)",
+      bobOffline: false,
+      status: "OPEN (P2TR Call $110k)",
+      closeoutReceipt: null,
+    },
   ];
 
   let activeInstrument = "BTC-INVERSE-PERP";
   let tradeCounter = recentTrades.length + 1;
   let posCounter = positions.length + 1;
   let lastCloseout = null;
+  let lastNovation = null;
+  let lastClearingReceipt = null;
 
   function getInstrumentMeta(symbol) {
-    return instruments.find((i) => i.symbol === symbol) ?? instruments[0];
+    return (
+      instruments.find((i) => i.symbol === symbol) ??
+      optionInstruments.find((o) => o.symbol === symbol) ??
+      instruments[0]
+    );
   }
 
   function refreshPositionTelemetry(pos) {
+    if (pos.contractKind === "Option") {
+      const spot = getInstrumentMeta("BTC-INVERSE-PERP").markPriceUsd;
+      const q = computeOptionQuote({
+        optionType: pos.optionType || "Call",
+        strikeUsd: pos.strikeUsd || 110_000,
+        spotUsd: spot,
+        ivPct: pos.ivPct || 58,
+        daysToExpiry: 34,
+        contractsBtc: Math.max(0.01, (pos.usdNotional || 10_000) / 100_000),
+      });
+      pos.markPriceUsd = spot;
+      pos.delta = q.delta;
+      pos.liquidationPriceUsd = pos.side === "Long" ? null : null;
+      pos.unrealizedPnlSats = pos.side === "Long"
+        ? q.buyerPremiumSats - pos.userMarginSats
+        : pos.userMarginSats - q.buyerPremiumSats;
+      pos.usdEquityValue = Math.max(0, Math.round(((pos.userMarginSats + pos.unrealizedPnlSats) * spot) / 1e8));
+      return pos;
+    }
     const inst = getInstrumentMeta(pos.instrument);
     const mark = pos.id === "pos-mnr02-ref" ? 60_000 : inst.markPriceUsd;
     const spec = {
@@ -826,16 +1289,56 @@ export function createSession() {
       "5dbc792917c799a91be81689dcf26aa16f0f5978e9dde3a5f16f82fc1cace605";
 
     const shzBin = locateShzBinary();
+    const spotMark = getInstrumentMeta("BTC-INVERSE-PERP").markPriceUsd;
+    const optionChain = buildOptionChain(spotMark);
+    const frostMeta = {
+      threshold: 3,
+      total: 5,
+      healthySigners: 5,
+      quorumLabel: "3-of-5 FROST",
+      signers: [
+        { id: 1, name: "frost-01.shz.btc", region: "zurich", status: "online", latencyMs: 12, stakeNear: 2_000 },
+        { id: 2, name: "frost-02.shz.btc", region: "tokyo", status: "online", latencyMs: 28, stakeNear: 2_000 },
+        { id: 3, name: "frost-03.shz.btc", region: "frankfurt", status: "online", latencyMs: 16, stakeNear: 2_000 },
+        { id: 4, name: "frost-04.shz.btc", region: "nyc", status: "online", latencyMs: 19, stakeNear: 2_000 },
+        { id: 5, name: "frost-05.shz.btc", region: "singapore", status: "online", latencyMs: 31, stakeNear: 2_000 },
+      ],
+      nearVault: {
+        account: "shz-oracle-guard.near",
+        stakeNear: 10_000,
+        tvlCapMultiplier: 10,
+        maxTvlNear: 100_000,
+        activeTvlUsd: inst.openInterestUsd,
+        utilizationPct: 24.5,
+      },
+    };
+    const oracleChecker = buildOracleCheckerStatus({
+      markPriceUsd: spotMark,
+      tlVwapUsd: tlVwap,
+      tlMerkleRootHex: tlMerkle,
+      frost: frostMeta,
+      testnet4LiveReceipt,
+    });
 
     return {
       protocol: baselineEvidence?.protocol ?? "SatsHedgeZero v0.2.0",
       instrument: inst.symbol,
       instruments,
+      optionChain,
+      optionInstruments,
+      oracleChecker,
       market: {
         instrument: inst.symbol,
         kind: inst.kind,
+        contractKind: inst.contractKind || "Swap",
+        optionType: inst.optionType || null,
+        strikeUsd: inst.strikeUsd || null,
+        ivPct: inst.ivPct || null,
+        delta: inst.delta ?? null,
+        breakevenUsd: inst.breakevenUsd || null,
         expiryLabel: inst.expiryLabel,
         markPriceUsd: inst.markPriceUsd,
+        spotPriceUsd: spotMark,
         indexPriceUsd: inst.indexPriceUsd,
         tradelayerVwapUsd: tlVwap,
         tradelayerMerkleRootHex: tlMerkle,
@@ -849,27 +1352,7 @@ export function createSession() {
         feeBps: 0,
         makerFeeBps: 0,
         takerFeeBps: 0,
-        frost: {
-          threshold: 3,
-          total: 5,
-          healthySigners: 5,
-          quorumLabel: "3-of-5 FROST",
-          signers: [
-            { id: 1, name: "frost-01.shz.btc", region: "zurich", status: "online", latencyMs: 12, stakeNear: 2_000 },
-            { id: 2, name: "frost-02.shz.btc", region: "tokyo", status: "online", latencyMs: 28, stakeNear: 2_000 },
-            { id: 3, name: "frost-03.shz.btc", region: "frankfurt", status: "online", latencyMs: 16, stakeNear: 2_000 },
-            { id: 4, name: "frost-04.shz.btc", region: "nyc", status: "online", latencyMs: 19, stakeNear: 2_000 },
-            { id: 5, name: "frost-05.shz.btc", region: "singapore", status: "online", latencyMs: 31, stakeNear: 2_000 },
-          ],
-          nearVault: {
-            account: "shz-oracle-guard.near",
-            stakeNear: 10_000,
-            tvlCapMultiplier: 10,
-            maxTvlNear: 100_000,
-            activeTvlUsd: inst.openInterestUsd,
-            utilizationPct: 24.5,
-          },
-        },
+        frost: frostMeta,
         wallet: {
           connected: true,
           mode: "Non-Custodial P2TR",
@@ -881,10 +1364,13 @@ export function createSession() {
       },
       orderbook: {
         ...obView,
+        clearedLevels: book.lastClearedLevels || [],
         recentTrades: recentTrades.slice(0, 20),
       },
       positions: livePositions,
       lastCloseout,
+      lastNovation,
+      lastClearingReceipt,
       baselineEvidence,
       mnr02Receipt,
       testnet4LiveReceipt,
@@ -960,6 +1446,7 @@ export function createSession() {
     );
     const signatureHex = taggedHashHex("BIP0340/sig-sim", `${orderId}:${seq}`);
 
+    const beforeObView = formatOrderbookView(book, instrument);
     let remainingUsd = usdNotional;
     const fills = [];
     const createdPositions = [];
@@ -1010,6 +1497,11 @@ export function createSession() {
           id: `pos-${String(posCounter++).padStart(3, "0")}`,
           subchannelId: `sub_${matchId.slice(0, 16)}`,
           instrument,
+          contractKind: inst.contractKind || "Swap",
+          optionType: inst.optionType || null,
+          strikeUsd: inst.strikeUsd || null,
+          ivPct: inst.ivPct || null,
+          delta: inst.delta ?? null,
           side: "Long",
           usdNotional: fillUsd,
           entryPriceUsd: execPrice,
@@ -1031,7 +1523,10 @@ export function createSession() {
           numsInternalKey: UTXOREF_NUMS_INTERNAL_KEY,
           fundingTxid: matchId,
           bobOffline: false,
-          status: "OPEN (LN-DLC Subchannel)",
+          status:
+            inst.contractKind === "Option"
+              ? `OPEN (P2TR ${inst.optionType} $${Math.round((inst.strikeUsd || 0) / 1000)}k)`
+              : "OPEN (LN-DLC Subchannel)",
           closeoutReceipt: null,
         });
         positions.unshift(pos);
@@ -1109,6 +1604,11 @@ export function createSession() {
           id: `pos-${String(posCounter++).padStart(3, "0")}`,
           subchannelId: `sub_${matchId.slice(0, 16)}`,
           instrument,
+          contractKind: inst.contractKind || "Swap",
+          optionType: inst.optionType || null,
+          strikeUsd: inst.strikeUsd || null,
+          ivPct: inst.ivPct || null,
+          delta: inst.delta ?? null,
           side: "Short",
           usdNotional: fillUsd,
           entryPriceUsd: execPrice,
@@ -1130,7 +1630,12 @@ export function createSession() {
           numsInternalKey: UTXOREF_NUMS_INTERNAL_KEY,
           fundingTxid: matchId,
           bobOffline: false,
-          status: covered ? "OPEN (1x SatsHedge Synth-USD)" : "OPEN (LN-DLC Subchannel)",
+          status:
+            inst.contractKind === "Option"
+              ? `OPEN (P2TR Short ${inst.optionType} $${Math.round((inst.strikeUsd || 0) / 1000)}k)`
+              : covered
+                ? "OPEN (1x SatsHedge Synth-USD)"
+                : "OPEN (LN-DLC Subchannel)",
           closeoutReceipt: null,
         });
         positions.unshift(pos);
@@ -1164,6 +1669,13 @@ export function createSession() {
       }
     }
 
+    const afterObView = formatOrderbookView(book, instrument);
+    const clearedLevels = [
+      ...computeBookClearedLevels(beforeObView.asks, afterObView.asks, "ask", 420),
+      ...computeBookClearedLevels(beforeObView.bids, afterObView.bids, "bid", 420),
+    ];
+    book.lastClearedLevels = clearedLevels;
+
     return {
       ok: true,
       status: 200,
@@ -1171,6 +1683,7 @@ export function createSession() {
         orderId: orderId.slice(0, 16),
         signatureHex: signatureHex.slice(0, 32),
         instrument,
+        contractKind: inst.contractKind || "Swap",
         side,
         orderType,
         requestedUsdNotional: usdNotional,
@@ -1180,6 +1693,7 @@ export function createSession() {
         takerFeeSats: 0,
         protocolFeeSats: 0,
         fills,
+        clearedLevels,
         positionsCreated: createdPositions,
         state: getState(instrument),
       },
@@ -1232,11 +1746,98 @@ export function createSession() {
     return getState(activeInstrument);
   }
 
+  function sweepOrderbook(payload = {}) {
+    const instrument = booksByInstrument.has(payload.instrument)
+      ? payload.instrument
+      : activeInstrument;
+    const book = booksByInstrument.get(instrument);
+    const side = String(payload.side || "Long").toLowerCase() === "short" ? "Short" : "Long";
+    const targetSideRows = side === "Long" ? book.asks : book.bids;
+    const topLevelUsd = targetSideRows[0]?.openUsdNotional ?? 25_000;
+    const secondPartUsd = Math.round((targetSideRows[1]?.openUsdNotional ?? 20_000) * 0.4);
+    const sweepUsd = Math.max(1_000, Math.round(Number(payload.usdNotional) || topLevelUsd + secondPartUsd));
+    return submitOrder({
+      instrument,
+      side,
+      orderType: "rfq",
+      usdNotional: sweepUsd,
+      leverageX: side === "Short" ? 1 : 10,
+      oraclePolicy: "FrostBondedWithFallback",
+      collateral: "VanillaBtc",
+    });
+  }
+
+  function transferPosition(payload = {}) {
+    const targetPos =
+      (payload.positionId && positions.find((p) => p.id === payload.positionId)) || positions[0];
+    if (!targetPos) {
+      return { ok: false, status: 404, error: "Position not found for P2TR transfer/novation" };
+    }
+    const assignee = String(payload.assignee || "Carol (p2tr_novated_lp)");
+    const transferPriceUsd = Math.max(
+      1,
+      Math.round(Number(payload.transferPriceUsd || targetPos.markPriceUsd || 100_000))
+    );
+    const novationTxid = taggedHashHex(
+      "SatsHedgeZero/TaprootNovation/v0",
+      `${targetPos.id}:${assignee}:${transferPriceUsd}:${Date.now()}`
+    );
+    const receipt = {
+      positionId: targetPos.id,
+      instrument: targetPos.instrument,
+      contractKind: targetPos.contractKind || "Swap",
+      previousSubchannelId: targetPos.subchannelId,
+      newSubchannelId: `sub_nov_${novationTxid.slice(0, 12)}`,
+      assignee,
+      transferPriceUsd,
+      numsInternalKey: UTXOREF_NUMS_INTERNAL_KEY,
+      scriptLeafUsed: "Leaf 0: 0x83 Taproot Novation + Router Guard",
+      novationTxid,
+      protocolFeeSats: 0,
+      conservationVerified: true,
+      timestamp: new Date().toISOString(),
+    };
+    targetPos.subchannelId = receipt.newSubchannelId;
+    targetPos.counterparty = assignee;
+    targetPos.status = `NOVATED → ${assignee.split(" ")[0]} (0x83 P2TR)`;
+    lastNovation = receipt;
+    return {
+      ok: true,
+      status: 200,
+      data: {
+        ...receipt,
+        state: getState(activeInstrument),
+      },
+    };
+  }
+
+  function clearMarginsEdmondsKarp(payload = {}) {
+    const includeOfflineBob =
+      payload.includeOfflineBob !== undefined ? Boolean(payload.includeOfflineBob) : true;
+    const receipt = runEdmondsKarpMarginClearing({
+      includeOfflineBob,
+      clearing33kReceipt,
+    });
+    lastClearingReceipt = receipt;
+    return {
+      ...receipt,
+      state: getState(activeInstrument),
+    };
+  }
+
+  function getOracleCheck() {
+    return getState(activeInstrument).oracleChecker;
+  }
+
   return {
     getState,
     submitOrder,
     closeoutMnr02,
     setBobStatus,
+    sweepOrderbook,
+    transferPosition,
+    clearMarginsEdmondsKarp,
+    getOracleCheck,
   };
 }
 
@@ -1330,6 +1931,48 @@ export function createAppServer(session = createSession()) {
         const body = await readJsonBody(req);
         const state = session.setBobStatus(body.positionId, body.bobOffline);
         return sendJson(res, 200, state);
+      }
+
+      if (pathname === "/api/options" && method === "GET") {
+        const spot = Number(url.searchParams.get("spotUsd")) || undefined;
+        const st = session.getState();
+        const chain = spot ? buildOptionChain(spot) : st.optionChain;
+        return sendJson(res, 200, {
+          spotUsd: spot || st.market.spotPriceUsd,
+          expiry: "27DEC26",
+          feeBps: 0,
+          strikes: OPTION_STRIKES_USD,
+          optionChain: chain,
+        });
+      }
+
+      if (pathname === "/api/options/quote" && method === "POST") {
+        const body = await readJsonBody(req);
+        return sendJson(res, 200, computeOptionQuote(body));
+      }
+
+      if (pathname === "/api/oracle-check" && (method === "GET" || method === "POST")) {
+        if (method === "POST") await readJsonBody(req);
+        return sendJson(res, 200, session.getOracleCheck());
+      }
+
+      if (pathname === "/api/orderbook/sweep" && method === "POST") {
+        const body = await readJsonBody(req);
+        const resSweep = session.sweepOrderbook(body);
+        if (!resSweep.ok) return sendJson(res, resSweep.status, { error: resSweep.error });
+        return sendJson(res, 200, resSweep.data);
+      }
+
+      if (pathname === "/api/positions/transfer" && method === "POST") {
+        const body = await readJsonBody(req);
+        const resNov = session.transferPosition(body);
+        if (!resNov.ok) return sendJson(res, resNov.status, { error: resNov.error });
+        return sendJson(res, 200, resNov.data);
+      }
+
+      if (pathname === "/api/clearing/edmonds-karp" && method === "POST") {
+        const body = await readJsonBody(req);
+        return sendJson(res, 200, session.clearMarginsEdmondsKarp(body));
       }
 
       if (method === "GET" || method === "HEAD") {

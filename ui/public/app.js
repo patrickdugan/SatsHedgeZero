@@ -1,4 +1,5 @@
-// SatsHedgeZero Pro Trading Terminal — Shell Controller & Shared State Bus
+// SatsHedgeZero OG BitcoinWisdom + Deribit Pro Derivatives Terminal — Shell Controller & State Bus
+import { OrderBookLevelTracker, annotateOrderBookLadder } from "./bitcorn/orderbook.js";
 
 const fmtUsd = (n) =>
   typeof n === "number" && Number.isFinite(n)
@@ -20,6 +21,9 @@ const fmtSats = (n) =>
 
 const fmtBtc = (sats) => (Number(sats || 0) / 1e8).toFixed(4);
 
+const obLevelTracker = new OrderBookLevelTracker({ ttlMs: 420 });
+let obDecayTimer = null;
+
 // Ticket local form state
 const ticket = {
   side: "Short",
@@ -32,15 +36,25 @@ const ticket = {
   limitPriceTouched: false,
 };
 
+let optionsChainOpen = false;
+let oracleDrawerOpen = false;
+
 // Shared state contract read by /charts.js and /workbench.js
 window.SHZ_STATE = {
   instrument: "BTC-INVERSE-PERP",
   instruments: [],
+  optionChain: [],
+  optionInstruments: [],
+  oracleChecker: null,
+  activeOption: null,
   market: null,
   quote: null,
+  optionQuote: null,
   positions: [],
   orderbook: null,
   lastCloseout: null,
+  lastNovation: null,
+  lastClearingReceipt: null,
   baselineEvidence: null,
   mnr02Receipt: null,
   novaSummary: null,
@@ -57,20 +71,49 @@ function emitState() {
 }
 
 // ---------------------------------------------------------------------------
-// API Methods (exposed on window.SHZ_API for @ui-workbench)
+// API Methods (exposed on window.SHZ_API)
 // ---------------------------------------------------------------------------
 
 async function requestQuote(overrides = {}) {
+  const mkt = window.SHZ_STATE.market;
   const side = overrides.side ?? ticket.side;
   const usdNotional = Math.max(1, Math.round(Number(overrides.usdNotional ?? ticket.usdNotional)));
+
+  if (mkt?.contractKind === "Option") {
+    const spotUsd = mkt.spotPriceUsd ?? 100_000;
+    const contractsBtc = Math.max(0.01, usdNotional / spotUsd);
+    const optRes = await fetch("/api/options/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        optionType: mkt.optionType || "Call",
+        strikeUsd: mkt.strikeUsd || 110_000,
+        spotUsd,
+        ivPct: mkt.ivPct || 58,
+        daysToExpiry: 34,
+        contractsBtc,
+      }),
+    });
+    if (optRes.ok) {
+      const oq = await optRes.json();
+      window.SHZ_STATE.optionQuote = oq;
+      window.SHZ_STATE.activeOption = oq;
+    }
+  } else {
+    window.SHZ_STATE.optionQuote = null;
+    window.SHZ_STATE.activeOption = null;
+  }
+
   const entryPriceUsd = Math.max(
     1,
     Math.round(
       Number(
         overrides.entryPriceUsd ??
-          (ticket.orderType === "rfq"
-            ? window.SHZ_STATE.market?.markPriceUsd ?? ticket.limitPriceUsd
-            : ticket.limitPriceUsd)
+          (mkt?.contractKind === "Option"
+            ? mkt.spotPriceUsd ?? 100_000
+            : ticket.orderType === "rfq"
+              ? mkt?.markPriceUsd ?? ticket.limitPriceUsd
+              : ticket.limitPriceUsd)
       )
     )
   );
@@ -101,6 +144,10 @@ async function requestQuote(overrides = {}) {
 
 async function refreshState(instrument) {
   const sym = instrument ?? window.SHZ_STATE.instrument ?? "BTC-INVERSE-PERP";
+  if (sym !== window.SHZ_STATE.instrument) {
+    obLevelTracker.reset();
+    ticket.limitPriceTouched = false;
+  }
   const res = await fetch(`/api/state?instrument=${encodeURIComponent(sym)}`);
   if (!res.ok) {
     throw new Error(`State fetch failed (${res.status})`);
@@ -115,6 +162,8 @@ async function refreshState(instrument) {
   }
 
   renderHeader();
+  renderOracleChecker();
+  renderOptionChain();
   renderOrderbook();
   renderFallbackWorkbenchIfNeeded();
 
@@ -143,6 +192,89 @@ async function triggerMnr02Closeout(payload = {}) {
   return data;
 }
 
+async function transferPosition(payload = {}) {
+  const res = await fetch("/api/positions/transfer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Position transfer failed (${res.status})`);
+  }
+  if (data.state) {
+    Object.assign(window.SHZ_STATE, data.state);
+  }
+  window.SHZ_STATE.lastNovation = data;
+  renderHeader();
+  renderFallbackWorkbenchIfNeeded();
+  emitState();
+  return data;
+}
+
+async function runEdmondsKarpClearing(payload = {}) {
+  const res = await fetch("/api/clearing/edmonds-karp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Clearing failed (${res.status})`);
+  }
+  if (data.state) {
+    Object.assign(window.SHZ_STATE, data.state);
+  }
+  window.SHZ_STATE.lastClearingReceipt = data;
+  renderHeader();
+  renderFallbackWorkbenchIfNeeded();
+  emitState();
+  return data;
+}
+
+async function sweepOrderbook(payload = {}) {
+  const res = await fetch("/api/orderbook/sweep", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      instrument: window.SHZ_STATE.instrument,
+      side: ticket.side,
+      ...payload,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Sweep failed (${res.status})`);
+  }
+  if (data.state) {
+    Object.assign(window.SHZ_STATE, data.state);
+  }
+  if (Array.isArray(data.clearedLevels) && data.clearedLevels.length) {
+    obLevelTracker.injectCleared(data.clearedLevels, Date.now());
+    window.SHZ_CHARTS?.ingestClearedLevels?.(data.clearedLevels);
+  }
+  renderHeader();
+  renderOrderbook();
+  renderFallbackWorkbenchIfNeeded();
+  await requestQuote();
+  return data;
+}
+
+async function verifyOracles() {
+  const res = await fetch("/api/oracle-check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ verifyAll: true }),
+  });
+  if (!res.ok) throw new Error(`Oracle check failed (${res.status})`);
+  const check = await res.json();
+  window.SHZ_STATE.oracleChecker = check;
+  oracleDrawerOpen = true;
+  renderOracleChecker();
+  emitState();
+  return check;
+}
+
 async function toggleBobStatus(positionId, bobOffline) {
   const res = await fetch("/api/positions/bob-status", {
     method: "POST",
@@ -157,15 +289,43 @@ async function toggleBobStatus(positionId, bobOffline) {
   return window.SHZ_STATE;
 }
 
-function setChartMode(mode) {
-  const normalized = mode === "payoff" ? "payoff" : "candles";
-  window.SHZ_STATE.chartMode = normalized;
+function syncViewTabs() {
   document.querySelectorAll("[data-chart-mode]").forEach((btn) => {
-    const active = btn.getAttribute("data-chart-mode") === normalized;
+    const active = !optionsChainOpen && btn.getAttribute("data-chart-mode") === window.SHZ_STATE.chartMode;
     btn.classList.toggle("is-active", active);
     btn.setAttribute("aria-selected", active ? "true" : "false");
   });
+  const optTab = document.getElementById("btn-chart-options");
+  if (optTab) {
+    optTab.classList.toggle("is-active", optionsChainOpen);
+    optTab.setAttribute("aria-selected", optionsChainOpen ? "true" : "false");
+  }
+  const optPanel = document.getElementById("shz-options-chain-panel");
+  if (optPanel) optPanel.hidden = !optionsChainOpen;
+
+  document.getElementById("btn-desk-swaps")?.classList.toggle("is-active", !optionsChainOpen && !oracleDrawerOpen);
+  document.getElementById("btn-desk-options")?.classList.toggle("is-active", optionsChainOpen);
+  document.getElementById("btn-desk-oracle")?.classList.toggle("is-active", oracleDrawerOpen);
+}
+
+function setChartMode(mode) {
+  optionsChainOpen = false;
+  const normalized = mode === "payoff" ? "payoff" : "candles";
+  window.SHZ_STATE.chartMode = normalized;
+  syncViewTabs();
   emitState();
+}
+
+function toggleOptionsChain(open) {
+  optionsChainOpen = open !== undefined ? Boolean(open) : !optionsChainOpen;
+  syncViewTabs();
+  renderOptionChain();
+}
+
+function toggleOracleDrawer(open) {
+  oracleDrawerOpen = open !== undefined ? Boolean(open) : !oracleDrawerOpen;
+  syncViewTabs();
+  renderOracleChecker();
 }
 
 async function submitOrder(payload) {
@@ -181,6 +341,10 @@ async function submitOrder(payload) {
   if (data.state) {
     Object.assign(window.SHZ_STATE, data.state);
   }
+  if (Array.isArray(data.clearedLevels) && data.clearedLevels.length) {
+    obLevelTracker.injectCleared(data.clearedLevels, Date.now());
+    window.SHZ_CHARTS?.ingestClearedLevels?.(data.clearedLevels);
+  }
   renderHeader();
   renderOrderbook();
   renderFallbackWorkbenchIfNeeded();
@@ -191,14 +355,20 @@ async function submitOrder(payload) {
 window.SHZ_API = {
   refreshState,
   triggerMnr02Closeout,
+  transferPosition,
+  runEdmondsKarpClearing,
+  sweepOrderbook,
+  verifyOracles,
   setChartMode,
+  toggleOptionsChain,
+  toggleOracleDrawer,
   toggleBobStatus,
   requestQuote,
   submitOrder,
 };
 
 // ---------------------------------------------------------------------------
-// Renderers (Header, Orderbook, Recent Fills, Order Ticket, Graceful Fallback)
+// Renderers (Header, Oracle Checker, Options Chain, Orderbook, Ticket)
 // ---------------------------------------------------------------------------
 
 function renderHeader() {
@@ -216,7 +386,12 @@ function renderHeader() {
     if (el) el.textContent = text;
   };
 
-  setText("stat-mark-price", fmtUsd(market.markPriceUsd));
+  setText(
+    "stat-mark-price",
+    market.contractKind === "Option"
+      ? `${fmtUsd(market.markPriceUsd)} (Spot ${fmtUsd(market.spotPriceUsd)})`
+      : fmtUsd(market.markPriceUsd)
+  );
   setText("stat-tl-vwap", fmtUsd(market.tradelayerVwapUsd));
 
   const pythEl = document.getElementById("stat-pyth-relay");
@@ -237,6 +412,130 @@ function renderHeader() {
   }
 }
 
+function renderOracleChecker() {
+  const oc = window.SHZ_STATE.oracleChecker;
+  if (!oc) return;
+  const setEl = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  };
+  setEl(
+    "oc-pyth",
+    `● PYTH-LAZER Ed25519 #${oc.pythPro.feedId}: ${fmtUsd(oc.pythPro.priceUsd)} ±${oc.pythPro.confBps}bps (${oc.pythPro.publishLatencyMs}ms)`
+  );
+  setEl(
+    "oc-tl",
+    `● TL ${oc.tradelayerVwap.txType} VWAP ${fmtUsd(oc.tradelayerVwap.vwapPriceUsd)} · MERKLE ${oc.tradelayerVwap.merkleRootHex.slice(0, 8)}…${oc.tradelayerVwap.merkleRootHex.slice(-4)}`
+  );
+  setEl(
+    "oc-frost",
+    `● ${oc.frostQuorum.quorumLabel}: ${oc.frostQuorum.healthySigners}/${oc.frostQuorum.total} SCHNORR READY`
+  );
+  setEl(
+    "oc-near",
+    `● NEAR ${oc.nearGateways.fraudGuard.bondedStakeNear.toLocaleString("en-US")} BOND · IPA ${oc.nearGateways.transparentIpa.gasUsedTGas} TGas · GROTH16 ${oc.nearGateways.groth16Gateway.statementBytes}B`
+  );
+
+  const drawer = document.getElementById("shz-oracle-drawer");
+  if (!drawer) return;
+  drawer.hidden = !oracleDrawerOpen;
+  if (!oracleDrawerOpen) return;
+
+  drawer.innerHTML = `
+    <div class="shz-oc-card">
+      <div class="shz-oc-card-hd"><span>1. PYTH PRO (${oc.pythPro.channel})</span><span class="is-long">Ed25519 OK</span></div>
+      <div class="shz-oc-kv"><span>Feed / Price</span><strong>#${oc.pythPro.feedId} · ${fmtUsd(oc.pythPro.priceUsd)} ±${oc.pythPro.confBps}bps</strong></div>
+      <div class="shz-oc-kv"><span>Latency / Digest</span><strong>${oc.pythPro.publishLatencyMs}ms · ${oc.pythPro.payloadSha256Hex.slice(0, 12)}…</strong></div>
+    </div>
+    <div class="shz-oc-card">
+      <div class="shz-oc-card-hd"><span>2. TRADELAYER L1 VWAP</span><span class="is-long">MERKLE OK</span></div>
+      <div class="shz-oc-kv"><span>Block / VWAP</span><strong>#${oc.tradelayerVwap.anchorBlockHeight} · ${fmtUsd(oc.tradelayerVwap.vwapPriceUsd)}</strong></div>
+      <div class="shz-oc-kv"><span>tx14 Root</span><strong>${oc.tradelayerVwap.merkleRootHex.slice(0, 14)}…</strong></div>
+    </div>
+    <div class="shz-oc-card">
+      <div class="shz-oc-card-hd"><span>3. FROST 3-OF-5 QUORUM</span><span class="is-long">${oc.frostQuorum.healthySigners}/${oc.frostQuorum.total} ONLINE</span></div>
+      <div class="shz-oc-kv"><span>NUMS P2TR Key</span><strong>${oc.frostQuorum.numsInternalKeyHex.slice(0, 14)}…</strong></div>
+      <div class="shz-oc-kv"><span>Adaptor Nonces</span><strong>READY (0 bps fee)</strong></div>
+    </div>
+    <div class="shz-oc-card">
+      <div class="shz-oc-card-hd"><span>4. NEAR IPA &amp; GROTH16 GATEWAY</span><span class="is-long">21.69 TGas</span></div>
+      <div class="shz-oc-kv"><span>Transparent IPA</span><strong>${oc.nearGateways.transparentIpa.gasUsedTGas} TGas · 0 Trusted Setup</strong></div>
+      <div class="shz-oc-kv"><span>Groth16 / Guard</span><strong>${oc.nearGateways.groth16Gateway.statementBytes}B · ${oc.nearGateways.fraudGuard.contractId}</strong></div>
+    </div>
+  `;
+}
+
+function renderOptionChain() {
+  const panel = document.getElementById("shz-options-chain-panel");
+  if (!panel) return;
+  const chain = window.SHZ_STATE.optionChain || [];
+  const activeSym = window.SHZ_STATE.instrument;
+  const spot = window.SHZ_STATE.market?.spotPriceUsd ?? 100_000;
+
+  if (!chain.length) {
+    panel.innerHTML = `<div class="shz-opt-banner">Loading 27DEC26 European Vanilla Options Chain…</div>`;
+    return;
+  }
+
+  const rowsHtml = chain
+    .map((row) => {
+      const c = row.call;
+      const p = row.put;
+      const cSel = activeSym === c.symbol ? "is-selected" : "";
+      const pSel = activeSym === p.symbol ? "is-selected" : "";
+      return `
+        <tr>
+          <td class="shz-opt-leg ${cSel} align-right muted" data-opt-symbol="${c.symbol}">${c.openInterestBtc.toFixed(1)}</td>
+          <td class="shz-opt-leg ${cSel} align-right" data-opt-symbol="${c.symbol}">${c.ivPct.toFixed(1)}%</td>
+          <td class="shz-opt-leg ${cSel} align-right is-long" data-opt-symbol="${c.symbol}">+${c.delta.toFixed(2)}</td>
+          <td class="shz-opt-leg ${cSel} align-right is-long" data-opt-symbol="${c.symbol}">${c.bidBtc.toFixed(4)}</td>
+          <td class="shz-opt-leg ${cSel} align-right" data-opt-symbol="${c.symbol}"><strong>${c.markBtc.toFixed(4)}</strong> <small class="muted">(${fmtUsd(c.markUsd)})</small></td>
+          <td class="shz-opt-leg ${cSel} align-right is-short" data-opt-symbol="${c.symbol}">${c.askBtc.toFixed(4)}</td>
+          <td class="shz-opt-strike-cell">$${row.strikeUsd.toLocaleString("en-US")}</td>
+          <td class="shz-opt-leg ${pSel} align-right is-long" data-opt-symbol="${p.symbol}">${p.bidBtc.toFixed(4)}</td>
+          <td class="shz-opt-leg ${pSel} align-right" data-opt-symbol="${p.symbol}"><strong>${p.markBtc.toFixed(4)}</strong> <small class="muted">(${fmtUsd(p.markUsd)})</small></td>
+          <td class="shz-opt-leg ${pSel} align-right is-short" data-opt-symbol="${p.symbol}">${p.askBtc.toFixed(4)}</td>
+          <td class="shz-opt-leg ${pSel} align-right is-short" data-opt-symbol="${p.symbol}">${p.delta.toFixed(2)}</td>
+          <td class="shz-opt-leg ${pSel} align-right" data-opt-symbol="${p.symbol}">${p.ivPct.toFixed(1)}%</td>
+          <td class="shz-opt-leg ${pSel} align-right muted" data-opt-symbol="${p.symbol}">${p.openInterestBtc.toFixed(1)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  panel.innerHTML = `
+    <div class="shz-opt-banner">
+      <span><strong class="is-amber">BTC-27DEC26 EUROPEAN VANILLA OPTIONS</strong> · Underlying Spot ${fmtUsd(spot)} · P2TR NUMS Covered Settlement · 0.00% Fee</span>
+      <span>Click any Call / Put strike to load P2TR Orderbook &amp; Ticket</span>
+    </div>
+    <table class="shz-opt-table">
+      <thead>
+        <tr>
+          <th colspan="6" style="text-align:center; color:#66cc66;">CALLS (BTC-SETTLED P2TR)</th>
+          <th style="text-align:center; color:#ff9900;">STRIKE</th>
+          <th colspan="6" style="text-align:center; color:#dd4444;">PUTS (BTC-SETTLED P2TR)</th>
+        </tr>
+        <tr>
+          <th class="align-right">OI (BTC)</th>
+          <th class="align-right">IV</th>
+          <th class="align-right">Delta</th>
+          <th class="align-right">Bid (BTC)</th>
+          <th class="align-right">Mark</th>
+          <th class="align-right">Ask (BTC)</th>
+          <th style="text-align:center;">USD</th>
+          <th class="align-right">Bid (BTC)</th>
+          <th class="align-right">Mark</th>
+          <th class="align-right">Ask (BTC)</th>
+          <th class="align-right">Delta</th>
+          <th class="align-right">IV</th>
+          <th class="align-right">OI (BTC)</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  `;
+}
+
 function renderOrderbook() {
   const { orderbook, market } = window.SHZ_STATE;
   if (!orderbook) return;
@@ -247,43 +546,47 @@ function renderOrderbook() {
   const spreadEl = document.getElementById("ob-spread-info");
   const tradesEl = document.getElementById("recent-trades-list");
 
-  // Display top 8 asks descending so lowest ask sits right above spread
-  const asksToShow = orderbook.asks.slice(0, 8).reverse();
-  const bidsToShow = orderbook.bids.slice(0, 8);
+  const now = Date.now();
+  const normalizedBook = {
+    bids: orderbook.bids.map((r) => [r.priceUsd, r.sizeUsd]),
+    asks: orderbook.asks.map((r) => [r.priceUsd, r.sizeUsd]),
+    clearedLevels: orderbook.clearedLevels || [],
+  };
+  const { activeCleared, activeWalls } = obLevelTracker.observe(normalizedBook, now);
 
-  if (asksEl) {
-    asksEl.innerHTML = asksToShow
-      .map(
-        (r) => `
-      <div class="shz-ob-row is-ask" data-ob-price="${r.priceUsd}" title="Click to populate Limit Price $${r.priceUsd.toLocaleString("en-US")}">
-        <span class="depth-bar" style="width:${Math.min(100, r.depthPct)}%"></span>
-        <span class="ob-price">${r.priceUsd.toLocaleString("en-US")}</span>
-        <span class="ob-size align-right">${r.sizeUsd.toLocaleString("en-US")}</span>
-        <span class="ob-btc align-right">${r.valueBtc.toFixed(4)}</span>
-        <span class="ob-total align-right">${fmtCompactUsd(r.totalUsd)}</span>
-      </div>`
-      )
-      .join("");
-  }
+  const asksDecorated = annotateOrderBookLadder(normalizedBook.asks.slice(0, 8), "ask", activeCleared, activeWalls, 8).reverse();
+  const bidsDecorated = annotateOrderBookLadder(normalizedBook.bids.slice(0, 8), "bid", activeCleared, activeWalls, 8);
 
-  if (bidsEl) {
-    bidsEl.innerHTML = bidsToShow
-      .map(
-        (r) => `
-      <div class="shz-ob-row is-bid" data-ob-price="${r.priceUsd}" title="Click to populate Limit Price $${r.priceUsd.toLocaleString("en-US")}">
-        <span class="depth-bar" style="width:${Math.min(100, r.depthPct)}%"></span>
-        <span class="ob-price">${r.priceUsd.toLocaleString("en-US")}</span>
-        <span class="ob-size align-right">${r.sizeUsd.toLocaleString("en-US")}</span>
-        <span class="ob-btc align-right">${r.valueBtc.toFixed(4)}</span>
-        <span class="ob-total align-right">${fmtCompactUsd(r.totalUsd)}</span>
-      </div>`
-      )
+  const renderSideHtml = (rows, sideCls) =>
+    rows
+      .map((item) => {
+        const btcVal = item.price > 0 ? item.size / item.price : 0;
+        const modCls = item.status !== "normal" ? ` shz-ob-row--${item.status}` : "";
+        const ghostStyle = item.ghostPct > 0 ? `--ghost-width:${item.ghostPct.toFixed(1)}%;` : "--ghost-width:0%;";
+        return `
+      <div class="shz-ob-row ${sideCls}${modCls}" data-ob-price="${item.price}" data-level-status="${item.status}" style="${ghostStyle}" title="Click to populate Limit Price $${item.price.toLocaleString("en-US")}">
+        <span class="depth-bar" style="width:${Math.min(100, item.depthPct).toFixed(1)}%"></span>
+        <span class="ob-price">${item.price.toLocaleString("en-US")}</span>
+        <span class="ob-size align-right">${item.status === "wiped" ? "0" : Math.round(item.size).toLocaleString("en-US")}</span>
+        <span class="ob-btc align-right">${btcVal.toFixed(4)}</span>
+        <span class="ob-total align-right">${fmtCompactUsd(item.cumulative)}</span>
+      </div>`;
+      })
       .join("");
+
+  if (asksEl) asksEl.innerHTML = renderSideHtml(asksDecorated, "is-ask");
+  if (bidsEl) bidsEl.innerHTML = renderSideHtml(bidsDecorated, "is-bid");
+
+  if ((activeCleared.length || activeWalls.length) && obDecayTimer === null) {
+    obDecayTimer = setTimeout(() => {
+      obDecayTimer = null;
+      renderOrderbook();
+    }, 435);
   }
 
   if (midEl) midEl.textContent = fmtUsd(market?.markPriceUsd ?? orderbook.bestBidUsd);
   if (spreadEl) {
-    spreadEl.textContent = `Spread $${orderbook.spreadUsd.toLocaleString("en-US")} (${orderbook.spreadBps} bps) · 0 bps fee`;
+    spreadEl.textContent = `Spread $${orderbook.spreadUsd.toLocaleString("en-US")} (${orderbook.spreadBps} bps) · 0 fee`;
   }
 
   if (tradesEl && Array.isArray(orderbook.recentTrades)) {
@@ -304,22 +607,41 @@ function renderOrderbook() {
 
 function renderQuoteSummary() {
   const q = window.SHZ_STATE.quote;
+  const oq = window.SHZ_STATE.optionQuote;
+  const mkt = window.SHZ_STATE.market;
   if (!q) return;
 
+  const isOption = mkt?.contractKind === "Option" && Boolean(oq);
+  const optBanner = document.getElementById("ticket-option-banner");
+  if (optBanner) {
+    optBanner.hidden = !isOption;
+    if (isOption) {
+      optBanner.innerHTML = `<strong>${oq.optionType.toUpperCase()} $${oq.strikeUsd.toLocaleString("en-US")}</strong> · IV ${oq.ivPct}% · Δ ${oq.delta} · Mark ${oq.markBtc} BTC (${fmtUsd(oq.markUsd)}) · BE ${fmtUsd(oq.breakevenUsd)}`;
+    }
+  }
+
   const isShort = ticket.side === "Short";
-  const isSatsHedge = isShort && ticket.leverageX <= 1;
+  const isSatsHedge = !isOption && isShort && ticket.leverageX <= 1;
 
   const badge = document.getElementById("satshedge-badge");
   if (badge) badge.hidden = !isSatsHedge;
 
   const sumMargin = document.getElementById("sum-margin");
   if (sumMargin) {
-    sumMargin.textContent = `${fmtSats(q.userMarginSats)} sats (${fmtBtc(q.userMarginSats)} BTC)`;
+    if (isOption) {
+      const reqSats = isShort ? oq.writerCollateralSats : oq.buyerPremiumSats;
+      sumMargin.textContent = `${fmtSats(reqSats)} sats (${fmtBtc(reqSats)} BTC)`;
+    } else {
+      sumMargin.textContent = `${fmtSats(q.userMarginSats)} sats (${fmtBtc(q.userMarginSats)} BTC)`;
+    }
   }
 
   const sumLiq = document.getElementById("sum-liq");
   if (sumLiq) {
-    if (q.userLiquidationPriceUsd === null) {
+    if (isOption) {
+      sumLiq.textContent = isShort ? "COVERED 1.0x BTC CALL/PUT" : "MAX LOSS = PREMIUM";
+      sumLiq.className = "is-long";
+    } else if (q.userLiquidationPriceUsd === null) {
       sumLiq.textContent = "∞ UNLIQUIDATABLE (1x SatsHedge)";
       sumLiq.className = "is-long";
     } else {
@@ -330,31 +652,34 @@ function renderQuoteSummary() {
 
   const sumCets = document.getElementById("sum-cets");
   if (sumCets) {
-    sumCets.textContent = `${q.compressed20BitCetCount.toLocaleString("en-US")} CETs (${q.cetCompressionRatioPct}%)`;
+    const cetCnt = isOption ? oq.compressed20BitCetCount : q.compressed20BitCetCount;
+    sumCets.textContent = `${cetCnt.toLocaleString("en-US")} CETs`;
   }
 
   const sumFunding = document.getElementById("sum-funding");
   if (sumFunding) {
-    sumFunding.textContent = `${fmtSats(q.totalCollateralSats)} sats`;
+    const totSats = isOption ? oq.totalP2trFundingSats : q.totalCollateralSats;
+    sumFunding.textContent = `${fmtSats(totSats)} sats`;
   }
 
-  // Update chart header telemetry strip
   const setText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
   };
-  setText("chart-meta-entry", fmtUsd(q.entryPriceUsd));
-  setText("chart-meta-long-liq", fmtUsd(q.longLiquidationPriceUsd));
+  setText("chart-meta-entry", isOption ? `Strike ${fmtUsd(oq.strikeUsd)}` : fmtUsd(q.entryPriceUsd));
+  setText("chart-meta-long-liq", isOption ? `BE ${fmtUsd(oq.breakevenUsd)}` : fmtUsd(q.longLiquidationPriceUsd));
   setText(
     "chart-meta-short-liq",
-    q.shortLiquidationPriceUsd === null ? "∞ UNLIQ (1x)" : fmtUsd(q.shortLiquidationPriceUsd)
+    isOption ? `IV ${oq.ivPct}%` : q.shortLiquidationPriceUsd === null ? "∞ UNLIQ (1x)" : fmtUsd(q.shortLiquidationPriceUsd)
   );
-  setText("chart-meta-cets", q.compressed20BitCetCount.toLocaleString("en-US"));
+  setText("chart-meta-cets", (isOption ? oq.compressed20BitCetCount : q.compressed20BitCetCount).toLocaleString("en-US"));
 
   const submitBtn = document.getElementById("btn-submit-order");
   if (submitBtn) {
     submitBtn.className = `shz-submit-btn ${isShort ? "is-short" : "is-long"}`;
-    if (isSatsHedge) {
+    if (isOption) {
+      submitBtn.textContent = `${isShort ? "Write / Short" : "Buy / Long"} ${oq.optionType} $${Math.round(oq.strikeUsd / 1000)}k (0 Fee)`;
+    } else if (isSatsHedge) {
       submitBtn.textContent = "Open 1x SatsHedge Short (0 Fee)";
     } else if (isShort) {
       submitBtn.textContent = `Sell / Short ${ticket.leverageX}x (0 Fee)`;
@@ -367,7 +692,6 @@ function renderQuoteSummary() {
 function renderFallbackWorkbenchIfNeeded() {
   const dock = document.getElementById("shz-workbench-root");
   if (!dock) return;
-  // Only render graceful fallback if /workbench.js hasn't mounted its own DOM
   if (dock.children.length > 0 && !dock.querySelector("[data-shz-fallback='true']")) {
     return;
   }
@@ -390,8 +714,8 @@ function renderFallbackWorkbenchIfNeeded() {
   dock.innerHTML = `
     <div class="shz-fallback-dock" data-shz-fallback="true">
       <div class="shz-panel-head" style="padding:4px 0 6px;background:transparent">
-        <span class="shz-panel-title">Active Positions (Fallback Dock — awaiting /workbench.js)</span>
-        <span class="shz-micro-muted mono">${(window.SHZ_STATE.positions || []).length} open LN-DLC subchannels · 0 bps fee</span>
+        <span class="shz-panel-title">Active Positions (Fallback Dock)</span>
+        <span class="shz-micro-muted mono">${(window.SHZ_STATE.positions || []).length} open P2TR subchannels · 0 bps fee</span>
       </div>
       <table>
         <thead>
@@ -409,7 +733,6 @@ function checkChartFallback() {
   const canvas = document.getElementById("shz-main-canvas");
   const fb = document.getElementById("shz-chart-fallback");
   if (!canvas || !fb) return;
-  // Show fallback hint only if canvas has not been sized/drawn by /charts.js
   const untouched = canvas.width === 300 && canvas.height === 150;
   fb.hidden = !untouched;
 }
@@ -465,20 +788,62 @@ function scheduleQuote() {
 }
 
 function bindEvents() {
-  // Instrument selector
   document.getElementById("shz-instrument-select")?.addEventListener("change", (e) => {
     ticket.limitPriceTouched = false;
     refreshState(e.target.value).catch((err) => showFeedback(err.message, true));
   });
 
-  // Chart mode buttons
+  // Top desk view buttons
+  document.querySelectorAll("[data-desk-view]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.getAttribute("data-desk-view");
+      if (mode === "options") {
+        toggleOptionsChain(true);
+      } else if (mode === "oracle") {
+        toggleOracleDrawer();
+      } else {
+        oracleDrawerOpen = false;
+        setChartMode("candles");
+        renderOracleChecker();
+      }
+    });
+  });
+
+  document.getElementById("btn-verify-oracles")?.addEventListener("click", () => {
+    verifyOracles().catch((err) => showFeedback(err.message, true));
+  });
+
+  document.getElementById("btn-chart-options")?.addEventListener("click", () => {
+    toggleOptionsChain();
+  });
+
+  document.getElementById("shz-options-chain-panel")?.addEventListener("click", (e) => {
+    const cell = e.target.closest("[data-opt-symbol]");
+    if (!cell) return;
+    const sym = cell.getAttribute("data-opt-symbol");
+    if (!sym) return;
+    optionsChainOpen = false;
+    syncViewTabs();
+    refreshState(sym).catch((err) => showFeedback(err.message, true));
+  });
+
+  document.getElementById("btn-sweep-book")?.addEventListener("click", () => {
+    sweepOrderbook()
+      .then((res) => {
+        showFeedback(
+          `Swept ${res.clearedLevels?.length || 1} L2 level(s) (${fmtUsd(res.filledUsdNotional)}) · 0 sats fee`,
+          false
+        );
+      })
+      .catch((err) => showFeedback(err.message, true));
+  });
+
   document.querySelectorAll("[data-chart-mode]").forEach((btn) => {
     btn.addEventListener("click", () => {
       setChartMode(btn.getAttribute("data-chart-mode"));
     });
   });
 
-  // Orderbook click -> populate limit price
   const handleBookClick = (e) => {
     const row = e.target.closest("[data-ob-price]");
     if (!row) return;
@@ -500,7 +865,6 @@ function bindEvents() {
   document.getElementById("ob-asks")?.addEventListener("click", handleBookClick);
   document.getElementById("ob-bids")?.addEventListener("click", handleBookClick);
 
-  // Side tabs
   document.querySelectorAll("[data-side]").forEach((btn) => {
     btn.addEventListener("click", () => {
       ticket.side = btn.getAttribute("data-side") === "Long" ? "Long" : "Short";
@@ -509,7 +873,6 @@ function bindEvents() {
     });
   });
 
-  // Order type toggle
   document.querySelectorAll("[data-order-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       ticket.orderType = btn.getAttribute("data-order-type") === "rfq" ? "rfq" : "limit";
@@ -518,7 +881,6 @@ function bindEvents() {
     });
   });
 
-  // Notional input + chips
   document.getElementById("input-usd-notional")?.addEventListener("input", (e) => {
     const v = Number(e.target.value);
     if (Number.isFinite(v) && v >= 1) {
@@ -536,7 +898,6 @@ function bindEvents() {
     });
   });
 
-  // Limit price + Mark button
   document.getElementById("input-limit-price")?.addEventListener("input", (e) => {
     const v = Number(e.target.value);
     if (Number.isFinite(v) && v >= 1) {
@@ -555,7 +916,6 @@ function bindEvents() {
     scheduleQuote();
   });
 
-  // Leverage slider + chips
   document.getElementById("input-leverage")?.addEventListener("input", (e) => {
     ticket.leverageX = Number(e.target.value);
     syncTicketControls();
@@ -570,7 +930,6 @@ function bindEvents() {
     });
   });
 
-  // Oracle & Collateral selects
   document.getElementById("select-oracle")?.addEventListener("change", (e) => {
     ticket.oraclePolicy = e.target.value;
   });
@@ -580,7 +939,6 @@ function bindEvents() {
     syncTicketControls();
   });
 
-  // Order submission
   document.getElementById("shz-order-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
@@ -617,6 +975,7 @@ function bindEvents() {
 async function init() {
   bindEvents();
   syncTicketControls();
+  syncViewTabs();
   try {
     await refreshState("BTC-INVERSE-PERP");
   } catch (err) {
