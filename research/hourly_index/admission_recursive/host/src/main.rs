@@ -1,4 +1,5 @@
 //! Bounded CPU proof ladder. No network prover, fake receipts, Groth16 or KZG.
+mod profile;
 use bincode::Options;
 use risc0_zkvm::{default_prover,ExecutorEnv,InnerReceipt,ProverOpts,Receipt};
 use shz_admission_recursive_core::{benchmark_inputs,execute_leaf,expected_root,join,Claim,Input,Journal,Plan,RELATION};
@@ -10,8 +11,11 @@ const CYCLE_CAP:u64=8*1024*1024;
 fn read(path:&Path)->R<Vec<u8>>{use std::io::Read;let mut b=Vec::new();fs::File::open(path)?.take((CAP+1)as u64).read_to_end(&mut b)?;if b.len()>CAP{return Err("input cap".into())}Ok(b)}
 fn codec()->impl Options{bincode::DefaultOptions::new().with_fixint_encoding().with_limit(CAP as u64).reject_trailing_bytes()}
 fn verified(r:&Receipt,expected:&Journal)->R<()> {
- if !matches!(&r.inner,InnerReceipt::Succinct(_)){return Err("real transparent succinct receipt required".into())}
- r.verify(ADMIT_AGGREGATE_ID)?;
+ if !matches!(&r.inner,InnerReceipt::Succinct(s) if s.hashfn=="poseidon2"){return Err("real transparent succinct receipt required".into())}
+ let ctx=risc0_zkvm::VerifierContext::empty()
+  .with_suites(risc0_zkvm::VerifierContext::default_hash_suites().into_iter().filter(|(name,_)|name=="poseidon2").collect())
+  .with_succinct_verifier_parameters(Default::default());
+ r.verify_with_context(&ctx,ADMIT_AGGREGATE_ID)?;
  if expected.ctx.image_id!=ADMIT_AGGREGATE_ID||r.journal.bytes!=expected.encode()?||Journal::decode(&r.journal.bytes)?!=*expected{return Err("unexpected journal or image".into())}Ok(())
 }
 fn prove(input:&Input,assumptions:&[Receipt],expected:&Journal)->R<(Receipt,serde_json::Value)>{
@@ -79,8 +83,31 @@ fn run()->R<()> {
   fs::write(out.join("negative.json"),serde_json::to_vec_pretty(&negative.ok_or("missing child substitution control")?)?)?;
   let v=independent(&c,n,&out.join("root.bin"))?;fs::write(out.join("verification.json"),serde_json::to_vec_pretty(&v)?)?;println!("{v}");
  },
+ Some("expected") if a.len()==4=>{
+  let c:Claim=serde_json::from_slice(&read(Path::new(&a[2]))?)?;
+  let n=a[3].parse::<usize>()?;
+  let j=expected_root(&c,ADMIT_AGGREGATE_ID,n)?;
+  println!("{}",serde_json::json!({"image_id_words":ADMIT_AGGREGATE_ID,"journal_hex":hex::encode(j.encode()?),"snapshot_pin":c.pin,"sdk":"3.1.0"}));
+ },
+ Some("profile") if a.len()==6=>{
+  let c:Claim=serde_json::from_slice(&read(Path::new(&a[2]))?)?;
+  let n=a[3].parse::<usize>()?;
+  let expected=expected_root(&c,ADMIT_AGGREGATE_ID,n)?;
+  let bytes=read(Path::new(&a[4]))?;
+  let r:Receipt=codec().deserialize(&bytes)?;
+  verified(&r,&expected)?;
+  let mut bad=r.clone();
+  match &mut bad.inner{InnerReceipt::Succinct(s) if !s.seal.is_empty()=>{let k=s.seal.len()-1;s.seal[k]^=1;},_=>return Err("missing seal".into())}
+  let rejected=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||verified(&bad,&expected))).map_or(true,|v|v.is_err());
+  if !rejected{return Err("tampered seal unexpectedly verified".into())}
+  fs::write(&a[5],codec().serialize(&bad)?)?;
+  let mut report=profile::profile(&r,ADMIT_AGGREGATE_ID)?;
+  report["tampered_seal_rejected"]=serde_json::json!(true);
+  report["receipt_bytes"]=serde_json::json!(bytes.len());
+  println!("{report}");
+ },
  Some("verify") if a.len()==5=>{let c:Claim=serde_json::from_slice(&read(Path::new(&a[2]))?)?;let n=a[3].parse::<usize>()?;if n<2{return Err("aggregate needs two leaves".into())}println!("{}",independent(&c,n,Path::new(&a[4]))?);},
- _=>return Err("usage: host prove EXPECTED.json PLAN.json NEW_DIR | verify EXPECTED.json SEGMENTS ROOT.bin".into())
+ _=>return Err("usage: host prove EXPECTED.json PLAN.json NEW_DIR | verify EXPECTED.json SEGMENTS ROOT.bin | expected EXPECTED.json SEGMENTS | profile EXPECTED.json SEGMENTS ROOT.bin MUTATED.bin".into())
  }
  Ok(())
 }

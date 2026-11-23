@@ -36,3 +36,7 @@ RISC Zero sources: https://dev.risczero.com/proof-system/ and https://dev.riscze
 ## 4. Unresolved NEAR gate
 
 A successful root receipt would be independently verifiable native STARK evidence of structural admission. NEAR still needs a reviewed on-chain transparent STARK verifier and exact pinned receipt/control-root binding, with sandbox gas measurements. The alternative backend does not solve the already separate source authentication, provider completeness, watermark authority, maximality depth18 selection, POLICY-01 composition, Bitcoin finality or DLC attestation gates. All NEAR and production flags remain false. The first deployment target is a verifiable structural source snapshot consumed by the existing selection/policy pipeline, not automatic settlement authorization.
+
+## Superseding security update (ADMIT-08)
+
+The original 3.0.6 dependency was withdrawn. See [ADMIT-08](SHZ_INDEX_ADMISSION_08_PATCHED_STARK_VERIFIER.md) for the patched SDK/control-root gate. No 3.0.6 receipts are accepted.

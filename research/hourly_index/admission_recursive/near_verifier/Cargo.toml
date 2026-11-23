@@ -1,0 +1,22 @@
+[package]
+name = "shz-near-stark-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+[workspace]
+[dependencies]
+near-sdk = { version = "=5.17.2", features = ["legacy"] }
+risc0-zkvm = { version = "=3.1.0", default-features = false, features = ["std", "disable-dev-mode"] }
+bincode = "=1.3.3"
+shz-admission-recursive-core = { path = "../core" }
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+overflow-checks = true
+codegen-units = 1

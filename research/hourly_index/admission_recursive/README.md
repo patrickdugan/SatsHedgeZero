@@ -14,7 +14,7 @@ node --test tests/reference.test.mjs
 cargo test --manifest-path core/Cargo.toml
 ```
 
-Install the RISC Zero Rust toolchain with `rzup`. Use the exact pinned SDK in the Cargo manifests (3.0.6). From this directory:
+Install the RISC Zero Rust toolchain with `rzup`. Use the exact pinned SDK in the Cargo manifests (zkVM 3.1.0, build 3.0.7). From this directory:
 
 ```sh
 export RISC0_PROVER=local
