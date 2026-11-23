@@ -1,0 +1,18 @@
+[package]
+name = "shz-near-hourly-checkpoint"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Public SHA256 hourly checkpoint inclusion verifier, research-only, explicitly not yet ZK or oracle authenticated"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { version = "=5.17.2", features = ["legacy"] }
+hex = "0.4"
+
+[dev-dependencies]
+near-sdk = { version = "=5.17.2", features = ["legacy", "unit-testing"] }
+
+[workspace]
