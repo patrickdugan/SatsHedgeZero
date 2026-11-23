@@ -1,0 +1,43 @@
+name: shz-hourly-index-transparent-nova
+on:
+  push:
+    branches: ["research/shz-hourly-index-nova-*"]
+  pull_request:
+    paths: ["research/hourly_index/nova/**", ".github/workflows/shz-hourly-index-nova-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  constrained-checkpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Record environment and resolve dependencies
+        run: |
+          rustc -Vv
+          cargo -V
+          cargo generate-lockfile --manifest-path research/hourly_index/nova/Cargo.toml
+      - name: Run actual R1CS relation tests
+        run: cargo test --release --locked --manifest-path research/hourly_index/nova/Cargo.toml -- --test-threads=1 --nocapture
+      - name: Build native prover and verifier
+        run: cargo build --release --locked --manifest-path research/hourly_index/nova/Cargo.toml
+      - name: Prove eight hourly folds with transparent compression
+        run: |
+          /usr/bin/time -v research/hourly_index/nova/target/release/shz-hourly-index-nova prove research/hourly_index/fixtures/checkpoint.json research/hourly_index/nova/expected_fixture.json "$RUNNER_TEMP/shz-index-proof" 2> "$RUNNER_TEMP/shz-index-prove-time.txt"
+      - name: Independently reconstruct key and verify persisted proof
+        run: |
+          set -o pipefail
+          /usr/bin/time -v research/hourly_index/nova/target/release/shz-hourly-index-nova verify research/hourly_index/fixtures/checkpoint.json research/hourly_index/nova/expected_fixture.json "$RUNNER_TEMP/shz-index-proof" 2> "$RUNNER_TEMP/shz-index-verify-time.txt" | tee "$RUNNER_TEMP/shz-index-proof/verification.json"
+          cp "$RUNNER_TEMP"/shz-index-*-time.txt "$RUNNER_TEMP/shz-index-proof/"
+          cp research/hourly_index/nova/Cargo.lock "$RUNNER_TEMP/shz-index-proof/Cargo.lock"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: shz-index-transparent-nova-evidence
+          path: ${{ runner.temp }}/shz-index-proof
+          retention-days: 7
