@@ -1,0 +1,38 @@
+{
+  "schema": "shz/admission-packed-state-width/v1",
+  "layout_analytical": true,
+  "native_reference_tests_passed": 12,
+  "inherited_reference_tests_passed": 27,
+  "rust_proof_verified": false,
+  "profiles": [
+    {
+      "depth": 4,
+      "legacy_arity": 32,
+      "packed_arity": 16,
+      "header_bits": 206,
+      "max_summary_field_bits": 192,
+      "compiled_circuit": true
+    },
+    {
+      "depth": 18,
+      "legacy_arity": 88,
+      "packed_arity": 44,
+      "header_bits": 220,
+      "max_summary_field_bits": 192,
+      "compiled_circuit": false
+    },
+    {
+      "depth": 24,
+      "legacy_arity": 112,
+      "packed_arity": 56,
+      "header_bits": 226,
+      "max_summary_field_bits": 192,
+      "compiled_circuit": false
+    }
+  ],
+  "frozen_microsteps": {
+    "pyth": 24,
+    "chainlink": 16
+  },
+  "note": "Exact width reduction. No measured augmented constraints, proof-time or NEAR gas improvement."
+}

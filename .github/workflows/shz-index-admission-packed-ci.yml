@@ -1,0 +1,66 @@
+name: shz-index-admission-packed-state-nova
+on:
+  push:
+    branches: ["research/shz-index-admission-04-*"]
+  pull_request:
+    paths: ["research/hourly_index/admission_packed/**", "docs/SHZ_INDEX_ADMISSION_04_PACKED_STATE.md", ".github/workflows/shz-index-admission-packed-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  admission-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify exact frozen MAX-01 snapshot bridge and all prefixes
+        run: |
+          node --test research/hourly_index/admission_packed/tests/packing.test.mjs
+          node --test research/hourly_index/admission_fused/tests/frontier.test.mjs
+      - name: Exercise actual fixed-shape R1CS and malicious transitions
+        run: |
+          B=research/hourly_index/admission_packed
+          rustc -Vv
+          cargo generate-lockfile --manifest-path "$B/Cargo.toml"
+          set -o pipefail
+          cargo test --release --locked --manifest-path "$B/Cargo.toml" -- --test-threads=1 --nocapture | tee "$RUNNER_TEMP/shz-admit-packed-r1cs.txt"
+          grep SHZ_ADMISSION_PACK_COUNTS "$RUNNER_TEMP/shz-admit-packed-r1cs.txt"
+      - name: Build native prover and verifier
+        run: cargo build --release --locked --manifest-path research/hourly_index/admission_packed/Cargo.toml
+      - name: Prove and independently verify both source histories
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_packed
+          exe="$B/target/release/shz-hourly-index-admission-packed-nova"
+          for source in pyth chainlink; do
+            out="$RUNNER_TEMP/shz-admission-$source"
+            /usr/bin/time -v "$exe" prove "research/hourly_index/admission_fused/fixtures/$source-steps.json" "research/hourly_index/admission_fused/fixtures/$source-expected.json" "$out" 2> "$RUNNER_TEMP/$source-prove-time.txt"
+            /usr/bin/time -v "$exe" verify "research/hourly_index/admission_fused/fixtures/$source-expected.json" "$out" 2> "$RUNNER_TEMP/$source-verify-time.txt" | tee "$out/verification.json"
+            cp "$RUNNER_TEMP/$source-"*-time.txt "$B/Cargo.lock" "$out/"
+          done
+          node --input-type=module - <<'JS'
+          import {readFileSync} from 'node:fs';
+          const max=JSON.parse(readFileSync('research/hourly_index/maximality/fixtures/expected.json','utf8'));
+          for(const source of ['pyth','chainlink']) {
+            const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/shz-admission-'+source+'/verification.json','utf8'));
+            const c=JSON.parse(readFileSync('research/hourly_index/admission_fused/fixtures/'+source+'-expected.json','utf8'));
+            const p=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/shz-admission-'+source+'/report.json','utf8'));
+            if(p.state_arity!==16||p.steps!==c.steps||c.pin!==max.pins[source])throw Error('unexpected packed state or trace size');
+            if(r.relation!=="shz/ordered-admission-frontier-nova/v4-packed-state/depth4" || !r.independent_compressed_verified || r.snapshot_pin!==max.pins[source] || r.flags.near_nova_verified || r.flags.source_authentication || r.flags.can_authorize_dlc_settlement)throw Error('unproven or inconsistent source history');
+          }
+          JS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: shz-index-admission-packed-state-proofs
+          path: |
+            ${{ runner.temp }}/shz-admission-*
+            ${{ runner.temp }}/shz-admit-packed-r1cs.txt
+          retention-days: 7
