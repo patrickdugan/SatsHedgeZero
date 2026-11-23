@@ -62,7 +62,7 @@ impl ShzNearFraudGuard {
           || r.receipt_hash.len()!=64 || r.precommit_root.len()!=64 {return false}
         let Ok(s)=hex::decode(&r.signature_hex) else {return false};
         let Ok(sig) = <[u8;64]>::try_from(s.as_slice()) else {return false};
-        env::ed25519_verify(&sig,self.relay_message(r),&self.relayer_signer)
+        env::ed25519_verify(&sig,&self.relay_message(r),&self.relayer_signer)
     }
 }
 
