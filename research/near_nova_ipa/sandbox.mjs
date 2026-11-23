@@ -30,7 +30,7 @@ try {
   assert.equal(bad, false, 'modified proof must be rejected by NEAR sandbox');
   const canAuthorize = await provider.callFunction({contractId:'sandbox', method:'can_authorize_nova', args:{}});
   assert.equal(canAuthorize, false, 'no live Nova authorization');
-  const receipt = await account.callFunction({contractId:'sandbox', methodName:'verify_ipa', args:params, gas:teraToGas('300')});
+  const receipt = await account.callFunctionRaw({contractId:'sandbox', methodName:'verify_ipa', args:params, gas:teraToGas('300')});
   assert.equal(Boolean(receipt?.status?.Failure), false, 'valid proof transaction must succeed');
   const outcomes = receipt?.receipts_outcome ?? receipt?.receipts_outcomes ?? [];
   const receiptGasBurnt = outcomes.reduce((sum,r) => sum + BigInt(r?.outcome?.gas_burnt ?? r?.gas_burnt ?? 0), 0n);
