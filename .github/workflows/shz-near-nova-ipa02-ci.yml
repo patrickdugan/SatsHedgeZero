@@ -51,7 +51,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: shz-ipa02-mnr03-nea-sandbox-and-archive
+          name: shz-ipa02-mnr03-near-sandbox-and-archive
           path: |
             ${{ runner.temp }}/ipa02-mnr03-sandbox-receipt.json
             /tmp/shz-ipa02-archive-gate.json

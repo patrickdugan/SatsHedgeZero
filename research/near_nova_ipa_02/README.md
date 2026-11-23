@@ -20,7 +20,7 @@ c=<a,b>=3 + 5*(3900-3450-450)=3 mod BN254.Fr
 
 The NEAR contract independently checks each public amount and commitment, then uses BN254 multiexponentiation to verify the inner-product argument over `log2(n)` rounds. This is a cost and binding experiment. Most of these values are public, so IPA here has no privacy advantage and the verifier already computes the accounting equality itself.
 
-The `state_root_hex` binds the selected recorded MNR-03 public inputs. Its archived receipt is checked separately by `evidence_gate.mjs`: public journal/statement consistency, archived proof SHA256, genesis/epoch pins, and actual Bitcoin TXID reconstruction from the complete SegWit transaction. These checks **do not constitute an on-chain Nova proof verification**.
+The `state_root_hex` binds the selected recorded MNR-03 public inputs. Its archived receipt is checked separately by `evidence_gate.mjs`: public journal/statement consistency, archived proof SHA256, epoch and verifier-key pins, and actual Bitcoin TXID reconstruction from the complete SegWit transaction. These checks **do not constitute an on-chain Nova proof verification**.
 
 ## Scope boundary
 

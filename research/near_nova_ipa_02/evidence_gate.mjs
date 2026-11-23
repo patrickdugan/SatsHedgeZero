@@ -22,10 +22,10 @@ export function txidFromSegwitHex(s){
  if(k.v<1||k.v>100)fail('input count');const inputCount=k.v;
  for(let i=0;i<inputCount;i++){p=skip(raw,p,36);k=varint(raw,p);p=skip(raw,k.p,k.v);p=skip(raw,p,4)}
  base.push(raw.subarray(vinStart,p));const voutStart=p;k=varint(raw,p);p=k.p;
- if(k.v<1||k.v>100)fail('output count');
- for(let i=0;i<k.v;i++){p=skip(raw,p,8);k=varint(raw,p);p=skip(raw,k.p,k.v)}
+ if(k.v<1||k.v>100)fail('output count');const outputCount=k.v;
+ for(let i=0;i<outputCount;i++){p=skip(raw,p,8);k=varint(raw,p);p=skip(raw,k.p,k.v)}
  base.push(raw.subarray(voutStart,p));
- if(wit){for(let i=0;i<inputCount;i++){k=varint(raw,p);p=k.p;if(k.v>100)fail('witness item count');for(let j=0;j<k.v;j++){k=varint(raw,p);p=skip(raw,k.p,k.v)}}}
+ if(wit){for(let i=0;i<inputCount;i++){k=varint(raw,p);p=k.p;if(k.v>100)fail('witness item count');const witnessItems=k.v;for(let j=0;j<witnessItems;j++){k=varint(raw,p);p=skip(raw,k.p,k.v)}}}
  const lock=raw.subarray(p,skip(raw,p,4));p+=4;if(p!==raw.length)fail('trailing tx bytes');base.push(lock);
  const tx=Buffer.concat(base);return Buffer.from(hash(hash(tx))).reverse().toString('hex');
 }
