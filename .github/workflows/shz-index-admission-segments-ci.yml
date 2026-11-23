@@ -1,0 +1,98 @@
+name: shz-index-admission-segment-chain
+on:
+  push:
+    branches: ["research/shz-index-admission-06-*"]
+  pull_request:
+    paths:
+      - "research/hourly_index/admission_segments/**"
+      - "docs/SHZ_INDEX_ADMISSION_06_SEGMENT_COMPOSITION.md"
+      - ".github/workflows/shz-index-admission-segments-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shz-admit06-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  segment-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '1'
+      SHZ_SEGMENT_MAX_FOLDS: '256'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Validate reference plan and adversarial cuts
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_segments
+          C=research/hourly_index/admission_scale/fixtures/128-expected.json
+          node --test "$B/tests/plan.test.mjs"
+          mkdir -p "$RUNNER_TEMP/shz-admit06"
+          node "$B/plan.mjs" "$C" 32 "$RUNNER_TEMP/shz-admit06/plan.json"
+          cmp "$B/fixtures/128-plan.json" "$RUNNER_TEMP/shz-admit06/plan.json"
+      - name: Compile exact depth18 relation and exercise segment boundary R1CS
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_segments
+          cargo generate-lockfile --manifest-path "$B/Cargo.toml"
+          cargo test --release --locked --manifest-path "$B/Cargo.toml" -- --test-threads=1 --nocapture | tee "$RUNNER_TEMP/shz-admit06/r1cs.txt"
+          cargo build --release --locked --manifest-path "$B/Cargo.toml"
+      - name: Replay and prove four segments using two CPU workers
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_segments
+          export EXE="$PWD/$B/target/release/shz-hourly-index-admission-segments"
+          export PLAN="$PWD/$B/fixtures/128-plan.json"
+          export CLAIM="$PWD/research/hourly_index/admission_scale/fixtures/128-expected.json"
+          export OUT="$RUNNER_TEMP/shz-admit06"
+          "$EXE" trace "$PLAN" "$CLAIM" | tee "$OUT/trace.json"
+          t0=$(date +%s)
+          printf '0\n1\n2\n3\n' | xargs -P 2 -I '{}' bash -euo pipefail -c '/usr/bin/time -v -o "$OUT/segment-$1-time.txt" "$EXE" prove "$PLAN" "$CLAIM" "$1" "$OUT/segment-$1" > "$OUT/segment-$1-stdout.json"' _ '{}'
+          echo "$(( $(date +%s)-t0 ))" > "$OUT/two-worker-wall-seconds.txt"
+          /usr/bin/time -v -o "$OUT/verify-time.txt" "$EXE" verify "$PLAN" "$CLAIM" "$OUT" | tee "$OUT/verification.json"
+          cp "$B/Cargo.lock" "$OUT/Cargo.lock"
+      - name: Reject genuine proof substitution with recomputed proof hash
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_segments
+          EXE="$B/target/release/shz-hourly-index-admission-segments"
+          OUT="$RUNNER_TEMP/shz-admit06"
+          CLAIM=research/hourly_index/admission_scale/fixtures/128-expected.json
+          BAD="$RUNNER_TEMP/shz-admit06-substitution"
+          mkdir "$BAD"
+          cp -r "$OUT"/segment-[0-3] "$BAD/"
+          cp "$BAD/segment-1/proof.bin" "$BAD/segment-0/proof.bin"
+          node --input-type=module - "$BAD" <<'JS'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const p=process.argv[2]+'/segment-0/';
+          const m=JSON.parse(readFileSync(p+'manifest.json','utf8'));
+          m.proof_sha256=createHash('sha256').update(readFileSync(p+'proof.bin')).digest('hex');
+          writeFileSync(p+'manifest.json',JSON.stringify(m));
+          JS
+          if "$EXE" verify "$B/fixtures/128-plan.json" "$CLAIM" "$BAD" > "$OUT/substitution-stdout.txt" 2> "$OUT/substitution-rejection.txt"; then
+            echo 'substituted proof unexpectedly verified' >&2; exit 1
+          fi
+          grep -E 'compressed verify|wrong terminal frontier|malformed proof verifier panic' "$OUT/substitution-rejection.txt"
+          node --input-type=module - "$OUT" <<'JS'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const d=process.argv[2],v=JSON.parse(readFileSync(d+'/verification.json','utf8'));
+          if(!v.proof_chain_verified || v.recursive_aggregate_verified || v.segments!==4 || v.folds!==256 || v.state_arity!==44 || !v.wrong_start_rejected || !v.wrong_end_rejected || !v.wrong_count_rejected || !v.wrong_segment_rejected || !v.trailing_rejected)throw Error('missing acceptance gate');
+          const rows=Array.from({length:4},(_,i)=>JSON.parse(readFileSync(d+'/segment-'+i+'/report.json','utf8')));
+          if(rows.some(r=>r.verifier_key_sha256!==v.verifier_key_sha256 || !r.compressed_segment_verified || r.whole_history_verified))throw Error('wrong segment scope');
+          const m={...v,actual_substituted_proof_rejected:true,parallel_workers:2,worker_rayon_threads:1,parallel_prove_wall_seconds:Number(readFileSync(d+'/two-worker-wall-seconds.txt','utf8')),segment_metrics:rows,measured_speedup_vs_serial:false};
+          writeFileSync(d+'/summary.json',JSON.stringify(m,null,2)+'\n');
+          console.log(JSON.stringify({verified:true,segments:m.segments,folds:m.folds,wall_seconds:m.parallel_prove_wall_seconds,total_proof_bytes:m.total_proof_bytes,recursive_aggregate_verified:false}));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit06-segment-chain
+          path: ${{ runner.temp }}/shz-admit06
+          retention-days: 7
