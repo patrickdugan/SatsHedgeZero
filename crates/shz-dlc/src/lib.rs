@@ -2,6 +2,8 @@
 //! vanilla BTC `P2TR` funding/buffer/CET descriptors, and non-custodial Lightning
 //! subchannel state transitions.
 
+pub mod taproot_derivatives;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use k256::{
     AffinePoint, EncodedPoint, ProjectivePoint, Scalar, U256,

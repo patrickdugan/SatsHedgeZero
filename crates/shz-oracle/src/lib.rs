@@ -1,6 +1,7 @@
 //! `shz-oracle` — Pluggable oracle feeds (`TradeLayer` L1 VWAP + `Pyth` et al. NEAR Borsh relay),
 //! `t-of-n` FROST state oracle confederation, and NEAR-compatible bonded fraud proofs.
 
+pub mod checker;
 pub mod fraud_proofs;
 pub mod frost;
 pub mod pyth_lazer;
@@ -24,6 +25,8 @@ pub enum OracleError {
     StaleObservation,
     #[error("feed confidence interval {conf_bps}bps exceeds max {max_bps}bps")]
     ConfidenceTooWide { conf_bps: u64, max_bps: u64 },
+    #[error("dual-oracle spread {spread_bps}bps exceeds max {max_bps}bps")]
+    ProviderDivergence { spread_bps: u64, max_bps: u64 },
     #[error("invalid feed observation: {0}")]
     InvalidObservation(&'static str),
     #[error("invalid FROST signing set: {0}")]

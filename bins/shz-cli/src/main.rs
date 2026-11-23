@@ -3,6 +3,7 @@
 mod mnr02_regtest;
 mod mnr03_harness;
 mod mnr04;
+mod mnr05_derivatives_clearing;
 mod testnet_clearing;
 
 use std::path::PathBuf;
@@ -607,9 +608,21 @@ fn main() {
             );
             println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
         }
+        "mnr05-regtest" => {
+            let default_bitcoind = std::env::var("BITCOIND_BIN")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("bitcoind"));
+            let bitcoind = args
+                .get(1)
+                .map(PathBuf::from)
+                .unwrap_or(default_bitcoind);
+            let receipt =
+                mnr05_derivatives_clearing::run_mnr05_taproot_derivatives_core_regtest(&bitcoind);
+            println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
+        }
         _ => {
             eprintln!(
-                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir] | mnr03-regtest [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | mnr03-testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]"
+                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir] | mnr03-regtest [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | mnr03-testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir] | mnr05-regtest [bitcoind_path]]"
             );
             std::process::exit(1);
         }

@@ -2,10 +2,17 @@
 //! collateral asset abstraction (`VanillaBtc` active in v0 + `TaprootAsset` hook),
 //! and adaptive dyadic prefix CET range compression.
 
+pub mod derivatives;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
+
+pub use derivatives::{
+    DerivativeContractSpec, InverseOptionSpec, OptionKind, SwapTenor,
+    compress_derivative_cet_ranges,
+};
 
 pub const SATS_PER_BTC: u128 = 100_000_000;
 pub const BPS_DENOMINATOR: u128 = 10_000;
@@ -300,7 +307,7 @@ impl InverseContractSpec {
     }
 }
 
-fn round_div_nearest_u128(num: u128, den: u128) -> u128 {
+pub(crate) fn round_div_nearest_u128(num: u128, den: u128) -> u128 {
     let q = num / den;
     let r = num % den;
     let twice_r = r.saturating_mul(2);

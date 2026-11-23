@@ -15,6 +15,7 @@ path = "src/main.rs"
 mnr04-nova = ["shz-nova-bitvm/mnr04-nova"]
 
 [dependencies]
+bitcoin = { version = "=0.32.102", features = ["serde"] }
 borsh.workspace = true
 hex.workspace = true
 k256.workspace = true

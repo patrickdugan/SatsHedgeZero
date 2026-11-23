@@ -1,6 +1,8 @@
 //! `shz-dex` — Decentralized 0-fee P2P inverse orderbook, matching coordinator,
 //! non-custodial `LnDlcSubchannel` factory, and live position risk telemetry.
 
+pub mod derivatives_book;
+
 use serde::{Deserialize, Serialize};
 use shz_dlc::{
     Bip340Signature, BtcOutPoint, DlcError, LnDlcSubchannel, OracleAnnouncement, bip340_sign,

@@ -1,0 +1,193 @@
+﻿{
+  "scenario": "SHZ-MNR-05: Oracle Checker + Bilateral Taproot Option/Swap Matching + L1 Atomic Novation + Offline 0x83 Claim Transfer + Cross-Margined Swap/Option Clearing (Core v31.1 + MNR-04 Verified)",
+  "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+  "oracle_checker_epoch_commitment_hex": "32bf8b692517cb838f4c37fd61d4a3162c53f7b2236be6f717b08bd3a2a0ba2a",
+  "oracle_checker_index_usd": 125000,
+  "oracle_checker_spread_bps": 0,
+  "matched_taproot_instruments": [
+    {
+      "label": "DATED-SWAP-50K-100K-P2TR",
+      "match_id_hex": "34caf9028f643f6763d1ceffdcefabbdf651f64bd21584507d2800bb2a9a581e",
+      "taproot_p2tr_script_hex": "51206705aec6146fa78af117a4bd6af92a1e7bb4f3ba74b67e2fe4796084555a0d75",
+      "total_collateral_sats": 50000000,
+      "protocol_fee_sats": 0,
+      "compressed_18bit_cet_count": 6877
+    },
+    {
+      "label": "EUROPEAN-CALL-105K-0.5BTC-P2TR",
+      "match_id_hex": "23e460041d7ec5096f37501abd15235db079326d4b47ea659e969952f5a089db",
+      "taproot_p2tr_script_hex": "5120d1486c1e99c185c84969928d89b825a2799f458ffcc2699147885f603a8f5f70",
+      "total_collateral_sats": 52500000,
+      "protocol_fee_sats": 0,
+      "compressed_18bit_cet_count": 4338
+    },
+    {
+      "label": "DATED-SWAP-50K-125K-P2TR",
+      "match_id_hex": "2981571661414f7f0fc9a51ee7c30ee771b9def925c97f1c789018f7b765f8a6",
+      "taproot_p2tr_script_hex": "512030f98e977302a4cdab98278b91c8dc839d5c4ab90bcf5ceeb5a184c6b398692c",
+      "total_collateral_sats": 40000000,
+      "protocol_fee_sats": 0,
+      "compressed_18bit_cet_count": 5576
+    },
+    {
+      "label": "EUROPEAN-PUT-130K-0.2BTC-P2TR",
+      "match_id_hex": "376a48129dd6c21298bbf0c378b4d427b71247f27c58ae9e28ef55c314586537",
+      "taproot_p2tr_script_hex": "51206705aec6146fa78af117a4bd6af92a1e7bb4f3ba74b67e2fe4796084555a0d75",
+      "total_collateral_sats": 21000000,
+      "protocol_fee_sats": 0,
+      "compressed_18bit_cet_count": 2885
+    }
+  ],
+  "portfolio_cross_margin_stress": {
+    "party_id": "Bob",
+    "evaluated_prices_usd": [
+      80000,
+      100000,
+      105000,
+      125000,
+      150000,
+      200000
+    ],
+    "sum_standalone_margins_sats": 27500000,
+    "worst_case_portfolio_loss_sats": 4880952,
+    "required_portfolio_margin_sats": 5380952,
+    "cross_margin_relief_sats": 22119048,
+    "cross_margin_relief_bps": 8043,
+    "scenario_solvent_across_grid": true
+  },
+  "transferability_verification": {
+    "mode1_atomic_novation_txid": "4e9790471e1a0e55e3c74637964418dbd5b334cc24bd8bde092459cde6474547",
+    "mode1_alice_immediate_exit_sats": 29500000,
+    "mode1_successor_u_db_vout": 0,
+    "mode1_confirmed_height": 112,
+    "mode2_offline_bob_put_transfer_txid": "917567898829ac2b89baa2391cbb037162b9a4526af7bdb8c7ecdf201638bf0b",
+    "mode2_dave_put_payout_sats": 798670,
+    "mode2_double_transfer_replay_blocked": true,
+    "stale_pre_novation_clearing_blocked": true,
+    "forged_accounting_root_blocked": true
+  },
+  "unified_clearing_receipt": {
+    "epoch_id": 1,
+    "settled_price_usd": 125000,
+    "bob_online_during_clearing": false,
+    "atomic_clearing_txid_hex": "ee1a24566d8117c5d71ca96e1ffa29b3429f19a9565e70093833fc841d35f322",
+    "atomic_clearing_wtxid_hex": "b8841c513f7f13492937d73ae448ee3d3af22e3f75c469b0ce5bcd689ebb7299",
+    "atomic_clearing_vsize": 623,
+    "stripped_348b_sha256d_be_limbs_dec": [
+      "46456557299793721722009487447992934210",
+      "238149768509421615792727954696767281902"
+    ],
+    "mnr04_style_tx_commitment_hex": "98480b83010ede0ce056f1425372a3126be33110bea6c8fb47604ea758ef5dd2",
+    "outputs_sats": [
+      15000000,
+      8000000,
+      54998500,
+      64498500,
+      330
+    ],
+    "bob_swap_0x83_output_sats": 15000000,
+    "bob_call_option_0x83_output_sats": 8000000,
+    "bob_total_received_sats": 23000000,
+    "dave_novated_winner_output_sats": 54998500,
+    "carol_freed_collateral_sats": 64498500,
+    "miner_fee_sats": 2670,
+    "consumed_nullifiers_hex": [
+      "bbbceea47dbcc652082213e1c016a85171760dc3b0739128922526ed6974984e",
+      "a147ccf4097175936eec8c8051a32aca9d6d0d4e380bc1105a5bb7cbbd72ef4b",
+      "b410f9ba35025c7dfabab857d81ad7c0ee15d2b549d39b60f5ef12e9419088fe"
+    ],
+    "prior_ledger_root_hex": "7777777777777777777777777777777777777777777777777777777777777777",
+    "next_ledger_root_hex": "b6182bd07c2062e5f191437b1e503f185f7df626daf2d448ef90fdbfa733d700"
+  },
+  "mnr04_bitcoin_exact_verifier_receipt": {
+    "relation": "shz/mnr04/bitcoin-exact-clearing/v1",
+    "bitcoin_network": "regtest",
+    "genesis_hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+    "txid": "ee1a24566d8117c5d71ca96e1ffa29b3429f19a9565e70093833fc841d35f322",
+    "wtxid": "b8841c513f7f13492937d73ae448ee3d3af22e3f75c469b0ce5bcd689ebb7299",
+    "transaction_commitment": "b81b48ec504a5f34ccadcb775beec3796ae71e18a6bbd323fbee42e8571dbc2e",
+    "ordered_funding_commitment": "b34b6d21149af29d89cc8ce10d5052126b0a2fce7135e085d02f4ef8962bb630",
+    "epoch_context": "32bf8b692517cb838f4c37fd61d4a3162c53f7b2236be6f717b08bd3a2a0ba2a",
+    "funded_sats": 142500000,
+    "payout_sats": [
+      15000000,
+      8000000,
+      54998500,
+      64498500,
+      330
+    ],
+    "fee_sats": 2670,
+    "sigmsg_hex": [
+      [
+        "1fbf761ca1620432a5c3376827d78feeec370c31970d7552a2968863cce5da7e",
+        "ec6d99baba55f4df99c28447b02e922bb53e55065e064988d1fe729b56a867e5",
+        "ec6d99baba55f4df99c28447b02e922bb53e55065e064988d1fe729b56a867e5"
+      ],
+      [
+        "253b741e176466147588815290c5853242954119ca641ac7cd3fb24407229c32",
+        "74304e4ecde7702808911403d5162ecace8aa36489be1a5f4bb855f60c63359d",
+        "74304e4ecde7702808911403d5162ecace8aa36489be1a5f4bb855f60c63359d"
+      ],
+      [
+        "54dce9a2978fcc14856cf3dca079b0e11791dc34c8170329df369b7b1d55c031",
+        "54dce9a2978fcc14856cf3dca079b0e11791dc34c8170329df369b7b1d55c031",
+        null
+      ]
+    ],
+    "native_signature_verified": true,
+    "original_contract_policy_external": true,
+    "nova_authorization_verified": false,
+    "bitvm3_onchain_verified": false,
+    "production_ready": false
+  },
+  "post_clearing_utxo_checks": [
+    {
+      "owner": "Bob-Novated-Swap-0x83",
+      "vout": 0,
+      "sats": 15000000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Bob-Protective-Call-Option-0x83",
+      "vout": 1,
+      "sats": 8000000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Dave-Novated-Swap-Winner",
+      "vout": 2,
+      "sats": 54998500,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Carol-Option-Writer-Cleared",
+      "vout": 3,
+      "sats": 64498500,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "UTXORef-CPFP-Anchor",
+      "vout": 4,
+      "sats": 330,
+      "utxo_present_in_core": true
+    }
+  ],
+  "adversarial_probes": [
+    {
+      "probe_id": "mnr05-shave-1-sat-bob-novated-swap-vout0",
+      "description": "Shave 1 sat from offline Bob's novated Swap 0x83 output vout[0] (15,000,000 -> 14,999,999)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "mnr05-shave-1-sat-bob-call-option-vout1",
+      "description": "Shave 1 sat from offline Bob's ITM Call Option 0x83 output vout[1] (8,000,000 -> 7,999,999)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    }
+  ],
+  "bitcoin_spend_enforced": true,
+  "bob_online_during_clearing": false,
+  "bitvm3_onchain_verified": false,
+  "production_ready": false
+}

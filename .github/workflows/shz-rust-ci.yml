@@ -38,13 +38,14 @@ jobs:
       - name: Verify NEAR/Pyth provenance and multi-channel closeout research gates
         run: npm --prefix research/near_pyth_channel test
 
-      - name: Install SHA256-pinned Bitcoin Core 31.1 and execute SHZ-MNR-02 + SHZ-MNR-03 regtest & reorg drills
+      - name: Install SHA256-pinned Bitcoin Core 31.1 and execute SHZ-MNR-02 + SHZ-MNR-03 + SHZ-MNR-05 regtest drills
         run: |
           curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
           echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
           tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
           cargo run --locked --bin shz -- mnr02-regtest /tmp/bitcoin-31.1/bin/bitcoind
           cargo run --locked --bin shz -- mnr03-regtest /tmp/bitcoin-31.1/bin/bitcoind > /dev/null
+          cargo run --locked --bin shz -- mnr05-regtest /tmp/bitcoin-31.1/bin/bitcoind > /dev/null
 
   near-fraud-guard-wasm:
     runs-on: ubuntu-24.04

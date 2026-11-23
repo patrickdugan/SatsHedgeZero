@@ -8,6 +8,7 @@ pub mod mnr02;
 pub mod mnr03;
 pub mod pnl_batch;
 pub mod signing_target;
+pub mod transfer_and_clearing;
 
 use thiserror::Error;
 
