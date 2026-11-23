@@ -10,12 +10,22 @@ use nova_snark::traits::{Engine,circuit::StepCircuit};
 use serde::{Deserialize,Serialize};
 use sha2::{Digest,Sha256};
 pub type F=<PallasEngine as Engine>::Scalar;
+#[cfg(not(feature="depth18"))]
 pub const DEPTH:usize=4;
+#[cfg(feature="depth18")]
+pub const DEPTH:usize=18;
 pub const CAP:u64=1<<DEPTH;
-pub const MAX_STEPS:usize=128;
+#[cfg(not(feature="depth18"))]
+const OP_BITS:usize=7;
+#[cfg(feature="depth18")]
+const OP_BITS:usize=20;
+pub const MAX_STEPS:usize=1<<OP_BITS;
 pub const ARITY:usize=9+4*(DEPTH+1)+3;
 const CONTEXT:usize=ARITY-3;
+#[cfg(not(feature="depth18"))]
 pub const RELATION:&str="shz/ordered-admission-frontier-nova/v3-eager-placement/depth4";
+#[cfg(feature="depth18")]
+pub const RELATION:&str="shz/ordered-admission-frontier-nova/v3-eager-placement/depth18";
 const MAX_PRICE:u64=10_000_000_000_000_000;
 const LEAF:&[u8]=b"SHZ/LOG/LEAF/V2";
 const EMPTY:&[u8]=b"SHZ/LOG/EMPTY/V2";
@@ -213,7 +223,7 @@ impl AdmissionStep{
   eq(cs,"exactly one operation",a.lc(CS::one(),F::ONE)+&m.lc(CS::one(),F::ONE)+&s.lc(CS::one(),F::ONE),one::<CS>());
   let before_pending=bit(cs,"pending",b.pending)?;bool_eq(cs,"bind pending",&before_pending,&z[4]);eq(cs,"carry mandatory iff pending",m.lc(CS::one(),F::ONE),before_pending.lc(CS::one(),F::ONE));
   let op_count=bound_bits(cs,"operation ordinal",&b.operations.to_le_bytes(),&z[0])?;
-  slack(cs,"operation ceiling",&always,LinearCombination::zero()+(F::from((MAX_STEPS-1) as u64),CS::one())-&le_lc::<CS>(&op_count),(MAX_STEPS-1) as i128-i128::from(b.operations),7)?;
+  slack(cs,"operation ceiling",&always,LinearCombination::zero()+(F::from((MAX_STEPS-1) as u64),CS::one())-&le_lc::<CS>(&op_count),(MAX_STEPS-1) as i128-i128::from(b.operations),OP_BITS)?;
   let n=bound_bits(cs,"leaf count",&b.leaf_count.to_le_bytes(),&z[1])?;
   slack(cs,"sentinel present",&always,le_lc::<CS>(&n)-&one::<CS>(),i128::from(b.leaf_count)-1,DEPTH+1)?;
   slack(cs,"tree capacity",&always,LinearCombination::zero()+(F::from(CAP),CS::one())-&le_lc::<CS>(&n),i128::from(CAP)-i128::from(b.leaf_count),DEPTH+1)?;

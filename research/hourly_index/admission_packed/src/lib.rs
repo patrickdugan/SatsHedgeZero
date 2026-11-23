@@ -9,7 +9,10 @@ pub use parent::{F, Claim, Action, State, Op, DEPTH, CAP, MAX_STEPS};
 pub const LEGACY_ARITY:usize=parent::ARITY;
 pub const ARITY:usize=1+2+2*(DEPTH+1)+3;
 pub const HEADER_BITS:usize=201+(DEPTH+1);
+#[cfg(not(feature="depth18"))]
 pub const RELATION:&str="shz/ordered-admission-frontier-nova/v4-packed-state/depth4";
+#[cfg(feature="depth18")]
+pub const RELATION:&str="shz/ordered-admission-frontier-nova/v4-packed-state/depth18";
 pub const SENTINEL_PACKED_INDEX:usize=3;
 
 pub fn pow2(bits:usize)->F{(0..bits).fold(F::ONE,|a,_|a.double())}
@@ -82,7 +85,7 @@ pub fn trace(actions:&[Action],claim:&Claim)->Result<Vec<AdmissionStep>,String>{
     Ok(parent::trace(actions,claim)?.into_iter().map(|inner|AdmissionStep{inner}).collect())
 }
 
-#[cfg(test)]
+#[cfg(all(test,not(feature="depth18")))]
 mod tests{
     use super::*;
     use nova_snark::frontend::util_cs::test_cs::TestConstraintSystem;

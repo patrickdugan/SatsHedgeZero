@@ -7,6 +7,9 @@ license = "MIT"
 
 [workspace]
 
+[features]
+depth18 = ["shz-hourly-index-admission-fused-nova/depth18"]
+
 [dependencies]
 nova-snark = "=0.76.0"
 ff = "0.13"

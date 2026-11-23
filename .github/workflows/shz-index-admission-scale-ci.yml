@@ -1,0 +1,83 @@
+name: shz-index-admission-depth18-nova
+on:
+  push:
+    branches: ["research/shz-index-admission-05-*"]
+  pull_request:
+    paths:
+      - "research/hourly_index/admission_scale/**"
+      - "research/hourly_index/admission_packed/**"
+      - "research/hourly_index/admission_fused/**"
+      - "docs/SHZ_INDEX_ADMISSION_05_DEPTH18.md"
+      - ".github/workflows/shz-index-admission-scale-ci.yml"
+  workflow_dispatch:
+    inputs:
+      largest_reports:
+        description: "Largest synthetic proof in ladder (144000 remains native-only)"
+        required: true
+        type: choice
+        default: "512"
+        options: ["128", "512", "2048"]
+permissions:
+  contents: read
+concurrency:
+  group: shz-depth18-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  depth18-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Independent depth18 native reference through 144000 reports
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_scale
+          mkdir -p "$RUNNER_TEMP/shz-depth18/claims"
+          node --test "$B/tests/reference.test.mjs"
+          /usr/bin/time -v -o "$RUNNER_TEMP/shz-depth18/reference-time.txt" node "$B/fixtures/build.mjs" "$RUNNER_TEMP/shz-depth18/claims" > "$RUNNER_TEMP/shz-depth18/native-reference.json"
+          for f in "$B"/fixtures/*-expected.json; do cmp "$f" "$RUNNER_TEMP/shz-depth18/claims/$(basename "$f")"; done
+      - name: Check actual depth18 packed R1CS including highest legal merge
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_scale
+          rustc -Vv
+          cargo generate-lockfile --manifest-path "$B/Cargo.toml"
+          cargo test --release --locked --manifest-path "$B/Cargo.toml" -- --test-threads=1 --nocapture | tee "$RUNNER_TEMP/shz-depth18/r1cs.txt"
+          grep SHZ_ADMIT_DEPTH18_COUNTS "$RUNNER_TEMP/shz-depth18/r1cs.txt"
+      - name: Compile streaming prover and replay full native Rust history
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_scale
+          cargo build --release --locked --manifest-path "$B/Cargo.toml"
+          exe="$B/target/release/shz-hourly-index-admission-scale"
+          /usr/bin/time -v -o "$RUNNER_TEMP/shz-depth18/rust-native-time.txt" "$exe" trace "$B/fixtures/144000-expected.json" | tee "$RUNNER_TEMP/shz-depth18/rust-native-full.json"
+      - name: Prove and independently verify progressive depth18 ladder
+        env:
+          LARGEST: ${{ inputs.largest_reports || '512' }}
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_scale
+          exe="$B/target/release/shz-hourly-index-admission-scale"
+          export SHZ_SCALE_MAX_REPORTS="$LARGEST"
+          case "$LARGEST" in 128|512|2048) ;; *) exit 2;; esac
+          for n in 16 128 512 2048; do
+            if [ "$n" -gt "$LARGEST" ]; then continue; fi
+            out="$RUNNER_TEMP/shz-depth18/proof-$n"
+            /usr/bin/time -v -o "$RUNNER_TEMP/shz-depth18/prove-$n-time.txt" "$exe" prove "$B/fixtures/$n-expected.json" "$out"
+            /usr/bin/time -v -o "$RUNNER_TEMP/shz-depth18/verify-$n-time.txt" "$exe" verify "$B/fixtures/$n-expected.json" "$out" | tee "$out/verification.json"
+          done
+          cp "$B/Cargo.lock" "$RUNNER_TEMP/shz-depth18/Cargo.lock"
+          node "$B/aggregate.mjs" "$RUNNER_TEMP/shz-depth18" "$LARGEST" | tee "$RUNNER_TEMP/shz-depth18/summary.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit-depth18-benchmark
+          path: ${{ runner.temp }}/shz-depth18
+          retention-days: 7
