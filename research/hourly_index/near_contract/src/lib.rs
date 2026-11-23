@@ -152,7 +152,7 @@ pub struct ShzHourlyIndex {
 impl ShzHourlyIndex {
     #[init]
     pub fn new()->Self {
-        Self {owner:env::predecessor_account_id(),checkpoints:LookupMap::new(b"hour-v1"),latest_start_hour:None}
+        Self {owner:env::predecessor_account_id(),checkpoints:LookupMap::new(b"hour-v1".to_vec()),latest_start_hour:None}
     }
     /// Research-only authorization: this owner-staged root is *not* proven Bitcoin-anchored.
     pub fn stage_checkpoint(&mut self, cp:Checkpoint) -> bool {
