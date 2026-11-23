@@ -18,6 +18,15 @@ pub const BITVM3_STATEMENT_LEN: usize = 304;
 pub const BITCOIN_REGTEST_GENESIS_HASH_HEX: &str =
     "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206";
 
+/// Bitcoin Testnet4 (BIP-94) genesis block hash (display order).
+pub const BITCOIN_TESTNET4_GENESIS_HASH_HEX: &str =
+    "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043";
+
+/// Pinned `lnm-nova` (`nova-snark 0.76.0`) Spartan + IPA verifier key SHA-256 for
+/// `lnmarkets/sha256-transcript-accounting/v2` (`101,826,448` serialized VK bytes).
+pub const LNM_NOVA_V2_VK_SHA256_HEX: &str =
+    "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b";
+
 /// Canonical Bitcoin network codes for byte offset `35` (`UTXO-Ref/zk-groth16-bitvm/STATEMENT.md`:
 /// `regtest = 0; testnet4 = 1`; mainnet intentionally forbidden in v0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

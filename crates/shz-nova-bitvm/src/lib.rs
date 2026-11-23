@@ -13,6 +13,7 @@
 
 pub mod bitvm3;
 pub mod bridge;
+pub mod clearing_3party;
 pub mod codec;
 pub mod error;
 pub mod fixture;
@@ -23,9 +24,17 @@ pub mod statement;
 pub mod taproot;
 
 pub use bitvm3::{
-    BITCOIN_REGTEST_GENESIS_HASH_HEX, BITVM3_STATEMENT_LEN, BITVM3_STATEMENT_MAGIC,
-    BitVm3SettlementRecord, BitcoinNetworkCode, UtxoRefL2SettlementStatementV0,
-    split_statement_digest_be_u128,
+    BITCOIN_REGTEST_GENESIS_HASH_HEX, BITCOIN_TESTNET4_GENESIS_HASH_HEX, BITVM3_STATEMENT_LEN,
+    BITVM3_STATEMENT_MAGIC, BitVm3SettlementRecord, BitcoinNetworkCode, LNM_NOVA_V2_VK_SHA256_HEX,
+    UtxoRefL2SettlementStatementV0, split_statement_digest_be_u128,
+};
+pub use clearing_3party::{
+    DEFAULT_TESTNET4_ANCHOR_HASH_HEX, DEFAULT_TESTNET4_ANCHOR_HEIGHT, DlcFundingTemplate,
+    ExecutedClearingTrade, ExternalNovaSnarkReceipt, PartyClearingAccounting,
+    ThreePartyClearingArtifacts, ThreePartyClearingConfig, ThreePartyClearingReport,
+    UtxoRefClearingSummary, build_live_testnet4_micro_clearing_ceremony,
+    build_three_party_clearing_ceremony, precompute_live_testnet4_micro_dlc_templates,
+    precompute_three_party_dlc_funding_templates,
 };
 pub use bridge::{
     BridgeSignerMaterial, JournalSummaryJson, Mnr02BitVm3BridgeSummary, NovaBitvmDemoReport,
@@ -57,4 +66,6 @@ pub use statement::{
     summary_digest, tagged_hash, unsigned_batch_transaction, verify_batch, verify_batch_bytes,
     verify_bip340, verify_expected_journal,
 };
-pub use taproot::derive_funding_script;
+pub use taproot::{
+    FundingTaprootSpendInfo, derive_funding_script, derive_funding_taproot_spend_info,
+};

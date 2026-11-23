@@ -70,9 +70,27 @@ fn tapleaf(script: &[u8]) -> Hash {
     bip_tagged("TapLeaf", &bytes)
 }
 
-/// Derives the canonical 34-byte P2TR (`0x51 0x20 <x>`) two-party NUMS funding script
-/// matching `UTXO-Ref` and `lnm-batch-statement`.
-pub fn derive_funding_script(first: &Hash, second: &Hash, refund_csv: u16) -> Result<Script> {
+/// Full BIP-341 script-path spend material for the canonical two-party `UTXORef` NUMS P2TR
+/// funding output (`cet` 2-of-2 leaf + `refund` CSV 2-of-2 leaf).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FundingTaprootSpendInfo {
+    pub funding_script: Script,
+    pub sorted_party_keys: [Hash; 2],
+    pub cet_script: Vec<u8>,
+    pub cet_leaf_hash: Hash,
+    pub cet_control_block: Vec<u8>,
+    pub refund_script: Vec<u8>,
+    pub refund_leaf_hash: Hash,
+    pub refund_control_block: Vec<u8>,
+}
+
+/// Derives both the 34-byte `P2TR` `funding_script` and the BIP-341 script-path control blocks
+/// required to spend a `UTXORef` / `LNMBAT01` 2-party DLC funding UTXO on Bitcoin Core.
+pub fn derive_funding_taproot_spend_info(
+    first: &Hash,
+    second: &Hash,
+    refund_csv: u16,
+) -> Result<FundingTaprootSpendInfo> {
     if first == second || refund_csv == 0 {
         return Err(NovaBitvmError::Taproot(
             "two distinct keys and positive CSV are required".to_owned(),
@@ -87,14 +105,14 @@ pub fn derive_funding_script(first: &Hash, second: &Hash, refund_csv: u16) -> Re
         ));
     }
     let (a, b) = if first < second {
-        (first, second)
+        (*first, *second)
     } else {
-        (second, first)
+        (*second, *first)
     };
     let mut cet = vec![0x20];
-    cet.extend_from_slice(a);
+    cet.extend_from_slice(&a);
     cet.extend_from_slice(&[0xad, 0x20]);
-    cet.extend_from_slice(b);
+    cet.extend_from_slice(&b);
     cet.push(0xac);
     let mut refund = script_num(refund_csv);
     refund.extend_from_slice(&[0xb2, 0x75]);
@@ -114,7 +132,6 @@ pub fn derive_funding_script(first: &Hash, second: &Hash, refund_csv: u16) -> Re
     tweak_input.extend_from_slice(&internal);
     tweak_input.extend_from_slice(&root);
     let tweak_bytes: FieldBytes = bip_tagged("TapTweak", &tweak_input).into();
-    // BIP341 rejects tweaks >= n. Reducing modulo n would silently accept a different construction.
     let tweak = Option::<Scalar>::from(Scalar::from_repr(tweak_bytes)).ok_or_else(|| {
         NovaBitvmError::Taproot("Taproot tweak is outside the scalar field".to_owned())
     })?;
@@ -125,11 +142,39 @@ pub fn derive_funding_script(first: &Hash, second: &Hash, refund_csv: u16) -> Re
         ));
     }
     let encoded = output.to_affine().to_encoded_point(true);
+    let encoded_bytes = encoded.as_bytes();
+    let parity_bit = u8::from(encoded_bytes.first().copied() == Some(0x03));
     let x = encoded
         .x()
         .ok_or_else(|| NovaBitvmError::Taproot("missing Taproot x coordinate".to_owned()))?;
     let mut script = [0; 34];
     script[..2].copy_from_slice(&[0x51, 0x20]);
     script[2..].copy_from_slice(x);
-    Ok(script)
+
+    let mut cet_control_block = Vec::with_capacity(65);
+    cet_control_block.push(0xc0 | parity_bit);
+    cet_control_block.extend_from_slice(&internal);
+    cet_control_block.extend_from_slice(&right);
+
+    let mut refund_control_block = Vec::with_capacity(65);
+    refund_control_block.push(0xc0 | parity_bit);
+    refund_control_block.extend_from_slice(&internal);
+    refund_control_block.extend_from_slice(&left);
+
+    Ok(FundingTaprootSpendInfo {
+        funding_script: script,
+        sorted_party_keys: [a, b],
+        cet_script: cet,
+        cet_leaf_hash: left,
+        cet_control_block,
+        refund_script: refund,
+        refund_leaf_hash: right,
+        refund_control_block,
+    })
+}
+
+/// Derives the canonical 34-byte P2TR (`0x51 0x20 <x>`) two-party NUMS funding script
+/// matching `UTXO-Ref` and `lnm-batch-statement`.
+pub fn derive_funding_script(first: &Hash, second: &Hash, refund_csv: u16) -> Result<Script> {
+    Ok(derive_funding_taproot_spend_info(first, second, refund_csv)?.funding_script)
 }

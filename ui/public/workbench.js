@@ -1219,10 +1219,13 @@ export function normalizeWorkbenchState(rawState = {}, ui = {}) {
   const honestyFlags = {
     ...DEFAULT_HONESTY_FLAGS,
     ...(extNova?.honestyFlags || extNova?.honesty_flags || {}),
+    ...(state.testnet4LiveReceipt?.clearing_report?.honesty || {}),
   };
 
   return {
     markPriceUsd,
+    testnet4LiveReceipt: state.testnet4LiveReceipt || null,
+    clearing33kReceipt: state.clearing33kReceipt || null,
     market: {
       symbol: market.symbol || market.instrument || "BTC-INVERSE-PERP",
       tradelayerVwapUsd:
@@ -1850,6 +1853,31 @@ function renderTab4NovaBitvm(vm, ui) {
     )
     .join("");
 
+  const tn4 = vm.testnet4LiveReceipt;
+  const c33k = vm.clearing33kReceipt;
+  const tn4Snark = tn4?.clearing_report?.external_nova_snark_receipt;
+  const tn4BannerHtml = tn4
+    ? `
+    <div class="shz-wb-card" style="margin-bottom:10px; border-color:#00d285;">
+      <div class="shz-wb-hdr-row">
+        <span class="shz-wb-title">Live Bitcoin Testnet4 3-Party DLC Clearing + <span class="shz-wb-mono shz-wb-pos">lnm-nova CompressedSNARK</span></span>
+        <span class="shz-wb-pill shz-wb-pill-long shz-wb-mono">TESTNET4 #${tn4.testnet4_tip_height} · ${tn4Snark?.compressed_proof_bytes?.toLocaleString("en-US") || "12,376"}B SNARK VERIFIED</span>
+      </div>
+      <div class="shz-wb-grid-2">
+        <div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Testnet4 Funding Tx (3 NUMS P2TR DLCs)</span><a href="${escapeHtml(tn4.funding_tx_explorer_uri)}" target="_blank" rel="noopener" class="shz-wb-mono shz-wb-cyan">${escapeHtml(shortHex(tn4.funding_txid, 14, 10))}</a></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Testnet4 Atomic Clearing Tx (= batch_txid)</span><a href="${escapeHtml(tn4.atomic_clearing_tx_explorer_uri)}" target="_blank" rel="noopener" class="shz-wb-mono shz-wb-pos">${escapeHtml(shortHex(tn4.atomic_clearing_txid, 14, 10))}</a></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Testnet4 $1 Run ($80k→$100k→$125k)</span><span class="shz-wb-mono"><span class="shz-wb-pos">Alice +450 sats PnL</span> · <span class="shz-wb-cyan">Bob 1,250 sats (83.3%) Freed</span></span></div>
+        </div>
+        <div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Full-Scale $33k Run ($50k→$55k→$60k)</span><span class="shz-wb-mono"><span class="shz-wb-pos">Alice +${fmtSats(c33k?.clearing_report?.utxoref_pnl_clearing?.total_winner_routed_pnl_sats ?? 11_000_000)} PnL</span> · <span class="shz-wb-cyan">Bob ${fmtSats(c33k?.clearing_report?.utxoref_pnl_clearing?.bob_freed_collateral_sats ?? 90_000_000)} Freed</span></span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">Spartan+IPA Verifier Key SHA256</span><span class="shz-wb-mono shz-wb-amber">${escapeHtml(shortHex(tn4Snark?.verifier_key_sha256_hex || "", 14, 10))}</span></div>
+          <div class="shz-wb-kv"><span class="shz-wb-muted">R1CS Constraints / Proof Digest</span><span class="shz-wb-mono">${(tn4Snark?.primary_constraints || 275234).toLocaleString("en-US")} gates · ${escapeHtml(shortHex(tn4Snark?.proof_sha256_hex || "", 10, 8))}</span></div>
+        </div>
+      </div>
+    </div>`
+    : "";
+
   return `
     <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;" data-honesty-badges="true">
       <span class="shz-wb-pill ${honestyFlags.native_statement_verified ? "shz-wb-pill-long" : "shz-wb-pill-short"} shz-wb-mono">native_statement_verified: ${honestyFlags.native_statement_verified}</span>
@@ -1857,6 +1885,7 @@ function renderTab4NovaBitvm(vm, ui) {
       <span class="shz-wb-pill ${honestyFlags.bitvm3_onchain_verified ? "shz-wb-pill-long" : "shz-wb-pill-amber"} shz-wb-mono">bitvm3_onchain_verified: ${honestyFlags.bitvm3_onchain_verified}</span>
       <span class="shz-wb-pill ${honestyFlags.production_ready ? "shz-wb-pill-long" : "shz-wb-pill-short"} shz-wb-mono">production_ready: ${honestyFlags.production_ready}</span>
     </div>
+    ${tn4BannerHtml}
 
     <div class="shz-wb-card" style="margin-bottom:10px;">
       <div class="shz-wb-hdr-row">

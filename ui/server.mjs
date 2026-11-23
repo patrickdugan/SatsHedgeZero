@@ -651,6 +651,8 @@ function formatOrderbookView(book, instrument) {
 export function createSession() {
   const baselineEvidence = loadEvidenceJson("verify_all_baseline.json");
   const mnr02Receipt = loadEvidenceJson("mnr02_core_regtest_receipt.json");
+  const testnet4LiveReceipt = loadEvidenceJson("testnet4_live_3party_clearing_receipt.json");
+  const clearing33kReceipt = loadEvidenceJson("clearing_33k_core_nova_receipt.json");
 
   const instruments = [
     {
@@ -885,6 +887,13 @@ export function createSession() {
       lastCloseout,
       baselineEvidence,
       mnr02Receipt,
+      testnet4LiveReceipt,
+      clearing33kReceipt,
+      clearingTrades: [
+        { tradeNo: 1, label: "T1 Alice×Bob", priceUsd: 50_000, side: "Long" },
+        { tradeNo: 2, label: "T2 Bob×Carol (Flatten)", priceUsd: 55_000, side: "Long" },
+        { tradeNo: 3, label: "T3 Alice Closes (+PnL)", priceUsd: 60_000, side: "Short" },
+      ],
       novaSummary: getNovaSummary(),
       engineInfo: {
         shzBinaryFound: Boolean(shzBin),

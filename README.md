@@ -8,12 +8,15 @@ Non-custodial, zero-fee Lightning Discreet Log Contract (DLC) DEX for inverse-qu
 cargo test --workspace
 cargo run --bin shz -- verify-all
 cargo run --bin shz -- nova-demo
+cargo run --bin shz -- clearing-demo
 cargo run --bin shz -- mnr02-regtest /path/to/bitcoind
+cargo run --bin shz -- testnet-clearing /path/to/bitcoind [/path/to/lnm-nova] [bundle_out_dir]
+cargo run --bin shz -- testnet4-live [wallet] [/path/to/lnm-nova] [bundle_out_dir]
 cargo run --bin shz -- quote 2000 100000 10 1
 cargo run --bin shz -- demo-dex
 cargo run --bin shz -- demo-fraud
 
-# Launch the zero-dependency Deribit-style Pro Trading Terminal UI (http://127.0.0.1:4173)
+# Launch the zero-dependency Deribit + BitcornWisdom Pro Trading Terminal UI (http://127.0.0.1:4173)
 npm --prefix ui test
 npm --prefix ui start
 ```
@@ -29,7 +32,7 @@ npm --prefix ui start
 | [`crates/shz-nova-bitvm`](crates/shz-nova-bitvm) | Clean-room MIT `#![forbid(unsafe_code)]` batch statement & zk-bridge engine: `LNMBAT01` witness + `276B` `LNMJNL01` journal + 256-depth sparse Merkle nullifier tree, `600B` Nova v2 `validated-signed-row/v1` transcript & 8-field Pallas folded state (`51-bit`/`56-bit` overflow checks), `Secq` BIP-340 single-sig claim bridge, and `304B` `UTXOREF_L2_SETTLEMENT_GROTH16_V0` BitVM3 settlement statement (`[uint128_be(d[0..16]), uint128_be(d[16..32])]`) with explicit honesty flags. |
 | [`crates/shz-dex`](crates/shz-dex) | Decentralized BIP-340 signed P2P order intents, price-time priority `0 bps` maker/taker matching (`ZeroFeeOrderBook`), automatic `LnDlcSubchannel` offer materialization, and real-time mark-to-market position telemetry. |
 | [`bins/shz-cli`](bins/shz-cli) | `shz` CLI for quoting inverse contracts, running deterministic P2P LN-DLC simulations, executing adversarial FROST slashing proofs, exporting Nova/BitVM3 transcripts, and running live Bitcoin Core regtest verification. |
-| [`ui/`](ui) | Institutional Deribit-style dark trading desk & zero-dependency Node HTTP API server (`server.mjs`, HiDPI canvas `charts.js`, 4-tab protocol/proof blotter `workbench.js`) wired directly to `SatsHedgeZero` math, `SHZ-MNR-02` regtest receipts, and `600B/276B/304B` Nova/BitVM3 byte inspectors. |
+| [`ui/`](ui) | Institutional Deribit-style dark trading desk powered by [`BitcornWisdom`](https://github.com/patrickdugan/BitcornWisdom) (`CandleChart`, `EMA/SMA/BB/RSI`, log/linear scale, animated cumulative L2 depth profile, drawings, Kraken/Coinbase federated `FeedRouter` + synthetic failover) & zero-dependency Node HTTP API server (`server.mjs`, `charts.js`, 4-tab protocol/proof blotter `workbench.js`) wired to `SatsHedgeZero` math, `SHZ-MNR-02` regtest receipts, and live Testnet4 3-party Nova/BitVM3 clearing proofs. |
 
 ## Core Protocol Properties
 

@@ -468,6 +468,7 @@ dependencies = [
  "shz-dex",
  "shz-dlc",
  "shz-margin",
+ "shz-oracle",
  "shz-utxoref",
  "thiserror",
 ]

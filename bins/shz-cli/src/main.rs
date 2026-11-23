@@ -1,6 +1,7 @@
 //! `shz` — Command-line runner and deterministic verification harness for `SatsHedgeZero`.
 
 mod mnr02_regtest;
+mod testnet_clearing;
 
 use std::path::PathBuf;
 use serde::Serialize;
@@ -11,7 +12,8 @@ use shz_dex::{
 use shz_dlc::{BtcOutPoint, pubkey_x_from_secret};
 use shz_margin::{InverseContractSpec, compress_cet_ranges};
 use shz_nova_bitvm::{
-    NovaBitvmDemoReport, VerificationHonestyFlags, build_verified_nova_bitvm_demo,
+    NovaBitvmDemoReport, ThreePartyClearingConfig, ThreePartyClearingReport,
+    VerificationHonestyFlags, build_three_party_clearing_ceremony, build_verified_nova_bitvm_demo,
 };
 use shz_oracle::{
     fraud_proofs::{
@@ -82,6 +84,24 @@ struct NovaBitvmSummaryReceipt {
 }
 
 #[derive(Serialize)]
+struct ThreePartyClearingSummaryReceipt {
+    network: String,
+    testnet4_anchor_height: u64,
+    clearing_mark_price_usd: u64,
+    trades_executed: usize,
+    winner_party: String,
+    winner_routed_pnl_sats: u64,
+    winner_total_payout_sats: u64,
+    loser_party: String,
+    loser_freed_collateral_sats: u64,
+    loser_freed_collateral_bps: u64,
+    carol_freed_collateral_sats: u64,
+    atomic_clearing_txid_hex: String,
+    bitvm3_testnet4_304b_sha256_hex: String,
+    honesty: VerificationHonestyFlags,
+}
+
+#[derive(Serialize)]
 struct FullVerificationReport {
     protocol: &'static str,
     collateral_v0: &'static str,
@@ -89,6 +109,7 @@ struct FullVerificationReport {
     dex_simulation: DexSimulationReceipt,
     fraud_simulation: FraudSimulationReceipt,
     nova_bitvm_summary: NovaBitvmSummaryReceipt,
+    three_party_clearing_summary: ThreePartyClearingSummaryReceipt,
 }
 
 fn run_quote(args: &[String]) -> QuoteSummary {
@@ -423,6 +444,31 @@ fn summarize_nova_demo(demo: &NovaBitvmDemoReport) -> NovaBitvmSummaryReceipt {
     }
 }
 
+fn run_clearing_demo() -> ThreePartyClearingReport {
+    build_three_party_clearing_ceremony(&ThreePartyClearingConfig::default())
+        .expect("verified 3-party 3-trade clearing ceremony")
+        .report
+}
+
+fn summarize_clearing_demo(rep: &ThreePartyClearingReport) -> ThreePartyClearingSummaryReceipt {
+    ThreePartyClearingSummaryReceipt {
+        network: rep.network.clone(),
+        testnet4_anchor_height: rep.testnet4_anchor_height,
+        clearing_mark_price_usd: rep.clearing_mark_price_usd,
+        trades_executed: rep.trades.len(),
+        winner_party: rep.party_accounting[0].party.clone(),
+        winner_routed_pnl_sats: rep.utxoref_pnl_clearing.total_winner_routed_pnl_sats,
+        winner_total_payout_sats: rep.utxoref_pnl_clearing.alice_total_cleared_payout_sats,
+        loser_party: rep.party_accounting[1].party.clone(),
+        loser_freed_collateral_sats: rep.utxoref_pnl_clearing.bob_freed_collateral_sats,
+        loser_freed_collateral_bps: rep.utxoref_pnl_clearing.bob_freed_collateral_bps,
+        carol_freed_collateral_sats: rep.utxoref_pnl_clearing.carol_freed_collateral_sats,
+        atomic_clearing_txid_hex: rep.atomic_clearing_txid_hex.clone(),
+        bitvm3_testnet4_304b_sha256_hex: rep.bitvm3_testnet4_statement.statement_sha256_hex.clone(),
+        honesty: rep.honesty,
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let cmd = args.first().map(String::as_str).unwrap_or("verify-all");
@@ -444,8 +490,13 @@ fn main() {
             let report = run_nova_demo();
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
+        "clearing-demo" => {
+            let report = run_clearing_demo();
+            println!("{}", serde_json::to_string_pretty(&report).unwrap());
+        }
         "verify-all" => {
             let nova_demo = run_nova_demo();
+            let clearing_demo = run_clearing_demo();
             let report = FullVerificationReport {
                 protocol: "SatsHedgeZero v0.2.0",
                 collateral_v0: "VanillaBtc (P2TR UTXO / Lightning Subchannel; TAP v1 hook ready)",
@@ -453,6 +504,7 @@ fn main() {
                 dex_simulation: run_dex_simulation(),
                 fraud_simulation: run_fraud_simulation(),
                 nova_bitvm_summary: summarize_nova_demo(&nova_demo),
+                three_party_clearing_summary: summarize_clearing_demo(&clearing_demo),
             };
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
@@ -467,9 +519,49 @@ fn main() {
             let report = mnr02_regtest::run_mnr02_core_regtest(&bitcoind);
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
+        "testnet-clearing" => {
+            let default_bitcoind = std::env::var("BITCOIND_BIN")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("bitcoind"));
+            let bitcoind = args
+                .get(1)
+                .map(PathBuf::from)
+                .unwrap_or(default_bitcoind);
+            let nova_bin = args
+                .get(2)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("LNM_NOVA_BIN").ok().map(PathBuf::from));
+            let bundle_dir = args
+                .get(3)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("SHZ_NOVA_BUNDLE_OUT").ok().map(PathBuf::from));
+            let receipt = testnet_clearing::run_testnet_three_party_clearing(
+                &bitcoind,
+                nova_bin.as_deref(),
+                bundle_dir.as_deref(),
+            );
+            println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
+        }
+        "testnet4-live" => {
+            let wallet = args.get(1).map(String::as_str).unwrap_or("m16");
+            let nova_bin = args
+                .get(2)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("LNM_NOVA_BIN").ok().map(PathBuf::from));
+            let bundle_dir = args
+                .get(3)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("SHZ_NOVA_BUNDLE_OUT").ok().map(PathBuf::from));
+            let receipt = testnet_clearing::run_wsl_testnet4_live_broadcast(
+                wallet,
+                nova_bin.as_deref(),
+                bundle_dir.as_deref(),
+            );
+            println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
+        }
         _ => {
             eprintln!(
-                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | verify-all | mnr02-regtest [bitcoind_path]]"
+                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]"
             );
             std::process::exit(1);
         }

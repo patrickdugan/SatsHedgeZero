@@ -112,5 +112,26 @@
       "bitvm3_onchain_verified": false,
       "production_ready": false
     }
+  },
+  "three_party_clearing_summary": {
+    "network": "bitcoin-testnet4",
+    "testnet4_anchor_height": 162899,
+    "clearing_mark_price_usd": 60000,
+    "trades_executed": 3,
+    "winner_party": "Alice",
+    "winner_routed_pnl_sats": 11000000,
+    "winner_total_payout_sats": 71500000,
+    "loser_party": "Bob",
+    "loser_freed_collateral_sats": 90000000,
+    "loser_freed_collateral_bps": 9375,
+    "carol_freed_collateral_sats": 82500000,
+    "atomic_clearing_txid_hex": "c07337239b5d13ac7c3741d8b812173bfbc019a077043cbbc0a4ae167a39bb68",
+    "bitvm3_testnet4_304b_sha256_hex": "5129838da5613c0528411605b0d9748ada7b1718713d56b98f92d1b097ff080a",
+    "honesty": {
+      "native_statement_verified": true,
+      "nova_snark_verified": false,
+      "bitvm3_onchain_verified": false,
+      "production_ready": false
+    }
   }
 }

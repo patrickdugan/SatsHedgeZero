@@ -1332,7 +1332,18 @@ export class ShzChartController {
       drawProtocolLevel(s.shortLiqUsd, `SHORT LIQ (${s.spec.shortLevX}x)`, THEME.short, [6, 4]);
     }
 
-    // 3. Optional 3-Party Multilateral Clearing Markers (e.g. Trade 1 $50k, Trade 2 $54k, Trade 3 $60k closeout)
+    // 3. Optional 3-Party Multilateral Clearing Markers (e.g. Trade 1 $50k, Trade 2 $55k, Trade 3 $60k closeout)
+    const occupiedRightBadgeY = [];
+    const pickRightBadgeY = (preferredY) => {
+      let y = Math.max(top + 27, Math.min(bottom - 20, preferredY));
+      for (let guard = 0; guard < 12; guard++) {
+        if (occupiedRightBadgeY.every((prev) => Math.abs(prev - y) >= 19)) break;
+        y += y + 19 <= bottom - 20 ? 19 : -19;
+      }
+      occupiedRightBadgeY.push(y);
+      return y;
+    };
+
     if (s.clearingTrades.length) {
       const count = s.clearingTrades.length;
       for (let i = 0; i < count; i++) {
@@ -1346,7 +1357,7 @@ export class ShzChartController {
 
         ctx.save();
         ctx.strokeStyle = tr.color;
-        ctx.globalAlpha = outOfView ? 0.45 : 0.78;
+        ctx.globalAlpha = outOfView ? 0.35 : 0.78;
         ctx.setLineDash([2, 3]);
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -1370,11 +1381,12 @@ export class ShzChartController {
         ctx.stroke();
 
         const suffix = outOfView ? (tr.priceUsd < low ? " ↓" : " ↑") : "";
+        const rightBadgeY = pickRightBadgeY(y - 9);
         drawBadge(
           ctx,
           `${tr.label} ${fmtUsd(tr.priceUsd)}${suffix}`,
           right - 6,
-          Math.max(top + 22, Math.min(bottom - 20, y - 9)),
+          rightBadgeY,
           "rgba(10, 14, 20, 0.92)",
           tr.color,
           tr.color,

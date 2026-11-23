@@ -1,0 +1,378 @@
+{
+  "scenario": "3-Party, 3-Trade ($50k -> $55k -> $60k) Collated DLC Margin Clearing via BitVM3 Nova & Bitcoin Core",
+  "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+  "bitcoin_spend_enforced": true,
+  "nova_compressed_snark_verified": true,
+  "production_ready": false,
+  "funded_dlc_utxos": [
+    {
+      "trade_no": 1,
+      "label": "DLC-1-ALICE-LONG-BOB-SHORT-50K",
+      "txid": "435f9c1fbe7c5beb179d95067bf89bdc1a05b1f57674b1743e1e41a3bce0e3c2",
+      "vout": 1,
+      "sats": 99001330,
+      "script_pubkey_hex": "5120d7e2cd2705cf579bf1a80529376108c9698aaba95837780115b0fdf436a6ca0a"
+    },
+    {
+      "trade_no": 2,
+      "label": "DLC-2-BOB-LONG-CAROL-SHORT-55K",
+      "txid": "3b3315071de299fa54f5d16c7c1c6a2858e7e46f14ae63b96488e0bb501b9cfa",
+      "vout": 0,
+      "sats": 90001330,
+      "script_pubkey_hex": "5120ebc8999b31455716e96e4a3e6cf053f2e55a44ce7a99f749fc10a81d99fb151b"
+    },
+    {
+      "trade_no": 3,
+      "label": "DLC-3-CAROL-LONG-ALICE-SHORT-60K",
+      "txid": "70ef697865d7d0470f6735b68855ef46d96f80d948b91de4af8a05a8c63557f1",
+      "vout": 0,
+      "sats": 55001330,
+      "script_pubkey_hex": "512068423968f3632cca440b61c5776046be0137f002c6b06d92d4af58597cc65498"
+    }
+  ],
+  "core_confirmed_atomic_clearing_tx": {
+    "label": "3-party-3-trade-collated-lnmbat01-clearing-tx",
+    "txid": "45617343f9f1b0782675b8a054c7d8a5b7b222e45b844a78554c75f9ed1bfeea",
+    "wtxid": "79834ba1022d51576ca77ac6a384ca95acdb6f51c2e61ef56547ddaf7a28e343",
+    "vsize": 505,
+    "locktime": 120,
+    "script_path_used": "UTXORef NUMS P2TR Leaf 0 (<pk0> CHECKSIGVERIFY <pk1> CHECKSIG) x 3 inputs",
+    "sighash_flags_hex": [
+      "0x00 (SIGHASH_DEFAULT)",
+      "0x00 (SIGHASH_DEFAULT)"
+    ],
+    "outputs_sats": [
+      90000000,
+      990,
+      82500000,
+      71500000
+    ],
+    "witness_item_lengths": [
+      64,
+      64,
+      68,
+      65
+    ],
+    "raw_tx_hex": "02000000000103fa9c1b50bbe08864b963ae146fe4e758286a1c7c6cd1f554fa99e21d0715333b0000000000fdffffffc2e3e0bca3411e3e74b17476f5b1051adc9bf87b06959d17eb5b7cbe1f9c5f430100000000fdfffffff15735c6a8058aafe41db948d9806fd946ef5588b635670f47d0d7657869ef700000000000fdffffff04804a5d050000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cde030000000000002251202c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991a0d9ea04000000002251207f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa2007e000430400000000225120eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f2836866190440d740e2775ea5c946dbcdc6d30e309a835aa72286448788ba06de45def718e3b38366f2d6b06c714478be7395ffccc036942d4f02943f6cb5b955f1e4893b2a2040671c5e76154a12f068f61e45954290c80e8a9539759c30290266175fb3d65482b9d331f0b65101d161ea8ed38734013bca47489ba75864891dad2272f12c05dc4420466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab36fa3a7d6fcbecdc2d5778280af1193f51bedc4d4492f3df5ef7685b928a22e80440138975a50bef2811b73576848c18976a5d5100fbae541a6faa282cd9c49012ba206070393316a50beee9f81eacf5322b9b82c8ab3690e98ddc3ad84b8240b4774020403355778a69c10fb6ee5a94f6e10248b3a15bfa92b2832b386a8d15295a11093b3e0a1d3be05acf47c57d438febc0636cdbb88af4317fe4fab2d7b8f7802a4420466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ad204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaac41c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab7ab1909922217ba6118796e4a597f0d789245e2d59f8a48ed60ce9b478d48c170440733b041d8f33bd83a42e453fa4a47d432ff0465bc32852f562b61ae9310475f4db9058b4105ec5c68027dd3c91bdec51b43f13e9da30dbce24d80a862d2324454052a4eb107ef2d8318305829eef44815ddc89c2a428a34655256c0df730fe2126b40dbbcfcfb0c141a706e85dc2625908e19b1ebe2482caedd62cb9006a95797f44204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab1500330dbb077539eca074f360f9ebdd70090292f636348311f966a5db58aafe78000000",
+    "confirmed_block_height": 121,
+    "confirmed_block_hash": "51062e1335810415b8379e0e02c36980b884dc078f7f056853f169b7eb83a121",
+    "core_confirmations": 1
+  },
+  "post_clearing_utxo_checks": [
+    {
+      "owner": "Bob (Loser: 90M freed collateral returned)",
+      "vout": 0,
+      "sats": 90000000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Aggregated CPFP Anchor (3 x 330 sats)",
+      "vout": 1,
+      "sats": 990,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Carol (Market-Maker: 82.5M freed collateral returned)",
+      "vout": 2,
+      "sats": 82500000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Alice (Winner: 60.5M margin + 11M routed PnL)",
+      "vout": 3,
+      "sats": 71500000,
+      "utxo_present_in_core": true
+    }
+  ],
+  "adversarial_probes": [
+    {
+      "probe_id": "premature-clearing-before-maturity-120",
+      "description": "Broadcast 3-input LNMBAT01 clearing tx at height 106 (< nLockTime 120)",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    },
+    {
+      "probe_id": "shave-loser-bob-freed-collateral-by-1-sat",
+      "description": "Divert 1 sat from Bob's 90,000,000 freed collateral to Alice",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "shave-winner-alice-routed-pnl-by-1-sat",
+      "description": "Divert 1 sat from Winner Alice's 71,500,000 cleared payout to Bob",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    }
+  ],
+  "clearing_report": {
+    "protocol": "SatsHedgeZero 3-Party Multilateral DLC + BitVM3 Nova Clearing v0.3.0",
+    "network": "bitcoin-testnet4",
+    "testnet4_anchor_height": 162905,
+    "testnet4_anchor_block_hash_hex": "00000000003c7b7ed5977f97e3286329502d8a6d6d32f4b1ed073aa76fb32484",
+    "clearing_mark_price_usd": 60000,
+    "frost_quorum_signers": [
+      1,
+      3,
+      5
+    ],
+    "frost_group_pubkey_x_hex": "7962d45b38e8bcf82fa8efa8432a01f20c9a53e24c7d3f11df197cb8e70926da",
+    "trades": [
+      {
+        "trade_no": 1,
+        "label": "Trade 1: Alice Long $33k vs Bob 1x Short $33k @ $50,000",
+        "match_id_hex": "06c8e77b2f0c73d32f7b4b4ce357ec6afaaee2ab50aba3a42bd432bd7d3312a2",
+        "execution_price_usd": 50000,
+        "clearing_mark_price_usd": 60000,
+        "usd_notional": 33000,
+        "long_party": "Alice",
+        "short_party": "Bob",
+        "long_margin_sats": 33000000,
+        "short_margin_sats": 66000000,
+        "protocol_fee_sats": 0,
+        "funding_txid_hex": "435f9c1fbe7c5beb179d95067bf89bdc1a05b1f57674b1743e1e41a3bce0e3c2",
+        "funding_vout": 1,
+        "funding_script_pubkey_hex": "5120d7e2cd2705cf579bf1a80529376108c9698aaba95837780115b0fdf436a6ca0a",
+        "total_utxo_sats": 99001330,
+        "bilateral_long_payout_sats": 44000000,
+        "bilateral_short_payout_sats": 55000000,
+        "bilateral_realized_long_pnl_sats": 11000000
+      },
+      {
+        "trade_no": 2,
+        "label": "Trade 2: Bob Long $33k vs Carol 1x Short $33k @ $55,000 (Bob Flattens Delta)",
+        "match_id_hex": "636eab872e3b757f6a48cafb4b4f1e7b1eafe0538c2010367aa6243d7dfb1aa6",
+        "execution_price_usd": 55000,
+        "clearing_mark_price_usd": 60000,
+        "usd_notional": 33000,
+        "long_party": "Bob",
+        "short_party": "Carol",
+        "long_margin_sats": 30000000,
+        "short_margin_sats": 60000000,
+        "protocol_fee_sats": 0,
+        "funding_txid_hex": "3b3315071de299fa54f5d16c7c1c6a2858e7e46f14ae63b96488e0bb501b9cfa",
+        "funding_vout": 0,
+        "funding_script_pubkey_hex": "5120ebc8999b31455716e96e4a3e6cf053f2e55a44ce7a99f749fc10a81d99fb151b",
+        "total_utxo_sats": 90001330,
+        "bilateral_long_payout_sats": 35000000,
+        "bilateral_short_payout_sats": 55000000,
+        "bilateral_realized_long_pnl_sats": 5000000
+      },
+      {
+        "trade_no": 3,
+        "label": "Trade 3: Carol Long $33k vs Alice Short $33k @ $60,000 (Winner Alice Closes)",
+        "match_id_hex": "8f14d263e086cd4e28090333015bfaf6aef472b82ebae22ce9653d383d7838c5",
+        "execution_price_usd": 60000,
+        "clearing_mark_price_usd": 60000,
+        "usd_notional": 33000,
+        "long_party": "Carol",
+        "short_party": "Alice",
+        "long_margin_sats": 27500000,
+        "short_margin_sats": 27500000,
+        "protocol_fee_sats": 0,
+        "funding_txid_hex": "70ef697865d7d0470f6735b68855ef46d96f80d948b91de4af8a05a8c63557f1",
+        "funding_vout": 0,
+        "funding_script_pubkey_hex": "512068423968f3632cca440b61c5776046be0137f002c6b06d92d4af58597cc65498",
+        "total_utxo_sats": 55001330,
+        "bilateral_long_payout_sats": 27500000,
+        "bilateral_short_payout_sats": 27500000,
+        "bilateral_realized_long_pnl_sats": 0
+      }
+    ],
+    "party_accounting": [
+      {
+        "party": "Alice",
+        "role": "Winner (Opened Long @ $50k, Closed on 3rd Trade @ $60k)",
+        "net_usd_delta_after_trade3": 0,
+        "total_posted_margin_sats": 60500000,
+        "net_realized_pnl_sats": 11000000,
+        "freed_collateral_returned_sats": 60500000,
+        "routed_pnl_received_sats": 11000000,
+        "final_cleared_payout_sats": 71500000,
+        "payout_script_pubkey_hex": "5120eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619"
+      },
+      {
+        "party": "Bob",
+        "role": "Loser (Short @ $50k, Flattened @ $55k; 93.75% Margin Freed)",
+        "net_usd_delta_after_trade3": 0,
+        "total_posted_margin_sats": 96000000,
+        "net_realized_pnl_sats": -6000000,
+        "freed_collateral_returned_sats": 90000000,
+        "routed_pnl_received_sats": 0,
+        "final_cleared_payout_sats": 90000000,
+        "payout_script_pubkey_hex": "512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+      },
+      {
+        "party": "Carol",
+        "role": "Market-Maker (Short @ $55k, Closed @ $60k; Remaining Margin Freed)",
+        "net_usd_delta_after_trade3": 0,
+        "total_posted_margin_sats": 87500000,
+        "net_realized_pnl_sats": -5000000,
+        "freed_collateral_returned_sats": 82500000,
+        "routed_pnl_received_sats": 0,
+        "final_cleared_payout_sats": 82500000,
+        "payout_script_pubkey_hex": "51207f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa2007"
+      }
+    ],
+    "utxoref_pnl_clearing": {
+      "snapshot_hash_hex": "7f30c3eae3b7925e549752e281cf7a9f97222048b6685b0515a5c7600d76ecbc",
+      "next_accounting_state_root_hex": "611f3ced2752dc6a3466bf730fbaa1662cc86fd1cb6413f68a1794dcc6ea3c90",
+      "durable_book_final_head_hash_hex": "ec4ee199047311f2d4f3b15fbe971fa6866704a58332636805e4ebee9b2f7619",
+      "durable_book_settled_epoch": 1,
+      "bob_to_alice_routed_pnl_sats": 6000000,
+      "carol_to_alice_routed_pnl_sats": 5000000,
+      "total_winner_routed_pnl_sats": 11000000,
+      "bob_locked_margin_before_clearing_sats": 96000000,
+      "bob_freed_collateral_sats": 90000000,
+      "bob_freed_collateral_bps": 9375,
+      "carol_freed_collateral_sats": 82500000,
+      "alice_total_cleared_payout_sats": 71500000
+    },
+    "batch_witness_bytes_len": 28058,
+    "journal": {
+      "domain_hex": "0100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c7",
+      "epoch": 162905,
+      "batch_id_hex": "05cef0a98f328fc98f6ff9d93815104b0a270948ed20ec5717274838476ae08a",
+      "evaluation_height": 120,
+      "valid_until_height": 200,
+      "row_count": 3,
+      "accepted_contracts_root_hex": "92ae46d5f443bb9ad989c341f8ddff07e7e02c642f3cda97f0a2e1f91d5ac4a3",
+      "old_nullifier_root_hex": "fb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87cc",
+      "new_nullifier_root_hex": "6f070fdda15d3c9ed927c25d02afc360a4b49bddadb28a65819d2775e7575828",
+      "batch_tx_digest_hex": "be060f87e4be40501212c0c735a0904cd94b8383deb89e64b6a83474b834cc6a",
+      "batch_txid_hex": "45617343f9f1b0782675b8a054c7d8a5b7b222e45b844a78554c75f9ed1bfeea",
+      "total_collateral_sats": 244003990,
+      "total_payout_sats": 244000990,
+      "total_fee_sats": 3000,
+      "journal_276b_hex": "4c4e4d4a4e4c30310100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c7597c02000000000005cef0a98f328fc98f6ff9d93815104b0a270948ed20ec5717274838476ae08a78000000c80000000300000092ae46d5f443bb9ad989c341f8ddff07e7e02c642f3cda97f0a2e1f91d5ac4a3fb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87cc6f070fdda15d3c9ed927c25d02afc360a4b49bddadb28a65819d2775e7575828be060f87e4be40501212c0c735a0904cd94b8383deb89e64b6a83474b834cc6a45617343f9f1b0782675b8a054c7d8a5b7b222e45b844a78554c75f9ed1bfeea96348b0e00000000de288b0e00000000b80b000000000000",
+      "journal_sha256_hex": "05ccebe3387b20904ea90a05c3e6f3d2040f43acf8ecfb8bbcdac898bd58f307"
+    },
+    "row_transcripts_600b_hex": [
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f7631d1dec2086e328c262e7871dbb59d11b97e665166fe1e00dbdc9d2efb60f548500c8b9b1d4fd609261949d671f4a3078fbef062767ee87affcebc1157880736bfe1c173dd96a5a497d4a90f1e6bd385547b6705514e0960fd03fa6df05cdb36634eb4483d95bf2f3a10368914c7bfb853212fe90947994e8b211f4cda4582f42d137690255fe2c79d89e578fb7ce60f915a7080c46e94a9c35d3e2ec6e602b0fb3056683e5c0bd8a8b90e5ba6fe4f20a5f007c6c0c7b8c11119f0e1e0ec45579fb1b66a4dc82794ed6ab98cefe607de734b8501b479b31a7cce5f4a1a4906543bfa9a43f7b97fea1dd78b6310a2781d2548a2b38b26770492b394be9ce294b452d76db76718959720a22f69a6caecd31b2626035480727ee5fe83a9c3d543e25e7eeed19c5499ea705b54468179005ff239c3659881b5d8648b0ae390033cb60b00e02e2c7bdb4d02be9e6237ab9ad832dbb7c484ce5c243513b618b6410b9c8b5f71dcd3d58bb434c8b03b0e2039f9cbb40fe40d191896072fd903d9b18667536a023ab5bb9a1b065c06744caec439dd3aec813c45a0f991eb993b116ad9768632c18a20554bdba5b8ae3337ac520f3c8e1fea181b9dbccd878fc5cfb69d94d7bc2c03000000c69804ad893c0da4983eb2dd46b7c9254083edaaf289e7a0e31e22181c32c231c00e160200000000c03b4703000000004a01000000000000e8030000000000003b3315071de299fa54f5d16c7c1c6a2858e7e46f14ae63b96488e0bb501b9cfa00000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f763128ea4b9ffd80c9c06bbabea2a25a1bdd18bea4805f408eb9640add7e24afabd19154161961391cad614e9cd66cc9a61c19ecb24a2c72cb4a4d81e58f39ba936c6161ae0cb8b31c1179556ef6e7baefae2665b319c8f289d2e20737f3f4a282960d7c0c983deee1ad458d060720e66a6780bcb97429ad6d79edf1b9906497425abbf24846a88183dfe7c5e16b1165cae08e82efa77f7c8ff02897cd1e02f33b1cd2b79de7ba039e6f4b2b24bd273bb39da4bd7ba756d9154073ef0cbd5262d0bc5f3d979f975c874b9568668c2bb93210ee5640cc3df424241a4c9e4b7fc4378185c8f6211ae5fc51472c43955ae7511cf997b3d5151f8e3b807bffadd6fa04f094348bdb6df23bdcc5e6cc23f56c45790655cba6eb54e8c794d6fa203fb2e667fac312c8b1c0dc1b2e10d3246c677ec5755eb6230fcabb722ad34d5fcd13af0600296566baa045085a84afd90b17d9b4e48fb82688800f0b5f127c4a76fb52428ac6d4472ac51bd0ed7137c470f2815bafd9af3da2d1710d31f61032a08d8dce4602518deddb4722f6ac14d613b225486f52ad2f79d8ef8c75d14e5c5a1c578c21f242897229c08b5ce137f3138fdda6402b027875c60819326a7191f6f6fbaeffff030000003b61fe0b2e50f27b7623fa365bc77eb6361df0949d24cb124e43912d1b9f51ae00639f0200000000c03b4703000000004a01000000000000e803000000000000435f9c1fbe7c5beb179d95067bf89bdc1a05b1f57674b1743e1e41a3bce0e3c201000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f7631e521c4e3ee5fe417b7a429a0fdb27a685e857ba2ccf759daac4a3b8231ce12f6e65a706b479c8ecbae9557b563d5c41385fb5df4ece58c2377a7cdf09015637d7fd535c6a918a056bd9fdde7c70ce818c923659561881cdcc98d8a0ae8e929e496acbb2b3ecb8d2fe965aeafaf2c34e3b830a6853fd7b83aa7c25c0daf7b4511da2d4713ae787a603622a368f9bcc27a3575093e8eab69bcb6f9ac4fd8d36ebdbeb66c7610b54d42aee72c1c84b4b2d9ff32ebc53bd7a880005d6fdefdb14616aff232970246931707cacc626378dab3cb109940789d3647a89cb0fe85af07142ce949579c02b7cd92097f4e1e24fe7981d400ceb51165955a0f6f01eb0d140ce2a3d5a0fcf86afe35e71ff452c045609e00094ffc1d4a7f010f7936bcdc7a1f1fa934b2fcf43dc29a0e147ca58050c5a4ad4bbf1f8177adf69e8a968f632ccf004de9d2016365d8f3cd57dc906452c7d76d7b41a00419b9a58ed316f99a9f92116284cc3b4133357e34abee31d6db36629b70791a1027a2184b6f5c2f1a49ab0b026051eac344182959f1eb0d3da30984340614646d8b0064b6d6c6e693c2dc98ef158062298c551141f700ccfbe43316c35fed328c13ce25262fcf24e1faa553d30300000051834855f5e499afdd951d5834ac197a34194ce67c96d9ca7fd2d3a49a89bae7e09da30100000000e09da301000000004a01000000000000e80300000000000070ef697865d7d0470f6735b68855ef46d96f80d948b91de4af8a05a8c63557f100000000"
+    ],
+    "nova_expected_statement": {
+      "relation_version": "lnmarkets/sha256-transcript-accounting/v2",
+      "step_count": 3,
+      "journal_len": 276,
+      "journal_sha256_hex": "05ccebe3387b20904ea90a05c3e6f3d2040f43acf8ecfb8bbcdac898bd58f307",
+      "initial_state": {
+        "count": 0,
+        "total_collateral": 0,
+        "total_payout": 0,
+        "total_fee": 0,
+        "transcript_chain_digest_hex": "678ac75ac9a8e0f5d2ceedb58e5717162880dd305def2a7c0481ad88ebba8dd4",
+        "journal_sha_low128_le": "280404287656717140425745682455484681221",
+        "journal_sha_high128_le": "10568123980570750377752116632255401732",
+        "epoch": 162905
+      },
+      "final_state": {
+        "count": 3,
+        "total_collateral": 244003990,
+        "total_payout": 244000990,
+        "total_fee": 3000,
+        "transcript_chain_digest_hex": "bc58c67bd845a12d17631f23edffd1b59ad08639d68fcb76cf40a10255829a39",
+        "journal_sha_low128_le": "280404287656717140425745682455484681221",
+        "journal_sha_high128_le": "10568123980570750377752116632255401732",
+        "epoch": 162905
+      },
+      "initial_state_fields": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "678ac75ac9a8e0f5d2ceedb58e5717162880dd305def2a7c0481ad88ebba8dd4",
+        "280404287656717140425745682455484681221",
+        "10568123980570750377752116632255401732",
+        "162905"
+      ],
+      "final_state_fields": [
+        "3",
+        "244003990",
+        "244000990",
+        "3000",
+        "bc58c67bd845a12d17631f23edffd1b59ad08639d68fcb76cf40a10255829a39",
+        "280404287656717140425745682455484681221",
+        "10568123980570750377752116632255401732",
+        "162905"
+      ],
+      "row_transcript_digests_hex": [
+        "246d4db54db04e3918321c93644ee06e5d44d46ffd0fe7b015a384c786652dd4",
+        "8a05050f9394f3d19b525cb9dce3720ecb72059193577bbdf0cd27334d2c6587",
+        "488d44361a969243a7386fd2929ea27a0f3fa865433dd8fa2671cdb2166b122d"
+      ],
+      "verifier_key_pin_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": true,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "secq_claims_verified_count": 18,
+    "bitvm3_testnet4_statement": {
+      "magic": "UTXOREF_L2_SETTLEMENT_GROTH16_V0\\0",
+      "encoded_len": 304,
+      "network_code": "Testnet4",
+      "epoch_id": 162905,
+      "assertion_vout": 0,
+      "chain_genesis_hash_hex": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "contract_id_hex": "636eab872e3b757f6a48cafb4b4f1e7b1eafe0538c2010367aa6243d7dfb1aa6",
+      "commitment_hash_hex": "05ccebe3387b20904ea90a05c3e6f3d2040f43acf8ecfb8bbcdac898bd58f307",
+      "assertion_txid_hex": "3b3315071de299fa54f5d16c7c1c6a2858e7e46f14ae63b96488e0bb501b9cfa",
+      "settlement_txid_hex": "45617343f9f1b0782675b8a054c7d8a5b7b222e45b844a78554c75f9ed1bfeea",
+      "program_hash_hex": "7e4f3f5f73a6d5e86e955d985fc43787355414160992fb1dabcf99d96e8132d7",
+      "verifying_key_hash_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "policy_hash_hex": "06dbad8ecd60f477089a4c8107761cb3eba867df77f3b105c255510036dc5329",
+      "statement_304b_hex": "5554584f5245465f4c325f534554544c454d454e545f47524f544831365f56300000000100000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043636eab872e3b757f6a48cafb4b4f1e7b1eafe0538c2010367aa6243d7dfb1aa605ccebe3387b20904ea90a05c3e6f3d2040f43acf8ecfb8bbcdac898bd58f3073b3315071de299fa54f5d16c7c1c6a2858e7e46f14ae63b96488e0bb501b9cfa45617343f9f1b0782675b8a054c7d8a5b7b222e45b844a78554c75f9ed1bfeea7e4f3f5f73a6d5e86e955d985fc43787355414160992fb1dabcf99d96e8132d74eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b06dbad8ecd60f477089a4c8107761cb3eba867df77f3b105c255510036dc5329597c02000000000000000000",
+      "statement_sha256_hex": "b81c167f8375a636c82306da4c76665c2ee41e15ba86d783f02fa0d2250b4290",
+      "public_input_limbs_be_dec": [
+        "244723791852136180967092384132645676636",
+        "62328941683658818831766948257244856976"
+      ],
+      "public_input_limbs_be_hex": [
+        "b81c167f8375a636c82306da4c76665c",
+        "2ee41e15ba86d783f02fa0d2250b4290"
+      ],
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": true,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "atomic_clearing_txid_hex": "45617343f9f1b0782675b8a054c7d8a5b7b222e45b844a78554c75f9ed1bfeea",
+    "atomic_clearing_wtxid_hex": "79834ba1022d51576ca77ac6a384ca95acdb6f51c2e61ef56547ddaf7a28e343",
+    "atomic_clearing_vsize": 505,
+    "atomic_clearing_outputs_sats": [
+      90000000,
+      990,
+      82500000,
+      71500000
+    ],
+    "atomic_clearing_raw_segwit_tx_hex": "02000000000103fa9c1b50bbe08864b963ae146fe4e758286a1c7c6cd1f554fa99e21d0715333b0000000000fdffffffc2e3e0bca3411e3e74b17476f5b1051adc9bf87b06959d17eb5b7cbe1f9c5f430100000000fdfffffff15735c6a8058aafe41db948d9806fd946ef5588b635670f47d0d7657869ef700000000000fdffffff04804a5d050000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cde030000000000002251202c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991a0d9ea04000000002251207f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa2007e000430400000000225120eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f2836866190440d740e2775ea5c946dbcdc6d30e309a835aa72286448788ba06de45def718e3b38366f2d6b06c714478be7395ffccc036942d4f02943f6cb5b955f1e4893b2a2040671c5e76154a12f068f61e45954290c80e8a9539759c30290266175fb3d65482b9d331f0b65101d161ea8ed38734013bca47489ba75864891dad2272f12c05dc4420466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab36fa3a7d6fcbecdc2d5778280af1193f51bedc4d4492f3df5ef7685b928a22e80440138975a50bef2811b73576848c18976a5d5100fbae541a6faa282cd9c49012ba206070393316a50beee9f81eacf5322b9b82c8ab3690e98ddc3ad84b8240b4774020403355778a69c10fb6ee5a94f6e10248b3a15bfa92b2832b386a8d15295a11093b3e0a1d3be05acf47c57d438febc0636cdbb88af4317fe4fab2d7b8f7802a4420466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ad204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaac41c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab7ab1909922217ba6118796e4a597f0d789245e2d59f8a48ed60ce9b478d48c170440733b041d8f33bd83a42e453fa4a47d432ff0465bc32852f562b61ae9310475f4db9058b4105ec5c68027dd3c91bdec51b43f13e9da30dbce24d80a862d2324454052a4eb107ef2d8318305829eef44815ddc89c2a428a34655256c0df730fe2126b40dbbcfcfb0c141a706e85dc2625908e19b1ebe2482caedd62cb9006a95797f44204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab1500330dbb077539eca074f360f9ebdd70090292f636348311f966a5db58aafe78000000",
+    "external_nova_snark_receipt": {
+      "schema": "lnmarkets-nova-verification/v2",
+      "relation": "lnmarkets/sha256-transcript-accounting/v2",
+      "nova_version": "0.76.0",
+      "steps": 3,
+      "compressed_proof_bytes": 12376,
+      "proof_sha256_hex": "8b9412064c06fc3ef45d11a72179ac1ec21565f72dc23887a2ba66f88592b96f",
+      "verifier_key_sha256_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "verifier_key_serialized_bytes": 101826448,
+      "public_params_digest_hex": "1369c01b913e2dbc916d7ef38845e74a2a61cb1e6beda47e551457e0d43d3b02",
+      "primary_constraints": 275234,
+      "secondary_constraints": 10349,
+      "prove_wall_seconds": "23.8134",
+      "verify_wall_seconds": "0.5569",
+      "independently_supplied_expectations_matched": true,
+      "nova_compressed_verified": true
+    },
+    "honesty": {
+      "native_statement_verified": true,
+      "nova_snark_verified": true,
+      "bitvm3_onchain_verified": false,
+      "production_ready": false
+    }
+  }
+}

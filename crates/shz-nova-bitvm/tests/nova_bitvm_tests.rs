@@ -503,3 +503,58 @@ fn test_shz_matched_dlc_ticket_and_full_demo_determinism() {
     assert_eq!(demo_a.honesty, VerificationHonestyFlags::native_only());
     assert_eq!(demo_a.mnr02_bridge.honesty, VerificationHonestyFlags::native_only());
 }
+
+#[test]
+fn test_three_party_three_trade_dlc_collation_pnl_routing_and_collateral_release() {
+    let cfg = shz_nova_bitvm::ThreePartyClearingConfig::default();
+    let art_a = shz_nova_bitvm::build_three_party_clearing_ceremony(&cfg).unwrap();
+    let art_b = shz_nova_bitvm::build_three_party_clearing_ceremony(&cfg).unwrap();
+    assert_eq!(art_a.report, art_b.report);
+    assert_eq!(art_a.batch_witness_bytes, art_b.batch_witness_bytes);
+
+    let rep = &art_a.report;
+    assert_eq!(rep.network, "bitcoin-testnet4");
+    assert_eq!(rep.trades.len(), 3);
+    assert_eq!(rep.trades[0].execution_price_usd, 50_000);
+    assert_eq!(rep.trades[1].execution_price_usd, 55_000);
+    assert_eq!(rep.trades[2].execution_price_usd, 60_000);
+    assert!(rep.trades.iter().all(|t| t.protocol_fee_sats == 0));
+
+    // Winner Alice closed on Trade 3 ($50k -> $60k): +11,000,000 sats routed PnL (6M Bob + 5M Carol)
+    assert_eq!(rep.utxoref_pnl_clearing.bob_to_alice_routed_pnl_sats, 6_000_000);
+    assert_eq!(rep.utxoref_pnl_clearing.carol_to_alice_routed_pnl_sats, 5_000_000);
+    assert_eq!(rep.utxoref_pnl_clearing.total_winner_routed_pnl_sats, 11_000_000);
+    assert_eq!(rep.utxoref_pnl_clearing.alice_total_cleared_payout_sats, 71_500_000);
+
+    // Loser Bob's remaining collateral (90,000,000 of 96,000,000 sats = 93.75%) is freed immediately
+    assert_eq!(rep.utxoref_pnl_clearing.bob_locked_margin_before_clearing_sats, 96_000_000);
+    assert_eq!(rep.utxoref_pnl_clearing.bob_freed_collateral_sats, 90_000_000);
+    assert_eq!(rep.utxoref_pnl_clearing.bob_freed_collateral_bps, 9_375);
+    assert_eq!(rep.utxoref_pnl_clearing.carol_freed_collateral_sats, 82_500_000);
+    assert_eq!(rep.utxoref_pnl_clearing.durable_book_settled_epoch, 1);
+
+    // 3-row LNMBAT01 + 276B LNMJNL01 + 3 x 600B Nova v2 transcripts + 18 Secq claims + 304B Testnet4 BitVM3
+    assert_eq!(rep.journal.row_count, 3);
+    assert_eq!(rep.journal.total_collateral_sats, 244_003_990);
+    assert_eq!(rep.journal.total_payout_sats, 244_000_990);
+    assert_eq!(rep.journal.total_fee_sats, 3_000);
+    assert_eq!(rep.row_transcripts_600b_hex.len(), 3);
+    assert_eq!(rep.secq_claims_verified_count, 18);
+    assert_eq!(
+        rep.bitvm3_testnet4_statement.network_code,
+        BitcoinNetworkCode::Testnet4
+    );
+    let raw_304 = hex::decode(&rep.bitvm3_testnet4_statement.statement_304b_hex).unwrap();
+    assert_eq!(raw_304.len(), BITVM3_STATEMENT_LEN);
+    assert_eq!(raw_304[35], 1u8); // Testnet4 = 1
+
+    // Exact atomic clearing SegwitTx txid ties out to journal.batch_txid & BitVM3 settlement_txid
+    assert_eq!(rep.atomic_clearing_txid_hex, rep.journal.batch_txid_hex);
+    assert_eq!(
+        rep.atomic_clearing_txid_hex,
+        rep.bitvm3_testnet4_statement.settlement_txid_hex
+    );
+    let mut sorted_outs = rep.atomic_clearing_outputs_sats.clone();
+    sorted_outs.sort_unstable();
+    assert_eq!(sorted_outs, vec![990, 71_500_000, 82_500_000, 90_000_000]);
+}

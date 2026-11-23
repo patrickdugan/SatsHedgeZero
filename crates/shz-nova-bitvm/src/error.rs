@@ -54,4 +54,16 @@ impl VerificationHonestyFlags {
             production_ready: false,
         }
     }
+
+    ///Honest flags when an external `lnm-nova verify` process has cryptographically verified
+    /// a `CompressedSNARK` (`nova-snark 0.76.0`) against independently supplied receiver pins.
+    /// `bitvm3_onchain_verified` and `production_ready` remain `false`.
+    pub const fn with_external_nova_snark_verified() -> Self {
+        Self {
+            native_statement_verified: true,
+            nova_snark_verified: true,
+            bitvm3_onchain_verified: false,
+            production_ready: false,
+        }
+    }
 }
