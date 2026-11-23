@@ -1,0 +1,670 @@
+{
+  "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+  "start_hour": "498000",
+  "openings": [
+    {
+      "hour_id": "498000",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "1",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000000000000",
+          "publish_us": "1792803595000000",
+          "report_hash": "ad106f1c9422cc84fac2916ac03cdf27feb73d619fb37d71bd1cb7fbbf837f64"
+        },
+        "siblings": [
+          {
+            "min": "0",
+            "digest": "4ea14fef799a1f375e3ed982eb131f26dded2e51ab24405c81919cee5a1c14f1"
+          },
+          {
+            "min": "1792807150000000",
+            "digest": "77fe38b1b6571ac69f6a889487513c975143bd0707fd76961e071a870cc2ab0f"
+          },
+          {
+            "min": "1792810750000000",
+            "digest": "c34c6774921a6878430090a19b0e3f551acfeb27f178d361b35295bf77e6ed88"
+          },
+          {
+            "min": "1792817699000000",
+            "digest": "1414873142cf49dfcbaf740f42bacf78fd6e094e7ca5ccf9335118fe255b2aab"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "0",
+        "candidate": {
+          "present": false,
+          "price_e8": "0",
+          "publish_us": "0",
+          "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "siblings": [
+          {
+            "min": "1792807180000000",
+            "digest": "2ebd57efb4289ed06e68f03a801ee65ffbe3ceb9c551dc95fe96fa39f2a1dd45"
+          },
+          {
+            "min": "1792810780000000",
+            "digest": "f4df93cb070208c0cbcc707d68b28fec7b332fde137cc974429c14cc1428f87c"
+          },
+          {
+            "min": "1792817700000000",
+            "digest": "2cb4d90841eaabed976a0fdca162b60154a98585cfc0893bfb8fe2fe5b6bc7e9"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    },
+    {
+      "hour_id": "498001",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "3",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000100000000",
+          "publish_us": "1792807195000000",
+          "report_hash": "b6de1db5925c17bb0b8abcd25258a8d7ee779b7f72a1094c27cab7fe46b3eeeb"
+        },
+        "siblings": [
+          {
+            "min": "1792807150000000",
+            "digest": "9a49a9a4507876de5874d5c830f2ea2b9fb0db7f4de2ba62eb7a1c7989cabf6b"
+          },
+          {
+            "min": "0",
+            "digest": "ba408141794348a5159fbe9567a40f1b26af0453f27484dca55297948b991adb"
+          },
+          {
+            "min": "1792810750000000",
+            "digest": "c34c6774921a6878430090a19b0e3f551acfeb27f178d361b35295bf77e6ed88"
+          },
+          {
+            "min": "1792817699000000",
+            "digest": "1414873142cf49dfcbaf740f42bacf78fd6e094e7ca5ccf9335118fe255b2aab"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "1",
+        "candidate": {
+          "present": true,
+          "price_e8": "10020100000000",
+          "publish_us": "1792807180000000",
+          "report_hash": "8c0e90f961e0b71ae4ed09f20f0b1ba29a1e5294617d3f56b792cce98723f7da"
+        },
+        "siblings": [
+          {
+            "min": "0",
+            "digest": "4ea14fef799a1f375e3ed982eb131f26dded2e51ab24405c81919cee5a1c14f1"
+          },
+          {
+            "min": "1792810780000000",
+            "digest": "f4df93cb070208c0cbcc707d68b28fec7b332fde137cc974429c14cc1428f87c"
+          },
+          {
+            "min": "1792817700000000",
+            "digest": "2cb4d90841eaabed976a0fdca162b60154a98585cfc0893bfb8fe2fe5b6bc7e9"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    },
+    {
+      "hour_id": "498002",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "5",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000200000000",
+          "publish_us": "1792810795000000",
+          "report_hash": "3ea3799d8daa164987fcc4a09b3187fc4378187a17d4cccc016110ff21d5eda2"
+        },
+        "siblings": [
+          {
+            "min": "1792810750000000",
+            "digest": "91be93b85a311dc64ab7f903559505c0af3495141b04fa20e9c9a1763a0860e2"
+          },
+          {
+            "min": "1792814350000000",
+            "digest": "3ea73ee76067dff849e42bd770026514d14edf8bb4a889155c76998a08300f4f"
+          },
+          {
+            "min": "0",
+            "digest": "5a4b3d475d3a9eec399518837bee769d10bac48b92ea45c544a9a5834cd3ad58"
+          },
+          {
+            "min": "1792817699000000",
+            "digest": "1414873142cf49dfcbaf740f42bacf78fd6e094e7ca5ccf9335118fe255b2aab"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "2",
+        "candidate": {
+          "present": true,
+          "price_e8": "10020200000000",
+          "publish_us": "1792810780000000",
+          "report_hash": "796cd1d944fb9c1b9de43714b3c2f2ffb03593b5328973039d0cdb33df2ef871"
+        },
+        "siblings": [
+          {
+            "min": "1792814380000000",
+            "digest": "31732208e8899428009258ba20ef37988c6148c3714eab6ffcfab3ae0d050a36"
+          },
+          {
+            "min": "0",
+            "digest": "98625121c85f1aa4d899df6c672792a6ca1964825bd9ac8ba288343badc23d39"
+          },
+          {
+            "min": "1792817700000000",
+            "digest": "2cb4d90841eaabed976a0fdca162b60154a98585cfc0893bfb8fe2fe5b6bc7e9"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    },
+    {
+      "hour_id": "498003",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "7",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000300000000",
+          "publish_us": "1792814395000000",
+          "report_hash": "2013af08cba81ee67bc64db7b80bf932a71f01ee52223782234cc43307307b17"
+        },
+        "siblings": [
+          {
+            "min": "1792814350000000",
+            "digest": "34afe0b13e5d072b02a84356fa490e9f19a2983a7ab7b188bac1004f060cc83b"
+          },
+          {
+            "min": "1792810750000000",
+            "digest": "396ca63da242aa0135b4b4a5a6b5ca7768b1b647d142e8336f0752436bedafa1"
+          },
+          {
+            "min": "0",
+            "digest": "5a4b3d475d3a9eec399518837bee769d10bac48b92ea45c544a9a5834cd3ad58"
+          },
+          {
+            "min": "1792817699000000",
+            "digest": "1414873142cf49dfcbaf740f42bacf78fd6e094e7ca5ccf9335118fe255b2aab"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "3",
+        "candidate": {
+          "present": true,
+          "price_e8": "10020300000000",
+          "publish_us": "1792814380000000",
+          "report_hash": "54866fd115eadd6c0dd2eb2f109b668742a7ea4889312d8d29e0f4746dffcf70"
+        },
+        "siblings": [
+          {
+            "min": "1792810780000000",
+            "digest": "9cf365cfdd258d0f962c1346ae4b563a2efd2b215911d19edad7dc1a5ccf40b2"
+          },
+          {
+            "min": "0",
+            "digest": "98625121c85f1aa4d899df6c672792a6ca1964825bd9ac8ba288343badc23d39"
+          },
+          {
+            "min": "1792817700000000",
+            "digest": "2cb4d90841eaabed976a0fdca162b60154a98585cfc0893bfb8fe2fe5b6bc7e9"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    },
+    {
+      "hour_id": "498004",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "9",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000400000000",
+          "publish_us": "1792817700000000",
+          "report_hash": "13300dba976e6f3019f589b4c1ed1ae90ee791b8a08672d7d9bc53da5c2077b1"
+        },
+        "siblings": [
+          {
+            "min": "1792817699000000",
+            "digest": "a69f9428bc4c2bbeb9ab24e227ba22adaea56376df593e5f325120817cc9344f"
+          },
+          {
+            "min": "1792821595000000",
+            "digest": "80dc3f51b2942abbae5e49e6ccfd561f5c61fa494fbfd9e2558774f6243a6025"
+          },
+          {
+            "min": "1792832395000000",
+            "digest": "888ee1c2e474f29f09cf2c5ec1425c9f31f7e67dbb6e617ba3e182d8c81fee06"
+          },
+          {
+            "min": "0",
+            "digest": "652d245e30eb733704f99a970467d9521ad27e9f898592ceeaeea29e816694a6"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "4",
+        "candidate": {
+          "present": true,
+          "price_e8": "10020400000000",
+          "publish_us": "1792817700000000",
+          "report_hash": "347e5676095ae57718c2c23e9d7548acb08eb65089814971b53762512e4068c5"
+        },
+        "siblings": [
+          {
+            "min": "1792821580000000",
+            "digest": "1afcf04baa69a405a2303f0a59c831d9f52d1bc1ddcd74e4835378e422891ed6"
+          },
+          {
+            "min": "1792825110000000",
+            "digest": "1966fbdd688b33b67e4184b9159587458f0463ffa08925747c1a774ea2f62999"
+          },
+          {
+            "min": "0",
+            "digest": "cbfcad02897f8a333c935d7d552dac9cf96765040b054b15669a8ff47c9b1a8d"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    },
+    {
+      "hour_id": "498005",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "10",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000000000000",
+          "publish_us": "1792821595000000",
+          "report_hash": "7ccecb6047c32e8dcbb99d2dd090fc85a77d73b31705f4f8989678199d2cb634"
+        },
+        "siblings": [
+          {
+            "min": "1792825195000000",
+            "digest": "1c1c083ce687b8362d2d2b7793fef850b0dfccd0424a76f91641ba57b00ad9d3"
+          },
+          {
+            "min": "1792817699000000",
+            "digest": "bd032ea63816742b010b6b20fcc93e2ce16040d3c44622416719fa0d8f4e1639"
+          },
+          {
+            "min": "1792832395000000",
+            "digest": "888ee1c2e474f29f09cf2c5ec1425c9f31f7e67dbb6e617ba3e182d8c81fee06"
+          },
+          {
+            "min": "0",
+            "digest": "652d245e30eb733704f99a970467d9521ad27e9f898592ceeaeea29e816694a6"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "5",
+        "candidate": {
+          "present": true,
+          "price_e8": "10300000000000",
+          "publish_us": "1792821580000000",
+          "report_hash": "9a060ff7be7fc7d001369fa9ff9fed010ac5b6e73a01ca355fdab8a97bc574da"
+        },
+        "siblings": [
+          {
+            "min": "1792817700000000",
+            "digest": "9f0d63ea359a1b5267c4b01124eb557ddb0b7acee690102c2a92ea0e1a39864d"
+          },
+          {
+            "min": "1792825110000000",
+            "digest": "1966fbdd688b33b67e4184b9159587458f0463ffa08925747c1a774ea2f62999"
+          },
+          {
+            "min": "0",
+            "digest": "cbfcad02897f8a333c935d7d552dac9cf96765040b054b15669a8ff47c9b1a8d"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    },
+    {
+      "hour_id": "498006",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "11",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000000000000",
+          "publish_us": "1792825195000000",
+          "report_hash": "bb1816ec7959b5c744131d68e5f6aa24a8efa91dbe044ad4c2e21c83dd381616"
+        },
+        "siblings": [
+          {
+            "min": "1792821595000000",
+            "digest": "ab27d3128de02b4a35052186604d7669ca41169dce396d5bb58a46bc61ac6b7d"
+          },
+          {
+            "min": "1792817699000000",
+            "digest": "bd032ea63816742b010b6b20fcc93e2ce16040d3c44622416719fa0d8f4e1639"
+          },
+          {
+            "min": "1792832395000000",
+            "digest": "888ee1c2e474f29f09cf2c5ec1425c9f31f7e67dbb6e617ba3e182d8c81fee06"
+          },
+          {
+            "min": "0",
+            "digest": "652d245e30eb733704f99a970467d9521ad27e9f898592ceeaeea29e816694a6"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "6",
+        "candidate": {
+          "present": true,
+          "price_e8": "10020000000000",
+          "publish_us": "1792825110000000",
+          "report_hash": "46e582166ebc2b971468fa2b1f1e4bf80d81332268a37ccc976bc4e6ca62c75d"
+        },
+        "siblings": [
+          {
+            "min": "1792832380000000",
+            "digest": "e4e13bc72c5eeca64464008fff51963fabcdb31f6a892e4da4cbda9ac01f4332"
+          },
+          {
+            "min": "1792817700000000",
+            "digest": "ebd3cc99508803b6060f2b43592bc64acd95b0c485834f6780e26c42db57c0c8"
+          },
+          {
+            "min": "0",
+            "digest": "cbfcad02897f8a333c935d7d552dac9cf96765040b054b15669a8ff47c9b1a8d"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    },
+    {
+      "hour_id": "498007",
+      "pyth": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "pyth",
+          "depth": 4,
+          "count": "12",
+          "last_time": "1792832395000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+          }
+        },
+        "index": "11",
+        "candidate": {
+          "present": true,
+          "price_e8": "10000000000000",
+          "publish_us": "1792825195000000",
+          "report_hash": "bb1816ec7959b5c744131d68e5f6aa24a8efa91dbe044ad4c2e21c83dd381616"
+        },
+        "siblings": [
+          {
+            "min": "1792821595000000",
+            "digest": "ab27d3128de02b4a35052186604d7669ca41169dce396d5bb58a46bc61ac6b7d"
+          },
+          {
+            "min": "1792817699000000",
+            "digest": "bd032ea63816742b010b6b20fcc93e2ce16040d3c44622416719fa0d8f4e1639"
+          },
+          {
+            "min": "1792832395000000",
+            "digest": "888ee1c2e474f29f09cf2c5ec1425c9f31f7e67dbb6e617ba3e182d8c81fee06"
+          },
+          {
+            "min": "0",
+            "digest": "652d245e30eb733704f99a970467d9521ad27e9f898592ceeaeea29e816694a6"
+          }
+        ]
+      },
+      "chainlink": {
+        "header": {
+          "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+          "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+          "source": "chainlink",
+          "depth": 4,
+          "count": "7",
+          "last_time": "1792832380000000",
+          "sealed_through": "1792828800000000",
+          "root": {
+            "min": "0",
+            "digest": "d5c3385cd32a25d10bb495894e91e19d210e3b7f70d8e8ad89cc2fcbf2d85e36"
+          }
+        },
+        "index": "6",
+        "candidate": {
+          "present": true,
+          "price_e8": "10020000000000",
+          "publish_us": "1792825110000000",
+          "report_hash": "46e582166ebc2b971468fa2b1f1e4bf80d81332268a37ccc976bc4e6ca62c75d"
+        },
+        "siblings": [
+          {
+            "min": "1792832380000000",
+            "digest": "e4e13bc72c5eeca64464008fff51963fabcdb31f6a892e4da4cbda9ac01f4332"
+          },
+          {
+            "min": "1792817700000000",
+            "digest": "ebd3cc99508803b6060f2b43592bc64acd95b0c485834f6780e26c42db57c0c8"
+          },
+          {
+            "min": "0",
+            "digest": "cbfcad02897f8a333c935d7d552dac9cf96765040b054b15669a8ff47c9b1a8d"
+          },
+          {
+            "min": "18446744073709551615",
+            "digest": "351d5e6060ef6063c28eb13661727bbe896284c4956523df266c5e03a6b09afd"
+          }
+        ]
+      }
+    }
+  ]
+}
