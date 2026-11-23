@@ -1,0 +1,53 @@
+name: shz-near-transparent-ipa-research
+
+on:
+  push:
+    branches: ["research/near-nova-ipa-*"]
+  pull_request:
+    paths:
+      - "research/near_nova_ipa/**"
+      - "docs/SHZ_NEAR_TRANSPARENT_IPA_01.md"
+      - ".github/workflows/shz-near-transparent-ipa-ci.yml"
+
+jobs:
+  transparent-ipa-proof-and-near-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Derive deterministic transparent generators and fixture
+        run: |
+          node research/near_nova_ipa/fixtures/build_fixture.mjs
+          git diff --exit-code -- research/near_nova_ipa/fixtures/valid.json research/near_nova_ipa/near_contract/src/generators.rs
+      - name: Independent JS proof and adversarial tests
+        run: npm --prefix research/near_nova_ipa test
+      - name: Native NEAR host cryptography and adversarial proof tests
+        run: cargo test --manifest-path research/near_nova_ipa/near_contract/Cargo.toml -- --nocapture
+      - name: Compile transparent IPA contract for NEAR-compatible WASM
+        env:
+          RUSTFLAGS: "-C target-feature=-reference-types,-bulk-memory,-multivalue,-nontrapping-fptoint,-sign-ext,-extended-const"
+        run: cargo build --release --manifest-path research/near_nova_ipa/near_contract/Cargo.toml --target wasm32-unknown-unknown
+      - name: Enforce fail-closed settlement gate
+        run: |
+          grep -F 'pub fn can_authorize_nova(&self)->bool {false}' research/near_nova_ipa/near_contract/src/lib.rs
+          grep -F 'pub fn can_authorize_dlc_settlement(&self)->bool {false}' research/near_nova_ipa/near_contract/src/lib.rs
+      - name: Install NEAR sandbox harness
+        run: npm --prefix research/near_nova_ipa install --no-audit --no-fund
+      - name: Execute NEAR sandbox WASM and record actual receipt gas
+        env:
+          SHZ_IPA_SANDBOX_RECEIPT: ${{ runner.temp }}/ipa-sandbox-receipt.json
+        run: npm --prefix research/near_nova_ipa run sandbox
+      - name: Preserve actual gas receipt
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-ipa-near-sandbox-receipt
+          path: ${{ runner.temp }}/ipa-sandbox-receipt.json
+          if-no-files-found: ignore

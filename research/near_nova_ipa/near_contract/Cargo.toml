@@ -1,0 +1,19 @@
+[package]
+name = "shz-near-transparent-ipa-pilot"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Transparent BN254 inner-product proof verifier using NEAR native G1 multiexp; Nova not yet verified"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { version = "=5.17.2", features = ["legacy"] }
+hex = "0.4"
+num-bigint = "0.4"
+
+[dev-dependencies]
+near-sdk = { version = "=5.17.2", features = ["legacy", "unit-testing"] }
+
+[workspace]
