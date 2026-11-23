@@ -56,7 +56,7 @@ fn msm(terms:&[(&[u8;64], BigUint)], r:&BigUint)->Option<[u8;64]> {
     let mut data=Vec::with_capacity(terms.len()*96);
     for (p,s) in terms {
         if s>=r{return None}
-        data.extend_from_slice(p);
+        data.extend_from_slice(&(*p)[..]);
         data.extend_from_slice(&frle(s));
     }
     // The NEAR host rejects off-curve inputs. It returns exactly one G1 point, x||y LE.
