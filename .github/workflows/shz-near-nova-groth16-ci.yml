@@ -1,0 +1,37 @@
+name: shz-near-nova-groth16-research
+
+on:
+  push:
+    branches: ["research/near-nova-groth16-*"]
+  pull_request:
+
+jobs:
+  native-groth16-and-near-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt,clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Research receipt gates
+        run: |
+          node --test research/near_nova_groth16/tests/*.test.mjs
+          node research/near_nova_groth16/receipt_gate.mjs evidence/mnr03_testnet4_bob_offline_receipt.json > /tmp/shz-mnr03-wrapper-gate.json
+          node -e 'const a=require("/tmp/shz-mnr03-wrapper-gate.json");if(a.novaVerifiedInsideGroth16Circuit||a.productionReady||a.gate!=="BLOCKED_FULL_NOVA_WRAP")process.exit(1)'
+      - name: Groth16 circuit arithmetic and native proof tests
+        run: cargo test --manifest-path research/near_nova_groth16/proof_demo/Cargo.toml
+      - name: Build real Groth16 vector
+        run: cargo run --manifest-path research/near_nova_groth16/proof_demo/Cargo.toml --example gen_vector -- /tmp/shz-g16-vector.json
+      - name: Verify Groth16 proof using NEAR host mocks
+        run: cargo test --manifest-path research/near_nova_groth16/near_contract/Cargo.toml -- --nocapture
+      - name: Format isolated research crate sources in CI workspace
+        run: |
+          cargo fmt --manifest-path research/near_nova_groth16/proof_demo/Cargo.toml
+          cargo fmt --manifest-path research/near_nova_groth16/near_contract/Cargo.toml
+      - name: Build NEAR verifier WASM
+        run: cargo check --manifest-path research/near_nova_groth16/near_contract/Cargo.toml --target wasm32-unknown-unknown

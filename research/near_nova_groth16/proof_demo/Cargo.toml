@@ -1,0 +1,20 @@
+[package]
+name = "shz-groth16-price-proof"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+ark-bn254 = "=0.4.0"
+ark-ff = "=0.4.2"
+ark-ec = "=0.4.2"
+ark-groth16 = "=0.4.0"
+ark-r1cs-std = "=0.4.0"
+ark-relations = "=0.4.0"
+ark-snark = "=0.4.0"
+rand = "=0.8.5"
+serde = {version="1",features=["derive"]}
+serde_json = "1"
+hex = "0.4"
+
+[workspace]
