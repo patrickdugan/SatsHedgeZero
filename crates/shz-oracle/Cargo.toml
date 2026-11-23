@@ -9,6 +9,7 @@ description = "TradeLayer VWAP oracle, Pyth et al. NEAR-compatible Borsh relay, 
 
 [dependencies]
 borsh.workspace = true
+ed25519-dalek.workspace = true
 hex.workspace = true
 k256.workspace = true
 rand_core.workspace = true

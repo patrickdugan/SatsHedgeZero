@@ -45,3 +45,14 @@ See [`../../docs/SHZ_ORACLE02_CHANNEL02_ACCEPTANCE.md`](../../docs/SHZ_ORACLE02_
 `src/closeout_epoch.mjs` re-verifies native signed bytes, derives a clearing session commitment from the netted bilateral closeout plan and all channel recovery hashes, checks ECDSA-signed wallet coordination approvals, and accepts an explicitly **trusted, signed NEAR observer statement**, subject to maturity/fallback limits. This proves the coordination statement under the supplied trust roots. It never pretends to hold a Bitcoin witness, NEAR light-client proof or real Lightning commitment revocation.
 
 The experimental NEAR Rust contract also parses signed fields and records an on-NEAR Pyth price/challenge epoch. Both the NEAR contract and the Lightning wallet integration require further independent testing. Research tests are isolated to the `near_pyth_channel` subfolder.
+
+## ORACLE-03 / CHANNEL-03 / MNR-03 continuation
+
+See [`../../docs/SHZ_ORACLE03_MNR03_ACCEPTANCE.md`](../../docs/SHZ_ORACLE03_MNR03_ACCEPTANCE.md).
+
+- `src/wallet_settlement.mjs` implements the independent external commitment & finality verifier consuming `WALLET_SETTLEMENT_REQUESTED` states from `src/closeout_epoch.mjs`:
+  1. Re-derives exact `UTXORef` NUMS `P2TR` scripts and Tapscript control blocks (byte-exact with `UTXO-Ref/native/dlc-signer/tests/signing_target_vectors.json`) and verifies `secp256k1` BIP-340 Schnorr witnesses over BIP-341 `TapSighash` digests (`0x83` `SIGHASH_SINGLE | SIGHASH_ANYONECANPAY` origination pre-signatures on offline Bob hops **without `bobSecretKey`**, `0x01` `SIGHASH_ALL` online/guard co-signatures, and `0x00` `SIGHASH_DEFAULT` interactive bilateral signatures).
+  2. Enforces SHA-256 prior-commitment revocation secret disclosure strictly ordered before conditional preimage reveal (`revocationSequence < preimageRevealSequence`) and staggered incoming/outgoing hop `CLTV` deltas (`>= 6` blocks).
+  3. Separates `authorizeBroadcastReadySettlement` (`readyForBitcoinBroadcast: true`, `collateralReleased: false`, `bitcoinSpendEnforced: false`) from `confirmBitcoinSettlement` (`bitcoinSpendEnforced: true`, `collateralReleased: true` only on active-chain confirmation, or `HALTED_ON_REORG` / `ledgerFrozen: true` on reorg or anchor-tip mismatch, while preserving `nearFinalityVerified: false`).
+- `near_contract/src/lib.rs` adds epoch-bounded multi-key Pyth Pro signer rotation (`rotate_pyth_signers`) & emergency revocation (`revoke_pyth_signer`), payload/event replay nullifiers, objective source-substitution slashing (`submit_source_substitution_challenge`), and native `VMContextBuilder` unit tests alongside the `wasm32-unknown-unknown` CI build gate.
+- Upstream Rust workspace adds `crates/shz-oracle/src/pyth_lazer.rs`, `crates/shz-utxoref/src/mnr03.rs`, `crates/shz-nova-bitvm/src/oracle_epoch_bridge.rs`, and `bins/shz-cli/src/mnr03_harness.rs` (`shz mnr03-regtest` + `shz mnr03-testnet4-live`).
