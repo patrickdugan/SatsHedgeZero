@@ -94,7 +94,7 @@ fn threshold_keys(script: &Script, count: usize) -> Option<Vec<XOnlyPublicKey>> 
     if script.len() != 34 * count {
         return None;
     }
-    script.as_bytes().chunks_exact(34).enumerate().map(|(position, chunk)| {
+    script.as_bytes().as_chunks::<34>().0.iter().enumerate().map(|(position, chunk)| {
         let opcode = if position + 1 == count { 0xac } else { 0xad };
         if chunk[0] != 32 || chunk[33] != opcode {
             return None;

@@ -1,6 +1,8 @@
 name: MNR-04 exact Bitcoin clearing
 
 on:
+  push:
+    branches: ["research/mnr04-bitcoin-exact-nova-a100-20261123"]
   pull_request:
     paths:
       - "crates/shz-nova-bitvm/**"

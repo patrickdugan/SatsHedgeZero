@@ -75,12 +75,12 @@ impl StepCircuit<Scalar> for Clearing {
         }
         let inner = sha256(cs.namespace(|| "legacy SHA-256"), &bits)?;
         let digest = sha256(cs.namespace(|| "legacy double SHA-256"), &inner)?;
-        for (limb, (word, public)) in digest.chunks_exact(128).zip(&state[..2]).enumerate() {
+        for (limb, (word, public)) in digest.as_chunks::<128>().0.iter().zip(&state[..2]).enumerate() {
             enforce_packed(cs.namespace(|| format!("TXID limb {limb}")), word.iter().rev().cloned(), public);
         }
         for (index, amount) in state[4..9].iter().enumerate() {
             let start = 8 * (FIRST_OUTPUT_AMOUNT + OUTPUT_BYTES * index);
-            let sat_bits = bits[start..start + 64].chunks_exact(8).flat_map(|byte| byte.iter().rev().cloned());
+            let sat_bits = bits[start..start + 64].as_chunks::<8>().0.iter().flat_map(|byte| byte.iter().rev().cloned());
             enforce_packed(cs.namespace(|| format!("output sats {index}")), sat_bits, amount);
         }
         cs.enforce(
@@ -97,7 +97,7 @@ impl StepCircuit<Scalar> for Clearing {
 }
 
 fn digest_limbs(digest: &[u8; 32]) -> impl Iterator<Item = Scalar> + '_ {
-    digest.chunks_exact(16).map(|word| {
+    digest.as_chunks::<16>().0.iter().map(|word| {
         word.iter().fold(Scalar::ZERO, |acc, byte| acc * Scalar::from(256) + Scalar::from(u64::from(*byte)))
     })
 }
