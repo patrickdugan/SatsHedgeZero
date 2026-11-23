@@ -1,0 +1,58 @@
+{
+  "schema": "shz/admission-eager-placement-work-model/v1",
+  "measured": false,
+  "models": [
+    {
+      "reports": "12",
+      "depth": 4,
+      "seals": 2,
+      "merges": "10",
+      "folds": "24",
+      "previousFolds": "36",
+      "removedPlacementFolds": "12",
+      "frontierSha256CompressionBlocks": "48",
+      "previousSharedSha256CompressionBlocks": "72",
+      "oldNewPathCompressionBlocksLowerBound": "216",
+      "note": "Both circuits use two SHA blocks per fold. Eager placement removes one fold per admitted report. Analytical counts only."
+    },
+    {
+      "reports": "7",
+      "depth": 4,
+      "seals": 2,
+      "merges": "7",
+      "folds": "16",
+      "previousFolds": "23",
+      "removedPlacementFolds": "7",
+      "frontierSha256CompressionBlocks": "32",
+      "previousSharedSha256CompressionBlocks": "46",
+      "oldNewPathCompressionBlocksLowerBound": "126",
+      "note": "Both circuits use two SHA blocks per fold. Eager placement removes one fold per admitted report. Analytical counts only."
+    },
+    {
+      "reports": "144000",
+      "depth": 18,
+      "seals": 1,
+      "merges": "143995",
+      "folds": "287996",
+      "previousFolds": "431996",
+      "removedPlacementFolds": "144000",
+      "frontierSha256CompressionBlocks": "575992",
+      "previousSharedSha256CompressionBlocks": "863992",
+      "oldNewPathCompressionBlocksLowerBound": "10656000",
+      "note": "Both circuits use two SHA blocks per fold. Eager placement removes one fold per admitted report. Analytical counts only."
+    },
+    {
+      "reports": "262143",
+      "depth": 18,
+      "seals": 1,
+      "merges": "262143",
+      "folds": "524287",
+      "previousFolds": "786430",
+      "removedPlacementFolds": "262143",
+      "frontierSha256CompressionBlocks": "1048574",
+      "previousSharedSha256CompressionBlocks": "1572860",
+      "oldNewPathCompressionBlocksLowerBound": "19398582",
+      "note": "Both circuits use two SHA blocks per fold. Eager placement removes one fold per admitted report. Analytical counts only."
+    }
+  ]
+}

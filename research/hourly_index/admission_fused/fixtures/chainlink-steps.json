@@ -1,0 +1,146 @@
+[
+  {
+    "op": "append",
+    "record": {
+      "price_e8": "10020100000000",
+      "publish_us": "1792807180000000",
+      "report_hash": "8c0e90f961e0b71ae4ed09f20f0b1ba29a1e5294617d3f56b792cce98723f7da"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "carry",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "append",
+    "record": {
+      "price_e8": "10020200000000",
+      "publish_us": "1792810780000000",
+      "report_hash": "796cd1d944fb9c1b9de43714b3c2f2ffb03593b5328973039d0cdb33df2ef871"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "append",
+    "record": {
+      "price_e8": "10020300000000",
+      "publish_us": "1792814380000000",
+      "report_hash": "54866fd115eadd6c0dd2eb2f109b668742a7ea4889312d8d29e0f4746dffcf70"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "carry",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "carry",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "seal",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "1792817699999999"
+  },
+  {
+    "op": "append",
+    "record": {
+      "price_e8": "10020400000000",
+      "publish_us": "1792817700000000",
+      "report_hash": "347e5676095ae57718c2c23e9d7548acb08eb65089814971b53762512e4068c5"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "append",
+    "record": {
+      "price_e8": "10300000000000",
+      "publish_us": "1792821580000000",
+      "report_hash": "9a060ff7be7fc7d001369fa9ff9fed010ac5b6e73a01ca355fdab8a97bc574da"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "carry",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "append",
+    "record": {
+      "price_e8": "10020000000000",
+      "publish_us": "1792825110000000",
+      "report_hash": "46e582166ebc2b971468fa2b1f1e4bf80d81332268a37ccc976bc4e6ca62c75d"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "append",
+    "record": {
+      "price_e8": "11000000000000",
+      "publish_us": "1792832380000000",
+      "report_hash": "db8cf5a444b5438444798b80d01e52d3191b688f868382fa932489cd4ce14264"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "carry",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "carry",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "carry",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "0"
+  },
+  {
+    "op": "seal",
+    "record": {
+      "price_e8": "0",
+      "publish_us": "0",
+      "report_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "watermark": "1792828800000000"
+  }
+]
