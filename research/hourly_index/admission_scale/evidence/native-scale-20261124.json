@@ -1,0 +1,101 @@
+{
+  "schema": "shz/index-admission-scale/native/v1",
+  "depth": 18,
+  "synthetic": true,
+  "source": "pyth",
+  "wall_seconds": 16.579132050000002,
+  "metrics": [
+    {
+      "reports": 0,
+      "folds": 1,
+      "snapshot_pin": "082b06ff4b68a3c527753d2af6980af57cb4b0edd00da49946199a4fc397b2c5",
+      "frontier_seconds": 0,
+      "independent_tree_seconds": 0.0006835400000000007,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2670,
+      "nova_verified": false
+    },
+    {
+      "reports": 1,
+      "folds": 3,
+      "snapshot_pin": "e9d0fa98a5799398d5bb2c7f7b0c6eb588a5aaa25507094b7e16dee491f007c2",
+      "frontier_seconds": 0.0004405440000000027,
+      "independent_tree_seconds": 0.0005834090000000032,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2700,
+      "nova_verified": false
+    },
+    {
+      "reports": 16,
+      "folds": 32,
+      "snapshot_pin": "4fe15eb7769b095b664f6bc8c43c9ea481586e47a7d9c0ab1db1f0fcce14c421",
+      "frontier_seconds": 0.0045475950000000084,
+      "independent_tree_seconds": 0.0009300719999999955,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2718,
+      "nova_verified": false
+    },
+    {
+      "reports": 128,
+      "folds": 256,
+      "snapshot_pin": "0d91d5bd3eed483002426e9c46e71e3e58eff23433ffe64ea1b5b8925e4be874",
+      "frontier_seconds": 0.02357589699999997,
+      "independent_tree_seconds": 0.0032439100000000065,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2722,
+      "nova_verified": false
+    },
+    {
+      "reports": 512,
+      "folds": 1024,
+      "snapshot_pin": "6cae754e681384d6f0efca6cf4586e5b7a991b9f1d22fa6230681ea023c60ec7",
+      "frontier_seconds": 0.07293301299999998,
+      "independent_tree_seconds": 0.008652382000000004,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2724,
+      "nova_verified": false
+    },
+    {
+      "reports": 2048,
+      "folds": 4096,
+      "snapshot_pin": "38e1ee15d08ef2dcad9fb3a0ab0af33025b42fad74db9d9a5924fa454351ab38",
+      "frontier_seconds": 0.2543153909999985,
+      "independent_tree_seconds": 0.027653954999999997,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2726,
+      "nova_verified": false
+    },
+    {
+      "reports": 8192,
+      "folds": 16384,
+      "snapshot_pin": "a3eef0ef45fb12f6e84d2b34fb2a4ac60cad4b0a34aab136ed7aee8aa3e9b2af",
+      "frontier_seconds": 0.893532379999998,
+      "independent_tree_seconds": 0.10570294200000001,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2728,
+      "nova_verified": false
+    },
+    {
+      "reports": 144000,
+      "folds": 287996,
+      "snapshot_pin": "bbc0234e9018423aa18cdb7ac57a094f4a325c9a330f34e014fd2c7ddb2909c2",
+      "frontier_seconds": 14.507556029999648,
+      "independent_tree_seconds": 1.9031127229999985,
+      "packed_fields": 44,
+      "serialized_claim_bytes": 2790,
+      "nova_verified": false
+    }
+  ],
+  "flags": {
+    "nova_verified": false,
+    "source_authentication": false,
+    "provider_completeness_proven": false,
+    "production_ready": false
+  },
+  "measurement_environment": {
+    "runtime": "Node.js v22.16.0",
+    "measurement": "single local CPU process, GNU time -v",
+    "peak_rss_kib": 165672,
+    "wall_seconds": 16.63
+  }
+}
