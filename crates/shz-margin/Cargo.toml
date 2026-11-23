@@ -1,0 +1,15 @@
+[package]
+name = "shz-margin"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Zero-fee inverse BTC/USD payoff math, collateral asset abstraction (Vanilla BTC + TAP hook), and dyadic CET compression for SatsHedgeZero."
+
+[dependencies]
+borsh.workspace = true
+hex.workspace = true
+serde.workspace = true
+sha2.workspace = true
+thiserror.workspace = true

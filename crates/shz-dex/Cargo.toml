@@ -1,0 +1,18 @@
+[package]
+name = "shz-dex"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Decentralized zero-fee P2P inverse orderbook, matching engine, and non-custodial LN-DLC coordinator."
+
+[dependencies]
+hex.workspace = true
+k256.workspace = true
+serde.workspace = true
+sha2.workspace = true
+shz-dlc.workspace = true
+shz-margin.workspace = true
+shz-oracle.workspace = true
+thiserror.workspace = true

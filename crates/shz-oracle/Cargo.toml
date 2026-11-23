@@ -1,0 +1,19 @@
+[package]
+name = "shz-oracle"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "TradeLayer VWAP oracle, Pyth et al. NEAR-compatible Borsh relay, t-of-n FROST state confederation, and bonded fraud proof verifier."
+
+[dependencies]
+borsh.workspace = true
+hex.workspace = true
+k256.workspace = true
+rand_core.workspace = true
+serde.workspace = true
+sha2.workspace = true
+shz-dlc.workspace = true
+shz-margin.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/shz-margin",
+    "crates/shz-dlc",
+    "crates/shz-oracle",
+    "crates/shz-dex",
+    "bins/shz-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Patrick Dugan"]
+repository = "https://github.com/patrickdugan/SatsHedgeZero"
+
+[workspace.dependencies]
+shz-margin = { path = "crates/shz-margin" }
+shz-dlc = { path = "crates/shz-dlc" }
+shz-oracle = { path = "crates/shz-oracle" }
+shz-dex = { path = "crates/shz-dex" }
+
+borsh = { version = "1.5", features = ["derive"] }
+hex = "0.4"
+k256 = { version = "0.13", features = ["arithmetic", "schnorr", "ecdsa", "sha256"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+thiserror = "2.0"
+
+# Optimize pure-Rust elliptic-curve field arithmetic (`k256`/`crypto-bigint`) in dev/test builds.
+[profile.dev.package."*"]
+opt-level = 2
+
