@@ -1,0 +1,56 @@
+{
+  "header": {
+    "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+    "policy_hash": "d934b1094fd42e8f082013973889cabacfe867b7a12dba40d87f8663fcf26fdc",
+    "source": "pyth",
+    "depth": 4,
+    "count": "12",
+    "last_time": "1792832395000000",
+    "sealed_through": "1792828800000000",
+    "root": {
+      "min": "0",
+      "digest": "32f8513d64b5cbc28a89a2d58060b8c2327936f370758da33559600d5f0d2b82"
+    }
+  },
+  "pin": "0e48d75d12191e590d5dd33c8e5a4a0922c51535ecc1bf8ee23462b1326547d9",
+  "steps": 24,
+  "final_state": {
+    "operations": "24",
+    "leaf_count": "13",
+    "last_time": "1792832395000000",
+    "sealed_through": "1792828800000000",
+    "pending": false,
+    "level": 0,
+    "carry": {
+      "min": "0",
+      "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "frontier": [
+      {
+        "occupied": true,
+        "min": "1792832395000000",
+        "digest": "d5af6b4f3fd1fa9824fb0f138730c65ebe9f5b40872f142dbf0cd5536a7d4e23"
+      },
+      {
+        "occupied": false,
+        "min": "0",
+        "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "occupied": true,
+        "min": "1792817699000000",
+        "digest": "33d2126f6d656f33af6dfd2bd220e9b4733b4f7e1418bad7df69ce4e3b615ea2"
+      },
+      {
+        "occupied": true,
+        "min": "0",
+        "digest": "652d245e30eb733704f99a970467d9521ad27e9f898592ceeaeea29e816694a6"
+      },
+      {
+        "occupied": false,
+        "min": "0",
+        "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  }
+}
