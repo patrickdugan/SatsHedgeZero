@@ -1,9 +1,9 @@
-name: shz-index-admission-transparent-nova
+name: shz-index-admission-shared-sha-nova
 on:
   push:
-    branches: ["research/shz-index-admission-*"]
+    branches: ["research/shz-index-admission-02-*"]
   pull_request:
-    paths: ["research/hourly_index/admission/**", "docs/SHZ_INDEX_ADMISSION_01.md", ".github/workflows/shz-index-admission-ci.yml"]
+    paths: ["research/hourly_index/admission/**", "docs/SHZ_INDEX_ADMISSION_02_SHARED_SHA.md", ".github/workflows/shz-index-admission-ci.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,7 +30,9 @@ jobs:
           B=research/hourly_index/admission
           rustc -Vv
           cargo generate-lockfile --manifest-path "$B/Cargo.toml"
-          cargo test --release --locked --manifest-path "$B/Cargo.toml" -- --test-threads=1 --nocapture
+          set -o pipefail
+          cargo test --release --locked --manifest-path "$B/Cargo.toml" -- --test-threads=1 --nocapture | tee "$RUNNER_TEMP/shz-admit-shared-r1cs.txt"
+          grep SHZ_ADMISSION_SHARED_SHA_COUNTS "$RUNNER_TEMP/shz-admit-shared-r1cs.txt"
       - name: Build native prover and verifier
         run: cargo build --release --locked --manifest-path research/hourly_index/admission/Cargo.toml
       - name: Prove and independently verify both source histories
@@ -49,12 +51,14 @@ jobs:
           const max=JSON.parse(readFileSync('research/hourly_index/maximality/fixtures/expected.json','utf8'));
           for(const source of ['pyth','chainlink']) {
             const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/shz-admission-'+source+'/verification.json','utf8'));
-            if(!r.independent_compressed_verified || r.snapshot_pin!==max.pins[source] || r.flags.near_nova_verified || r.flags.source_authentication || r.flags.can_authorize_dlc_settlement)throw Error('unproven or inconsistent source history');
+            if(r.relation!=="shz/ordered-admission-frontier-nova/v2-shared-sha/depth4" || !r.independent_compressed_verified || r.snapshot_pin!==max.pins[source] || r.flags.near_nova_verified || r.flags.source_authentication || r.flags.can_authorize_dlc_settlement)throw Error('unproven or inconsistent source history');
           }
           JS
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: shz-index-admission-transparent-proofs
-          path: ${{ runner.temp }}/shz-admission-*
+          name: shz-index-admission-shared-sha-proofs
+          path: |
+            ${{ runner.temp }}/shz-admission-*
+            ${{ runner.temp }}/shz-admit-shared-r1cs.txt
           retention-days: 7

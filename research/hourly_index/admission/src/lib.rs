@@ -1,9 +1,9 @@
-//! INDEX-ADMIT-01: binary-carry ordered log history, exact MAX-01 snapshot.
+//! INDEX-ADMIT-02: shared SHA-256 opcode gadget for the binary-carry log.
 //! Structural admission and monotone sealing only. Source authentication,
 //! independently authorized watermarks and provider completeness are external.
 #![forbid(unsafe_code)]
 use ff::Field;
-use nova_snark::frontend::gadgets::{boolean::{AllocatedBit,Boolean},num::AllocatedNum,sha256::sha256};
+use nova_snark::frontend::gadgets::{boolean::{AllocatedBit,Boolean},num::AllocatedNum,sha256::{sha256,sha256_compression_function},uint32::UInt32};
 use nova_snark::frontend::{ConstraintSystem,LinearCombination,SynthesisError};
 use nova_snark::provider::PallasEngine;
 use nova_snark::traits::{Engine,circuit::StepCircuit};
@@ -15,7 +15,7 @@ pub const CAP:u64=1<<DEPTH;
 pub const MAX_STEPS:usize=128;
 pub const ARITY:usize=9+4*(DEPTH+1)+3;
 const CONTEXT:usize=ARITY-3;
-pub const RELATION:&str="shz/ordered-admission-frontier-nova/v1/depth4";
+pub const RELATION:&str="shz/ordered-admission-frontier-nova/v2-shared-sha/depth4";
 const MAX_PRICE:u64=10_000_000_000_000_000;
 const LEAF:&[u8]=b"SHZ/LOG/LEAF/V2";
 const EMPTY:&[u8]=b"SHZ/LOG/EMPTY/V2";
@@ -136,9 +136,52 @@ fn bound_digest<CS:ConstraintSystem<F>>(cs:&mut CS,label:&str,h:&[u8;32],z:&[All
 fn gated_eq<CS:ConstraintSystem<F>>(cs:&mut CS,label:&str,g:&Boolean,a:LinearCombination<F>,b:LinearCombination<F>){zero_if(cs,label,g,a-&b)}
 struct SummaryBits{min:Vec<Boolean>,digest:Vec<Boolean>}
 fn gate_summary<CS:ConstraintSystem<F>>(cs:&mut CS,label:&str,g:&Boolean,s:&SummaryBits,z:&[AllocatedNum<F>]){let mut ns=cs.namespace(||label.to_owned());for(i,b)in [s.min.as_slice(),&s.digest[..128],&s.digest[128..]].into_iter().enumerate(){gated_eq(&mut ns,&format!("component {i}"),g,le_lc::<CS>(b),val::<CS>(&z[i]));}}
+// Both V2 messages occupy exactly two SHA-256 blocks after canonical padding.
+// Lengths and IV are protocol constants, never prover-selected witnesses.
+fn pad_two_blocks(input:&[Boolean],expected_bytes:usize)->Vec<Boolean>{
+    assert_eq!(input.len(),expected_bytes*8);
+    assert!(matches!(expected_bytes,64|95));
+    let mut out=input.to_vec();
+    out.push(Boolean::constant(true));
+    out.resize(960,Boolean::constant(false));
+    out.extend(constant_bits(&((expected_bytes as u64)*8).to_be_bytes()));
+    assert_eq!(out.len(),1024);
+    out
+}
+fn shared_two_block_sha256<CS:ConstraintSystem<F>>(mut cs:CS,append:&Boolean,leaf:&[Boolean],node:&[Boolean])->Result<Vec<Boolean>,SynthesisError>{
+    let leaf=pad_two_blocks(leaf,64);
+    let node=pad_two_blocks(node,95);
+    // The append opcode is constrained one-hot in the surrounding transition.
+    // 0 selects NODE; 1 selects LEAF. Select *including* the padding and length.
+    // Constant/constant positions can be simplified without witness-dependent shape.
+    let mut padded=Vec::with_capacity(1024);
+    for(i,(n,l))in node.iter().zip(&leaf).enumerate(){
+        match(n,l){
+            (Boolean::Constant(n),Boolean::Constant(l))=>{
+                padded.push(if n==l{Boolean::constant(*n)}else if *l{append.clone()}else{append.not()});
+            },
+            _=>padded.extend(pick(cs.namespace(||format!("padded bit {i}")),append,std::slice::from_ref(n),std::slice::from_ref(l))?),
+        }
+    }
+    const IV:[u32;8]=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    let mut state=IV.iter().map(|x|UInt32::constant(*x)).collect::<Vec<_>>();
+    for(i,block)in padded.chunks_exact(512).enumerate(){
+        state=sha256_compression_function(cs.namespace(||format!("shared sha256 block {i}")),block,&state)?;
+    }
+    Ok(state.into_iter().flat_map(|x|x.into_bits_be()).collect())
+}
+
 impl StepCircuit<F> for AdmissionStep{
  fn arity(&self)->usize{ARITY}
  fn synthesize<CS:ConstraintSystem<F>>(&self,cs:&mut CS,z:&[AllocatedNum<F>])->Result<Vec<AllocatedNum<F>>,SynthesisError>{
+    self.synthesize_hash_variant::<CS,true>(cs,z)
+ }
+}
+impl AdmissionStep{
+ // Compile-time switch only. The production StepCircuit implementation always
+ // uses the shared gadget. The legacy arm is retained for matched R1CS tests.
+ #[doc(hidden)]
+ pub fn synthesize_hash_variant<CS:ConstraintSystem<F>,const SHARED:bool>(&self,cs:&mut CS,z:&[AllocatedNum<F>])->Result<Vec<AllocatedNum<F>>,SynthesisError>{
   assert_eq!(z.len(),ARITY);assert_eq!(self.before.frontier.len(),DEPTH+1);assert_eq!(self.after.frontier.len(),DEPTH+1);
   let b=&self.before;let w=&self.action;let always=Boolean::constant(true);
   let a=bit(cs,"append opcode",w.op==Op::Append)?;let m=bit(cs,"carry opcode",w.op==Op::Carry)?;let s=bit(cs,"seal opcode",w.op==Op::Seal)?;
@@ -189,12 +232,16 @@ impl StepCircuit<F> for AdmissionStep{
   slack(cs,"strict watermark advance",&s,le_lc::<CS>(&watermark)-&le_lc::<CS>(&seal)-&one::<CS>(),i128::from(w.watermark)-i128::from(b.sealed_through)-1,64)?;
   slack(cs,"reserve infinite watermark",&s,LinearCombination::zero()+(F::from(u64::MAX-1),CS::one())-&le_lc::<CS>(&watermark),i128::from(u64::MAX-1)-i128::from(w.watermark),64)?;
   zero_if(cs,"nonseal watermark zero",&s.not(),le_lc::<CS>(&watermark));
-  // Fixed shape: two SHA gadgets on every microstep, including place/seal.
-  // Their outputs affect state only under the corresponding constrained opcode.
-  let mut leaf_data=constant_bits(LEAF);leaf_data.extend(constant_bits(&[1]));leaf_data.extend(price);leaf_data.extend(time.iter().cloned());leaf_data.extend(report);
-  let leaf_hash=sha256(cs.namespace(||"append leaf sha256"),&leaf_data)?;
-  let mut merge_data=constant_bits(NODE);merge_data.extend(chosen.min.iter().cloned());merge_data.extend(chosen.digest);merge_data.extend(carry.min.iter().cloned());merge_data.extend(carry.digest.iter().cloned());
-  let merge_hash=sha256(cs.namespace(||"carry merge sha256"),&merge_data)?;
+   let mut leaf_data=constant_bits(LEAF);leaf_data.extend(constant_bits(&[1]));leaf_data.extend(price);leaf_data.extend(time.iter().cloned());leaf_data.extend(report);
+   let mut merge_data=constant_bits(NODE);merge_data.extend(chosen.min.iter().cloned());merge_data.extend(chosen.digest);merge_data.extend(carry.min.iter().cloned());merge_data.extend(carry.digest.iter().cloned());
+   // Placement and seal still execute the fixed-shape hash, but neither can
+   // install its result. The unchanged transition gates enforce those cases.
+   let (leaf_hash,merge_hash)=if SHARED{
+       let digest=shared_two_block_sha256(cs.namespace(||"shared opcode sha256"),&a,&leaf_data,&merge_data)?;
+       (digest.clone(),digest)
+   }else{
+       (sha256(cs.namespace(||"append leaf sha256"),&leaf_data)?,sha256(cs.namespace(||"carry merge sha256"),&merge_data)?)
+   };
   let values=self.after.fields(self.genesis,self.source);let mut out=Vec::with_capacity(ARITY);for(i,v)in values.iter().take(CONTEXT).enumerate(){out.push(AllocatedNum::alloc_infallible(cs.namespace(||format!("next field {i}")),||*v));}out.extend_from_slice(&z[CONTEXT..]);
   eq(cs,"literal operation increment",val::<CS>(&z[0])+CS::one(),val::<CS>(&out[0]));eq(cs,"only append increases leaf count",val::<CS>(&z[1])+&a.lc(CS::one(),F::ONE),val::<CS>(&out[1]));
   gated_eq(cs,"append sets tail",&a,le_lc::<CS>(&time),val::<CS>(&out[2]));gated_eq(cs,"other ops preserve tail",&a.not(),val::<CS>(&z[2]),val::<CS>(&out[2]));
@@ -204,5 +251,29 @@ impl StepCircuit<F> for AdmissionStep{
   for i in 6..9{zero_if(cs,&format!("placement clears carry {i}"),&place,val::<CS>(&out[i]));zero_if(cs,&format!("seal clears carry {i}"),&s,val::<CS>(&out[i]));}
   for i in 0..=DEPTH{let off=9+4*i;let mut ns=cs.namespace(||format!("update slot {i}"));for j in 0..4{gated_eq(&mut ns,&format!("unselected component {j}"),&sels[i].not(),val::<CS>(&z[off+j]),val::<CS>(&out[off+j]));zero_if(&mut ns,&format!("merged component {j}"),&merges[i],val::<CS>(&out[off+j]));}gated_eq(&mut ns,"placed slot occupied",&places[i],one::<CS>(),val::<CS>(&out[off]));gate_summary(&mut ns,"placed carry summary",&places[i],&carry,&out[off+1..off+4]);}
   Ok(out)
+ }
+}
+
+#[cfg(test)]
+mod shared_hash_tests{
+ use super::*;
+ use nova_snark::frontend::util_cs::test_cs::TestConstraintSystem;
+ #[test]
+ fn shared_opcode_hash_matches_native_sha256_at_both_lengths(){
+  let mut shape=None;
+  for seed in [0u8,1,0xff,0xa5]{
+   let leaf=(0..64).map(|i|seed.wrapping_add(i as u8)).collect::<Vec<_>>();
+   let node=(0..95).map(|i|seed.wrapping_mul(3).wrapping_add(i as u8)).collect::<Vec<_>>();
+   for choose_leaf in [false,true]{
+    let mut cs=TestConstraintSystem::<F>::new();
+    let a=bit(&mut cs,"opcode",choose_leaf).unwrap();
+    let l=bits(cs.namespace(||"leaf"),&leaf).unwrap();let n=bits(cs.namespace(||"node"),&node).unwrap();
+    let d=shared_two_block_sha256(cs.namespace(||"shared"),&a,&l,&n).unwrap();
+    let expected=hash(if choose_leaf{&leaf}else{&node});
+    for(i,(x,y))in d.iter().zip(constant_bits(&expected)).enumerate(){eq(&mut cs,&format!("digest bit {i}"),x.lc(TestConstraintSystem::<F>::one(),F::ONE),y.lc(TestConstraintSystem::<F>::one(),F::ONE));}
+    assert!(cs.is_satisfied());
+    if let Some(count)=shape{assert_eq!(count,cs.num_constraints());}else{shape=Some(cs.num_constraints());}
+   }
+  }
  }
 }
