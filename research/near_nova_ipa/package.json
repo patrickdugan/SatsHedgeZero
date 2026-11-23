@@ -1,0 +1,14 @@
+{
+  "name": "shz-near-transparent-ipa-research",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/ipa.test.mjs",
+    "fixture": "node fixtures/build_fixture.mjs",
+    "sandbox": "node sandbox.mjs"
+  },
+  "devDependencies": {
+    "near-workspaces": "5.0.0"
+  }
+}
