@@ -108,8 +108,48 @@
             </div>
           </div>
 
+          <div id="shz-bitcorn-bar" class="shz-bitcorn-bar mono" aria-label="BitcornWisdom Chart Controls">
+            <div class="shz-bc-group" role="group" aria-label="Candle Interval">
+              <button type="button" class="shz-bc-btn" data-bc-interval="1m">1m</button>
+              <button type="button" class="shz-bc-btn" data-bc-interval="5m">5m</button>
+              <button type="button" class="shz-bc-btn is-active" data-bc-interval="15m">15m</button>
+              <button type="button" class="shz-bc-btn" data-bc-interval="1h">1h</button>
+              <button type="button" class="shz-bc-btn" data-bc-interval="4h">4h</button>
+              <button type="button" class="shz-bc-btn" data-bc-interval="1d">1d</button>
+            </div>
+            <span class="shz-bc-sep" aria-hidden="true"></span>
+            <div class="shz-bc-group" role="group" aria-label="Indicators and Scale">
+              <button type="button" class="shz-bc-btn is-active" data-bc-toggle="ema" title="EMA 20">EMA</button>
+              <button type="button" class="shz-bc-btn" data-bc-toggle="sma" title="SMA 50">SMA</button>
+              <button type="button" class="shz-bc-btn" data-bc-toggle="bb" title="Bollinger Bands 20/2σ">BB</button>
+              <button type="button" class="shz-bc-btn" data-bc-toggle="rsi" title="RSI 14 Pane">RSI</button>
+              <button type="button" class="shz-bc-btn" data-bc-toggle="log" title="Logarithmic Price Scale">LOG</button>
+              <button type="button" class="shz-bc-btn is-active" data-bc-toggle="depth" title="Cumulative L2 Bid/Ask Depth Profile">DEPTH</button>
+            </div>
+            <span class="shz-bc-sep" aria-hidden="true"></span>
+            <div class="shz-bc-group" role="group" aria-label="Drawing Tools">
+              <button type="button" class="shz-bc-btn is-active" data-bc-tool="pan" title="Pan / Zoom (drag & wheel)">Pan</button>
+              <button type="button" class="shz-bc-btn" data-bc-tool="line" title="Trend Line (Shift snaps OHLC)">Trend</button>
+              <button type="button" class="shz-bc-btn" data-bc-tool="horizontal" title="Horizontal Level">H-Line</button>
+              <button type="button" class="shz-bc-btn" data-bc-tool="fib" title="Fibonacci Retracement">Fib</button>
+              <button type="button" class="shz-bc-btn shz-bc-muted" data-bc-action="undo" title="Undo Drawing (Ctrl+Z)">↶</button>
+              <button type="button" class="shz-bc-btn shz-bc-muted" data-bc-action="clear" title="Clear Drawings">✕</button>
+            </div>
+            <div class="shz-bc-status">
+              <button
+                type="button"
+                id="bc-feed-badge"
+                class="shz-bc-feed-pill"
+                data-bc-action="feed"
+                data-state="connecting"
+                title="BitcornWisdom federated BTC/USD feed (click to toggle Live / Synthetic Demo)"
+              >CONNECTING</button>
+              <span id="bc-perf-badge" class="shz-bc-perf" title="Canvas draw p95 latency">p95 —</span>
+            </div>
+          </div>
+
           <div id="shz-chart-stage" class="shz-chart-stage">
-            <canvas id="shz-main-canvas"></canvas>
+            <canvas id="shz-main-canvas" tabindex="0"></canvas>
             <div id="shz-chart-fallback" class="shz-fallback-banner mono" hidden>
               <span>Canvas ready for <code>/charts.js</code> (Candles / Inverse Payoff Visualizer)</span>
             </div>

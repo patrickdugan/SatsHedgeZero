@@ -1,15 +1,26 @@
 // SatsHedgeZero Interactive Canvas Chart Engine (`ui/public/charts.js`)
-// Institutional Deribit-dark HiDPI renderer for:
-//   1. "candles": Deterministic BTC/USD OHLCV + TradeLayer L1 VWAP (tx14) + Pyth confidence band + Liq levels
-//   2. "payoff":  Dual-axis Inverse DLC Payoff (sats + USD purchasing power) & 20-bit Dyadic CET Visualizer
+// Powered by patrickdugan/BitcornWisdom (MIT License, Copyright (c) 2026 Patrick Dugan)
+//   1. "candles": Real BitcornWisdom `CandleChart` (EMA 20, SMA 50, BB 20/2σ, RSI 14, log/linear scale,
+//                 cumulative L2 bid/ask depth profile, pan/zoom/drawings, Kraken+Coinbase FeedRouter
+//                 with Bitcorn Synthetic failover) + SatsHedgeZero protocol overlays
+//                 (Mark, TradeLayer tx14 VWAP, Pyth NEAR Relay ±conf band, Entry P0, Long/Short Liq,
+//                 1x SatsHedge ∞ UNLIQUIDATABLE badge, optional 3-party clearing markers).
+//   2. "payoff":  Dual-axis Inverse DLC Payoff (sats + USD purchasing power) & 20-bit Dyadic CET Visualizer.
 //
 // Zero external dependencies. Safe for both browser ES module import and Node.js unit testing.
+
+import { CandleChart } from "./bitcorn/chart.js";
+import { makeDemoCandles, makeDemoDepth, nextDemoCandle } from "./bitcorn/demo.js";
+import { feedPlan } from "./bitcorn/feed-policy.js";
+import { FeedRouter } from "./bitcorn/feed-router.js";
+import { openFeedSource } from "./bitcorn/feed-adapters.js";
 
 export const SATS_PER_BTC = 100_000_000n;
 export const BPS_DENOMINATOR = 10_000n;
 export const DEFAULT_CET_BITS = 20;
 export const DEFAULT_CET_DOMAIN_SIZE = 1 << DEFAULT_CET_BITS; // 1,048,576
 export const DEFAULT_CET_MAX_ERROR_SATS = 250;
+export const BITCORN_INTERVALS = Object.freeze(["1m", "5m", "15m", "1h", "4h", "1d"]);
 
 export const THEME = Object.freeze({
   bg: "#0a0e14",
@@ -307,7 +318,6 @@ export function generateInversePayoffCurve(
     const p = Math.round(minPrice + ((maxPrice - minPrice) * i) / steps);
     priceSet.add(p);
   }
-  // Ensure exact critical inflection prices sit on the plotted polyline.
   for (const critical of [
     spec.entryPriceUsd,
     liq.longLiqUsd,
@@ -353,6 +363,7 @@ export function generateInversePayoffCurve(
 
 // ---------------------------------------------------------------------------
 // Deterministic BTC/USD OHLCV + TradeLayer VWAP + Pyth Confidence Band
+// (Preserved for pure-math tests and deterministic offline fallback)
 // ---------------------------------------------------------------------------
 
 function mulberry32(seed) {
@@ -417,7 +428,6 @@ export function generateDeterministicCandles({
     });
   }
 
-  // Smoothly anchor final VWAP to the authoritative TradeLayer tx14 VWAP.
   const finalDelta = vwapPriceUsd - candles[count - 1].rawVwap;
   for (let i = 0; i < count; i++) {
     const blend = (i + 1) / count;
@@ -431,9 +441,65 @@ export function generateDeterministicCandles({
   return candles;
 }
 
+export const generateSyntheticCandles = generateDeterministicCandles;
+
 // ---------------------------------------------------------------------------
-// State Normalization (defensive across camelCase / snake_case SHZ_STATE shapes)
+// Orderbook & State Normalization
 // ---------------------------------------------------------------------------
+
+/**
+ * Maps SatsHedgeZero P2P orderbook entries (`{ priceUsd, valueBtc | btcValue | sizeUsd }` or `[price, qty]`)
+ * into BitcornWisdom's `[price, qty]` depth arrays.
+ */
+export function mapOrderbookToDepth(orderbook) {
+  if (!orderbook || typeof orderbook !== "object") return { bids: [], asks: [] };
+  const mapSide = (rows) => {
+    if (!Array.isArray(rows)) return [];
+    const out = [];
+    for (const r of rows) {
+      if (Array.isArray(r) && r.length >= 2) {
+        const p = Number(r[0]);
+        const q = Number(r[1]);
+        if (Number.isFinite(p) && p > 0 && Number.isFinite(q) && q > 0) out.push([p, q]);
+      } else if (r && typeof r === "object") {
+        const p = Number(r.priceUsd ?? r.price);
+        const q = Number(
+          r.btcValue ??
+            r.valueBtc ??
+            r.qty ??
+            (Number.isFinite(Number(r.sizeUsd)) && p > 0 ? Number(r.sizeUsd) / p : NaN)
+        );
+        if (Number.isFinite(p) && p > 0 && Number.isFinite(q) && q > 0) out.push([p, q]);
+      }
+    }
+    return out;
+  };
+  return {
+    bids: mapSide(orderbook.bids),
+    asks: mapSide(orderbook.asks),
+  };
+}
+
+function normalizeClearingTrades(rawTrades) {
+  if (!Array.isArray(rawTrades)) return [];
+  const out = [];
+  for (let i = 0; i < rawTrades.length; i++) {
+    const t = rawTrades[i];
+    if (!t || typeof t !== "object") continue;
+    const priceUsd = Number(t.priceUsd ?? t.price ?? t.price_usd);
+    if (!Number.isFinite(priceUsd) || priceUsd <= 0) continue;
+    out.push({
+      label: String(t.label || `Trade ${i + 1}`),
+      priceUsd,
+      side: t.side || null,
+      color: t.color || (i === rawTrades.length - 1 ? THEME.amber : THEME.cyan),
+      timeSec: Number.isFinite(Number(t.timeSec ?? t.time_sec))
+        ? Number(t.timeSec ?? t.time_sec)
+        : null,
+    });
+  }
+  return out;
+}
 
 export function normalizeChartState(rawState = {}) {
   const state = rawState && typeof rawState === "object" ? rawState : {};
@@ -475,12 +541,8 @@ export function normalizeChartState(rawState = {}) {
       20
   );
 
-  const usdNotional = Number(
-    quote.usdNotional ?? quote.usd_notional ?? 1_000
-  );
-  const entryPriceUsd = Number(
-    quote.entryPriceUsd ?? quote.entry_price_usd ?? markPriceUsd
-  );
+  const usdNotional = Number(quote.usdNotional ?? quote.usd_notional ?? 1_000);
+  const entryPriceUsd = Number(quote.entryPriceUsd ?? quote.entry_price_usd ?? markPriceUsd);
   const longLevX = Number(quote.longLevX ?? quote.long_lev_x ?? 10);
   const shortLevX = Number(quote.shortLevX ?? quote.short_lev_x ?? 1);
   const side = (quote.side || "short").toLowerCase();
@@ -506,11 +568,13 @@ export function normalizeChartState(rawState = {}) {
     longLiqUsd: liq.longLiqUsd,
     shortLiqUsd: liq.shortLiqUsd,
     isCoveredSyntheticUsd: liq.isCoveredSyntheticUsd,
+    depth: mapOrderbookToDepth(state.orderbook),
+    clearingTrades: normalizeClearingTrades(state.clearingTrades || state.clearing_trades),
   };
 }
 
 // ---------------------------------------------------------------------------
-// Formatting Helpers
+// Formatting & Canvas Overlay Primitives
 // ---------------------------------------------------------------------------
 
 function fmtUsd(val, compact = false) {
@@ -536,17 +600,6 @@ function fmtCompactSats(val) {
   return `${sign}${Math.round(abs)}`;
 }
 
-function fmtTime(sec) {
-  const d = new Date(sec * 1000);
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
-}
-
-// ---------------------------------------------------------------------------
-// Canvas Rendering Engine (HiDPI + Crosshair + Candles & Inverse Payoff Modes)
-// ---------------------------------------------------------------------------
-
 function drawRoundedRect(ctx, x, y, w, h, r = 3) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -563,9 +616,9 @@ function drawRoundedRect(ctx, x, y, w, h, r = 3) {
 
 function drawBadge(ctx, text, x, y, bg, border, fg, alignRight = false) {
   ctx.save();
-  ctx.font = `600 10.5px ${THEME.fontMono}`;
-  const padX = 7;
-  const h = 19;
+  ctx.font = `600 10px ${THEME.fontMono}`;
+  const padX = 6;
+  const h = 17;
   const w = ctx.measureText(text).width + padX * 2;
   const bx = alignRight ? x - w : x;
   drawRoundedRect(ctx, bx, y, w, h, 3);
@@ -625,67 +678,497 @@ function drawTooltipBox(ctx, lines, anchorX, anchorY, width, height) {
   ctx.restore();
 }
 
+function queryParamDemo() {
+  if (typeof window === "undefined" || !window.location?.search) return false;
+  try {
+    return new URLSearchParams(window.location.search).get("demo") === "1";
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ShzChartController (BitcornWisdom CandleChart + SatsHedgeZero Payoff Mode)
+// ---------------------------------------------------------------------------
+
 export class ShzChartController {
-  constructor(canvas) {
+  constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas ? canvas.getContext("2d") : null;
     this.state = normalizeChartState({});
     this.pointer = null;
     this.cachedPayoffKey = "";
     this.cachedPayoff = null;
-    this.cachedCandlesKey = "";
-    this.cachedCandles = null;
     this._resizeObserver = null;
+    this._onWindowResize = null;
+    this._uiListeners = [];
+    this._demoTimer = null;
+    this._demoTick = 0;
+    this._router = null;
+    this._feedEpoch = 0;
+    this._lastTelemetryPush = 0;
+
+    const isBrowser =
+      typeof window !== "undefined" &&
+      typeof document !== "undefined" &&
+      typeof fetch === "function";
+
+    this.interval = BITCORN_INTERVALS.includes(options.interval) ? options.interval : "15m";
+    this.forceDemo = options.demo === true || queryParamDemo();
+    this.liveFeedEnabled =
+      options.liveFeed !== undefined ? Boolean(options.liveFeed) : isBrowser && !this.forceDemo;
+    this.openSource = options.openSource || null;
+    this.onTelemetry = typeof options.onTelemetry === "function" ? options.onTelemetry : null;
+
+    this.feedState = this.forceDemo || !this.liveFeedEnabled ? "demo" : "connecting";
+    this.sourceLabel = this.feedState === "demo" ? "BITCORN DEMO" : "CONNECTING";
+    this.hasLiveVenueCandles = false;
+    this.hasLiveVenueDepth = false;
+    this.lastMetrics = { samples: 0, canvasDrawMs: null, updateToDrawMs: null, activeFps: null };
+    this._syntheticAnchor = null;
+
+    this.candleChart = canvas
+      ? new CandleChart(canvas, {
+          onDrawingsChange: () => this._syncControlBar(),
+        })
+      : null;
+
+    if (this.candleChart) {
+      this.candleChart.setOptions({
+        theme: "shz",
+        interval: this.interval,
+        depthProfileEnabled: true,
+        showEMA: true,
+        showSMA: false,
+        showBB: false,
+        showRSI: false,
+        logarithmic: false,
+      });
+      this.candleChart.onPaint = (metrics, frame, ctx) => {
+        this.lastMetrics = metrics || this.lastMetrics;
+        this._paintProtocolOverlays(metrics, frame, ctx);
+        this._notifyTelemetry(false);
+      };
+      this._seedSyntheticCandles(this.state.markPriceUsd, true);
+    }
 
     if (canvas) {
       this._bindEvents();
       this.resizeAndRender();
+      if (this.liveFeedEnabled) {
+        this._startFeedRouter();
+      } else if (isBrowser && this.forceDemo) {
+        this._startDemoTicker();
+      }
     }
   }
 
   _bindEvents() {
     this._onMove = (ev) => {
-      const rect = this.canvas.getBoundingClientRect();
-      this.pointer = {
+      const rect = this.canvas.getBoundingClientRect?.() || { left: 0, top: 0 };
+      const pt = {
         x: ev.clientX - rect.left,
         y: ev.clientY - rect.top,
       };
-      this.render();
+      this.pointer = pt;
+      if (this.state.chartMode === "payoff") {
+        this.render();
+      } else if (this.candleChart) {
+        this.candleChart.pointerMove(ev);
+      }
     };
     this._onLeave = () => {
       this.pointer = null;
-      this.render();
+      if (this.state.chartMode === "payoff") {
+        this.render();
+      } else if (this.candleChart && !this.candleChart.drag) {
+        this.candleChart.pointer = null;
+        this.candleChart.requestDraw();
+      }
     };
-    this.canvas.addEventListener("mousemove", this._onMove);
-    this.canvas.addEventListener("mouseleave", this._onLeave);
+    this.canvas.addEventListener?.("mousemove", this._onMove);
+    this.canvas.addEventListener?.("mouseleave", this._onLeave);
 
     if (typeof ResizeObserver !== "undefined") {
-      this._resizeObserver = new ResizeObserver(() => this.resizeAndRender());
+      this._resizeObserver = new ResizeObserver(() => {
+        if (this.state.chartMode === "payoff") this.resizeAndRender();
+      });
       this._resizeObserver.observe(this.canvas.parentElement || this.canvas);
-    } else if (typeof window !== "undefined") {
-      this._onWindowResize = () => this.resizeAndRender();
+    } else if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      this._onWindowResize = () => {
+        if (this.state.chartMode === "payoff") this.resizeAndRender();
+      };
       window.addEventListener("resize", this._onWindowResize);
     }
   }
 
+  bindControls(container) {
+    if (!container || typeof container.querySelectorAll !== "function") return;
+    this._controlsRoot = container;
+    this._unbindControls();
+
+    const listen = (el, type, fn) => {
+      el.addEventListener(type, fn);
+      this._uiListeners.push([el, type, fn]);
+    };
+
+    container.querySelectorAll("[data-bc-interval]").forEach((btn) => {
+      listen(btn, "click", () => {
+        const iv = btn.getAttribute("data-bc-interval");
+        if (iv) this.setInterval(iv);
+      });
+    });
+
+    container.querySelectorAll("[data-bc-toggle]").forEach((btn) => {
+      listen(btn, "click", () => {
+        const key = btn.getAttribute("data-bc-toggle");
+        if (key === "log") this.toggleLog();
+        else if (key === "depth") this.toggleDepth();
+        else if (key) this.toggleIndicator(key);
+      });
+    });
+
+    container.querySelectorAll("[data-bc-tool]").forEach((btn) => {
+      listen(btn, "click", () => {
+        const tool = btn.getAttribute("data-bc-tool");
+        if (tool) this.setTool(tool);
+      });
+    });
+
+    container.querySelectorAll("[data-bc-action]").forEach((btn) => {
+      listen(btn, "click", () => {
+        const act = btn.getAttribute("data-bc-action");
+        if (act === "undo") this.undoDrawing();
+        else if (act === "clear") this.clearDrawings();
+        else if (act === "reset") this.resetView();
+        else if (act === "feed") this.toggleDemoFeed();
+      });
+    });
+
+    this._syncControlBar();
+  }
+
+  _unbindControls() {
+    for (const [el, type, fn] of this._uiListeners) {
+      el.removeEventListener?.(type, fn);
+    }
+    this._uiListeners = [];
+  }
+
+  _syncControlBar() {
+    const root = this._controlsRoot;
+    if (!root) return;
+    root.hidden = this.state.chartMode === "payoff";
+
+    root.querySelectorAll("[data-bc-interval]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-bc-interval") === this.interval);
+    });
+
+    const chart = this.candleChart;
+    if (chart) {
+      const toggleMap = {
+        ema: chart.showEMA,
+        sma: chart.showSMA,
+        bb: chart.showBB,
+        rsi: chart.showRSI,
+        log: chart.logarithmic,
+        depth: chart.depthProfileEnabled,
+      };
+      root.querySelectorAll("[data-bc-toggle]").forEach((btn) => {
+        const key = btn.getAttribute("data-bc-toggle");
+        btn.classList.toggle("is-active", Boolean(toggleMap[key]));
+      });
+      root.querySelectorAll("[data-bc-tool]").forEach((btn) => {
+        btn.classList.toggle("is-active", btn.getAttribute("data-bc-tool") === chart.tool);
+      });
+    }
+
+    const srcEl = root.querySelector("#bc-feed-badge");
+    if (srcEl) {
+      srcEl.textContent = this.sourceLabel;
+      srcEl.dataset.state = this.feedState;
+    }
+
+    const perfEl = root.querySelector("#bc-perf-badge");
+    if (perfEl) {
+      const p95 = this.lastMetrics?.canvasDrawMs;
+      perfEl.textContent = Number.isFinite(p95) ? `p95 ${p95.toFixed(1)}ms` : "p95 —";
+    }
+  }
+
+  _notifyTelemetry(force = false) {
+    const now = Date.now();
+    if (!force && now - this._lastTelemetryPush < 200) return;
+    this._lastTelemetryPush = now;
+    this._syncControlBar();
+    if (this.onTelemetry) {
+      this.onTelemetry({
+        sourceLabel: this.sourceLabel,
+        feedState: this.feedState,
+        p95Ms: this.lastMetrics?.canvasDrawMs ?? null,
+        fps: this.lastMetrics?.activeFps ?? null,
+        interval: this.interval,
+        tool: this.candleChart?.tool ?? "pan",
+      });
+    }
+  }
+
+  _stopFeed() {
+    ++this._feedEpoch;
+    this._router?.stop();
+    this._router = null;
+    if (this._demoTimer !== null) {
+      clearInterval(this._demoTimer);
+      this._demoTimer = null;
+    }
+  }
+
+  _seedSyntheticCandles(anchorPriceUsd, reset = true) {
+    if (!this.candleChart) return;
+    const anchor = Number.isFinite(anchorPriceUsd) && anchorPriceUsd > 0 ? anchorPriceUsd : 100_000;
+    this._syntheticAnchor = anchor;
+    const rows = makeDemoCandles(this.interval, 160, Date.now(), anchor);
+    this.candleChart.setCandles(rows, this.interval, reset);
+    if (!this.hasLiveVenueDepth) {
+      if (this.state.depth.bids.length || this.state.depth.asks.length) {
+        this.candleChart.setDepth(this.state.depth.bids, this.state.depth.asks, "P2P L2");
+      } else {
+        const d = makeDemoDepth(anchor);
+        this.candleChart.setDepth(d.bids, d.asks, "P2P L2");
+      }
+    }
+  }
+
+  _startDemoTicker() {
+    this._stopFeed();
+    const epoch = this._feedEpoch;
+    this.feedState = "demo";
+    this.sourceLabel = "BITCORN DEMO";
+    this.hasLiveVenueCandles = false;
+    this.hasLiveVenueDepth = false;
+    this._seedSyntheticCandles(this.state.markPriceUsd, true);
+    this._notifyTelemetry(true);
+
+    if (typeof window === "undefined") return;
+    this._demoTimer = setInterval(() => {
+      if (epoch !== this._feedEpoch || !this.candleChart) return;
+      if (this.state.chartMode !== "candles") return;
+      const last = this.candleChart.candles.at(-1);
+      if (!last) return;
+      const next = nextDemoCandle(last, this.interval, this._demoTick++);
+      this.candleChart.updateCandle(next);
+    }, 1400);
+  }
+
+  _startFeedRouter() {
+    this._stopFeed();
+    const epoch = this._feedEpoch;
+    this.feedState = "connecting";
+    this.sourceLabel = "CONNECTING";
+    this.hasLiveVenueCandles = false;
+    this.hasLiveVenueDepth = false;
+    this._notifyTelemetry(true);
+
+    let sources;
+    try {
+      sources = feedPlan({ instrument: "BTC-USD-SPOT", interval: this.interval });
+    } catch {
+      this._startDemoTicker();
+      return;
+    }
+
+    const adapter =
+      this.openSource ||
+      ((source, callbacks, signal) =>
+        openFeedSource(source, callbacks, signal, { includeDepth: true }));
+
+    this._router = new FeedRouter({
+      sources,
+      openSource: adapter,
+      connectTimeoutMs: 7000,
+      staleMs: 25000,
+      onSource: (snapshot) => {
+        if (epoch !== this._feedEpoch) return;
+        if (snapshot.source?.venue) {
+          this.sourceLabel = `${snapshot.source.venue.toUpperCase()} SYNC`;
+          this.feedState = "connecting";
+        }
+        this._notifyTelemetry(true);
+      },
+      onStatus: (snapshot) => {
+        if (epoch !== this._feedEpoch) return;
+        if (snapshot.state === "live" && snapshot.source?.venue) {
+          this.feedState = "live";
+          this.sourceLabel = `${snapshot.source.venue.toUpperCase()} LIVE`;
+          this._notifyTelemetry(true);
+        } else if (snapshot.state === "unavailable") {
+          // Automatic failover to Bitcorn Synthetic when offline or venues unreachable
+          this._startDemoTicker();
+        } else if (snapshot.state === "disrupted" || snapshot.state === "stale") {
+          this.feedState = snapshot.state;
+          this.sourceLabel = snapshot.source?.venue
+            ? `${snapshot.source.venue.toUpperCase()} RETRY`
+            : "RECONNECTING";
+          this._notifyTelemetry(true);
+        }
+      },
+      onHistory: (candles, source) => {
+        if (epoch !== this._feedEpoch || !this.candleChart) return;
+        this.hasLiveVenueCandles = true;
+        this.feedState = "live";
+        this.sourceLabel = `${source.market.toUpperCase()} LIVE`;
+        this.candleChart.setCandles(candles, this.interval, true);
+        this._notifyTelemetry(true);
+      },
+      onCandle: (candle, source) => {
+        if (epoch !== this._feedEpoch || !this.candleChart) return;
+        this.hasLiveVenueCandles = true;
+        this.feedState = "live";
+        this.sourceLabel = `${source.market.toUpperCase()} LIVE`;
+        this.candleChart.updateCandle(candle);
+        this._notifyTelemetry(false);
+      },
+      onTrade: (trade) => {
+        if (epoch !== this._feedEpoch || !this.candleChart) return;
+        this.candleChart.updateTrade(trade);
+      },
+      onDepth: (book) => {
+        if (epoch !== this._feedEpoch || !this.candleChart) return;
+        this.hasLiveVenueDepth = true;
+        this.candleChart.setDepthBook({ ...book, label: "LIVE L2" });
+      },
+      onError: () => {
+        // FeedRouter manages venue failover and demo fallback cleanly.
+      },
+    });
+
+    void this._router.start().then((ok) => {
+      if (epoch !== this._feedEpoch) return;
+      if (!ok && this._router?.snapshot().state === "unavailable") {
+        this._startDemoTicker();
+      }
+    });
+  }
+
+  // --- Public BitcornWisdom Control API ---
+
+  setInterval(interval) {
+    if (!BITCORN_INTERVALS.includes(interval)) return;
+    if (this.interval === interval) return;
+    this.interval = interval;
+    if (this.candleChart) this.candleChart.interval = interval;
+    if (this.liveFeedEnabled && !this.forceDemo) {
+      this._seedSyntheticCandles(this.state.markPriceUsd, true);
+      this._startFeedRouter();
+    } else {
+      this._seedSyntheticCandles(this.state.markPriceUsd, true);
+      if (typeof window !== "undefined") this._startDemoTicker();
+    }
+    this._notifyTelemetry(true);
+  }
+
+  toggleIndicator(name) {
+    if (!this.candleChart) return;
+    const map = { ema: "showEMA", sma: "showSMA", bb: "showBB", rsi: "showRSI" };
+    const prop = map[name];
+    if (!prop) return;
+    this.candleChart.setOptions({ [prop]: !this.candleChart[prop] });
+    this._syncControlBar();
+  }
+
+  toggleLog() {
+    if (!this.candleChart) return;
+    this.candleChart.setOptions({ logarithmic: !this.candleChart.logarithmic });
+    this._syncControlBar();
+  }
+
+  toggleDepth() {
+    if (!this.candleChart) return;
+    this.candleChart.setOptions({ depthProfileEnabled: !this.candleChart.depthProfileEnabled });
+    this._syncControlBar();
+  }
+
+  setTool(tool) {
+    if (!this.candleChart) return;
+    const normalized = tool === "trend" ? "line" : tool === "hline" ? "horizontal" : tool === "vline" ? "vertical" : tool;
+    this.candleChart.setTool(normalized);
+    this._syncControlBar();
+  }
+
+  undoDrawing() {
+    this.candleChart?.undoDrawing();
+    this._syncControlBar();
+  }
+
+  clearDrawings() {
+    this.candleChart?.clearDrawings();
+    this._syncControlBar();
+  }
+
+  resetView() {
+    this.candleChart?.resetView();
+  }
+
+  toggleDemoFeed() {
+    this.forceDemo = !this.forceDemo;
+    if (this.forceDemo) {
+      this._startDemoTicker();
+    } else {
+      this.liveFeedEnabled = true;
+      this._startFeedRouter();
+    }
+    this._syncControlBar();
+  }
+
   destroy() {
+    this._stopFeed();
+    this._unbindControls();
+    if (this.candleChart) {
+      this.candleChart.destroy();
+      this.candleChart = null;
+    }
     if (this.canvas && this._onMove) {
-      this.canvas.removeEventListener("mousemove", this._onMove);
-      this.canvas.removeEventListener("mouseleave", this._onLeave);
+      this.canvas.removeEventListener?.("mousemove", this._onMove);
+      this.canvas.removeEventListener?.("mouseleave", this._onLeave);
     }
     if (this._resizeObserver) this._resizeObserver.disconnect();
     if (this._onWindowResize && typeof window !== "undefined") {
-      window.removeEventListener("resize", this._onWindowResize);
+      window.removeEventListener?.("resize", this._onWindowResize);
     }
   }
 
   setState(rawState) {
+    const prevMode = this.state.chartMode;
     this.state = normalizeChartState(rawState);
+
+    if (this.candleChart) {
+      if (!this.hasLiveVenueCandles && this._syntheticAnchor !== this.state.markPriceUsd) {
+        this._seedSyntheticCandles(this.state.markPriceUsd, false);
+      }
+      if (!this.hasLiveVenueDepth && (this.state.depth.bids.length || this.state.depth.asks.length)) {
+        this.candleChart.setDepth(this.state.depth.bids, this.state.depth.asks, "P2P L2");
+      }
+      if (this.state.chartMode === "payoff") {
+        this.candleChart.setPaused(true);
+      } else {
+        this.candleChart.setPaused(false);
+        if (prevMode === "payoff") {
+          this.candleChart.resize();
+        }
+      }
+    }
+
+    this._syncControlBar();
     this.render();
   }
 
   resizeAndRender() {
     if (!this.canvas || !this.ctx) return;
+    if (this.state.chartMode === "candles" && this.candleChart) {
+      this.candleChart.setPaused(false);
+      this.candleChart.resize();
+      return;
+    }
     const parent = this.canvas.parentElement;
     const cssW = Math.max(
       320,
@@ -702,33 +1185,15 @@ export class ShzChartController {
     if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
       this.canvas.width = targetW;
       this.canvas.height = targetH;
-      this.canvas.style.width = `${cssW}px`;
-      this.canvas.style.height = `${cssH}px`;
+      if (this.canvas.style) {
+        this.canvas.style.width = `${cssW}px`;
+        this.canvas.style.height = `${cssH}px`;
+      }
     }
     this.cssWidth = cssW;
     this.cssHeight = cssH;
     this.dpr = dpr;
     this.render();
-  }
-
-  _getCandles() {
-    const s = this.state;
-    const key = `${s.symbol}|${s.markPriceUsd}|${s.vwapPriceUsd}|${s.pythConfBps}`;
-    if (key !== this.cachedCandlesKey) {
-      let seed = 0x53485a30;
-      for (let i = 0; i < s.symbol.length; i++) {
-        seed = (seed * 31 + s.symbol.charCodeAt(i)) >>> 0;
-      }
-      this.cachedCandles = generateDeterministicCandles({
-        markPriceUsd: s.markPriceUsd,
-        vwapPriceUsd: s.vwapPriceUsd,
-        pythConfBps: s.pythConfBps,
-        count: 72,
-        seed,
-      });
-      this.cachedCandlesKey = key;
-    }
-    return this.cachedCandles;
   }
 
   _getPayoffData() {
@@ -747,308 +1212,213 @@ export class ShzChartController {
 
   render() {
     if (!this.canvas || !this.ctx) return;
-    const ctx = this.ctx;
-    const w = this.cssWidth || this.canvas.clientWidth || 720;
-    const h = this.cssHeight || this.canvas.clientHeight || 340;
-    const dpr = this.dpr || 1;
-
-    ctx.save();
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = THEME.bg;
-    ctx.fillRect(0, 0, w, h);
-
     if (this.state.chartMode === "payoff") {
+      if (this.candleChart) this.candleChart.setPaused(true);
+      const ctx = this.ctx;
+      const w = this.cssWidth || this.canvas.clientWidth || 720;
+      const h = this.cssHeight || this.canvas.clientHeight || 340;
+      const dpr = this.dpr || 1;
+      ctx.save();
+      ctx.setTransform?.(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = THEME.bg;
+      ctx.fillRect(0, 0, w, h);
       this._renderPayoffMode(ctx, w, h);
-    } else {
-      this._renderCandlesMode(ctx, w, h);
+      ctx.restore();
+      return;
     }
-    ctx.restore();
+    if (this.candleChart) {
+      this.candleChart.setPaused(false);
+      this.candleChart.requestDraw();
+    }
   }
 
   // -------------------------------------------------------------------------
-  // Mode 1: BTC/USD Candles + TradeLayer VWAP (tx14) + Pyth Band + Liq Levels
+  // Mode 1 Overlay: SatsHedgeZero Protocol Overlays on BitcornWisdom CandleChart
   // -------------------------------------------------------------------------
-  _renderCandlesMode(ctx, w, h) {
+  _paintProtocolOverlays(_metrics, frame, ctx) {
+    if (!frame || !ctx || this.state.chartMode !== "candles") return;
     const s = this.state;
-    const candles = this._getCandles();
-    const pad = { top: 34, right: 78, bottom: 26, left: 12 };
-    const plotW = Math.max(80, w - pad.left - pad.right);
-    const plotH = Math.max(80, h - pad.top - pad.bottom);
-    const volH = Math.round(plotH * 0.16);
-    const priceH = plotH - volH - 6;
+    const { plotLeft: left, plotRight: right, priceTop: top, priceBottom: bottom, prices, low, high } = frame;
+    if (!(right > left) || !(bottom > top)) return;
 
-    // Price domain includes candles, VWAP, entry, and nearby liquidation lines
-    let minP = Infinity;
-    let maxP = -Infinity;
-    let maxVol = 1;
-    for (const c of candles) {
-      minP = Math.min(minP, c.low, c.pythLower, c.vwap);
-      maxP = Math.max(maxP, c.high, c.pythUpper, c.vwap);
-      if (c.volumeUsd > maxVol) maxVol = c.volumeUsd;
-    }
-    minP = Math.min(minP, s.spec.entryPriceUsd);
-    maxP = Math.max(maxP, s.spec.entryPriceUsd);
-    if (s.longLiqUsd >= minP * 0.72) minP = Math.min(minP, s.longLiqUsd);
-    if (s.shortLiqUsd != null && s.shortLiqUsd <= maxP * 1.35) {
-      maxP = Math.max(maxP, s.shortLiqUsd);
-    }
-    const span = Math.max(1_000, maxP - minP);
-    minP -= span * 0.08;
-    maxP += span * 0.08;
-
-    const yOf = (price) => pad.top + ((maxP - price) / (maxP - minP)) * priceH;
-    const xStep = plotW / candles.length;
-    const xOf = (idx) => pad.left + (idx + 0.5) * xStep;
-
-    // Gridlines & Y-axis ticks
-    ctx.strokeStyle = THEME.grid;
-    ctx.lineWidth = 1;
-    ctx.font = `500 10px ${THEME.fontMono}`;
-    const yTicks = 6;
-    const entryY = Math.max(pad.top + 8, Math.min(pad.top + priceH - 8, yOf(s.spec.entryPriceUsd)));
-    for (let i = 0; i <= yTicks; i++) {
-      const p = maxP - ((maxP - minP) * i) / yTicks;
-      const y = Math.round(yOf(p)) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(pad.left, y);
-      ctx.lineTo(w - pad.right, y);
-      ctx.stroke();
-
-      if (Math.abs(y - entryY) > 13) {
-        ctx.fillStyle = THEME.textMuted;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(fmtUsd(p), w - pad.right + 6, y);
-      }
-    }
-
-    // Vertical time gridlines
-    const xTickEvery = Math.max(8, Math.floor(candles.length / 6));
-    for (let i = 0; i < candles.length; i += xTickEvery) {
-      const x = Math.round(xOf(i)) + 0.5;
-      ctx.strokeStyle = THEME.grid;
-      ctx.beginPath();
-      ctx.moveTo(x, pad.top);
-      ctx.lineTo(x, pad.top + plotH);
-      ctx.stroke();
-
-      ctx.fillStyle = THEME.textMuted;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      ctx.fillText(fmtTime(candles[i].timeSec), x, pad.top + plotH + 6);
-    }
-
-    // Pyth Confidence Band
     ctx.save();
-    ctx.beginPath();
-    for (let i = 0; i < candles.length; i++) {
-      const x = xOf(i);
-      const y = yOf(candles[i].pythUpper);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    for (let i = candles.length - 1; i >= 0; i--) {
-      ctx.lineTo(xOf(i), yOf(candles[i].pythLower));
-    }
-    ctx.closePath();
-    ctx.fillStyle = "rgba(56, 189, 248, 0.08)";
-    ctx.fill();
 
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.34)";
-    ctx.setLineDash([2, 3]);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    candles.forEach((c, i) => (i === 0 ? ctx.moveTo(xOf(i), yOf(c.pythUpper)) : ctx.lineTo(xOf(i), yOf(c.pythUpper))));
-    ctx.stroke();
-    ctx.beginPath();
-    candles.forEach((c, i) => (i === 0 ? ctx.moveTo(xOf(i), yOf(c.pythLower)) : ctx.lineTo(xOf(i), yOf(c.pythLower))));
-    ctx.stroke();
-    ctx.restore();
-
-    // Volume bars
-    const bodyW = Math.max(2, Math.min(10, xStep * 0.64));
-    const volBaseY = pad.top + plotH;
-    for (let i = 0; i < candles.length; i++) {
-      const c = candles[i];
-      const up = c.close >= c.open;
-      const barH = Math.max(2, (c.volumeUsd / maxVol) * volH);
-      ctx.fillStyle = up ? "rgba(0, 210, 133, 0.22)" : "rgba(255, 77, 109, 0.22)";
-      ctx.fillRect(xOf(i) - bodyW / 2, volBaseY - barH, bodyW, barH);
-    }
-
-    // OHLCV Candlesticks
-    for (let i = 0; i < candles.length; i++) {
-      const c = candles[i];
-      const x = xOf(i);
-      const up = c.close >= c.open;
-      const col = up ? THEME.long : THEME.short;
-      const yHigh = yOf(c.high);
-      const yLow = yOf(c.low);
-      const yOpen = yOf(c.open);
-      const yClose = yOf(c.close);
-
-      ctx.strokeStyle = col;
+    // 1. Pyth NEAR Relay ±conf confidence band around Mark Price
+    const confRatio = Math.max(4, Number(s.pythConfBps) || 20) / 10_000;
+    const pythUpper = s.markPriceUsd * (1 + confRatio);
+    const pythLower = s.markPriceUsd * (1 - confRatio);
+    if (pythUpper >= low && pythLower <= high) {
+      const yTop = Math.max(top, Math.min(bottom, prices.y(pythUpper)));
+      const yBot = Math.max(top, Math.min(bottom, prices.y(pythLower)));
+      const bandH = Math.max(2, yBot - yTop);
+      ctx.fillStyle = "rgba(56, 189, 248, 0.09)";
+      ctx.fillRect(left, yTop, right - left, bandH);
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.36)";
+      ctx.setLineDash([2, 3]);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(Math.round(x) + 0.5, yHigh);
-      ctx.lineTo(Math.round(x) + 0.5, yLow);
-      ctx.stroke();
-
-      const topY = Math.min(yOpen, yClose);
-      const rectH = Math.max(1.5, Math.abs(yClose - yOpen));
-      ctx.fillStyle = col;
-      ctx.fillRect(x - bodyW / 2, topY, bodyW, rectH);
-    }
-
-    // TradeLayer L1 VWAP (tx14) Line
-    ctx.save();
-    ctx.strokeStyle = THEME.amber;
-    ctx.lineWidth = 1.75;
-    ctx.beginPath();
-    for (let i = 0; i < candles.length; i++) {
-      const x = xOf(i);
-      const y = yOf(candles[i].vwap);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    // Dashed Horizontal Levels: Entry, Long Liq, Short Liq
-    const drawLevel = (price, label, color, dash = [5, 4]) => {
-      if (price == null || !Number.isFinite(price)) return;
-      const clampedY = Math.max(pad.top + 6, Math.min(pad.top + priceH - 6, yOf(price)));
-      const outOfView = price < minP || price > maxP;
-      ctx.save();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.1;
-      ctx.setLineDash(dash);
-      ctx.beginPath();
-      ctx.moveTo(pad.left, Math.round(clampedY) + 0.5);
-      ctx.lineTo(w - pad.right, Math.round(clampedY) + 0.5);
+      ctx.moveTo(left, Math.round(yTop) + 0.5);
+      ctx.lineTo(right, Math.round(yTop) + 0.5);
+      ctx.moveTo(left, Math.round(yBot) + 0.5);
+      ctx.lineTo(right, Math.round(yBot) + 0.5);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
 
-      // Right axis price tag
-      const tagX = w - pad.right + 2;
-      drawRoundedRect(ctx, tagX, clampedY - 9, pad.right - 5, 18, 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.fillStyle = "#0a0e14";
-      ctx.font = `700 10px ${THEME.fontMono}`;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(fmtUsd(price), tagX + 4, clampedY + 0.5);
+    // 2. Protocol Levels: TradeLayer tx14 VWAP, Mark, Entry P0, Long Liq, Short Liq
+    const occupiedBadgeY = [];
+    const pickBadgeY = (preferredY) => {
+      let y = Math.max(top + 22, Math.min(bottom - 20, preferredY));
+      for (let guard = 0; guard < 12; guard++) {
+        if (occupiedBadgeY.every((prev) => Math.abs(prev - y) >= 19)) break;
+        y += y + 19 <= bottom - 20 ? 19 : -19;
+      }
+      occupiedBadgeY.push(y);
+      return y;
+    };
 
-      // Left inline label
-      const suffix = outOfView ? (price < minP ? " ↓" : " ↑") : "";
+    const drawProtocolLevel = (price, label, color, dash = [5, 4]) => {
+      if (price == null || !Number.isFinite(price) || price <= 0) return;
+      const outOfView = price < low || price > high;
+      const rawY = prices.y(price);
+      const clampedY = Math.max(top + 8, Math.min(bottom - 8, rawY));
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = outOfView ? 0.5 : 0.9;
+      ctx.lineWidth = outOfView ? 1 : 1.15;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(left, Math.round(clampedY) + 0.5);
+      ctx.lineTo(right, Math.round(clampedY) + 0.5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      const suffix = outOfView ? (price < low ? " ↓" : " ↑") : "";
+      const badgeY = pickBadgeY(clampedY - 19);
       drawBadge(
         ctx,
         `${label} ${fmtUsd(price)}${suffix}`,
-        pad.left + 6,
-        clampedY - 21,
-        "rgba(10, 14, 20, 0.88)",
+        left + 6,
+        badgeY,
+        "rgba(10, 14, 20, 0.90)",
         color,
         color,
         false
       );
+
+      if (!outOfView) {
+        const tagW = 70;
+        drawRoundedRect(ctx, right + 2, clampedY - 8.5, tagW, 17, 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.fillStyle = "#0a0e14";
+        ctx.font = `700 9.5px ${THEME.fontMono}`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fmtUsd(price), right + 5, clampedY + 0.5);
+      }
       ctx.restore();
     };
 
-    drawLevel(s.spec.entryPriceUsd, "ENTRY", THEME.cyan, [4, 4]);
-    drawLevel(s.longLiqUsd, `LONG LIQ (${s.spec.longLevX}x)`, THEME.long, [6, 4]);
+    drawProtocolLevel(s.vwapPriceUsd, "TL tx14 VWAP", THEME.amber, [3, 3]);
+    drawProtocolLevel(s.spec.entryPriceUsd, "ENTRY P0", THEME.cyan, [4, 4]);
+    if (Math.abs(s.markPriceUsd - s.spec.entryPriceUsd) > 1) {
+      drawProtocolLevel(s.markPriceUsd, "MARK", "rgba(56, 189, 248, 0.78)", [2, 4]);
+    }
+    drawProtocolLevel(s.longLiqUsd, `LONG LIQ (${s.spec.longLevX}x)`, THEME.long, [6, 4]);
     if (s.shortLiqUsd != null) {
-      drawLevel(s.shortLiqUsd, `SHORT LIQ (${s.spec.shortLevX}x)`, THEME.short, [6, 4]);
+      drawProtocolLevel(s.shortLiqUsd, `SHORT LIQ (${s.spec.shortLevX}x)`, THEME.short, [6, 4]);
     }
 
-    // Top HUD Legend Bar
-    ctx.save();
-    ctx.font = `600 11px ${THEME.fontMono}`;
-    ctx.textBaseline = "middle";
-    let lx = pad.left + 4;
-    const ly = 16;
-    const drawLegendItem = (text, color) => {
-      ctx.fillStyle = color;
-      ctx.textAlign = "left";
-      ctx.fillText(text, lx, ly);
-      lx += ctx.measureText(text).width + 12;
-    };
-    drawLegendItem(`${s.symbol} 15m`, THEME.textPrimary);
-    drawLegendItem(`MARK ${fmtUsd(s.markPriceUsd)}`, THEME.cyan);
-    drawLegendItem(`TL tx14 VWAP ${fmtUsd(s.vwapPriceUsd)}`, THEME.amber);
-    drawLegendItem(`PYTH ±${s.pythConfBps}bps`, "rgba(56, 189, 248, 0.85)");
+    // 3. Optional 3-Party Multilateral Clearing Markers (e.g. Trade 1 $50k, Trade 2 $54k, Trade 3 $60k closeout)
+    if (s.clearingTrades.length) {
+      const count = s.clearingTrades.length;
+      for (let i = 0; i < count; i++) {
+        const tr = s.clearingTrades[i];
+        const outOfView = tr.priceUsd < low || tr.priceUsd > high;
+        const y = Math.max(top + 10, Math.min(bottom - 10, prices.y(tr.priceUsd)));
+        const mx =
+          tr.timeSec != null && this.candleChart
+            ? Math.max(left + 16, Math.min(right - 16, frame.coordinates.x(this.candleChart.timeToIndex(tr.timeSec * 1000))))
+            : right - 24 - (count - 1 - i) * 38;
+
+        ctx.save();
+        ctx.strokeStyle = tr.color;
+        ctx.globalAlpha = outOfView ? 0.45 : 0.78;
+        ctx.setLineDash([2, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(left, Math.round(y) + 0.5);
+        ctx.lineTo(right, Math.round(y) + 0.5);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+
+        // Diamond marker
+        ctx.fillStyle = tr.color;
+        ctx.beginPath();
+        ctx.moveTo(mx, y - 5);
+        ctx.lineTo(mx + 5, y);
+        ctx.lineTo(mx, y + 5);
+        ctx.lineTo(mx - 5, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = THEME.bg;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        const suffix = outOfView ? (tr.priceUsd < low ? " ↓" : " ↑") : "";
+        drawBadge(
+          ctx,
+          `${tr.label} ${fmtUsd(tr.priceUsd)}${suffix}`,
+          right - 6,
+          Math.max(top + 22, Math.min(bottom - 20, y - 9)),
+          "rgba(10, 14, 20, 0.92)",
+          tr.color,
+          tr.color,
+          true
+        );
+        ctx.restore();
+      }
+    }
+
+    // 4. Compact SatsHedgeZero Protocol Telemetry HUD + 1x SatsHedge Badge
+    const hudY = top + 3;
+    let rightCursor = right - 6;
 
     if (s.shortLiqUsd === null) {
-      drawBadge(
+      const badgeW = drawBadge(
         ctx,
         "∞ UNLIQUIDATABLE (1x SatsHedge)",
-        w - pad.right - 2,
-        6,
+        rightCursor,
+        hudY,
         "rgba(0, 210, 133, 0.14)",
         THEME.long,
         THEME.long,
         true
       );
+      rightCursor -= badgeW + 6;
     }
-    ctx.restore();
 
-    // Interactive Crosshair & Hover Tooltip
-    if (
-      this.pointer &&
-      this.pointer.x >= pad.left &&
-      this.pointer.x <= w - pad.right &&
-      this.pointer.y >= pad.top &&
-      this.pointer.y <= pad.top + plotH
-    ) {
-      const idx = Math.max(
-        0,
-        Math.min(candles.length - 1, Math.floor((this.pointer.x - pad.left) / xStep))
-      );
-      const c = candles[idx];
-      const cx = Math.round(xOf(idx)) + 0.5;
-      const cy = Math.round(this.pointer.y) + 0.5;
-
-      ctx.save();
-      ctx.strokeStyle = "rgba(143, 162, 188, 0.45)";
-      ctx.setLineDash([3, 3]);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cx, pad.top);
-      ctx.lineTo(cx, pad.top + plotH);
-      ctx.moveTo(pad.left, cy);
-      ctx.lineTo(w - pad.right, cy);
-      ctx.stroke();
-      ctx.restore();
-
-      const cursorPrice = maxP - ((this.pointer.y - pad.top) / priceH) * (maxP - minP);
-      if (this.pointer.y <= pad.top + priceH) {
-        drawRoundedRect(ctx, w - pad.right + 2, cy - 9, pad.right - 5, 18, 2);
-        ctx.fillStyle = "#29374d";
-        ctx.fill();
-        ctx.fillStyle = THEME.textPrimary;
-        ctx.font = `600 10px ${THEME.fontMono}`;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(fmtUsd(cursorPrice), w - pad.right + 6, cy + 0.5);
-      }
-
-      const up = c.close >= c.open;
-      drawTooltipBox(
+    const telemetryText = `MARK ${fmtUsd(s.markPriceUsd)} · TL tx14 VWAP ${fmtUsd(s.vwapPriceUsd)} · PYTH ±${s.pythConfBps}bps`;
+    ctx.font = `600 9.5px ${THEME.fontMono}`;
+    const telW = ctx.measureText(telemetryText).width + 12;
+    if (rightCursor - telW > left + 120) {
+      drawBadge(
         ctx,
-        [
-          { label: "UTC", value: fmtTime(c.timeSec), valueColor: THEME.textPrimary },
-          { label: "O / H", value: `${fmtUsd(c.open)} / ${fmtUsd(c.high)}` },
-          { label: "L / C", value: `${fmtUsd(c.low)} / ${fmtUsd(c.close)}`, valueColor: up ? THEME.long : THEME.short },
-          { label: "TL VWAP", value: fmtUsd(c.vwap), valueColor: THEME.amber },
-          { label: "Pyth Band", value: `${fmtUsd(c.pythLower)}..${fmtUsd(c.pythUpper)}`, valueColor: THEME.cyan },
-          { label: "Vol", value: fmtUsd(c.volumeUsd, true), valueColor: THEME.textSecondary },
-        ],
-        cx,
-        Math.min(cy, yOf(c.close)),
-        w,
-        h
+        telemetryText,
+        rightCursor,
+        hudY,
+        "rgba(10, 14, 20, 0.86)",
+        THEME.border,
+        THEME.textSecondary,
+        true
       );
     }
+
+    ctx.restore();
   }
 
   // -------------------------------------------------------------------------
@@ -1063,7 +1433,6 @@ export class ShzChartController {
     const cetStripH = 18;
     const plotH = Math.max(90, h - pad.top - pad.bottom - cetStripH);
 
-    // Left Y-axis: Satoshi PnL
     let minSats = -Math.max(spec.longMarginSats, spec.shortMarginSats);
     let maxSats = Math.max(spec.longMarginSats, spec.shortMarginSats);
     let maxUsd = spec.usdNotional * 2.2;
@@ -1081,7 +1450,6 @@ export class ShzChartController {
     const ySats = (sats) => pad.top + ((maxSats - sats) / (maxSats - minSats)) * plotH;
     const yUsd = (usd) => pad.top + ((maxUsd - usd) / maxUsd) * plotH;
 
-    // Horizontal gridlines + Dual Y-Axes (Left = Sats PnL, Right = USD Value)
     ctx.font = `500 10px ${THEME.fontMono}`;
     const yTicks = 5;
     for (let i = 0; i <= yTicks; i++) {
@@ -1107,7 +1475,6 @@ export class ShzChartController {
       ctx.fillText(fmtUsd(usdVal, true), w - pad.right + 8, y);
     }
 
-    // Zero PnL baseline
     const yZero = Math.round(ySats(0)) + 0.5;
     ctx.strokeStyle = THEME.gridStrong;
     ctx.lineWidth = 1.2;
@@ -1116,7 +1483,6 @@ export class ShzChartController {
     ctx.lineTo(w - pad.right, yZero);
     ctx.stroke();
 
-    // Vertical price axis gridlines ($20k .. $200k)
     for (let p = 20_000; p <= 200_000; p += 20_000) {
       const x = Math.round(xOf(p)) + 0.5;
       ctx.strokeStyle = THEME.grid;
@@ -1132,14 +1498,12 @@ export class ShzChartController {
       ctx.fillText(fmtUsd(p, true), x, pad.top + plotH + cetStripH + 6);
     }
 
-    // Dyadic CET Prefix Ticks Strip + subtle interval walls
     const stripTop = pad.top + plotH + 3;
     ctx.fillStyle = "#0d131d";
     ctx.fillRect(pad.left, stripTop, plotW, cetStripH - 3);
     ctx.strokeStyle = THEME.border;
     ctx.strokeRect(pad.left + 0.5, stripTop + 0.5, plotW - 1, cetStripH - 4);
 
-    // Draw dyadic CET boundary ticks (stride gracefully if hundreds fall in tight pixel band)
     let lastTickX = -10;
     for (let i = 0; i < visibleCets.length; i++) {
       const cet = visibleCets[i];
@@ -1158,7 +1522,6 @@ export class ShzChartController {
         ctx.lineTo(x, stripTop + cetStripH - 4);
         ctx.stroke();
 
-        // Subtle vertical wall inside chart for wider prefixes
         if (x - lastTickX >= 12) {
           ctx.strokeStyle = "rgba(56, 189, 248, 0.06)";
           ctx.beginPath();
@@ -1177,13 +1540,8 @@ export class ShzChartController {
     ctx.fillStyle = "#b8c7dc";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(
-      cetBanner,
-      pad.left + 8,
-      stripTop + (cetStripH - 3) / 2
-    );
+    ctx.fillText(cetBanner, pad.left + 8, stripTop + (cetStripH - 3) / 2);
 
-    // Liquidation Clamp Cliffs & Entry Line
     const drawVLine = (price, label, color, dash = [4, 4]) => {
       if (price == null || price < minPrice || price > maxPrice) return;
       const x = Math.round(xOf(price)) + 0.5;
@@ -1196,7 +1554,16 @@ export class ShzChartController {
       ctx.lineTo(x, pad.top + plotH);
       ctx.stroke();
       ctx.setLineDash([]);
-      drawBadge(ctx, label, x + 4, pad.top + 6, "rgba(10, 14, 20, 0.9)", color, color, x > w - pad.right - 130);
+      drawBadge(
+        ctx,
+        label,
+        x + 4,
+        pad.top + 6,
+        "rgba(10, 14, 20, 0.9)",
+        color,
+        color,
+        x > w - pad.right - 130
+      );
       ctx.restore();
     };
 
@@ -1206,7 +1573,6 @@ export class ShzChartController {
       drawVLine(shortLiqUsd, `SHORT LIQ CLAMP ${fmtUsd(shortLiqUsd)}`, THEME.short, [5, 3]);
     }
 
-    // Curve 1: Long Satoshi PnL (Hyperbolic)
     ctx.save();
     ctx.strokeStyle = THEME.long;
     ctx.lineWidth = 2;
@@ -1219,7 +1585,6 @@ export class ShzChartController {
     });
     ctx.stroke();
 
-    // Curve 2: Short Satoshi PnL (Hyperbolic)
     ctx.strokeStyle = THEME.short;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -1231,7 +1596,6 @@ export class ShzChartController {
     });
     ctx.stroke();
 
-    // Curve 3: Overlaid Short USD Purchasing Power (flat $N across all prices at 1x SatsHedge!)
     ctx.strokeStyle = THEME.cyan;
     ctx.lineWidth = 2.25;
     ctx.beginPath();
@@ -1243,7 +1607,6 @@ export class ShzChartController {
     });
     ctx.stroke();
 
-    // Curve 4: Overlaid Long USD Value (subtle amber dashed)
     ctx.strokeStyle = "rgba(245, 158, 11, 0.72)";
     ctx.lineWidth = 1.25;
     ctx.setLineDash([4, 3]);
@@ -1257,7 +1620,6 @@ export class ShzChartController {
     ctx.stroke();
     ctx.restore();
 
-    // Axis Titles
     ctx.fillStyle = THEME.textSecondary;
     ctx.font = `600 9.5px ${THEME.fontMono}`;
     ctx.textAlign = "left";
@@ -1267,7 +1629,6 @@ export class ShzChartController {
     ctx.textAlign = "right";
     ctx.fillText("USD VALUE", w - 8, pad.top - 10);
 
-    // Top HUD Legend
     ctx.save();
     ctx.font = `600 10.5px ${THEME.fontMono}`;
     ctx.textBaseline = "middle";
@@ -1279,13 +1640,13 @@ export class ShzChartController {
       ctx.fillText(label, lx, ly);
       lx += ctx.measureText(label).width + 12;
     };
-    addKey(`INVERSE PnL`, THEME.textPrimary);
-    addKey(`■ LONG SATS`, THEME.long);
-    addKey(`■ SHORT SATS`, THEME.short);
+    addKey("INVERSE PnL", THEME.textPrimary);
+    addKey("■ LONG SATS", THEME.long);
+    addKey("■ SHORT SATS", THEME.short);
     addKey(
       data.isCoveredSyntheticUsd
         ? `━ SHORT USD (${fmtUsd(spec.usdNotional, true)} FLAT)`
-        : `━ SHORT USD`,
+        : "━ SHORT USD",
       THEME.cyan
     );
 
@@ -1303,7 +1664,6 @@ export class ShzChartController {
     }
     ctx.restore();
 
-    // Crosshair Hover Tooltip
     if (
       this.pointer &&
       this.pointer.x >= pad.left &&
@@ -1313,7 +1673,10 @@ export class ShzChartController {
     ) {
       const hoverPrice = Math.max(
         minPrice,
-        Math.min(maxPrice, Math.round(minPrice + ((this.pointer.x - pad.left) / plotW) * (maxPrice - minPrice)))
+        Math.min(
+          maxPrice,
+          Math.round(minPrice + ((this.pointer.x - pad.left) / plotW) * (maxPrice - minPrice))
+        )
       );
       const payout = computeInversePayout(spec, hoverPrice);
       const cet = lookupCetForPrice(data.allCets, hoverPrice, cetStats.numBits);
@@ -1328,7 +1691,6 @@ export class ShzChartController {
       ctx.lineTo(cx, pad.top + plotH + cetStripH);
       ctx.stroke();
 
-      // Highlight dots on curves
       const dot = (y, col) => {
         ctx.beginPath();
         ctx.arc(cx, y, 3.5, 0, Math.PI * 2);
@@ -1345,13 +1707,23 @@ export class ShzChartController {
 
       const rows = [
         { label: "Expiry P_T", value: fmtUsd(hoverPrice), valueColor: THEME.textPrimary },
-        { label: "Long PnL", value: fmtSats(payout.longPnlSats, true), valueColor: payout.longPnlSats >= 0 ? THEME.long : THEME.short },
-        { label: "Short PnL", value: fmtSats(payout.shortPnlSats, true), valueColor: payout.shortPnlSats >= 0 ? THEME.long : THEME.short },
+        {
+          label: "Long PnL",
+          value: fmtSats(payout.longPnlSats, true),
+          valueColor: payout.longPnlSats >= 0 ? THEME.long : THEME.short,
+        },
+        {
+          label: "Short PnL",
+          value: fmtSats(payout.shortPnlSats, true),
+          valueColor: payout.shortPnlSats >= 0 ? THEME.long : THEME.short,
+        },
         { label: "Short USD Val", value: `$${payout.shortUsdValue.toFixed(2)}`, valueColor: THEME.cyan },
         { label: "Long USD Val", value: `$${payout.longUsdValue.toFixed(2)}`, valueColor: THEME.amber },
         {
           label: "Dyadic CET",
-          value: cet ? `${cet.prefix} [${fmtUsd(cet.minPriceUsd, true)}..${fmtUsd(cet.maxPriceUsd, true)}]` : "—",
+          value: cet
+            ? `${cet.prefix} [${fmtUsd(cet.minPriceUsd, true)}..${fmtUsd(cet.maxPriceUsd, true)}]`
+            : "—",
           valueColor: THEME.textPrimary,
         },
         { label: "Protocol Fee", value: "0 sats (0 bps)", valueColor: THEME.long },
@@ -1367,7 +1739,7 @@ export class ShzChartController {
 
 let activeController = null;
 
-export function mountCharts(canvasId = "shz-main-canvas", initialState = null) {
+export function mountCharts(canvasId = "shz-main-canvas", initialState = null, options = {}) {
   if (typeof document === "undefined") return null;
   const canvas = document.getElementById(canvasId);
   if (!canvas) return null;
@@ -1380,7 +1752,12 @@ export function mountCharts(canvasId = "shz-main-canvas", initialState = null) {
     if (fb.style) fb.style.display = "none";
   }
   if (activeController) activeController.destroy();
-  activeController = new ShzChartController(canvas);
+  activeController = new ShzChartController(canvas, options);
+  const toolbar =
+    typeof document.getElementById === "function"
+      ? document.getElementById("shz-bitcorn-bar")
+      : null;
+  if (toolbar) activeController.bindControls(toolbar);
   const seed = initialState || (typeof window !== "undefined" ? window.SHZ_STATE : null);
   if (seed) activeController.setState(seed);
   return activeController;

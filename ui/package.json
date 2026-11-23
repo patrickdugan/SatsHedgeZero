@@ -6,7 +6,7 @@
   "description": "SatsHedgeZero Deribit-grade institutional P2P inverse BTC/USD DLC terminal (zero external runtime dependencies)",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test test_server.mjs test_workbench.mjs"
+    "test": "node --test test_server.mjs test_workbench.mjs test_bitcorn_chart.mjs"
   },
   "engines": {
     "node": ">=20.0.0"
