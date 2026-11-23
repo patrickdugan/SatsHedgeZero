@@ -8,6 +8,50 @@ use shz_dlc::{Bip340Signature, bip340_sign, bip340_verify, tagged_hash};
 
 use crate::OracleError;
 
+/// TradeLayer native L1 `OP_RETURN` oracle publish transaction constants
+/// (`UTXO-Ref/bitvm3/utxo_referee/lightning_tradelayer_oracle_dlc.js`: marker `"tl"`, `txType = 14`).
+pub const TRADELAYER_OP_RETURN_MARKER: &[u8; 2] = b"tl";
+pub const TRADELAYER_PUBLISH_ORACLE_TX_TYPE: u8 = 14;
+
+/// Encodes a TradeLayer `txType 14` (`OP_RETURN "tl" <14> ...`) oracle price payload
+/// and computes exact micro-USD scaled VWAP (`quote_microusd * 1_000_000 / base_sats`).
+pub fn encode_tradelayer_tx14_op_return(
+    oracle_id: u32,
+    window_end_height: u64,
+    scaled_price_e4: u64,
+    fills_merkle_root: &[u8; 32],
+) -> Vec<u8> {
+    let mut payload = Vec::with_capacity(55);
+    payload.push(0x6a); // OP_RETURN
+    payload.push(53); // push 53 bytes
+    payload.extend_from_slice(TRADELAYER_OP_RETURN_MARKER);
+    payload.push(TRADELAYER_PUBLISH_ORACLE_TX_TYPE);
+    payload.extend_from_slice(&oracle_id.to_be_bytes());
+    payload.extend_from_slice(&window_end_height.to_be_bytes());
+    payload.extend_from_slice(&scaled_price_e4.to_be_bytes());
+    payload.extend_from_slice(fills_merkle_root);
+    payload
+}
+
+/// Computes exact `UTXORef` micro-USD to `1e4`-scaled USD VWAP:
+/// `(sum(quote_microusd) * 1_000_000) / sum(base_sats)`.
+pub fn compute_microusd_vwap_scaled_e4(trades_sats_and_microusd: &[(u64, u128)]) -> Result<u64, OracleError> {
+    let mut base_sats = 0u128;
+    let mut quote_microusd = 0u128;
+    for &(sats, microusd) in trades_sats_and_microusd {
+        base_sats += sats as u128;
+        quote_microusd += microusd;
+    }
+    if base_sats == 0 {
+        return Err(OracleError::InsufficientLiquidity {
+            fills: 0,
+            required: 1,
+        });
+    }
+    let scaled = (quote_microusd * 1_000_000u128) / base_sats;
+    u64::try_from(scaled).map_err(|_| OracleError::InvalidObservation("VWAP scale overflow"))
+}
+
 /// A native TradeLayer DEX fill anchored on Bitcoin/Litecoin L1.
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, BorshSerialize, BorshDeserialize,

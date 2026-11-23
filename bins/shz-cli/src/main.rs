@@ -1,5 +1,8 @@
 //! `shz` — Command-line runner and deterministic verification harness for `SatsHedgeZero`.
 
+mod mnr02_regtest;
+
+use std::path::PathBuf;
 use serde::Serialize;
 use shz_dex::{
     OracleSettlementPolicy, OrderSide, SignedOrderIntent, ZeroFeeOrderBook,
@@ -397,7 +400,7 @@ fn main() {
         }
         "verify-all" => {
             let report = FullVerificationReport {
-                protocol: "SatsHedgeZero v0.1.0",
+                protocol: "SatsHedgeZero v0.2.0",
                 collateral_v0: "VanillaBtc (P2TR UTXO / Lightning Subchannel; TAP v1 hook ready)",
                 fee_bps: 0,
                 dex_simulation: run_dex_simulation(),
@@ -405,9 +408,20 @@ fn main() {
             };
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
+        "mnr02-regtest" => {
+            let default_bin = std::env::var("BITCOIND_BIN")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("bitcoind"));
+            let bitcoind = args
+                .get(1)
+                .map(PathBuf::from)
+                .unwrap_or(default_bin);
+            let report = mnr02_regtest::run_mnr02_core_regtest(&bitcoind);
+            println!("{}", serde_json::to_string_pretty(&report).unwrap());
+        }
         _ => {
             eprintln!(
-                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | verify-all]"
+                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | verify-all | mnr02-regtest [bitcoind_path]]"
             );
             std::process::exit(1);
         }

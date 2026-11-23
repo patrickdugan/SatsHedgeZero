@@ -14,9 +14,11 @@ path = "src/main.rs"
 [dependencies]
 borsh.workspace = true
 hex.workspace = true
+k256.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 shz-dex.workspace = true
 shz-dlc.workspace = true
 shz-margin.workspace = true
 shz-oracle.workspace = true
+shz-utxoref.workspace = true

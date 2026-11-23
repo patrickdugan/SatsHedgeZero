@@ -7,6 +7,7 @@ Non-custodial, zero-fee Lightning Discreet Log Contract (DLC) DEX for inverse-qu
 ```sh
 cargo test --workspace
 cargo run --bin shz -- verify-all
+cargo run --bin shz -- mnr02-regtest /path/to/bitcoind
 cargo run --bin shz -- quote 2000 100000 10 1
 cargo run --bin shz -- demo-dex
 cargo run --bin shz -- demo-fraud
@@ -17,8 +18,9 @@ cargo run --bin shz -- demo-fraud
 | Crate | Responsibility |
 | --- | --- |
 | [`crates/shz-margin`](crates/shz-margin) | Exact `u128` inverse BTC/USD payoff math (`$1` notional contracts settled in sats), `0 bps` fee conservation law, covered `1x` synthetic-USD (`SatsHedge`) detection, `CollateralAsset` (`VanillaBtc` active in v0 + `TaprootAsset` commitment leaf hook for v1), and $O(\text{CETs})$ monotonic dyadic binary-prefix CET compression. |
-| [`crates/shz-dlc`](crates/shz-dlc) | Pure-Rust `secp256k1` BIP-340 Schnorr signatures, even/odd-Y normalized Schnorr adaptor signatures (`adaptor_sign`, `adaptor_verify`, `adaptor_complete`, `adaptor_extract_secret`), multi-digit DLC anticipation point derivation $T(\vec{b}) = \sum (R_j + e_j X_{\text{oracle}})$, `P2TR` descriptors, and the `LnDlcSubchannel` off-chain cooperative close + unilateral L1 CET state machine. |
-| [`crates/shz-oracle`](crates/shz-oracle) | **TradeLayer VWAP** (`TradeLayerVwapProof` with wash-trade & median-outlier filters + binary SHA-256 Merkle inclusion proofs), **Pyth + multi-provider NEAR Borsh relay** (`NearRelayEnvelope`), **`t-of-n` FROST state confederation** (Shamir + Feldman VSS + threshold-shared per-digit nonces + identifiable abort), and **`NearBondedOracleVault`** verifying Borsh-encoded `EquivocationFraudProof` and `DeviationFraudProof`. |
+| [`crates/shz-dlc`](crates/shz-dlc) | Pure-Rust `secp256k1` BIP-340 Schnorr signatures, even/odd-Y normalized Schnorr adaptor signatures (`adaptor_sign`, `adaptor_verify`, `adaptor_complete`, `adaptor_extract_secret_verified` blocking `T` vs `-T` and unrelated-sig forgery), multi-digit DLC anticipation point derivation $T(\vec{b}) = \sum (R_j + e_j X_{\text{oracle}})$, `P2TR` descriptors, and the `LnDlcSubchannel` off-chain cooperative close + unilateral L1 CET state machine. |
+| [`crates/shz-oracle`](crates/shz-oracle) | **TradeLayer VWAP** (`TradeLayerVwapProof`, `txType 14` `"tl"` `OP_RETURN` codec, wash-trade & median-outlier filters + binary SHA-256 Merkle inclusion proofs), **Pyth + multi-provider NEAR Borsh relay** (`NearRelayEnvelope`), **`t-of-n` FROST state confederation** (Shamir + Feldman VSS + threshold-shared per-digit nonces + identifiable abort), and **`NearBondedOracleVault`** (`TVL <= L * Stake`, `DOUBLE_USE_DLC` guard, Borsh `EquivocationFraudProof` & `DeviationFraudProof`). |
+| [`crates/shz-utxoref`](crates/shz-utxoref) | Cross-repo vector-verified [`UTXORef`](https://github.com/patrickdugan/UTXO-Ref) BIP-341 NUMS `P2TR` funding & `TapSighash` engine, Edmonds-Karp capacitated PnL batch netting + durable pre-signing reservation book, and **`SHZ-MNR-02` Bob-offline multilateral closeout** (`0x83` `SIGHASH_SINGLE\|ANYONECANPAY` + two-tier `CLTV` Tapscript tree confirmed live on Bitcoin Core 31.1 regtest). |
 | [`crates/shz-dex`](crates/shz-dex) | Decentralized BIP-340 signed P2P order intents, price-time priority `0 bps` maker/taker matching (`ZeroFeeOrderBook`), automatic `LnDlcSubchannel` offer materialization, and real-time mark-to-market position telemetry. |
 | [`bins/shz-cli`](bins/shz-cli) | `shz` CLI for quoting inverse contracts, running deterministic P2P LN-DLC simulations, and executing adversarial FROST slashing proofs. |
 

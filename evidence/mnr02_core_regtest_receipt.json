@@ -1,0 +1,197 @@
+{
+  "issue": "SHZ-MNR-02: Bob-offline multilateral closeout with Bitcoin-enforceable settlement",
+  "core_version": "Bitcoin Core daemon version v31.1.0 bitcoind",
+  "production_ready": false,
+  "bitcoin_spend_enforced": true,
+  "candidate_evaluations": [
+    {
+      "id": "1-fresh-mutual-signatures",
+      "works_with_bob_offline_at_maturity": false,
+      "releases_u_ab_utxo_before_maturity_with_bob_offline": false,
+      "discretionary_committee_custody": false,
+      "preserves_unilateral_exit": true,
+      "requires_covenant_soft_fork": false,
+      "sighash_flags": [
+        0,
+        1
+      ],
+      "summary": "Baseline 1-tx cooperative settlement when Bob is online; blocked as soon as Bob's signer goes offline after funding."
+    },
+    {
+      "id": "2-origination-0x83-two-tier-cltv",
+      "works_with_bob_offline_at_maturity": true,
+      "releases_u_ab_utxo_before_maturity_with_bob_offline": false,
+      "discretionary_committee_custody": false,
+      "preserves_unilateral_exit": true,
+      "requires_covenant_soft_fork": false,
+      "sighash_flags": [
+        131,
+        1,
+        0
+      ],
+      "summary": "Enforceable on today's Bitcoin Core at maturity with Bob offline: Bob's t=0 0x83 adaptor sig consensus-locks Output 0 (Bob's exact residual) while Alice + non-custodial RouterGuard sign 0x01 at t=1 to pay Carol + Alice on Leaf 0 (locktime=T), beating Alice's unilateral Leaf 1 (locktime=T+grace)."
+    },
+    {
+      "id": "3-dlc-channel-conditional-clearing",
+      "works_with_bob_offline_at_maturity": false,
+      "releases_u_ab_utxo_before_maturity_with_bob_offline": false,
+      "discretionary_committee_custody": false,
+      "preserves_unilateral_exit": true,
+      "requires_covenant_soft_fork": false,
+      "sighash_flags": [
+        0
+      ],
+      "summary": "Off-chain LN-DLC subchannel state updates require Bob's interactive revocation/commitment signature; when Bob is offline, settlement falls back to the L1 CET tree (where Candidate 2 enables routed L1 payout)."
+    },
+    {
+      "id": "4-lp-funded-close-advance-over-0x83",
+      "works_with_bob_offline_at_maturity": true,
+      "releases_u_ab_utxo_before_maturity_with_bob_offline": false,
+      "discretionary_committee_custody": false,
+      "preserves_unilateral_exit": true,
+      "requires_covenant_soft_fork": false,
+      "sighash_flags": [
+        131,
+        1
+      ],
+      "summary": "Immediate t=1 liquid BTC exit for Alice before maturity while U_AB remains locked until T: LP advances Alice's locked-in payout from LP's own UTXO at t=1 in exchange for co-signing the priority Leaf 0 (locktime=T) claim on U_AB."
+    }
+  ],
+  "alice_bob_funding_txid": "7f96d2ee64b511c8f70880feedc106062e7cab0baff2f9262fa8ba4209011cd0",
+  "alice_carol_offset_funding_txid": "e33b911ac3e5d589ab9498a2e335b49dbebda1f6987e5b585dc37ccba698d2f1",
+  "bob_offline_after_height": 106,
+  "bob_offline_routed_settlement_60k": {
+    "label": "bob-offline-multilateral-routed-cet-60k",
+    "txid": "479c905ce4fb52b1cd3e98404405843a9510a46ba162a4b8d83216e4ae985e36",
+    "wtxid": "4201996e3cb07400b32037b713b819e43c4db2d69835f049b04cd53d3bc254dd",
+    "vsize": 316,
+    "locktime": 200,
+    "script_path_used": "Leaf 0: <P_Alice> CHECKSIGVERIFY <P_RouterGuard> CHECKSIGVERIFY <P_Bob> CHECKSIG",
+    "sighash_flags_hex": [
+      "0x83 (Bob)",
+      "0x01 (Guard)",
+      "0x01 (Alice)"
+    ],
+    "outputs_sats": [
+      83333334,
+      7575757,
+      59089579,
+      330
+    ],
+    "witness_item_lengths": [
+      65,
+      65,
+      65,
+      102,
+      65
+    ],
+    "raw_tx_hex": "02000000000101d01c010942baa82f26f9f2af0bab7c2e0606c1edfe8008f7c811b564eed2967f0100000000feffffff04d690f704000000002251206aa3da9b5c1d61956076cb3014ffdaa0996bacdae29ba4b89e39b4088f86ec78cd98730000000000225120438a4f623099e7c238970a8481b03d449fd45cc2c2185e739b28f28ce5342bb3aba2850300000000225120ab5d2e79cfd621b1b027ffb24e2453ed7fb571ba9a841ff0e2473466cabd168d4a010000000000002251201dbf91ca59bd3de486ef46540804cc121152421e81719211570d8f5eb69b28710541faf635cd78c5272892e9a4fd3c314509a830ff6268e2fb56db4c87cb78fa0837b525bb3bc731f87e9b6288596d141b4565e70736599172ff412f95175df95b2e83412f9e8bd95c8846289c59670e66dc29925bbc2a16dfd246f1cf17d44d8eee5b39cfaec09ca6799e384ea7089842f629a7bcec9024db61c44c3b81d42e752ec15e01417d14a576444ae16722940fc50a8ab05ab4174d3da9d24d87bf8319b737cf442c0ac3780ee2de0897d1dcc89a96c520980d56af042fd8c6cae4afcf7c567e3978016620ab5d2e79cfd621b1b027ffb24e2453ed7fb571ba9a841ff0e2473466cabd168dad201eafc5715a488cec873b85f397b6aeda16392e2ae1e24e7998737472d23ce451ad206aa3da9b5c1d61956076cb3014ffdaa0996bacdae29ba4b89e39b4088f86ec78ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab46d5ef776abf9445dc1ee0f96a89f7ebaa7f4d5dee5a340ceba15cd3405912eac8000000",
+    "confirmed_block_height": 201,
+    "confirmed_block_hash": "5c7c9d49154d7ff6eea62b0f996ed57abf34da5c70d3b00d2c9ec52cc09611ea",
+    "core_confirmations": 1
+  },
+  "unilateral_fallback_when_lp_disappears": {
+    "label": "unilateral-fallback-cet-when-lp-disappears",
+    "txid": "e25179f1cead10eb1108f31f968c5a61fd3854c430b7a74f7ba24b2e892297f9",
+    "wtxid": "9e5d19d3b8508523d2d2c0f8d8a701a8442bb51bb1f2c1320bf602934beb3b70",
+    "vsize": 257,
+    "locktime": 216,
+    "script_path_used": "Leaf 1: <216> OP_CLTV OP_DROP <pk0> CHECKSIGVERIFY <pk1> CHECKSIG",
+    "sighash_flags_hex": [
+      "0x00 (SIGHASH_DEFAULT)",
+      "0x00 (SIGHASH_DEFAULT)"
+    ],
+    "outputs_sats": [
+      83333334,
+      66665336,
+      330
+    ],
+    "witness_item_lengths": [
+      64,
+      64,
+      73,
+      97
+    ],
+    "raw_tx_hex": "020000000001018a475aad3ef2c9f10e461eb48e50ef7d365456510b0dfbc58db7a9783b93a8440100000000feffffff03d690f704000000002251206aa3da9b5c1d61956076cb3014ffdaa0996bacdae29ba4b89e39b4088f86ec78783bf90300000000225120ab5d2e79cfd621b1b027ffb24e2453ed7fb571ba9a841ff0e2473466cabd168d4a010000000000002251201dbf91ca59bd3de486ef46540804cc121152421e81719211570d8f5eb69b287104407f32742b8341e14d3c09d33468bd3f592e04f05ce2b66f6a7befa7697dd9c345e4199bc3f068b758a590c500773989833f247f84a230b882278fe5722c3a89cf40ab5bb7c3c28a6e9254703259b3b84b782e80a543ce3fdf2fd86c724eecdc35038d73eb93c1bc7b327d965544a92aaf949c762739ce909eafc40d0dcff592411a4902d800b175206aa3da9b5c1d61956076cb3014ffdaa0996bacdae29ba4b89e39b4088f86ec78ad20ab5d2e79cfd621b1b027ffb24e2453ed7fb571ba9a841ff0e2473466cabd168dac61c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584abd39c21c79623d4c9a22c56cb4b50dbaaf73767ce312887e6ceb14eb91ac85b67e9b4998a8ec8e779bcfa469ea4ec848859a4a1299cc13765950fefb950b7ef0fd8000000",
+    "confirmed_block_height": 217,
+    "confirmed_block_hash": "56b5c903236305ddae3924e8e87d7413e54a56318aafa38521c9ba5fc98a9d30",
+    "core_confirmations": 1
+  },
+  "withheld_oracle_presigned_refund": {
+    "label": "withheld-oracle-presigned-cltv-refund",
+    "txid": "13fa2753fb6172619ac9bca15a17c9347da01da65e454464b270535c91f17bf3",
+    "wtxid": "a92a5da9d584dfb7076868918badd26512e37c01a357f869cd1b38c535b5893b",
+    "vsize": 257,
+    "locktime": 240,
+    "script_path_used": "Leaf 2: <240> OP_CLTV OP_DROP <pk0> CHECKSIGVERIFY <pk1> CHECKSIG",
+    "sighash_flags_hex": [
+      "0x00 (SIGHASH_DEFAULT)",
+      "0x00 (SIGHASH_DEFAULT)"
+    ],
+    "outputs_sats": [
+      99999335,
+      49999335,
+      330
+    ],
+    "witness_item_lengths": [
+      64,
+      64,
+      73,
+      97
+    ],
+    "raw_tx_hex": "020000000001018eb608e5b29cedd27e7a54d8cc7a778f420f37323b8fa22c78176bed62027d6b0000000000feffffff0367def505000000002251206aa3da9b5c1d61956076cb3014ffdaa0996bacdae29ba4b89e39b4088f86ec78e7edfa0200000000225120ab5d2e79cfd621b1b027ffb24e2453ed7fb571ba9a841ff0e2473466cabd168d4a010000000000002251201dbf91ca59bd3de486ef46540804cc121152421e81719211570d8f5eb69b2871044034f170afd80682dc534fbab63142dbe5aa38c9d61fe2c6225ca956021170c13d25b820017063316a5715db2d14fc7b511afeed22f8ae6689d794ccf795410b2e409595f095b7a346ddc27d7d3c6a295f558f0376a7db5fc42005d363d857d2bbfd47a0eaa11798767141627c4ae28ffee4febcea3d6db9d7537708fae33ef73fb74902f000b175206aa3da9b5c1d61956076cb3014ffdaa0996bacdae29ba4b89e39b4088f86ec78ad20ab5d2e79cfd621b1b027ffb24e2453ed7fb571ba9a841ff0e2473466cabd168dac61c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab3dcce2ff9e87d83e5d6f4e8728eb0feed9fad1ccca45fd2fd6ba0c15ead7963de9b4998a8ec8e779bcfa469ea4ec848859a4a1299cc13765950fefb950b7ef0ff0000000",
+    "confirmed_block_height": 241,
+    "confirmed_block_hash": "78a69495fb8265769f6006108512ce9f2ab9e26a8029102559c7e6bccd4e0116",
+    "core_confirmations": 6
+  },
+  "cpfp_anchor_child_spend": {
+    "label": "cpfp-330-sat-anchor-fee-rescue-child",
+    "txid": "7cbb00b8500f3acf7bbb7a8357cfbce6d99ae96872436178fc9ab851bc63730f",
+    "wtxid": "1bb04ca26dabc5175b6b305010b07cdff3604c0342c1cc9d75cc0757c419731f",
+    "vsize": 169,
+    "locktime": 0,
+    "script_path_used": "P2TR key-path spend of 330-sat anchor + wallet fee-bump UTXO",
+    "sighash_flags_hex": [
+      "0x00 (SIGHASH_DEFAULT)",
+      "0x00 (SIGHASH_DEFAULT)"
+    ],
+    "outputs_sats": [
+      45330
+    ],
+    "witness_item_lengths": [
+      64
+    ],
+    "raw_tx_hex": "02000000000102f37bf1915c5370b26444455ea61da07d34c9175aa1bcc99a617261fb5327fa130200000000feffffff4d9b6c4143011a210c44d4ddac9122801b303c9d003fb703dba1dd36dfba88b30000000000feffffff0112b10000000000002251201dbf91ca59bd3de486ef46540804cc121152421e81719211570d8f5eb69b28710140e316fc40e2ea76872961789ef79b78b124d412b374ed7fc157919b9b782b883d7407f9c7b49a2b5b663695f00e8101fbdfaa3e03e922167d673a34bb9e089ca5014037a30f2b03108f1a8456a4db214f67da7cb3b0c9ee9e2e04c6ba782d6f5ba1f3ae7fec3d553024843e2e0c5a407c1c3793b6535945191ea858b21b95beaf428e00000000",
+    "confirmed_block_height": 241,
+    "confirmed_block_hash": "78a69495fb8265769f6006108512ce9f2ab9e26a8029102559c7e6bccd4e0116",
+    "core_confirmations": 6
+  },
+  "adversarial_probes": [
+    {
+      "probe_id": "divert-bob-output-0-by-1-sat",
+      "description": "Alice + Guard re-sign 0x01 trying to shave 1 sat off offline Bob's Output 0; Bob's 0x83 signature rejects in Core.",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "alice-premature-unilateral-race-at-maturity",
+      "description": "Alice attempts to broadcast Leaf 1 unilateral CET (locktime=206) at maturity height 200 to bypass Carol's route.",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    },
+    {
+      "probe_id": "premature-refund-before-cltv-240",
+      "description": "Attempt to broadcast pre-signed refund transaction before refund_cltv_height=240.",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    }
+  ],
+  "reorg_probe": {
+    "invalidated_height": 241,
+    "post_invalidate_tip_height": 240,
+    "refund_tx_returned_to_mempool": true,
+    "restored_tip_height": 246,
+    "restored_confirmations": 6
+  },
+  "noncustodial_boundary_statement": "At maturity (height >= T), Candidate 2 enforces Bob-offline multilateral routing directly in Bitcoin consensus without covenants or committee custody via Bob's origination-time 0x83 adaptor pre-signatures + CLTV priority over Leaf 1 unilateral exit. Before maturity (height < T), U_AB cannot be spent on-chain while Bob is offline without a covenant/state-machine soft fork or Bob's live key; immediate pre-maturity liquidity therefore requires an explicit LP-funded close advance (Candidate 4) backed by the priority Leaf 0 maturity claim."
+}

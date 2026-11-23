@@ -328,7 +328,26 @@ pub fn adaptor_complete(
     })
 }
 
-/// Extracts the secret adaptor scalar `t` from a completed `Bip340Signature` and its `AdaptorSignature`.
+/// Extracts AND cryptographically authenticates the secret adaptor scalar `t`
+/// (`DLC_SECURITY_ARCHITECTURE_REVIEW.md` #8): verifies `adaptor_sig`, `completed_sig`,
+/// and `t * G == adaptor_point` before returning `t`, preventing unrelated-signature forgery.
+pub fn adaptor_extract_secret_verified(
+    pubkey_x: &[u8; 32],
+    msg: &[u8],
+    adaptor_point: &ProjectivePoint,
+    adaptor_sig: &AdaptorSignature,
+    completed_sig: &Bip340Signature,
+) -> Result<Scalar, DlcError> {
+    adaptor_verify(pubkey_x, msg, adaptor_point, adaptor_sig)?;
+    bip340_verify(pubkey_x, msg, completed_sig)?;
+    let t = adaptor_extract_secret(adaptor_sig, completed_sig)?;
+    if &(ProjectivePoint::GENERATOR * t) != adaptor_point {
+        return Err(DlcError::InvalidAdaptorSignature);
+    }
+    Ok(t)
+}
+/// Extracts the secret adaptor scalar `t` after verifying `r_eff_x == r_x`.
+/// Callers handling untrusted completed signatures MUST prefer [`adaptor_extract_secret_verified`].
 pub fn adaptor_extract_secret(
     adaptor_sig: &AdaptorSignature,
     completed_sig: &Bip340Signature,
@@ -878,8 +897,19 @@ mod tests {
             let completed = adaptor_complete(&asig, &t_scalar).unwrap();
             bip340_verify(&pk_x, msg, &completed).unwrap();
 
-            let extracted = adaptor_extract_secret(&asig, &completed).unwrap();
+            let extracted =
+                adaptor_extract_secret_verified(&pk_x, msg, &t_point, &asig, &completed).unwrap();
             assert_eq!(extracted, t_scalar);
+
+            // UTXORef `DLC_SECURITY_ARCHITECTURE_REVIEW.md` #1 regression check:
+            // Related adaptor points `T` and `-T` share the same x-coordinate; nonce derivation
+            // MUST commit to compressed 33-byte y-parity so `T` and `-T` never reuse a nonce!
+            let neg_t_point = -t_point;
+            let asig_neg = adaptor_sign(&signer_sk, msg, &neg_t_point).unwrap();
+            assert_ne!(
+                asig.r_eff_x, asig_neg.r_eff_x,
+                "related adaptor points T and -T reused effective nonce!"
+            );
         }
 
         assert!(saw_negated_true && saw_negated_false);

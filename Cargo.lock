@@ -401,21 +401,23 @@ dependencies = [
 
 [[package]]
 name = "shz-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "borsh",
  "hex",
+ "k256",
  "serde",
  "serde_json",
  "shz-dex",
  "shz-dlc",
  "shz-margin",
  "shz-oracle",
+ "shz-utxoref",
 ]
 
 [[package]]
 name = "shz-dex"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hex",
  "k256",
@@ -429,7 +431,7 @@ dependencies = [
 
 [[package]]
 name = "shz-dlc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "borsh",
  "hex",
@@ -443,7 +445,7 @@ dependencies = [
 
 [[package]]
 name = "shz-margin"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "borsh",
  "hex",
@@ -454,12 +456,26 @@ dependencies = [
 
 [[package]]
 name = "shz-oracle"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "borsh",
  "hex",
  "k256",
  "rand_core",
+ "serde",
+ "sha2",
+ "shz-dlc",
+ "shz-margin",
+ "thiserror",
+]
+
+[[package]]
+name = "shz-utxoref"
+version = "0.2.0"
+dependencies = [
+ "borsh",
+ "hex",
+ "k256",
  "serde",
  "sha2",
  "shz-dlc",

@@ -1,0 +1,33 @@
+name: shz-rust-and-core-regtest
+
+on:
+  push:
+    branches: ["main", "feat/**", "research/**"]
+  pull_request:
+
+jobs:
+  rust-and-mnr02-regtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.99.0+
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Run workspace unit and e2e tests
+        run: cargo test --workspace --locked
+
+      - name: Run strict clippy check
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Run synthetic verification suite
+        run: cargo run --locked --bin shz -- verify-all
+
+      - name: Install SHA256-pinned Bitcoin Core 31.1 and execute SHZ-MNR-02 regtest
+        run: |
+          curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
+          echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
+          cargo run --locked --bin shz -- mnr02-regtest /tmp/bitcoin-31.1/bin/bitcoind

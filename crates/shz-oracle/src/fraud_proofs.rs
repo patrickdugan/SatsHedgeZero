@@ -107,6 +107,12 @@ pub struct NearBondedOracleVault {
     pub max_reference_drift_secs: u64,
     /// Conversion rate (`yoctoNEAR` per satoshi) for compensating defrauded DLC traders on NEAR.
     pub yocto_near_per_sat: u128,
+    /// `DLCAdaptor` quorum leverage factor `L` (`TVL_max <= L * stake_in_sats`).
+    pub tvl_leverage_cap_x: u64,
+    /// Active open DLC collateral (sats) covered by this confederation.
+    pub active_tvl_sats: u64,
+    /// Registered DLC IDs to block `DOUBLE_USE_DLC` across epochs (`DLCAdaptor` v2 rule).
+    pub registered_dlc_ids: Vec<String>,
     pub is_slashed: bool,
 }
 
@@ -126,8 +132,41 @@ impl NearBondedOracleVault {
             max_deviation_bps,
             max_reference_drift_secs,
             yocto_near_per_sat,
+            tvl_leverage_cap_x: 10,
+            active_tvl_sats: 0,
+            registered_dlc_ids: Vec::new(),
             is_slashed: false,
         }
+    }
+
+    /// Registers a DLC against the confederation's NEAR TVL cap (`TVL <= L * Stake`)
+    /// and rejects `DOUBLE_USE_DLC` across epochs (`UTXO-Ref/DLCAdaptor/oracle-contract.ts`).
+    pub fn register_dlc_coverage(
+        &mut self,
+        dlc_id: &str,
+        collateral_sats: u64,
+    ) -> Result<(), OracleError> {
+        if self.is_slashed {
+            return Err(OracleError::VaultAlreadySlashed);
+        }
+        if self.registered_dlc_ids.iter().any(|id| id == dlc_id) {
+            return Err(OracleError::FraudProofRejected("DOUBLE_USE_DLC: dlc_id already registered"));
+        }
+        let near_equiv_sats = self
+            .bonded_yocto_near
+            .checked_div(self.yocto_near_per_sat)
+            .unwrap_or(0) as u64;
+        let total_stake_sats = near_equiv_sats.saturating_add(self.btc_slash_bond_sats);
+        let max_tvl = total_stake_sats.saturating_mul(self.tvl_leverage_cap_x);
+        let next_tvl = self.active_tvl_sats.saturating_add(collateral_sats);
+        if next_tvl > max_tvl {
+            return Err(OracleError::FraudProofRejected(
+                "TVL_CAP_EXCEEDED: open DLC collateral exceeds L * Stake",
+            ));
+        }
+        self.active_tvl_sats = next_tvl;
+        self.registered_dlc_ids.push(dlc_id.to_string());
+        Ok(())
     }
 
     /// Verifies a Borsh-serializable `EquivocationFraudProof`, algebraically extracts the

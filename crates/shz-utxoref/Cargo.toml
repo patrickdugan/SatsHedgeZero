@@ -1,0 +1,18 @@
+[package]
+name = "shz-utxoref"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "UTXORef-compatible BIP-341 NUMS funding/TapSighash verifier, PnL batch netting with Edmonds-Karp capacitated vault routing, and durable pre-signing reservation book."
+
+[dependencies]
+borsh.workspace = true
+hex.workspace = true
+k256.workspace = true
+serde.workspace = true
+sha2.workspace = true
+shz-dlc.workspace = true
+shz-margin.workspace = true
+thiserror.workspace = true

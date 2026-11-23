@@ -4,12 +4,13 @@ members = [
     "crates/shz-margin",
     "crates/shz-dlc",
     "crates/shz-oracle",
+    "crates/shz-utxoref",
     "crates/shz-dex",
     "bins/shz-cli",
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 authors = ["Patrick Dugan"]
@@ -19,6 +20,7 @@ repository = "https://github.com/patrickdugan/SatsHedgeZero"
 shz-margin = { path = "crates/shz-margin" }
 shz-dlc = { path = "crates/shz-dlc" }
 shz-oracle = { path = "crates/shz-oracle" }
+shz-utxoref = { path = "crates/shz-utxoref" }
 shz-dex = { path = "crates/shz-dex" }
 
 borsh = { version = "1.5", features = ["derive"] }
