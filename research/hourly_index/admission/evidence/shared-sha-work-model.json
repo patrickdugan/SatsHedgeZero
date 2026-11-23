@@ -1,0 +1,47 @@
+{
+  "schema": "shz/admission-shared-sha-work-model/v1",
+  "measured_r1cs": false,
+  "measured_prover": false,
+  "models": [
+    {
+      "reports": 12,
+      "depth": 4,
+      "seals": 2,
+      "merges": 10,
+      "folds": 36,
+      "legacy_compressions": 144,
+      "shared_compressions": 72,
+      "old_new_paths_lower_bound": 216
+    },
+    {
+      "reports": 7,
+      "depth": 4,
+      "seals": 2,
+      "merges": 7,
+      "folds": 23,
+      "legacy_compressions": 92,
+      "shared_compressions": 46,
+      "old_new_paths_lower_bound": 126
+    },
+    {
+      "reports": 144000,
+      "depth": 18,
+      "seals": 1,
+      "merges": 143995,
+      "folds": 431996,
+      "legacy_compressions": 1727984,
+      "shared_compressions": 863992,
+      "old_new_paths_lower_bound": 10656000
+    },
+    {
+      "reports": 262143,
+      "depth": 18,
+      "seals": 1,
+      "merges": 262143,
+      "folds": 786430,
+      "legacy_compressions": 3145720,
+      "shared_compressions": 1572860,
+      "old_new_paths_lower_bound": 19398582
+    }
+  ]
+}
