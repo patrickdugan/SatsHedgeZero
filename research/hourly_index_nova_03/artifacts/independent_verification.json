@@ -1,0 +1,15 @@
+{
+  "relation": "shz/hourly-index-checkpoint-nova/v1",
+  "verified": true,
+  "proof_bytes": 10003,
+  "proof_sha256_hex": "fdd065592a393f9bb1d7ba0e843e2bdfb5af412f9552f9f7a0c13ed0629d03f1",
+  "vk_chunks_merkle_root_hex": "2158dc26c6ca786c60004ac5264f05aca8704bc059474db270a73131c0b4ce2f",
+  "checkpoint_root": "c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5",
+  "wrong_root_rejected": true,
+  "wrong_step_count_rejected": true,
+  "tampered_proof_rejected": true,
+  "substituted_vk_chunk_rejected": true,
+  "verify_wall_seconds": 6.1655838,
+  "production_ready": false,
+  "can_authorize_dlc_settlement": false
+}

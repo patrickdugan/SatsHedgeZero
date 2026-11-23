@@ -1,0 +1,28 @@
+{
+  "compressed_verified": true,
+  "compression_seconds": 58.1524278,
+  "constraint_counts": [
+    319463,
+    10349
+  ],
+  "flags": {
+    "bitcoin_anchor_finality_verified": false,
+    "can_authorize_dlc_settlement": false,
+    "can_authorize_oracle_epoch": false,
+    "hold_necessity_proven": false,
+    "near_nova_verified": false,
+    "production_ready": false,
+    "source_authentication": false
+  },
+  "fold_seconds": 5.1880397,
+  "proof_bytes": 12376,
+  "proof_sha256": "15a48918d06118c720033225a076e767f585ae3e74f940390aa037cf01c60af7",
+  "public_params_digest": "d71d4d1fb2d4af33d2662cca0b79105134e1bab4f7cd133c0917f9c4b37e8702",
+  "recursive_verified": true,
+  "relation": "shz/hourly-index-checkpoint-nova/v1",
+  "setup_seconds": 23.8150124,
+  "steps": 8,
+  "verifier_key_bytes": 110771368,
+  "verifier_key_sha256": "d598f7431c5f2a9545d84d413124baa100969b40afc578d27a74f8dad5caf90e",
+  "verify_seconds": 2.2349296
+}
