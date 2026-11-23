@@ -21,3 +21,7 @@ Separate source authentication and full Nova verification from a header containi
 ## Milestones
 
 **IPA-02:** frozen state binding and vector-scaling benchmark. **IPA-03:** an independently reviewed complete transparent folding decider that verifies the actual Nova relation (or an explicitly migrated, equivalent relation) on NEAR. **ORACLE-04/MNR-04:** live Pyth/Chainlink authentication and Bitcoin-exact closeout binding. No milestone automatically activates production readiness.
+
+## Frozen empirical receipt
+
+GitHub Actions [#45202930807](https://github.com/patrickdugan/SatsHedgeZero/actions/runs/45202930807) passed the 45 Node tests, original MNR-03 archive proof hash/TXID checks, native Rust host tests, WASM compilation, and NEAR sandbox proof acceptance/tamper rejection. Actual transaction receipt gas was **37.566946552755 TGas (8 vectors)**, **63.156292021030 TGas (16)**, and **110.879454240841 TGas (32)**. The frozen receipt is `research/near_nova_ipa_02/evidence/sandbox-20261123.json`. No Pallas/Vesta Nova compressed verifier ran on NEAR in these tests.

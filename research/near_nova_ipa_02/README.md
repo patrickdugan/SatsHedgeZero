@@ -59,3 +59,15 @@ To verify its correctness trustlessly on NEAR, either:
 2. Migrate to a reviewed transparent folding/decider stack with a compatible NEAR BN254 IPA proof, independently proving every folded constraint and binding it to the exact original MNR-03 public statement. This requires a new verified circuit and new proof artifacts. It is not a format conversion of the existing 12,376-byte proof.
 
 The full MNR-04 Bitcoin-exact relation, native Pyth and Chainlink source authentication, and NEAR finality are separate acceptance gates. Keep `production_ready=false`, `can_authorize_nova=false` and `can_authorize_dlc_settlement=false` throughout IPA-02.
+
+## Measured NEAR sandbox results (23 November 2026)
+
+All native Rust and WASM gates passed on [GitHub Actions #45202930807](https://github.com/patrickdugan/SatsHedgeZero/actions/runs/45202930807), following the Bitcoin SegWit parser correction at `77c19c49432cfa5d84e22d96075594727620b0ec`. The archive checker confirmed the frozen public commitments and reconstructed the actual Bitcoin TXID. All JavaScript controls passed (45/45).
+
+| Dimension | IPA rounds | Actual transaction receipt gas | Result |
+| ---: | ---: | ---: | --- |
+| 8 | 3 | 37.566946552755 TGas | PASS |
+| 16 | 4 | 63.156292021030 TGas | PASS |
+| 32 | 5 | 110.879454240841 TGas | PASS |
+
+Each dimension accepted a genuine transparent proof and rejected changed accounting and corrupted proof inputs. See `evidence/sandbox-20261123.json` for the immutable run and job IDs. The prior IPA-01 dimension-four result was 21.690105195258 TGas. These values are NEAR-sandbox proof execution costs for a **known, simple public-vector relation**, not forecasts for a complete Nova Pallas/Vesta verification circuit.
