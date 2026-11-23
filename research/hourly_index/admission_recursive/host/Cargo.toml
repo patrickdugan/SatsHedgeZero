@@ -1,0 +1,13 @@
+[package]
+name = "shz-admission-recursive-host"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+[dependencies]
+risc0-zkvm = { version = "=3.0.6", default-features = false, features = ["prove", "disable-dev-mode"] }
+shz-admission-recursive-core = { path = "../core" }
+shz-admission-recursive-methods = { path = "../methods" }
+serde_json = "1"
+bincode = "=1.3.3"
+hex = "0.4"
