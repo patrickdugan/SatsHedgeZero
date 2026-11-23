@@ -1,0 +1,58 @@
+{
+  "compression_seconds": null,
+  "folding_seconds": null,
+  "native": {
+    "bitcoin_network": "regtest",
+    "bitvm3_onchain_verified": false,
+    "epoch_context": "a39cd13530c814c624a602d8ec7fbf48f56760c78b3026b4f9fabefea6c9dc2d",
+    "fee_sats": 2670,
+    "funded_sats": 244000000,
+    "genesis_hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+    "native_signature_verified": true,
+    "nova_authorization_verified": false,
+    "ordered_funding_commitment": "dd998f6fdf888382043bbbc1c0dbc2dcc6459f35bea7c9514c5021b952eeb7fe",
+    "original_contract_policy_external": true,
+    "payout_sats": [
+      55000000,
+      35000000,
+      71498500,
+      82498500,
+      330
+    ],
+    "production_ready": false,
+    "relation": "shz/mnr04/bitcoin-exact-clearing/v1",
+    "sigmsg_hex": [
+      [
+        "bdd3b3a58bd08c72b273f0f02fda5e6d7edecebaa962aaa68d51a25a30e84e79",
+        "cde840b5896447f794fef575110b4a3984889a948224efc00125d9e63f85b688",
+        "cde840b5896447f794fef575110b4a3984889a948224efc00125d9e63f85b688"
+      ],
+      [
+        "a82b1fc4dc9ea1c59acc26b105549a12f2446c1ef28ebded589c9f56e074c44e",
+        "5017bf594a9bb6ac7b4fb163e785ea71e55287a27c40cc856d128286582193cc",
+        "5017bf594a9bb6ac7b4fb163e785ea71e55287a27c40cc856d128286582193cc"
+      ],
+      [
+        "11fab2557740c739bead1406bdd38e0cc9276f9e549ea57acfcff20ad12bbffa",
+        "11fab2557740c739bead1406bdd38e0cc9276f9e549ea57acfcff20ad12bbffa",
+        null
+      ]
+    ],
+    "transaction_commitment": "5fbded5a131752179b266341b303ba0d00c757053459f0eeec7cc49ee963f5f8",
+    "txid": "2b855bf2694a1f6bfede361666ee663f46ec5f25ff2a5630c4de5123c70fe23f",
+    "wtxid": "363e11e43e1e4a9217c1870a32192d8f4a955c26fd704524c8084bfb34a4c869"
+  },
+  "nova_ambient_context_native": true,
+  "nova_backend": "Nova Pallas/Vesta Spartan IPA CPU",
+  "nova_funding_conservation_verified": true,
+  "nova_output_values_verified": true,
+  "nova_txid_verified": true,
+  "primary_constraints": null,
+  "proof_bytes": 12224,
+  "proof_sha256": "7ea6d1150f4f5c467ae6b8280e0a227c71fbe482768d964efe5f81187eb8a36d",
+  "secondary_constraints": null,
+  "setup_seconds": null,
+  "verification_seconds": 0.954901717,
+  "vk_sha256": "7fc71a8518976ede1ad97855ee164e63356e4ef11cda43565e1177fa5f082db1",
+  "wrong_txid_claim_refused": true
+}

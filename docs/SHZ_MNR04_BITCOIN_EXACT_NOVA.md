@@ -66,3 +66,9 @@ This partial relation uses modular verification so the native trust assumptions 
 ## Source pins
 
 SatsHedgeZero base `3db6fb889a20c630eb0d8cf00df0f64244c26ddf`. Referenced upstream heads were zk-rusto-no-bitcoino PR 28 at `f6a8d129285869f339c86f1e2e7f1124bc09c37a` and UTXO-Ref PR 13 at `82105e25208903167aac3ffaaaedb9d28a8b06de`. This implementation reuses the checked-in PnL function and the published Nova crate.
+
+## Concurrent Hyperstack pilot
+
+The same isolated Core 31.1 replay and Nova prover completed on the CPU alongside Ark SP1 CUDA on an NVIDIA A100 80 GB PCIe VM. The MNR-04 proving command took 147.67 seconds and used 599,060 KiB peak RSS. The compressed proof was 12,224 bytes. The CPU prover and Ark each had an assigned logical CPU and a 2 GiB RAM ceiling.
+
+The cloud Core transaction was `2b855bf2694a1f6bfede361666ee663f46ec5f25ff2a5630c4de5123c70fe23f`. The proof was verified on the VM and then independently verified after retrieval against the locally pinned verification-key digest. Both verifiers refused the modified public TXID. See the `a100-*` records in `evidence/mnr04/`.
