@@ -1,0 +1,35 @@
+name: MNR-04 exact Bitcoin clearing
+
+on:
+  push:
+    branches: ["research/mnr04-bitcoin-exact-nova-a100-20261123"]
+  pull_request:
+    paths:
+      - "crates/shz-nova-bitvm/**"
+      - "bins/shz-cli/**"
+      - "scripts/bench-mnr04.sh"
+      - "evidence/mnr04/**"
+      - ".github/workflows/mnr04.yml"
+      - "Cargo.lock"
+  workflow_dispatch:
+
+jobs:
+  clearing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.99.1"
+      - name: Check native and constrained mutations
+        run: cargo test --release --locked -p shz-nova-bitvm --features mnr04-nova mnr04::
+      - name: Build the CPU prover before the benchmark
+        run: cargo build --release --locked --bin shz --features mnr04-nova
+      - name: Replay on pinned Bitcoin Core and verify the proof independently
+        run: |
+          curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
+          echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
+          bash scripts/bench-mnr04.sh target/release/shz /tmp/bitcoin-31.1/bin/bitcoind "$RUNNER_TEMP/mnr04"
+          cat "$RUNNER_TEMP/mnr04/benchmark.json"

@@ -1,0 +1,58 @@
+{
+  "compression_seconds": null,
+  "folding_seconds": null,
+  "native": {
+    "bitcoin_network": "testnet4",
+    "bitvm3_onchain_verified": false,
+    "epoch_context": "af59010145bcbcad4d2e5ea52f979cbfefe69abd2ce4f55213033f83fd3e9afa",
+    "fee_sats": 610,
+    "funded_sats": 3900,
+    "genesis_hash": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+    "native_signature_verified": true,
+    "nova_authorization_verified": false,
+    "ordered_funding_commitment": "7826ca76b1f0e1dbdb8916d597e2f8b33282802ed8217e9bcb9a57773d6f9494",
+    "original_contract_policy_external": true,
+    "payout_sats": [
+      450,
+      550,
+      1050,
+      910,
+      330
+    ],
+    "production_ready": false,
+    "relation": "shz/mnr04/bitcoin-exact-clearing/v1",
+    "sigmsg_hex": [
+      [
+        "9850ce43d5fc36724d180d975b7234c5912d59ab798366adcb38c13834c8e60d",
+        "b71033fd10452f4b64029f8b61395c95acfb2d09ab97a71365459b5bc1083de9",
+        "b71033fd10452f4b64029f8b61395c95acfb2d09ab97a71365459b5bc1083de9"
+      ],
+      [
+        "c1d460284802c0e722284b74f4e4cb7898e861d9b4747c37fcd13d054e275198",
+        "15ac1a51f156e488deec78bd54b89e72c75119c4a3838ec24cf860940cc2d648",
+        "15ac1a51f156e488deec78bd54b89e72c75119c4a3838ec24cf860940cc2d648"
+      ],
+      [
+        "c5b2cc340bc8878c9ee44c1f616b4890d9679a3e8fb667b6d48a7ee9eee81d26",
+        "c5b2cc340bc8878c9ee44c1f616b4890d9679a3e8fb667b6d48a7ee9eee81d26",
+        null
+      ]
+    ],
+    "transaction_commitment": "8391ec16701ca86370a189a6cbd05c916dd6a842658123000d4fa21b35863048",
+    "txid": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+    "wtxid": "3ffb76424476f676055bd9e549cf6759196528cfcd51e761ee7f37132db847cd"
+  },
+  "nova_ambient_context_native": true,
+  "nova_backend": "Nova Pallas/Vesta Spartan IPA CPU",
+  "nova_funding_conservation_verified": true,
+  "nova_output_values_verified": true,
+  "nova_txid_verified": true,
+  "primary_constraints": null,
+  "proof_bytes": 12224,
+  "proof_sha256": "707df04408ecf6ad176a3919503c644a1c40d32f73533c13263a46eed364674a",
+  "secondary_constraints": null,
+  "setup_seconds": null,
+  "verification_seconds": 1.5698663609999999,
+  "vk_sha256": "7fc71a8518976ede1ad97855ee164e63356e4ef11cda43565e1177fa5f082db1",
+  "wrong_txid_claim_refused": true
+}

@@ -7,7 +7,14 @@ authors.workspace = true
 repository.workspace = true
 description = "MIT native LNMarkets batch statement verifier, 600B Nova v2 transcript/state encoder, Secq BIP-340 claim binder, and 304B UTXORef BitVM3 L2 settlement statement codec."
 
+[features]
+mnr04-nova = ["dep:bincode", "dep:ff", "dep:nova-snark"]
+
 [dependencies]
+bincode = { version = "=1.3.3", optional = true }
+ff = { version = "0.13", optional = true }
+nova-snark = { version = "=0.76.0", default-features = false, optional = true }
+bitcoin = { version = "=0.32.102", features = ["serde"] }
 borsh.workspace = true
 hex.workspace = true
 k256.workspace = true

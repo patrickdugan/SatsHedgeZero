@@ -1,0 +1,249 @@
+﻿{
+  "scenario": "Live Public Bitcoin Testnet4 SHZ-MNR-03 3-Party Multilateral Atomic Clearing with Bob 100% Offline (0x83) + Native Pyth Pro + lnm-nova CompressedSNARK",
+  "network": "bitcoin-testnet4",
+  "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+  "testnet4_tip_height": 162934,
+  "testnet4_tip_block_hash": "0000000040e64500d899a5deb0f0db7c0e55222d281781b698d5aad22ff7f7c2",
+  "bob_online_during_clearing_or_proving": false,
+  "funding_txid": "2ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b3",
+  "funding_tx_explorer_uri": "https://mempool.space/testnet4/tx/2ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b3",
+  "bob_offline_atomic_clearing_txid": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+  "bob_offline_atomic_clearing_tx_explorer_uri": "https://mempool.space/testnet4/tx/ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+  "bob_offline_atomic_clearing_wtxid": "3ffb76424476f676055bd9e549cf6759196528cfcd51e761ee7f37132db847cd",
+  "bob_offline_atomic_clearing_vsize": 599,
+  "mempool_accepted_live_testnet4": true,
+  "wallet_balance_before_sats": 4540,
+  "wallet_balance_after_sats": 3290,
+  "net_network_miner_fee_cost_sats": 1250,
+  "funded_dlc_utxos": [
+    {
+      "trade_no": 1,
+      "label": "MNR03-AB-80K-BOB-OFFLINE-0x83",
+      "txid": "2ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b3",
+      "vout": 0,
+      "sats": 1400,
+      "script_pubkey_hex": "512002075f8e5a88459142c71656d51b2bf2e1bfe3179a0289e19caaa2e21262fbfc"
+    },
+    {
+      "trade_no": 2,
+      "label": "MNR03-BC-100K-BOB-OFFLINE-0x83",
+      "txid": "2ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b3",
+      "vout": 1,
+      "sats": 1360,
+      "script_pubkey_hex": "51200b1b5b09c86bed512086f19a95a8ec133b9c0bd072c9914d9514b259522ac971"
+    },
+    {
+      "trade_no": 3,
+      "label": "MNR03-CA-125K-INTERACTIVE-0x00",
+      "txid": "2ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b3",
+      "vout": 2,
+      "sats": 1140,
+      "script_pubkey_hex": "512068423968f3632cca440b61c5776046be0137f002c6b06d92d4af58597cc65498"
+    }
+  ],
+  "adversarial_probes_live_testnet4": [
+    {
+      "probe_id": "testnet4-mnr03-shave-bob-ab-vout0",
+      "description": "Live Testnet4 mempool probe: shave 1 sat from offline Bob's AB 0x83-pinned vout[0] (450 -> 449)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "testnet4-mnr03-shave-bob-bc-vout1",
+      "description": "Live Testnet4 mempool probe: shave 1 sat from offline Bob's BC 0x83-pinned vout[1] (550 -> 549)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "testnet4-mnr03-swap-bob-vout0-vout1",
+      "description": "Live Testnet4 mempool probe: swap offline Bob's vout[0] (450) and vout[1] (550)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    }
+  ],
+  "nova_compressed_snark_verified": true,
+  "near_finality_verified": false,
+  "bitvm3_onchain_verified": false,
+  "production_ready": false,
+  "oracle_bound_nova_report": {
+    "protocol": "SatsHedgeZero SHZ-MNR-03 + Native Pyth Pro + Nova v2 / BitVM3",
+    "network": "bitcoin-testnet4",
+    "anchor_height": 162934,
+    "anchor_block_hash_hex": "0000000040e64500d899a5deb0f0db7c0e55222d281781b698d5aad22ff7f7c2",
+    "bob_online_during_clearing_or_proving": false,
+    "pyth_pro_epoch": {
+      "feed_id": 1,
+      "channel_id": 3,
+      "publish_time_us": 1795600000000000,
+      "feed_update_time_us": 1795600000000000,
+      "price_e8": 12500000000000,
+      "whole_price_usd": 125000,
+      "confidence_e8": 1500000000,
+      "registry_epoch": 1,
+      "signer_pubkey_hex": "b2491d9502ae28630a2bacb2e0c74510ffcdd328c334ff3e1393e75b2d31e7dc",
+      "signed_payload_sha256_hex": "d44750f7e80b954ca4b07b1baae3806620807fc6f6eb05cdc5ab9c7cca419bf1",
+      "receipt_hash_hex": "7a0a6d8d97a231fd0adcef7892d29232d131adfe8c92391deb228b9dd598e51e",
+      "session_hash_hex": "af59010145bcbcad4d2e5ea52f979cbfefe69abd2ce4f55213033f83fd3e9afa",
+      "near_finality_verified": false
+    },
+    "mnr03_clearing": {
+      "label": "MNR03-TESTNET4-MICRO-1USD-BOB-OFFLINE",
+      "bob_online_during_clearing": false,
+      "settled_price_usd": 125000,
+      "atomic_clearing_txid_hex": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+      "atomic_clearing_wtxid_hex": "3ffb76424476f676055bd9e549cf6759196528cfcd51e761ee7f37132db847cd",
+      "atomic_clearing_vsize": 599,
+      "bob_ab_pinned_output_sats": 450,
+      "bob_bc_pinned_output_sats": 550,
+      "bob_total_freed_collateral_sats": 1000,
+      "bob_posted_margin_sats": 1250,
+      "bob_freed_collateral_bps": 8000,
+      "alice_winner_routed_pnl_sats": 450,
+      "alice_winner_cleared_output_sats": 1050,
+      "carol_freed_collateral_sats": 910,
+      "cpfp_anchor_sats": 330,
+      "miner_fee_sats": 610,
+      "pnl_snapshot_hash_hex": "458301ef0f3ac9095fbdf7604f8ee9535e34c38de79a706fc88264c9152fe833",
+      "next_accounting_state_root_hex": "ebbe9a6dd19256696ba97febe68b0ec4f107a5539425ba6c15fa44b88ae11dea",
+      "durable_book_head_hash_hex": "07bf4086220ec83fd395271cb438310cce41e085a9eb71a6278a8f22ca11194e"
+    },
+    "mnr03_atomic_clearing_raw_segwit_tx_hex": "02000000000103b3d7511c390b829e7067a97d482c43d30a0a44d51c3df761eefa39be3e71c72a0000000000feffffffb3d7511c390b829e7067a97d482c43d30a0a44d51c3df761eefa39be3e71c72a0100000000feffffffb3d7511c390b829e7067a97d482c43d30a0a44d51c3df761eefa39be3e71c72a0200000000feffffff05c20100000000000022512036a1a296d707eefea76bb707bfcaef4a36a4624d2947f77b44f86a5bb6d48eb5260200000000000022512036a1a296d707eefea76bb707bfcaef4a36a4624d2947f77b44f86a5bb6d48eb51a040000000000002251205689536b6126c477941a44b82948dbb9917ce27778fcb757c75371eefc672a308e03000000000000225120fec5127106b6e427e18335302b6d49c788c91095e94d9748b7213916032a7cfb4a010000000000002251205f821fac7ca1c429dd5ad4e5a8b6f0725decbe8937f1984146ab9cd5bac937cb05415bd4fb3246c411fe5e3eb8e96e084624a84e6b8d489be4dd005664748ecf09806663e204187fcc84ff60f4bffd7a78948f86d373a0234fa42ff9fd5681ff44eb834176663e98206d29408546b7cc8802189ac7000af2f03ac192dadac3d287a6f0b40543417ccf6f100a127a3c1c9dec7d0271313ccaf4d32afc7f003b453675d09c01411c9959c1f914c0344e956dbfbdc473764db23dccbff85d69eec8390deda102ac965bdcecc4d49d8ab14da5e555cca7f20e319b5050b06e249079d3bfd66a11710166204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab215933d155b6e5e99b7ae20987d6ba51bf9299d5d28ef5aaad4b55f32096f2c305412b985dd445c86781b803ecdd926818250283c2ffdcc87871c1b0d9258c7e389b762044ccac4a8e9a020c436eb16653832c56baddd0030b58ead66aac665e0b198341318fb327f5bd5edaf3ad531acfd361c8d81889fe4468ffbc22f5a49e5adb26b00051faec98fa28a16943e2b5e7369940044d11525b50e5509611f4dbf692129b0141864504c16d8dd66a49ff3571e41a02d2302c07d827e1a34d9af5e08f1c9ede518099e29e9cdf9211169268dfce4ba7e3b8393c7a43ed7b2d3ce4d225b08e7d8b016620e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584abac229b80ad87684d0c67bbe98ad03f08c7f260af9212a580e832b98a0ea8dae604408a9394b10dbdbbe7ab03a9de011d66e63fc01061914eb006192214c50d534253b0452599e20eb3301af72c98e2036915085f8e46942777912b26de4320ff1d47401c2fdad89bb417b12c580eabc26eeca7433cfbbd9cfa58ff30ba912c1337443c617386c2d56a287397543303c5febf0773248398a615296be2f8babc2a73879944204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab1500330dbb077539eca074f360f9ebdd70090292f636348311f966a5db58aafe767c0200",
+    "batch_witness_bytes_len": 27770,
+    "journal": {
+      "domain_hex": "0100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c7",
+      "epoch": 177,
+      "batch_id_hex": "af59010145bcbcad4d2e5ea52f979cbfefe69abd2ce4f55213033f83fd3e9afa",
+      "evaluation_height": 162934,
+      "valid_until_height": 162954,
+      "row_count": 3,
+      "accepted_contracts_root_hex": "f5879be67e7b248a22891435e34b2526ffd1035f5916c6142a57d472080877dd",
+      "old_nullifier_root_hex": "fb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87cc",
+      "new_nullifier_root_hex": "2790f436a2e81261e42c8e6ed8b97e4adbbc1826f744f5ae01f05211a5a40ebe",
+      "batch_tx_digest_hex": "f34124cf8b4df4ef084fced19115f4a393ecc36214f98cc922c4773e7d41710b",
+      "batch_txid_hex": "5e439e3cdf3f4f61c61edaf3bba197d32b6ab54c88fef8092ac9c7ae0bf7d5e8",
+      "total_collateral_sats": 3900,
+      "total_payout_sats": 3450,
+      "total_fee_sats": 450,
+      "journal_276b_hex": "4c4e4d4a4e4c30310100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c7b100000000000000af59010145bcbcad4d2e5ea52f979cbfefe69abd2ce4f55213033f83fd3e9afa767c02008a7c020003000000f5879be67e7b248a22891435e34b2526ffd1035f5916c6142a57d472080877ddfb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87cc2790f436a2e81261e42c8e6ed8b97e4adbbc1826f744f5ae01f05211a5a40ebef34124cf8b4df4ef084fced19115f4a393ecc36214f98cc922c4773e7d41710b5e439e3cdf3f4f61c61edaf3bba197d32b6ab54c88fef8092ac9c7ae0bf7d5e83c0f0000000000007a0d000000000000c201000000000000",
+      "journal_sha256_hex": "d87e089251413e3f47f90c9e3aadb21c98d164798f77b953d19b361402a28a40"
+    },
+    "row_transcripts_600b_hex": [
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f76317bfc0b248deb1e772c1f28b3fd6d4421d211a451515a38a95308198307285c8d09576209c2e8a8a07b88ae179c96c202a76def347e740cd5621efdee55934b45cd36263b1cffb6db45da2dfba91c23010373bab0f2a7e89cc4224f6160e3f0363be389df86c1707ac7179f171ef5fbcbefd29862491341bf119c8eb1075774b00b9d335bc98bcf428f1b0daf7e9c63ab1a36903080454dfffb2d294e5e3b746c746a163131b5361e508508731c25176a47b04291e9fa1361cd41caba22f12ef2b5ce70f4ae0268d94b4aa45396a0b50fbfb7b38602d1a8934108cb882dc6e3bf37080d13edd6be794dc7ebeb4fe72170f49d7613d2e2e6e24ee61e38bd4138b032f41e0c3aa045de58bbc8101eb6e7b9259c356526ad6cea07fc937078884e1eb963eed52ad5fcad6ba5a3fb42e52cbc768498e99fc4a799be7d64d6ca3e95e80068865bb0404078fd9573f75d97160d84cd65dd4413afa697381463bf81fae8c54c6b524a92485fd7caee4ed3f699f017b167197aac53f76e23dbb67fd2bfb6b702b2049d181ebe745a6e1bf93ce05e230ee1e43d40d59f5a67d74fd2064f5c2937235310c793ca16222080f0abdc07f9b4d6ef5e16dbb482d773218aa5ff98ef21000000005cbaa1d23231024b0e7e882803dbf68d5f23f8d46f9e0094870cd0c0ce32b6bbd601000000000000c2010000000000004a0100000000000096000000000000002ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b300000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f7631d5fa6f324f0dcc095bd33929d06687f5a825b8173a1acd788ef9a76c59aeadc7389e590e2e31ececc1fe66aec01d3a2ddff38d470a2848cc9cfb5c27ec5baead12507f6ed7f17a6b469c584710a86cb2c97bb31888ac533a61700ab6e5f2a5e479daf1f4d371f628bd31e8e3fef397601eb27550624b6919afcbb44af564e99c138c9bbfb96e207a6b157916fa8b2f70e1a3192c72e61252df31800dc204969826b8f41a631bd736d1395e7a41dacc5b4e50b130fdd4d003d226204b4ac889f6efeb0b6cb61af2006051cae2cb12890db05954e02738d0ee747bec8db1d2e7a0bd98fba39ccb49befbe56f3db620dc0be74930b9f188afa362c2030f1ea9b35bf9189c757fb3955d181d9b6075b035648636c2c4f9f855329e5a043518c45b9069ed06a0f5fecca58b42af944961db50b33c40474a179055f1180d3a0ad414e5000e834f8f28c77d9c749f32e91bd45cec1ebf2485abc1ce7625519d587dd790f6b10aaccebaef86be11786c2058bc0168c03cb70f5a6a6aaa1e5935823b1e0032028ae04869f3a8860f3222334deb21db2a948e779be4349c6058a90a81736c2348edee2e99d36e51c14d1b75d9e71a60f7f4df0dc1c7080c8dcc1d8d861c500f0900000000373c9ae3e820d71bf61c22442f37cf10e62a55d33520fdebf092a2b3a62b3b484a0100000000000026020000000000004a0100000000000096000000000000002ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b301000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f76315a45350bc8107158ebba6451ab8b5004a0711ae6e86052231233bde5ee0d90933a8fccd9ed47fbd24c59a2a467570e8dc047e8cd6bc7b94149e0a4eecf217112b7ff23d099a107fbfaf82a6392a8a52993a679d0b97a826031934f8edcc2073d74c212857471fe29be7beef5b603315a45593c80ec8405260a740de1931e624b75c5e2d42fb6918e6cf48b90e9da3bf851a74c94986b69768dc366e0426b7db6ea93f858dc68d9b2a710d2c400aba046e5df2715e9c048d08421d632594130173355d59bff9ad1e2da676c05d3af3565be20947f455d8464b134c5ab215f989d916ce5a20eaadb8a0940ec697f3bfee802349125e720c3afe7efc7bed00b148d976d252aefdbd47a160be3cc5ab92dc7b2359f97cd216e0f9b96c5c370c1671050fc367d3c049c78b6f0329035fb41187cd0c67085ca0f2f1dde863c43a55fc1002a9025a06854a85ef93a1eaca8688d090ec9bb999fd266e3b8777ed2824ec53b3a6f880bf4404602f2d572c64ab1f11b0770584af78bed1f467bdf8d795b7af10254d8d738e0101fb25be4d17cca59f2205cd91ee8ff572c6e3263465c4bae39ff268e59e3f53d154c8eec94e4d0763b593f07d6df24fbcd7cd41e69eeb89f2dd100000000709559c4069c4f544e66e2d2953a93a627da8eb09d21f3b8baeefc1382a4b6bb4a010000000000004a010000000000004a0100000000000096000000000000002ac7713ebe39faee61f73d1cd5440a0ad3432c487da967709e820b391c51d7b302000000"
+    ],
+    "nova_expected_statement": {
+      "relation_version": "lnmarkets/sha256-transcript-accounting/v2",
+      "step_count": 3,
+      "journal_len": 276,
+      "journal_sha256_hex": "d87e089251413e3f47f90c9e3aadb21c98d164798f77b953d19b361402a28a40",
+      "initial_state": {
+        "count": 0,
+        "total_collateral": 0,
+        "total_payout": 0,
+        "total_fee": 0,
+        "transcript_chain_digest_hex": "988541fdecd9cc499ad8d97b8525c45f13e25e8d484d9977cb4b113f77517861",
+        "journal_sha_low128_le": "38146126223806017170638061209664388824",
+        "journal_sha_high128_le": "85790414611780256696611647177344995736",
+        "epoch": 177
+      },
+      "final_state": {
+        "count": 3,
+        "total_collateral": 3900,
+        "total_payout": 3450,
+        "total_fee": 450,
+        "transcript_chain_digest_hex": "35c6cd69174a0379456d11b5944e1aa6b7086b5b473e83c6804973ec910a84ac",
+        "journal_sha_low128_le": "38146126223806017170638061209664388824",
+        "journal_sha_high128_le": "85790414611780256696611647177344995736",
+        "epoch": 177
+      },
+      "initial_state_fields": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "988541fdecd9cc499ad8d97b8525c45f13e25e8d484d9977cb4b113f77517861",
+        "38146126223806017170638061209664388824",
+        "85790414611780256696611647177344995736",
+        "177"
+      ],
+      "final_state_fields": [
+        "3",
+        "3900",
+        "3450",
+        "450",
+        "35c6cd69174a0379456d11b5944e1aa6b7086b5b473e83c6804973ec910a84ac",
+        "38146126223806017170638061209664388824",
+        "85790414611780256696611647177344995736",
+        "177"
+      ],
+      "row_transcript_digests_hex": [
+        "9ec2f7f7d42b9ed048e7720dc72a9b79005955a7e876f810452f4611abb77391",
+        "c8cc4ea63abb41ab8e24d4e85ff841370e7da76152d78bd2286e30b3f983a3f1",
+        "f6083ec3f9ab70a79887821196d64962be1c918b5970f66f08f149084661a16d"
+      ],
+      "verifier_key_pin_hex": null,
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": true,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "secq_claims_verified_count": 18,
+    "bitvm3_statement": {
+      "magic": "UTXOREF_L2_SETTLEMENT_GROTH16_V0\\0",
+      "encoded_len": 304,
+      "network_code": "Testnet4",
+      "epoch_id": 177,
+      "assertion_vout": 0,
+      "chain_genesis_hash_hex": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+      "contract_id_hex": "54146e75151c546e085fe9555b1ec1b108e3a8b5ba8ff58f7b6618df4b941f1b",
+      "commitment_hash_hex": "d87e089251413e3f47f90c9e3aadb21c98d164798f77b953d19b361402a28a40",
+      "assertion_txid_hex": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+      "settlement_txid_hex": "5e439e3cdf3f4f61c61edaf3bba197d32b6ab54c88fef8092ac9c7ae0bf7d5e8",
+      "program_hash_hex": "5e492ee8e77c5dd8f49536d023841e322fa3e8f26bcdb78f0f1713cd6e46c86f",
+      "verifying_key_hash_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "policy_hash_hex": "c18d59f8cf3e5f517f43d64824ee2a8ddfc6e7924441f35fdba9903168a30d2f",
+      "statement_304b_hex": "5554584f5245465f4c325f534554544c454d454e545f47524f544831365f56300000000100000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf04354146e75151c546e085fe9555b1ec1b108e3a8b5ba8ff58f7b6618df4b941f1bd87e089251413e3f47f90c9e3aadb21c98d164798f77b953d19b361402a28a40ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c15e439e3cdf3f4f61c61edaf3bba197d32b6ab54c88fef8092ac9c7ae0bf7d5e85e492ee8e77c5dd8f49536d023841e322fa3e8f26bcdb78f0f1713cd6e46c86f4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38bc18d59f8cf3e5f517f43d64824ee2a8ddfc6e7924441f35fdba9903168a30d2fb10000000000000000000000",
+      "statement_sha256_hex": "4d8dda3bc7acefc3bce992056f0e1b5cd6dfbfdcd8256702568b1d67dc276a39",
+      "public_input_limbs_be_dec": [
+        "103087095834043701766702739157469240156",
+        "285616564734749292793395866371904465465"
+      ],
+      "public_input_limbs_be_hex": [
+        "4d8dda3bc7acefc3bce992056f0e1b5c",
+        "d6dfbfdcd8256702568b1d67dc276a39"
+      ],
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": true,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "external_nova_snark_receipt": {
+      "schema": "lnmarkets-nova-verification/v2",
+      "relation": "lnmarkets/sha256-transcript-accounting/v2",
+      "nova_version": "0.76.0",
+      "steps": 3,
+      "compressed_proof_bytes": 12376,
+      "proof_sha256_hex": "14e9985b67569c2db18b10eb43e0036cfe76fac21ab2674b35ae6324fe08a043",
+      "verifier_key_sha256_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "verifier_key_serialized_bytes": 101826448,
+      "public_params_digest_hex": "1369c01b913e2dbc916d7ef38845e74a2a61cb1e6beda47e551457e0d43d3b02",
+      "primary_constraints": 275234,
+      "secondary_constraints": 10349,
+      "prove_wall_seconds": "14.5126",
+      "verify_wall_seconds": "0.3865",
+      "independently_supplied_expectations_matched": true,
+      "nova_compressed_verified": true
+    },
+    "honesty": {
+      "native_statement_verified": true,
+      "nova_snark_verified": true,
+      "bitvm3_onchain_verified": false,
+      "production_ready": false
+    }
+  }
+}

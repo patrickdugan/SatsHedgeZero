@@ -21,6 +21,9 @@ use shz_margin::InverseContractSpec;
 
 use crate::{
     OracleError,
+    pyth_lazer::{
+        PinnedPythSignerRegistry, PythProBtcUsdPolicy, verify_pyth_pro_btc_usd_solana_envelope,
+    },
     pyth_near_relay::{NearRelayEnvelope, RelayProviderKind, RelayQuorumPolicy},
     tradelayer::TradeLayerVwapProof,
 };
@@ -37,6 +40,12 @@ pub enum CanonicalReferenceEvidence {
     /// Dual-consensus proof where both Pyth relay and TradeLayer VWAP confirm the honest price.
     DualConsensus {
         relay: NearRelayEnvelope,
+        tradelayer: TradeLayerVwapProof,
+    },
+    /// Native Ed25519-authenticated Pyth Pro (`pyth-lazer`) Solana envelope + TradeLayer VWAP
+    /// dual-source reference (eliminates relayer trust from Pyth price verification).
+    NativePythProDualConsensus {
+        raw_pyth_solana_envelope: Vec<u8>,
         tradelayer: TradeLayerVwapProof,
     },
 }
@@ -304,6 +313,11 @@ impl NearBondedOracleVault {
                 let avg = ((relay_p as u128 + tradelayer.vwap_price_usd as u128) / 2) as u64;
                 (avg, relay_conf)
             }
+            CanonicalReferenceEvidence::NativePythProDualConsensus { .. } => {
+                return Err(OracleError::FraudProofRejected(
+                    "use submit_native_pyth_pro_deviation_fraud_proof with PinnedPythSignerRegistry",
+                ));
+            }
         };
 
         if canonical_price_usd == 0 {
@@ -346,6 +360,130 @@ impl NearBondedOracleVault {
         let requested_restitution = (victim_shortfall_sats as u128) * self.yocto_near_per_sat;
         let victim_restitution = requested_restitution.min(remaining_after_bounty);
         let treasury_burn = remaining_after_bounty - victim_restitution;
+
+        self.bonded_yocto_near = 0;
+        self.is_slashed = true;
+
+        Ok(SlashVerdict {
+            event_id: proof.announcement.event_id.clone(),
+            slashed_yocto_near: slashed,
+            challenger_reward_yocto_near: challenger_reward,
+            victim_restitution_yocto_near: victim_restitution,
+            treasury_burn_yocto_near: treasury_burn,
+            extracted_btc_slash_secret_key: None,
+            victim_shortfall_sats,
+            attested_price_usd,
+            canonical_price_usd,
+            deviation_bps,
+        })
+    }
+
+    /// Verifies and slashes a collusive FROST price deviation using a **native Ed25519-signed
+    /// Pyth Pro (`pyth-lazer`) Solana envelope** (checked against [`PinnedPythSignerRegistry`])
+    /// paired with a Merkle-committed `TradeLayerVwapProof` — eliminating relayer trust.
+    pub fn submit_native_pyth_pro_deviation_fraud_proof(
+        &mut self,
+        proof: &DeviationFraudProof,
+        pyth_registry: &PinnedPythSignerRegistry,
+        pyth_policy: &PythProBtcUsdPolicy,
+        trusted_tl_witnesses: &[[u8; 32]],
+        min_tl_witnesses: usize,
+        max_source_disagreement_bps: u64,
+    ) -> Result<SlashVerdict, OracleError> {
+        if self.is_slashed {
+            return Err(OracleError::VaultAlreadySlashed);
+        }
+        if proof.announcement.oracle_pubkey_x != self.confed_pubkey_x {
+            return Err(OracleError::FraudProofRejected(
+                "announcement pubkey does not match bonded confederation",
+            ));
+        }
+        proof
+            .dishonest_attestation
+            .verify_against(&proof.announcement)?;
+
+        let CanonicalReferenceEvidence::NativePythProDualConsensus {
+            raw_pyth_solana_envelope,
+            tradelayer,
+        } = &proof.reference_evidence
+        else {
+            return Err(OracleError::FraudProofRejected(
+                "expected NativePythProDualConsensus reference evidence",
+            ));
+        };
+
+        let maturity_us = proof
+            .announcement
+            .maturity_unix
+            .checked_mul(1_000_000)
+            .ok_or(OracleError::InvalidObservation("maturity_unix overflow"))?;
+        let pyth_receipt = verify_pyth_pro_btc_usd_solana_envelope(
+            raw_pyth_solana_envelope,
+            pyth_registry,
+            pyth_policy,
+            maturity_us,
+        )?;
+
+        if (pyth_receipt.publish_time_us / 1_000_000).abs_diff(proof.announcement.maturity_unix)
+            > self.max_reference_drift_secs
+            || tradelayer
+                .window_close_unix
+                .abs_diff(proof.announcement.maturity_unix)
+                > self.max_reference_drift_secs
+        {
+            return Err(OracleError::StaleObservation);
+        }
+        tradelayer.verify_witness_quorum(trusted_tl_witnesses, min_tl_witnesses)?;
+
+        // Ensure independent Pyth Pro and TradeLayer VWAP sources agree within `max_source_disagreement_bps`
+        // before treating their consensus as authoritative slashing evidence!
+        let src_diff = pyth_receipt
+            .whole_price_usd
+            .abs_diff(tradelayer.vwap_price_usd) as u128;
+        let src_denom = pyth_receipt.whole_price_usd.min(tradelayer.vwap_price_usd) as u128;
+        if src_denom == 0 || ((src_diff * 10_000) / src_denom) as u64 > max_source_disagreement_bps
+        {
+            return Err(OracleError::FraudProofRejected(
+                "Pyth Pro and TradeLayer VWAP disagree beyond grace band; hold instead of slashing",
+            ));
+        }
+
+        let canonical_price_usd =
+            ((pyth_receipt.whole_price_usd as u128 + tradelayer.vwap_price_usd as u128) / 2)
+                as u64;
+        let attested_price_usd = proof.dishonest_attestation.price_usd;
+        let diff = attested_price_usd.abs_diff(canonical_price_usd) as u128;
+        let deviation_bps = ((diff * 10_000) / (canonical_price_usd as u128)) as u64;
+        if deviation_bps <= self.max_deviation_bps + pyth_receipt.confidence_bps {
+            return Err(OracleError::FraudProofRejected(
+                "attested price is within tolerated deviation + native Pyth confidence band",
+            ));
+        }
+
+        let victim_shortfall_sats = if let Some(claim) = &proof.victim_claim {
+            claim
+                .contract_spec
+                .validate_v0()
+                .map_err(|_| OracleError::FraudProofRejected("invalid victim contract spec"))?;
+            let honest_split = claim.contract_spec.payout_at_price(canonical_price_usd);
+            let cheated_split = claim.contract_spec.payout_at_price(attested_price_usd);
+            if claim.victim_is_long {
+                honest_split.long_sats.saturating_sub(cheated_split.long_sats)
+            } else {
+                honest_split
+                    .short_sats
+                    .saturating_sub(cheated_split.short_sats)
+            }
+        } else {
+            0
+        };
+
+        let slashed = self.bonded_yocto_near;
+        let challenger_reward = slashed / 5;
+        let remaining = slashed - challenger_reward;
+        let victim_restitution =
+            ((victim_shortfall_sats as u128) * self.yocto_near_per_sat).min(remaining);
+        let treasury_burn = remaining - victim_restitution;
 
         self.bonded_yocto_near = 0;
         self.is_slashed = true;

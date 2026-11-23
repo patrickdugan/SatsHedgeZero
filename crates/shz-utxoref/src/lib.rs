@@ -5,6 +5,7 @@
 //!    (eliminating greedy-allocation starvation), and durable pre-signing reservation book.
 
 pub mod mnr02;
+pub mod mnr03;
 pub mod pnl_batch;
 pub mod signing_target;
 

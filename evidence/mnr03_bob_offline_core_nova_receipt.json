@@ -1,0 +1,324 @@
+﻿{
+  "scenario": "SHZ-MNR-03: 3-Party Multilateral Atomic Clearing with Bob 100% Offline (0x83) + Native Pyth Pro + 6-Block Reorg Watchtower Drill + Unilateral CLTV Fallback + lnm-nova CompressedSNARK",
+  "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+  "bob_online_during_clearing_or_proving": false,
+  "bitcoin_spend_enforced": true,
+  "cpfp_anchor_child_confirmed": true,
+  "reorg_watchtower_drill_passed": true,
+  "unilateral_cltv_fallback_verified": true,
+  "nova_compressed_snark_verified": true,
+  "near_finality_verified": false,
+  "bitvm3_onchain_verified": false,
+  "production_ready": false,
+  "funded_dlc_utxos": [
+    {
+      "trade_no": 1,
+      "label": "MNR03-AB-ALICE-LONG-BOB-SHORT-50K-0x83",
+      "txid": "709460edc1c3094ad0356b43fd9f593cebca9199360b47c8a758723a5d47a90c",
+      "vout": 0,
+      "sats": 99000000,
+      "script_pubkey_hex": "5120e0fc5ccfaae9989bf68a0c9ac970162a1f4a3efcb96aa3abbf089080b32583f0"
+    },
+    {
+      "trade_no": 2,
+      "label": "MNR03-BC-BOB-LONG-CAROL-SHORT-55K-0x83",
+      "txid": "1a292647c9228c8c1af20b4c6db3cd1b171aa81c904fb8ba758a3bb69b522040",
+      "vout": 0,
+      "sats": 90000000,
+      "script_pubkey_hex": "51209d585324150e1feda72aaabaad6a5f3040d890e16dc8f06bf51c239ff43b4bf4"
+    },
+    {
+      "trade_no": 3,
+      "label": "MNR03-CA-CAROL-LONG-ALICE-SHORT-60K-0x00",
+      "txid": "4e3a46b21fc896b3fa6a5d7f696d74b5fb6a88f98359767003c32c10c57bfa92",
+      "vout": 0,
+      "sats": 55000000,
+      "script_pubkey_hex": "512068423968f3632cca440b61c5776046be0137f002c6b06d92d4af58597cc65498"
+    }
+  ],
+  "core_confirmed_bob_offline_clearing_tx": {
+    "label": "mnr03-3input-5output-bob-offline-0x83-atomic-clearing",
+    "txid": "bfe5511f84b6d3cf9cc8bf19b7cca244302041464435f81b46bbad69765cecb4",
+    "wtxid": "ce2b5ce4aef019d6abfff67cb248f118dab9bf3653e816dd3e5fcde5f58c6208",
+    "vsize": 599,
+    "locktime": 150,
+    "script_path_used": "vin0:mnr02-route-0x83+0x01 | vin1:mnr02-route-0x83+0x01 | vin2:utxoref-cet-0x00",
+    "sighash_flags_hex": [
+      "0x83+0x01+0x01",
+      "0x83+0x01+0x01",
+      "0x00+0x00"
+    ],
+    "outputs_sats": [
+      55000000,
+      35000000,
+      71498500,
+      82498500,
+      330
+    ],
+    "witness_item_lengths": [
+      5,
+      5,
+      4
+    ],
+    "raw_tx_hex": "020000000001030ca9475d3a7258a7c8470b369991caeb3c599ffd436b35d04a09c3c1ed6094700000000000feffffff4020529bb63b8a75bab84f901ca81a171bcdb36d4c0bf21a8c8c22c94726291a0000000000feffffff92fa7bc5102cc30370765983f9886afbb5746d697f5d6afab396c81fb2463a4e0000000000feffffff05c03b47030000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cc00e16020000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c04fb420400000000225120eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619c4d3ea04000000002251207f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa20074a010000000000002251202c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991054150ce77769526dd6ed091dd9ab414b7a0608b33acd86e4ea9e1c07b7a0180a2ca144ad962e13d4a3c692e5a4086f06d9203b78e5305f5299420509bb3a5d5186b8341c2164f7b4cefbf8b7e56600468073edfb6d74cf168385731ba45fc97f15b9addf5389865cdc5d2251959f1bd8943064226e509936f98dc534506213559f17b5e0141ac233927781bd6d729f662344167f2257e569b7b62f491f4a4daa1cc4076e33eb0a9c9bf911fdd244610726175e30c4f081a00d19b4699459cfa6ff08a21f8de0166204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584aba819a4e1257492341e0e3cf13fd1da590764a37b570608a097828f257918ee060541c733d4820696d56b9b86039496f709097ee252b60bbe14a68ad012227b9d1cc9818847aaafce0a0af751351c296a92806057f35eb9dc1870f1cdfaf8899e317c8341f130113bffd6f263227e2f3979cd7c0105db0440e928c9819e0c10a6e9cd37378db20fda11503d60e3869962444ee7e100df813eca3452dd481d12d9b8cebb860141849f056b0c93b91cac5cb64f82dd5b8a5bb623d72a23d2351e61a39b6547ffac7028ff18ae2ab1525cc26da93628b4d2a6f05a737c3f944e506174662dfec9ec016620e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584abf037e5a8441a4c5f536ba5090978234f1209b46ab54dde6a53a448e9e8b2f38a0440ccafe0f4355bae624d87d32ceb1af3120a010970415c1cc752441feaf04b6e65670519c5fcd42013b68ff5644977eb76040eee0bfc9f565aa1df5075e55d8d3f407386fa0350806d375faf6543c7f0597c82243b71832d42d9e7beea904ff5c2f978b8c9b8a364dab3bff7fec65ae0f70cdd0a89fb5fbc6ec4c581f1eb0113a46744204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab1500330dbb077539eca074f360f9ebdd70090292f636348311f966a5db58aafe96000000",
+    "confirmed_block_height": 151,
+    "confirmed_block_hash": "59ec17a7158f9f472d9775e1f1d9f2b648c689be6714353d3fa1110be24af418",
+    "core_confirmations": 9
+  },
+  "cpfp_child_txid": "9018543e91b71689a7bf4ee62eb41a2e56d5ff0bc3811735851f444dd2b91d1c",
+  "post_clearing_utxo_checks": [
+    {
+      "owner": "Bob-AB-0x83-Pinned",
+      "vout": 0,
+      "sats": 55000000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Bob-BC-0x83-Pinned",
+      "vout": 1,
+      "sats": 35000000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Alice-Winner-Routed-PnL",
+      "vout": 2,
+      "sats": 71498500,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Carol-Freed-Margin",
+      "vout": 3,
+      "sats": 82498500,
+      "utxo_present_in_core": true
+    }
+  ],
+  "adversarial_probes": [
+    {
+      "probe_id": "mnr03-premature-broadcast-before-maturity",
+      "description": "Broadcast 3-input Bob-offline clearing tx at height 148 (< maturity 150)",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    },
+    {
+      "probe_id": "mnr03-shave-1-sat-bob-ab-vout0",
+      "description": "Shave 1 sat from offline Bob's AB 0x83-pinned output vout[0] (55,000,000 -> 54,999,999)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "mnr03-shave-1-sat-bob-bc-vout1",
+      "description": "Shave 1 sat from offline Bob's BC 0x83-pinned output vout[1] (35,000,000 -> 34,999,999)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "mnr03-swap-bob-vout0-and-vout1",
+      "description": "Swap offline Bob's vout[0] and vout[1] across the two 0x83 inputs",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "mnr03-unilateral-cet-during-priority-window",
+      "description": "Attempt Leaf 1 unilateral CLTV fallback at height 150 (< unilateral_cltv 170)",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    }
+  ],
+  "reorg_watchtower_drill": {
+    "invalidated_clearing_block_hash": "59ec17a7158f9f472d9775e1f1d9f2b648c689be6714353d3fa1110be24af418",
+    "pre_reorg_confirmations": 6,
+    "post_invalidate_confirmations": -1,
+    "competing_branch_tip_height": 157,
+    "competing_branch_tip_hash": "0d262356e2c4b55372d50eb47c986de7b6b96cc0aac351ca99a4c6c10ed65eae",
+    "watchtower_book_frozen": true,
+    "settle_after_freeze_rejected": true,
+    "restored_canonical_tip_height": 159
+  },
+  "unilateral_fallback_drill": {
+    "ab_unilateral_txid": "a17a9d819d2b64e72aa46f6a51b0eee4c575aef4c6b5125202d7c1f34f332e98",
+    "bc_unilateral_txid": "f41e26cc1da1ca2b3a980fda59e07ccaec1523af36b48104e7580d942654ff3a",
+    "confirmed_at_height": 171,
+    "guard_signature_required": false
+  },
+  "oracle_bound_nova_report": {
+    "protocol": "SatsHedgeZero SHZ-MNR-03 + Native Pyth Pro + Nova v2 / BitVM3",
+    "network": "bitcoin-regtest",
+    "anchor_height": 111,
+    "anchor_block_hash_hex": "0d1925206eef907373d14823da458b5c9420764604cdd2542552f9a8221f9997",
+    "bob_online_during_clearing_or_proving": false,
+    "pyth_pro_epoch": {
+      "feed_id": 1,
+      "channel_id": 3,
+      "publish_time_us": 1795500000000000,
+      "feed_update_time_us": 1795500000000000,
+      "price_e8": 6000000000000,
+      "whole_price_usd": 60000,
+      "confidence_e8": 1200000000,
+      "registry_epoch": 1,
+      "signer_pubkey_hex": "b2491d9502ae28630a2bacb2e0c74510ffcdd328c334ff3e1393e75b2d31e7dc",
+      "signed_payload_sha256_hex": "7a629e25df82f8d9eec44487b50d6e68437cd532995ecc04f2a25f3e46b80300",
+      "receipt_hash_hex": "da9a2bf4500b22e346c75553ea41f2ea0d240e50f8c8bd708594dafe763d39c3",
+      "session_hash_hex": "f0d8516d88fc75c6e11a5662cc1849df3aea4d7c24d527db987c32dd4809c506",
+      "near_finality_verified": false
+    },
+    "mnr03_clearing": {
+      "label": "MNR03-MACRO-33K-BOB-OFFLINE",
+      "bob_online_during_clearing": false,
+      "settled_price_usd": 60000,
+      "atomic_clearing_txid_hex": "bfe5511f84b6d3cf9cc8bf19b7cca244302041464435f81b46bbad69765cecb4",
+      "atomic_clearing_wtxid_hex": "ce2b5ce4aef019d6abfff67cb248f118dab9bf3653e816dd3e5fcde5f58c6208",
+      "atomic_clearing_vsize": 599,
+      "bob_ab_pinned_output_sats": 55000000,
+      "bob_bc_pinned_output_sats": 35000000,
+      "bob_total_freed_collateral_sats": 90000000,
+      "bob_posted_margin_sats": 96000000,
+      "bob_freed_collateral_bps": 9375,
+      "alice_winner_routed_pnl_sats": 11000000,
+      "alice_winner_cleared_output_sats": 71498500,
+      "carol_freed_collateral_sats": 82498500,
+      "cpfp_anchor_sats": 330,
+      "miner_fee_sats": 2670,
+      "pnl_snapshot_hash_hex": "c1a761a57eb14be91f43302a80e2fd3dcebf38599aa75e8a68199ce61342d388",
+      "next_accounting_state_root_hex": "a7715f497a8e20cba47127cd7efab324aa9a8d101e1d3e243c15ed756ab6d47f",
+      "durable_book_head_hash_hex": "2ffd16ec00d9b900a19e2533bdbca36236b5bf448dba53fcaca00f48b07e0a81"
+    },
+    "mnr03_atomic_clearing_raw_segwit_tx_hex": "020000000001030ca9475d3a7258a7c8470b369991caeb3c599ffd436b35d04a09c3c1ed6094700000000000feffffff4020529bb63b8a75bab84f901ca81a171bcdb36d4c0bf21a8c8c22c94726291a0000000000feffffff92fa7bc5102cc30370765983f9886afbb5746d697f5d6afab396c81fb2463a4e0000000000feffffff05c03b47030000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cc00e16020000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c04fb420400000000225120eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619c4d3ea04000000002251207f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa20074a010000000000002251202c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e668680991054150ce77769526dd6ed091dd9ab414b7a0608b33acd86e4ea9e1c07b7a0180a2ca144ad962e13d4a3c692e5a4086f06d9203b78e5305f5299420509bb3a5d5186b8341c2164f7b4cefbf8b7e56600468073edfb6d74cf168385731ba45fc97f15b9addf5389865cdc5d2251959f1bd8943064226e509936f98dc534506213559f17b5e0141ac233927781bd6d729f662344167f2257e569b7b62f491f4a4daa1cc4076e33eb0a9c9bf911fdd244610726175e30c4f081a00d19b4699459cfa6ff08a21f8de0166204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584aba819a4e1257492341e0e3cf13fd1da590764a37b570608a097828f257918ee060541c733d4820696d56b9b86039496f709097ee252b60bbe14a68ad012227b9d1cc9818847aaafce0a0af751351c296a92806057f35eb9dc1870f1cdfaf8899e317c8341f130113bffd6f263227e2f3979cd7c0105db0440e928c9819e0c10a6e9cd37378db20fda11503d60e3869962444ee7e100df813eca3452dd481d12d9b8cebb860141849f056b0c93b91cac5cb64f82dd5b8a5bb623d72a23d2351e61a39b6547ffac7028ff18ae2ab1525cc26da93628b4d2a6f05a737c3f944e506174662dfec9ec016620e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584abf037e5a8441a4c5f536ba5090978234f1209b46ab54dde6a53a448e9e8b2f38a0440ccafe0f4355bae624d87d32ceb1af3120a010970415c1cc752441feaf04b6e65670519c5fcd42013b68ff5644977eb76040eee0bfc9f565aa1df5075e55d8d3f407386fa0350806d375faf6543c7f0597c82243b71832d42d9e7beea904ff5c2f978b8c9b8a364dab3bff7fec65ae0f70cdd0a89fb5fbc6ec4c581f1eb0113a46744204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab1500330dbb077539eca074f360f9ebdd70090292f636348311f966a5db58aafe96000000",
+    "batch_witness_bytes_len": 27770,
+    "journal": {
+      "domain_hex": "0100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c7",
+      "epoch": 1,
+      "batch_id_hex": "f0d8516d88fc75c6e11a5662cc1849df3aea4d7c24d527db987c32dd4809c506",
+      "evaluation_height": 150,
+      "valid_until_height": 170,
+      "row_count": 3,
+      "accepted_contracts_root_hex": "dbae7e39ab66605e1362ae77fe731b02b438bbd2d6b852a70a797bb355ecfbed",
+      "old_nullifier_root_hex": "fb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87cc",
+      "new_nullifier_root_hex": "dd1eef42e26dd8faed92760e694640c25e9e4e0e3c2b23d10afdbaffedba396c",
+      "batch_tx_digest_hex": "caa76af3041c96a7613a0f40f54bcc472d250ae98a24a9a2ac75149c3be2865c",
+      "batch_txid_hex": "96d8edd9f2ee2aa87adde38948eeb3e5ea041ce7a7163cd5452241643af2ea3f",
+      "total_collateral_sats": 244000000,
+      "total_payout_sats": 243997000,
+      "total_fee_sats": 3000,
+      "journal_276b_hex": "4c4e4d4a4e4c30310100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c70100000000000000f0d8516d88fc75c6e11a5662cc1849df3aea4d7c24d527db987c32dd4809c50696000000aa00000003000000dbae7e39ab66605e1362ae77fe731b02b438bbd2d6b852a70a797bb355ecfbedfb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87ccdd1eef42e26dd8faed92760e694640c25e9e4e0e3c2b23d10afdbaffedba396ccaa76af3041c96a7613a0f40f54bcc472d250ae98a24a9a2ac75149c3be2865c96d8edd9f2ee2aa87adde38948eeb3e5ea041ce7a7163cd5452241643af2ea3f00258b0e0000000048198b0e00000000b80b000000000000",
+      "journal_sha256_hex": "bdea86fbbf681a397188daa0c4453efecc542206b148e159c7c3affe3429846e"
+    },
+    "row_transcripts_600b_hex": [
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f7631068f7e541a86c55b53d88cacb6eac9a83b9e9abf222dcc9f03540a84778b33c15f006f58a6e8fafd915db4fe71ab0ae73d94bd121f4c7704c52a827e1bec636868873f9be607151eda5099c17b278a3f464562da9cbb0d212ef9eb559179300b639e570385cce171f5220a83155f290cecf0a92a7f5684b45ad8f022eebe2b42a79bca257161dc82228d63abab3e90a32184d1cdf2ee5993d02b4b5ecb61a385d03002ba96a3380ea2e2dc0fd3d5badf52aac58d78c47bc1ad025b4c538971171a3b97f52ccefa78ceb8e8485bf7f426f3e47a5083c2ce4bec0ede63cb0328cb1509edbba13a2a8142957e5415ad3398eb35c5ebc4e01cfffbbfa76d3aa8a23ec1b54f81dffac6f78a810d16a1784b3d32f1d8b6e204f2633d8731cce2a4900debfb428f5ef94abcc79a3b73680ce5495975c12633c58b6cc21f7a05173054cb00a8578f4606a88aa0a4652785064bc1d2a33ca1c769019a57a96cec01562f4cc4b8b1006f16155928abe820d49d2e59afe8393193de05404eec100b2ededee27202d4356e3a9e52be29edc8f36037818e80c8ac303b05d3c95d0a4bb2d257e79bb532d1c73401bf271287c226f18600e2663d3559834db3a4c6253136247e5bf8f30000000081c7c3bae85503bcb2c919fd5e4f16b35ffc89cec85bdab9214752c398fd76f48e36470300000000c00e1602000000004a01000000000000e8030000000000001a292647c9228c8c1af20b4c6db3cd1b171aa81c904fb8ba758a3bb69b52204000000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f7631ecd28523bbb44d3ec64ef696c63da7ac43fa7b83271f6c7dd3df47e5bd041481f5aef81ec278b9c987e5a8032ec7a5ccf9e996f547c6f9e01df75134a4ac67bac14513c7d4fb218dae42ed6ea08c35a705865d2621ec017448b67fcde9afb757b49e1f2424aa19830e3530801e6d1badb080e2324e9aa50c970c46fc0744483909776bfe3492c7af74f9482e5b10f7220d72dd7a2651e0cad133c5dc64cce12566c9d4229fa4968e0e539e097f59e8266ae039bd27765997a8b6e4ea0c9cde7b853ca4659610fa4255ca40ee07fdead09a4619e3c7f971e9dc8b6d76c76e0feaf75bc4853f2b13f93d9e51a30d002f8f8cb6ddee369f531a3906979de0c801f1e825dc03e37cfad2db6ba68ef5b460b87452dda41ee99b4042101794cb31b2741a03ba42bb51d3405430ab8c1d8d68db03d6f8dcd2a47d0b5351c356f0ee0ac100da706bccefcc5aea7f41df8774cf5d2f52d6a3a923ebf6c37ec270efd83955be8e8a12df0c2821d5f2f11e56110bb0bd52aecd8029aae55ad3bae21db80c18b5022538fcaed301d20d56fae95edb1590345886a2cede6bc0216f2fe51c4332b5418ca4a1cf4fa23a116d6f01dac646e4224b2361c15b95db02037ed5720dd8ba6c00000000a8405e2b62bcf231cfa3056c112df70b48c0c07c28f7f66de06c4f1ea696806b479ba30100000000479ba301000000004a01000000000000e8030000000000004e3a46b21fc896b3fa6a5d7f696d74b5fb6a88f98359767003c32c10c57bfa9200000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f7631a65a16abf1ee2026ee954dea8762205cce9784fd45f7a71f3436557b913232dcf4755b693fdd4bcf8e9c142e6da0cc81513058f4ba6161050e5d09702dddf8b10882ca113881b638d27a772f5cb9594fda9b8c345c58663585774c5d7de1f89ca45ab01798716bff436e872c6b5bfc44e954c99c06d93f2f0f42d10c051d4a05d9aabbdd7feba99d1cf06858595e1372b33e31166589da29a7ec8cbbb72d1932013c6b978931b4b7bb50a2dc0d61b2ac24994fc79e6fe69a6a1ca79c1ebb682f7591b7ea9cdc7037d2ae5bb284362e7de14581fc265d2246aea6426a52d95f2cb141a7eecf5472351bb69d581f0d291a1ef9940c6a17304918f5ac980a79c71885c631503eb857d8880f5329697ee4794439afe17cc4c1e29605192d787c436b15b218e50062a17d13165c1ab3b046a040bcfcc8b66910b46c5bb4d4ac5dbced00464de56367de243906d32a9cab0258ff47ba89a406021d72692181d1efa3f46e9004a292dabdfb1a0dbee6b78297121a9a6578847f170d1dbf1be61d393b356002848cf1c1b8a13da5d66fab4a6b1c11de3bd92500e4398dbe65d29c301a2516526e64cb3d7066bb6e8aa8d5d4283815e1f6fa9085941409344178d65b390108b000000000aba5b195a653067482a5be9e622a7e9bf6567bf346ce969e752ea2dd477c5e3ace5d9f0200000000c03b4703000000004a01000000000000e803000000000000709460edc1c3094ad0356b43fd9f593cebca9199360b47c8a758723a5d47a90c00000000"
+    ],
+    "nova_expected_statement": {
+      "relation_version": "lnmarkets/sha256-transcript-accounting/v2",
+      "step_count": 3,
+      "journal_len": 276,
+      "journal_sha256_hex": "bdea86fbbf681a397188daa0c4453efecc542206b148e159c7c3affe3429846e",
+      "initial_state": {
+        "count": 0,
+        "total_collateral": 0,
+        "total_payout": 0,
+        "total_fee": 0,
+        "transcript_chain_digest_hex": "eb7cc80a58dbe29b98501c425e3caba107fb8fa7d6b5ef96fa9b01bcb52d99af",
+        "journal_sha_low128_le": "337947248399362087522134971918875814589",
+        "journal_sha_high128_le": "146901298499147222778514714322853319884",
+        "epoch": 1
+      },
+      "final_state": {
+        "count": 3,
+        "total_collateral": 244000000,
+        "total_payout": 243997000,
+        "total_fee": 3000,
+        "transcript_chain_digest_hex": "2e02a138493b1be1ac65c8d999ea0c83d728a04c96a7122d2947f4486103d5dd",
+        "journal_sha_low128_le": "337947248399362087522134971918875814589",
+        "journal_sha_high128_le": "146901298499147222778514714322853319884",
+        "epoch": 1
+      },
+      "initial_state_fields": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "eb7cc80a58dbe29b98501c425e3caba107fb8fa7d6b5ef96fa9b01bcb52d99af",
+        "337947248399362087522134971918875814589",
+        "146901298499147222778514714322853319884",
+        "1"
+      ],
+      "final_state_fields": [
+        "3",
+        "244000000",
+        "243997000",
+        "3000",
+        "2e02a138493b1be1ac65c8d999ea0c83d728a04c96a7122d2947f4486103d5dd",
+        "337947248399362087522134971918875814589",
+        "146901298499147222778514714322853319884",
+        "1"
+      ],
+      "row_transcript_digests_hex": [
+        "f09c2d12fef776abe1e89ec694cdbee3805762b0b2491decb2e57f26d28745bf",
+        "4d741e34625937760265cd95382764499e2891efc2a450aa13dd7e2a50649d3f",
+        "b6a92155232a852546268327d792c74153fe00d7d49ce9ae4acc1df005268d42"
+      ],
+      "verifier_key_pin_hex": null,
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": true,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "secq_claims_verified_count": 18,
+    "bitvm3_statement": {
+      "magic": "UTXOREF_L2_SETTLEMENT_GROTH16_V0\\0",
+      "encoded_len": 304,
+      "network_code": "Regtest",
+      "epoch_id": 1,
+      "assertion_vout": 0,
+      "chain_genesis_hash_hex": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+      "contract_id_hex": "995be7fd7a921ad4b36c1d362764be435f7d6f7b263f2b2f3a99a4524567b399",
+      "commitment_hash_hex": "bdea86fbbf681a397188daa0c4453efecc542206b148e159c7c3affe3429846e",
+      "assertion_txid_hex": "bfe5511f84b6d3cf9cc8bf19b7cca244302041464435f81b46bbad69765cecb4",
+      "settlement_txid_hex": "96d8edd9f2ee2aa87adde38948eeb3e5ea041ce7a7163cd5452241643af2ea3f",
+      "program_hash_hex": "5e492ee8e77c5dd8f49536d023841e322fa3e8f26bcdb78f0f1713cd6e46c86f",
+      "verifying_key_hash_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "policy_hash_hex": "4a27f0c59d896bdf15e7a2978d3f409efa20d8c3f6a3d4d7c68160c61b53039b",
+      "statement_304b_hex": "5554584f5245465f4c325f534554544c454d454e545f47524f544831365f5630000000000f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206995be7fd7a921ad4b36c1d362764be435f7d6f7b263f2b2f3a99a4524567b399bdea86fbbf681a397188daa0c4453efecc542206b148e159c7c3affe3429846ebfe5511f84b6d3cf9cc8bf19b7cca244302041464435f81b46bbad69765cecb496d8edd9f2ee2aa87adde38948eeb3e5ea041ce7a7163cd5452241643af2ea3f5e492ee8e77c5dd8f49536d023841e322fa3e8f26bcdb78f0f1713cd6e46c86f4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b4a27f0c59d896bdf15e7a2978d3f409efa20d8c3f6a3d4d7c68160c61b53039b010000000000000000000000",
+      "statement_sha256_hex": "5553421af73af87c8068e9d60ede0b9e034611b75031706b20c6831dd8a06b7a",
+      "public_input_limbs_be_dec": [
+        "113416681056456394838059189089047808926",
+        "4351504091987756773557681479244344186"
+      ],
+      "public_input_limbs_be_hex": [
+        "5553421af73af87c8068e9d60ede0b9e",
+        "034611b75031706b20c6831dd8a06b7a"
+      ],
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": true,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "external_nova_snark_receipt": {
+      "schema": "lnmarkets-nova-verification/v2",
+      "relation": "lnmarkets/sha256-transcript-accounting/v2",
+      "nova_version": "0.76.0",
+      "steps": 3,
+      "compressed_proof_bytes": 12376,
+      "proof_sha256_hex": "044fbe98242da389e5113ff0d68bf06047006105581117b92d2671da69c61677",
+      "verifier_key_sha256_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "verifier_key_serialized_bytes": 101826448,
+      "public_params_digest_hex": "1369c01b913e2dbc916d7ef38845e74a2a61cb1e6beda47e551457e0d43d3b02",
+      "primary_constraints": 275234,
+      "secondary_constraints": 10349,
+      "prove_wall_seconds": "15.5852",
+      "verify_wall_seconds": "0.3994",
+      "independently_supplied_expectations_matched": true,
+      "nova_compressed_verified": true
+    },
+    "honesty": {
+      "native_statement_verified": true,
+      "nova_snark_verified": true,
+      "bitvm3_onchain_verified": false,
+      "production_ready": false
+    }
+  }
+}

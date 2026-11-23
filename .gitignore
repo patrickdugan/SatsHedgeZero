@@ -1,4 +1,5 @@
 /target
+research/near_pyth_channel/near_contract/target/
 **/*.rs.bk
 .DS_Store
 

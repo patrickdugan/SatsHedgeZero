@@ -35,9 +35,30 @@ jobs:
       - name: Run Deribit terminal HTTP API and workbench tests
         run: npm --prefix ui test
 
-      - name: Install SHA256-pinned Bitcoin Core 31.1 and execute SHZ-MNR-02 regtest
+      - name: Verify NEAR/Pyth provenance and multi-channel closeout research gates
+        run: npm --prefix research/near_pyth_channel test
+
+      - name: Install SHA256-pinned Bitcoin Core 31.1 and execute SHZ-MNR-02 + SHZ-MNR-03 regtest & reorg drills
         run: |
           curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
           echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
           tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
           cargo run --locked --bin shz -- mnr02-regtest /tmp/bitcoin-31.1/bin/bitcoind
+          cargo run --locked --bin shz -- mnr03-regtest /tmp/bitcoin-31.1/bin/bitcoind > /dev/null
+
+  near-fraud-guard-wasm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Run NEAR bonded fraud-guard VMContext unit tests
+        run: cargo test --manifest-path research/near_pyth_channel/near_contract/Cargo.toml --locked
+
+      - name: Compile NEAR bonded oracle contract for WebAssembly
+        run: cargo check --manifest-path research/near_pyth_channel/near_contract/Cargo.toml --target wasm32-unknown-unknown --locked

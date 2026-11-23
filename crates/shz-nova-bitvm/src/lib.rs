@@ -18,7 +18,9 @@ pub mod codec;
 pub mod error;
 pub mod fixture;
 pub mod merkle;
+pub mod mnr04;
 pub mod nova;
+pub mod oracle_epoch_bridge;
 pub mod secq_claim;
 pub mod statement;
 pub mod taproot;
@@ -53,6 +55,10 @@ pub use nova::{
     NOVA_TRANSCRIPT_PREFIX, NovaExpectedStatement, NovaFoldedState, check_cumulative_amount_56bit,
     check_row_amount_51bit, encode_signed_row_transcript, sha256_to_le_u128_halves,
     verify_signed_row_transcript,
+};
+pub use oracle_epoch_bridge::{
+    BoundPythProEpochSummary, OracleBoundMnr03NovaArtifacts, OracleBoundMnr03NovaReport,
+    build_oracle_bound_mnr03_nova_ceremony,
 };
 pub use secq_claim::{
     RowSignatureSlot, SecqBip340Claim, build_and_verify_all_6_row_claims,

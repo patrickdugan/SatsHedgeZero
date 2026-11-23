@@ -3,6 +3,7 @@
 
 pub mod fraud_proofs;
 pub mod frost;
+pub mod pyth_lazer;
 pub mod pyth_near_relay;
 pub mod tradelayer;
 
@@ -269,5 +270,115 @@ mod tests {
         assert!(verdict.deviation_bps > 1_200); // >12% manipulation caught
         assert_eq!(verdict.victim_shortfall_sats, 104_083); // 100k margin + 4,083 sats honest profit!
         assert!(verdict.victim_restitution_yocto_near > 0);
+    }
+
+    #[test]
+    fn test_native_pyth_pro_ed25519_and_tradelayer_dual_consensus_slashing() {
+        use super::pyth_lazer::{
+            PinnedPythSignerRegistry, PythProBtcUsdPolicy,
+            build_signed_pyth_pro_btc_usd_envelope,
+        };
+
+        let frost = FrostConfederation::keygen_deterministic(3, 5, &[0x56u8; 32]).unwrap();
+        let maturity = 1_795_000_010u64;
+        let nonce_state = frost
+            .announce_event("BTC-USD-NATIVE-PYTH-PRO-1", maturity, 20, &[0x89u8; 32])
+            .unwrap();
+        let dishonest_attestation = frost
+            .threshold_attest_price(&nonce_state, &[1, 2, 3], maturity, 90_000)
+            .unwrap();
+
+        // Native Ed25519 Pyth Pro Solana envelope at $100,500 (feed_id = 1, channel = 3)
+        let (raw_pyth, pyth_pk) = build_signed_pyth_pro_btc_usd_envelope(
+            &[0x71u8; 32],
+            maturity * 1_000_000,
+            maturity * 1_000_000,
+            3,
+            1,
+            10_050_000_000_000,
+            -8,
+            1_500_000_000,
+        );
+        let pyth_reg = PinnedPythSignerRegistry::new_static(vec![pyth_pk]).unwrap();
+
+        // Independent TradeLayer L1 VWAP proof at $100,600
+        let w1 = [0x31u8; 32];
+        let w2 = [0x32u8; 32];
+        let tl_trusted = [
+            pubkey_x_from_secret(&w1).unwrap(),
+            pubkey_x_from_secret(&w2).unwrap(),
+        ];
+        let fills = vec![
+            TradeLayerFill {
+                txid: [10u8; 32],
+                block_height: 880_010,
+                property_pair: "TL-BTC/USD".into(),
+                price_usd: 100_600,
+                volume_sats: 4_000_000,
+                maker_id: [1; 20],
+                taker_id: [2; 20],
+            },
+            TradeLayerFill {
+                txid: [11u8; 32],
+                block_height: 880_011,
+                property_pair: "TL-BTC/USD".into(),
+                price_usd: 100_600,
+                volume_sats: 4_000_000,
+                maker_id: [3; 20],
+                taker_id: [4; 20],
+            },
+            TradeLayerFill {
+                txid: [12u8; 32],
+                block_height: 880_012,
+                property_pair: "TL-BTC/USD".into(),
+                price_usd: 100_600,
+                volume_sats: 4_000_000,
+                maker_id: [5; 20],
+                taker_id: [6; 20],
+            },
+        ];
+        let (tl_proof, _) = build_tradelayer_vwap_proof(
+            "TL-BTC/USD",
+            880_010,
+            880_012,
+            maturity,
+            &fills,
+            &TradeLayerVwapConfig::default(),
+            &[w1, w2],
+        )
+        .unwrap();
+
+        let dev_proof = DeviationFraudProof {
+            announcement: nonce_state.announcement.clone(),
+            dishonest_attestation,
+            reference_evidence: CanonicalReferenceEvidence::NativePythProDualConsensus {
+                raw_pyth_solana_envelope: raw_pyth,
+                tradelayer: tl_proof,
+            },
+            challenger_near_account: "watchdog.near".into(),
+            victim_claim: None,
+        };
+
+        let mut vault = NearBondedOracleVault::new(
+            frost.group_pubkey_x,
+            5_000_000_000_000_000_000_000_000_000u128,
+            25_000_000,
+            150,
+            120,
+            10_000_000_000_000_000u128,
+        );
+        let verdict = vault
+            .submit_native_pyth_pro_deviation_fraud_proof(
+                &dev_proof,
+                &pyth_reg,
+                &PythProBtcUsdPolicy::default(),
+                &tl_trusted,
+                2,
+                100, // <= 1.00% max disagreement between Pyth Pro ($100,500) and TradeLayer ($100,600)
+            )
+            .unwrap();
+        assert!(vault.is_slashed);
+        assert_eq!(verdict.canonical_price_usd, 100_550);
+        assert!(verdict.deviation_bps > 1_000);
     }
 }

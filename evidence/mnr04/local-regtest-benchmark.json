@@ -1,0 +1,217 @@
+{
+  "core": {
+    "consensus_accepted": true,
+    "core_negative_controls": [
+      {
+        "core_accepted": false,
+        "core_reject_reason": "non-final",
+        "description": "Broadcast 3-input Bob-offline clearing tx at height 148 (< maturity 150)",
+        "probe_id": "mnr03-premature-broadcast-before-maturity"
+      },
+      {
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)",
+        "description": "Shave 1 sat from offline Bob's AB 0x83-pinned output vout[0] (55,000,000 -> 54,999,999)",
+        "probe_id": "mnr03-shave-1-sat-bob-ab-vout0"
+      },
+      {
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)",
+        "description": "Shave 1 sat from offline Bob's BC 0x83-pinned output vout[1] (35,000,000 -> 34,999,999)",
+        "probe_id": "mnr03-shave-1-sat-bob-bc-vout1"
+      },
+      {
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)",
+        "description": "Swap offline Bob's vout[0] and vout[1] across the two 0x83 inputs",
+        "probe_id": "mnr03-swap-bob-vout0-and-vout1"
+      },
+      {
+        "core_accepted": false,
+        "core_reject_reason": "non-final",
+        "description": "Attempt Leaf 1 unilateral CLTV fallback at height 150 (< unilateral_cltv 170)",
+        "probe_id": "mnr03-unilateral-cet-during-priority-window"
+      }
+    ],
+    "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+    "cpfp_anchor_confirmed": true,
+    "fresh_core_replay": true,
+    "native": {
+      "bitcoin_network": "regtest",
+      "bitvm3_onchain_verified": false,
+      "epoch_context": "3b3075c2528e7443f85aa00acc220a34576c07e6b764b0dc6c41fd4012f1efa8",
+      "fee_sats": 2670,
+      "funded_sats": 244000000,
+      "genesis_hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+      "native_signature_verified": true,
+      "nova_authorization_verified": false,
+      "ordered_funding_commitment": "faa7d60d7372499f19bc1d928e1657dffb718736acf980569e459410c4948128",
+      "original_contract_policy_external": true,
+      "payout_sats": [
+        55000000,
+        35000000,
+        71498500,
+        82498500,
+        330
+      ],
+      "production_ready": false,
+      "relation": "shz/mnr04/bitcoin-exact-clearing/v1",
+      "sigmsg_hex": [
+        [
+          "670cee538edef54d1c445c5f0a6f05eea734e40fbd9977f83ec804b59a48fda4",
+          "1111738bd4cd413daa4e1c5ce104c90cf17ef1d194e3acb03f62d8f4cd48d38d",
+          "1111738bd4cd413daa4e1c5ce104c90cf17ef1d194e3acb03f62d8f4cd48d38d"
+        ],
+        [
+          "7e0203bb7227556323a704c239f569b62340aa7584e19c36f1ef4e37d01031e8",
+          "a8a7cb1fb050b90a6eb0728c4bfcaa3d3d96f63504b6f4ac1d2fded55efeab85",
+          "a8a7cb1fb050b90a6eb0728c4bfcaa3d3d96f63504b6f4ac1d2fded55efeab85"
+        ],
+        [
+          "8391dacc75394698d6d7d672db0833fd9d3410d0febe6b9f91ccfc15ca21a99e",
+          "8391dacc75394698d6d7d672db0833fd9d3410d0febe6b9f91ccfc15ca21a99e",
+          null
+        ]
+      ],
+      "transaction_commitment": "0095e575cc0c0943d83e5788650a6f04f7ff395632e11b11e7771dcf0fe8ce3e",
+      "txid": "3f7ee56f1775602c030f33ee7dc4f8404a7560afb1d2551e91f76e74d6dfb594",
+      "wtxid": "4b3155ee8e058db7e1d947595efdd28080cf7795c4ecdd17bcb9a423700ab0cf"
+    },
+    "native_negative_controls": [
+      {
+        "case": "bob_ab_minus_one_sat",
+        "rejection": "invalid or unexpected BIP340 signature at input 0"
+      },
+      {
+        "case": "bob_bc_minus_one_sat",
+        "rejection": "invalid or unexpected BIP340 signature at input 1"
+      },
+      {
+        "case": "bob_outputs_swapped",
+        "rejection": "invalid or unexpected BIP340 signature at input 0"
+      },
+      {
+        "case": "ordered_inputs_swapped",
+        "rejection": "clearing transaction does not spend the approved ordered outpoints"
+      },
+      {
+        "case": "funding_outpoint_substituted",
+        "rejection": "clearing transaction does not spend the approved ordered outpoints"
+      },
+      {
+        "case": "funding_outpoint_double_consumed",
+        "rejection": "funding outpoint used more than once"
+      },
+      {
+        "case": "anchor_and_fee_changed",
+        "rejection": "fee or anchor accounting failed"
+      },
+      {
+        "case": "online_payout_and_fee_changed",
+        "rejection": "invalid or unexpected BIP340 signature at input 0"
+      },
+      {
+        "case": "locktime_changed",
+        "rejection": "wrong locktime or sequence"
+      }
+    ],
+    "operational_pyth_provenance_verified": false,
+    "public_transactions_broadcast": false,
+    "reorg_watchtower_frozen": true,
+    "unilateral_fallback": true
+  },
+  "independent_verification": {
+    "compression_seconds": null,
+    "folding_seconds": null,
+    "native": {
+      "bitcoin_network": "regtest",
+      "bitvm3_onchain_verified": false,
+      "epoch_context": "3b3075c2528e7443f85aa00acc220a34576c07e6b764b0dc6c41fd4012f1efa8",
+      "fee_sats": 2670,
+      "funded_sats": 244000000,
+      "genesis_hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+      "native_signature_verified": true,
+      "nova_authorization_verified": false,
+      "ordered_funding_commitment": "faa7d60d7372499f19bc1d928e1657dffb718736acf980569e459410c4948128",
+      "original_contract_policy_external": true,
+      "payout_sats": [
+        55000000,
+        35000000,
+        71498500,
+        82498500,
+        330
+      ],
+      "production_ready": false,
+      "relation": "shz/mnr04/bitcoin-exact-clearing/v1",
+      "sigmsg_hex": [
+        [
+          "670cee538edef54d1c445c5f0a6f05eea734e40fbd9977f83ec804b59a48fda4",
+          "1111738bd4cd413daa4e1c5ce104c90cf17ef1d194e3acb03f62d8f4cd48d38d",
+          "1111738bd4cd413daa4e1c5ce104c90cf17ef1d194e3acb03f62d8f4cd48d38d"
+        ],
+        [
+          "7e0203bb7227556323a704c239f569b62340aa7584e19c36f1ef4e37d01031e8",
+          "a8a7cb1fb050b90a6eb0728c4bfcaa3d3d96f63504b6f4ac1d2fded55efeab85",
+          "a8a7cb1fb050b90a6eb0728c4bfcaa3d3d96f63504b6f4ac1d2fded55efeab85"
+        ],
+        [
+          "8391dacc75394698d6d7d672db0833fd9d3410d0febe6b9f91ccfc15ca21a99e",
+          "8391dacc75394698d6d7d672db0833fd9d3410d0febe6b9f91ccfc15ca21a99e",
+          null
+        ]
+      ],
+      "transaction_commitment": "0095e575cc0c0943d83e5788650a6f04f7ff395632e11b11e7771dcf0fe8ce3e",
+      "txid": "3f7ee56f1775602c030f33ee7dc4f8404a7560afb1d2551e91f76e74d6dfb594",
+      "wtxid": "4b3155ee8e058db7e1d947595efdd28080cf7795c4ecdd17bcb9a423700ab0cf"
+    },
+    "nova_ambient_context_native": true,
+    "nova_backend": "Nova Pallas/Vesta Spartan IPA CPU",
+    "nova_funding_conservation_verified": true,
+    "nova_output_values_verified": true,
+    "nova_txid_verified": true,
+    "primary_constraints": null,
+    "proof_bytes": 12224,
+    "proof_sha256": "acd66b0b26eb43fab057833989f77b2b0009c8acc4e097c1a62460e2fc39f50e",
+    "secondary_constraints": null,
+    "setup_seconds": null,
+    "verification_seconds": 1.524817524,
+    "vk_sha256": "7fc71a8518976ede1ad97855ee164e63356e4ef11cda43565e1177fa5f082db1",
+    "wrong_txid_claim_refused": true
+  },
+  "prover_measurements": {
+    "primary_constraints": 195563,
+    "secondary_constraints": 10349,
+    "setup_seconds": 19.641041757,
+    "folding_seconds": 0.250669951,
+    "compression_seconds": 49.8912608
+  },
+  "prior_mnr03_compressed_proof_bytes": 12376,
+  "phases": {
+    "core": {
+      "elapsed_seconds": 26.8,
+      "user_cpu_seconds": 1.07,
+      "system_cpu_seconds": 0.93,
+      "peak_rss_kib": 61364
+    },
+    "key": {
+      "elapsed_seconds": 24.0,
+      "user_cpu_seconds": 23.71,
+      "system_cpu_seconds": 0.28,
+      "peak_rss_kib": 300104
+    },
+    "prove": {
+      "elapsed_seconds": 76.57,
+      "user_cpu_seconds": 75.22,
+      "system_cpu_seconds": 1.29,
+      "peak_rss_kib": 598620
+    },
+    "verify": {
+      "elapsed_seconds": 5.95,
+      "user_cpu_seconds": 5.77,
+      "system_cpu_seconds": 0.15,
+      "peak_rss_kib": 243808
+    }
+  },
+  "cuda_used_for_nova": false,
+  "rayon_threads": 1
+}

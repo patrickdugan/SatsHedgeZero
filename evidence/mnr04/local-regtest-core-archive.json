@@ -1,0 +1,308 @@
+{
+  "scenario": "SHZ-MNR-03: 3-Party Multilateral Atomic Clearing with Bob 100% Offline (0x83) + Native Pyth Pro + 6-Block Reorg Watchtower Drill + Unilateral CLTV Fallback + lnm-nova CompressedSNARK",
+  "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+  "bob_online_during_clearing_or_proving": false,
+  "bitcoin_spend_enforced": true,
+  "cpfp_anchor_child_confirmed": true,
+  "reorg_watchtower_drill_passed": true,
+  "unilateral_cltv_fallback_verified": true,
+  "nova_compressed_snark_verified": false,
+  "near_finality_verified": false,
+  "bitvm3_onchain_verified": false,
+  "production_ready": false,
+  "funded_dlc_utxos": [
+    {
+      "trade_no": 1,
+      "label": "MNR03-AB-ALICE-LONG-BOB-SHORT-50K-0x83",
+      "txid": "87d0a5101dcd42bf214ad7f4b44ac60f3aedd7907751ed871f12c5517e76aad2",
+      "vout": 1,
+      "sats": 99000000,
+      "script_pubkey_hex": "5120e0fc5ccfaae9989bf68a0c9ac970162a1f4a3efcb96aa3abbf089080b32583f0"
+    },
+    {
+      "trade_no": 2,
+      "label": "MNR03-BC-BOB-LONG-CAROL-SHORT-55K-0x83",
+      "txid": "ec0d517c34702e58042fdc542bcf0bc3885e177842d8be4c0c45033ec0710c69",
+      "vout": 1,
+      "sats": 90000000,
+      "script_pubkey_hex": "51209d585324150e1feda72aaabaad6a5f3040d890e16dc8f06bf51c239ff43b4bf4"
+    },
+    {
+      "trade_no": 3,
+      "label": "MNR03-CA-CAROL-LONG-ALICE-SHORT-60K-0x00",
+      "txid": "e0a11890ac6d9f7a7e65c820f6c8285db121a453867719de4b15ef245ff57a39",
+      "vout": 0,
+      "sats": 55000000,
+      "script_pubkey_hex": "512068423968f3632cca440b61c5776046be0137f002c6b06d92d4af58597cc65498"
+    }
+  ],
+  "core_confirmed_bob_offline_clearing_tx": {
+    "label": "mnr03-3input-5output-bob-offline-0x83-atomic-clearing",
+    "txid": "3f7ee56f1775602c030f33ee7dc4f8404a7560afb1d2551e91f76e74d6dfb594",
+    "wtxid": "4b3155ee8e058db7e1d947595efdd28080cf7795c4ecdd17bcb9a423700ab0cf",
+    "vsize": 599,
+    "locktime": 150,
+    "script_path_used": "vin0:mnr02-route-0x83+0x01 | vin1:mnr02-route-0x83+0x01 | vin2:utxoref-cet-0x00",
+    "sighash_flags_hex": [
+      "0x83+0x01+0x01",
+      "0x83+0x01+0x01",
+      "0x00+0x00"
+    ],
+    "outputs_sats": [
+      55000000,
+      35000000,
+      71498500,
+      82498500,
+      330
+    ],
+    "witness_item_lengths": [
+      5,
+      5,
+      4
+    ],
+    "raw_tx_hex": "02000000000103d2aa767e51c5121f87ed517790d7ed3a0fc64ab4f4d74a21bf42cd1d10a5d0870100000000feffffff690c71c03e03450c4cbed84278175e88c30bcf2b54dc2f04582e70347c510dec0100000000feffffff397af55f24ef154bde19778653a421b15d28c8f620c8657e7a9f6dac9018a1e00000000000feffffff05c03b47030000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cc00e16020000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c04fb420400000000225120eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619c4d3ea04000000002251207f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa20074a010000000000002251202c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e6686809910541a4b58ee2f0b04233a186ecdee8ed23e4553c8bc20ddb819b0238021c0a6f4863973a97b1adfb92b819b09be91a4a0e9b9de3dd239aaed4ff6e66c8459aa587f58341e0eea443ab1f2b201ca4bf7c725bd1cda6d3470fbbb816d998170d05b01e032368f6c629c7df321e129f780065877e633d942df9c85279f0d3359a84acb69e050141165aca279c27326855a5ac9af734a5151e26a02afaf7f1ad4a51f7fb6b8e6c9b6ca331f6037a146e407cbbc4578ddb99410d8ed8bce279c24ce26aeb36b741950166204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584aba819a4e1257492341e0e3cf13fd1da590764a37b570608a097828f257918ee060541bf4c8efc0b1836643b6256cca2cda2401c1e2617d236d22eec3ddb491758f5fdce4ef9b4ac7b1220655ee8bacd6a71760bc7568fc619bf2e3dc8e7a9b2528b528341f911fe42806b3dad4a1bfad041e5205a2649d4db086c4794a1cb4515140f686988627a1c835564d590520a1a7606ea762161d7183a881490e0d5e437e00f29d101412471be095805e7bf5b43de9b7191607ede3f8dbf94dedf7bb8090fc08a9db89cf26dae0b5442295bea73642aade45458d49666682a8ce0704b2bd34b1e0ac71b016620e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584abf037e5a8441a4c5f536ba5090978234f1209b46ab54dde6a53a448e9e8b2f38a04402729f31d03e0bfc984f2be7795fd3bdebe1b99641e591dcaf66d37ea6afffd061d269d34a4e511a57646faf18f0e4aedcd7cef0f653982aaffff07d9ae02da174059d08c118fa938ba111d13ca45c4a7d0a461a330c45428d1a22c2ec1b03b3a9b376593bca3745bfe2ed8fad2057896a35052c1ab247f19230e703af7f908ff2f44204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab1500330dbb077539eca074f360f9ebdd70090292f636348311f966a5db58aafe96000000",
+    "confirmed_block_height": 151,
+    "confirmed_block_hash": "5859041f02a81fc2ebbab97a7df81897504e8d8b15906638230ddb33654f3ec3",
+    "core_confirmations": 9
+  },
+  "cpfp_child_txid": "b0830bb2eb918b772b072bac85ccc0d21b640163d7c835416551f503583a8702",
+  "post_clearing_utxo_checks": [
+    {
+      "owner": "Bob-AB-0x83-Pinned",
+      "vout": 0,
+      "sats": 55000000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Bob-BC-0x83-Pinned",
+      "vout": 1,
+      "sats": 35000000,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Alice-Winner-Routed-PnL",
+      "vout": 2,
+      "sats": 71498500,
+      "utxo_present_in_core": true
+    },
+    {
+      "owner": "Carol-Freed-Margin",
+      "vout": 3,
+      "sats": 82498500,
+      "utxo_present_in_core": true
+    }
+  ],
+  "adversarial_probes": [
+    {
+      "probe_id": "mnr03-premature-broadcast-before-maturity",
+      "description": "Broadcast 3-input Bob-offline clearing tx at height 148 (< maturity 150)",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    },
+    {
+      "probe_id": "mnr03-shave-1-sat-bob-ab-vout0",
+      "description": "Shave 1 sat from offline Bob's AB 0x83-pinned output vout[0] (55,000,000 -> 54,999,999)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "mnr03-shave-1-sat-bob-bc-vout1",
+      "description": "Shave 1 sat from offline Bob's BC 0x83-pinned output vout[1] (35,000,000 -> 34,999,999)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "mnr03-swap-bob-vout0-and-vout1",
+      "description": "Swap offline Bob's vout[0] and vout[1] across the two 0x83 inputs",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "mnr03-unilateral-cet-during-priority-window",
+      "description": "Attempt Leaf 1 unilateral CLTV fallback at height 150 (< unilateral_cltv 170)",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    }
+  ],
+  "reorg_watchtower_drill": {
+    "invalidated_clearing_block_hash": "5859041f02a81fc2ebbab97a7df81897504e8d8b15906638230ddb33654f3ec3",
+    "pre_reorg_confirmations": 6,
+    "post_invalidate_confirmations": -1,
+    "competing_branch_tip_height": 157,
+    "competing_branch_tip_hash": "748a049ab33e2ce6dc235d4cb56c093501bd62ef1a952c596a5cdfcb884a3e55",
+    "watchtower_book_frozen": true,
+    "settle_after_freeze_rejected": true,
+    "restored_canonical_tip_height": 159
+  },
+  "unilateral_fallback_drill": {
+    "ab_unilateral_txid": "828b9bfcc70fcbe841da7c6f4252984d212cb1674c9293e8183616b03c773249",
+    "bc_unilateral_txid": "7cc1524bc3997ec3cdd4045f9faa1016f018da869fa9944925bcd45b5429d29b",
+    "confirmed_at_height": 171,
+    "guard_signature_required": false
+  },
+  "oracle_bound_nova_report": {
+    "protocol": "SatsHedgeZero SHZ-MNR-03 + Native Pyth Pro + Nova v2 / BitVM3",
+    "network": "bitcoin-regtest",
+    "anchor_height": 111,
+    "anchor_block_hash_hex": "4dc7159dfc7f6d16efce2e71fa4b9b73c64067b260a982a3eb11bb75a7ff2fd0",
+    "bob_online_during_clearing_or_proving": false,
+    "pyth_pro_epoch": {
+      "feed_id": 1,
+      "channel_id": 3,
+      "publish_time_us": 1795500000000000,
+      "feed_update_time_us": 1795500000000000,
+      "price_e8": 6000000000000,
+      "whole_price_usd": 60000,
+      "confidence_e8": 1200000000,
+      "registry_epoch": 1,
+      "signer_pubkey_hex": "b2491d9502ae28630a2bacb2e0c74510ffcdd328c334ff3e1393e75b2d31e7dc",
+      "signed_payload_sha256_hex": "7a629e25df82f8d9eec44487b50d6e68437cd532995ecc04f2a25f3e46b80300",
+      "receipt_hash_hex": "da9a2bf4500b22e346c75553ea41f2ea0d240e50f8c8bd708594dafe763d39c3",
+      "session_hash_hex": "3b3075c2528e7443f85aa00acc220a34576c07e6b764b0dc6c41fd4012f1efa8",
+      "near_finality_verified": false
+    },
+    "mnr03_clearing": {
+      "label": "MNR03-MACRO-33K-BOB-OFFLINE",
+      "bob_online_during_clearing": false,
+      "settled_price_usd": 60000,
+      "atomic_clearing_txid_hex": "3f7ee56f1775602c030f33ee7dc4f8404a7560afb1d2551e91f76e74d6dfb594",
+      "atomic_clearing_wtxid_hex": "4b3155ee8e058db7e1d947595efdd28080cf7795c4ecdd17bcb9a423700ab0cf",
+      "atomic_clearing_vsize": 599,
+      "bob_ab_pinned_output_sats": 55000000,
+      "bob_bc_pinned_output_sats": 35000000,
+      "bob_total_freed_collateral_sats": 90000000,
+      "bob_posted_margin_sats": 96000000,
+      "bob_freed_collateral_bps": 9375,
+      "alice_winner_routed_pnl_sats": 11000000,
+      "alice_winner_cleared_output_sats": 71498500,
+      "carol_freed_collateral_sats": 82498500,
+      "cpfp_anchor_sats": 330,
+      "miner_fee_sats": 2670,
+      "pnl_snapshot_hash_hex": "be0e612b949a159df454e6b79068e170ab249fab57abe7c572d44d821bcb5db0",
+      "next_accounting_state_root_hex": "65720f96ec0e6508e753b0d43c89d6ce2f3d2c9ba6b05b78767716d03c5f28cb",
+      "durable_book_head_hash_hex": "1234a3a2ff4242dd5eb10e829201af3fcc0bab9389465cb0bf227ae14cca1714"
+    },
+    "mnr03_atomic_clearing_raw_segwit_tx_hex": "02000000000103d2aa767e51c5121f87ed517790d7ed3a0fc64ab4f4d74a21bf42cd1d10a5d0870100000000feffffff690c71c03e03450c4cbed84278175e88c30bcf2b54dc2f04582e70347c510dec0100000000feffffff397af55f24ef154bde19778653a421b15d28c8f620c8657e7a9f6dac9018a1e00000000000feffffff05c03b47030000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1cc00e16020000000022512024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c04fb420400000000225120eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619c4d3ea04000000002251207f31ebc5462c1fdce1b737ecff52d37d75dea43ce11c74d25aa297165faa20074a010000000000002251202c0b7cf95324a07d05398b240174dc0c2be444d96b159aa6c7f7b1e6686809910541a4b58ee2f0b04233a186ecdee8ed23e4553c8bc20ddb819b0238021c0a6f4863973a97b1adfb92b819b09be91a4a0e9b9de3dd239aaed4ff6e66c8459aa587f58341e0eea443ab1f2b201ca4bf7c725bd1cda6d3470fbbb816d998170d05b01e032368f6c629c7df321e129f780065877e633d942df9c85279f0d3359a84acb69e050141165aca279c27326855a5ac9af734a5151e26a02afaf7f1ad4a51f7fb6b8e6c9b6ca331f6037a146e407cbbc4578ddb99410d8ed8bce279c24ce26aeb36b741950166204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c1c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584aba819a4e1257492341e0e3cf13fd1da590764a37b570608a097828f257918ee060541bf4c8efc0b1836643b6256cca2cda2401c1e2617d236d22eec3ddb491758f5fdce4ef9b4ac7b1220655ee8bacd6a71760bc7568fc619bf2e3dc8e7a9b2528b528341f911fe42806b3dad4a1bfad041e5205a2649d4db086c4794a1cb4515140f686988627a1c835564d590520a1a7606ea762161d7183a881490e0d5e437e00f29d101412471be095805e7bf5b43de9b7191607ede3f8dbf94dedf7bb8090fc08a9db89cf26dae0b5442295bea73642aade45458d49666682a8ce0704b2bd34b1e0ac71b016620e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ad2019ce4d0ef6710afaf62a5edd8e739bd05198823e7e66f05df41cd8f410bcb665ad20466d7fcae563e5cb09a0d1870bb580344804617879a14949cf22285f1bae3f27ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584abf037e5a8441a4c5f536ba5090978234f1209b46ab54dde6a53a448e9e8b2f38a04402729f31d03e0bfc984f2be7795fd3bdebe1b99641e591dcaf66d37ea6afffd061d269d34a4e511a57646faf18f0e4aedcd7cef0f653982aaffff07d9ae02da174059d08c118fa938ba111d13ca45c4a7d0a461a330c45428d1a22c2ec1b03b3a9b376593bca3745bfe2ed8fad2057896a35052c1ab247f19230e703af7f908ff2f44204f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aaad20e11f40af6b41f494bfbc27c47a178ce572e8b8ca687cc67e1298514861ac5e48ac41c0c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab1500330dbb077539eca074f360f9ebdd70090292f636348311f966a5db58aafe96000000",
+    "batch_witness_bytes_len": 27770,
+    "journal": {
+      "domain_hex": "0100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c7",
+      "epoch": 1,
+      "batch_id_hex": "3b3075c2528e7443f85aa00acc220a34576c07e6b764b0dc6c41fd4012f1efa8",
+      "evaluation_height": 150,
+      "valid_until_height": 170,
+      "row_count": 3,
+      "accepted_contracts_root_hex": "c18c37ccbb581e2e55c23d5111d18ee5f772289ba4ed383f9bb5701a3eda8994",
+      "old_nullifier_root_hex": "fb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87cc",
+      "new_nullifier_root_hex": "a5deef001a5057c1a506fc1ff86a36397cdfc1a9f0294f781cbf31bdd107b0fc",
+      "batch_tx_digest_hex": "335636c1154deb37a72c471069519322e939781bfec6f6ead9417034d1a50260",
+      "batch_txid_hex": "352820567492b6aa4feb38434c3e62556d7644e1ab7c18a3885fb54d3a862408",
+      "total_collateral_sats": 244000000,
+      "total_payout_sats": 243997000,
+      "total_fee_sats": 3000,
+      "journal_276b_hex": "4c4e4d4a4e4c30310100a2e3e51cff5c0f3508db3ac37c7abc6ff197a60619eac57d0fccd79854c701000000000000003b3075c2528e7443f85aa00acc220a34576c07e6b764b0dc6c41fd4012f1efa896000000aa00000003000000c18c37ccbb581e2e55c23d5111d18ee5f772289ba4ed383f9bb5701a3eda8994fb9b9574129f8a7293bc6eaed63b9acbe67de7980493e83307c1bc16b2ea87cca5deef001a5057c1a506fc1ff86a36397cdfc1a9f0294f781cbf31bdd107b0fc335636c1154deb37a72c471069519322e939781bfec6f6ead9417034d1a50260352820567492b6aa4feb38434c3e62556d7644e1ab7c18a3885fb54d3a86240800258b0e0000000048198b0e00000000b80b000000000000",
+      "journal_sha256_hex": "a3b06cfc596afd5677065e4828929cd3053f4753ab6ee6a70667b4af7e48b250"
+    },
+    "row_transcripts_600b_hex": [
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f763137e8b03ef713cc87c9d51092ee169df9cf1d8ab1f9cb68414c39f8fb3ff44ae37feba6d821a8ba6bc73d70d06410ab0557bab1bc6fa36405b74d7d049c0bf9394cce19d071f2b360334fa9f4cf5382bf6782c21c6656cfc44631757a1d38586a2230f1bde44b97be0a2a23df8789e8257d7629fac6f8e67e24d8e9444fc6e8432a18bac4e16fc704820aeb14b92d9310da1f5394912733d09023e37e21215c246133570339dba8181cdb0f8cf4ded9a7a16942e87bf5450819a358da8c98607760a8e2128bd33a560fa024a4b5198381f9bae7f919c9dafb8b7591b1dd78bb368170ac728afca8673b69f76ba58629b931b59b2f38ec794b87052ced39a9f8936da9ac270ef972845a28cb34166d8f52993b4fe906dc8a3e699db3d1d40e21317c1106e2a25a788715624a3a36dd99a3dbeaa1632235f318bb4f40029c81abf30075eac0c6687eac8076e0bbd5c17bfdd31174340a89b6c392dfec35d33050cde574dc9ad7bd0948f4173f89e98dd0f154a563acfa5fd5c35ebdeaddd6d9a1b681025b03118dc85678ec9636d095756f7f4d512248476dcf915328756257e6362bfaed759735a85cf5abc5b39988a8a15d87ae8e805b1c3b34f6ef9bd3dbb1f1e15a0000000073daf9a06396c6400c8c6ae8de26413c4c9caf2a7ba4cac4acb607eee09b925ece5d9f0200000000c03b4703000000004a01000000000000e80300000000000087d0a5101dcd42bf214ad7f4b44ac60f3aedd7907751ed871f12c5517e76aad201000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f76319593a094065c5abc37040a746f4232b7a442eb59b1a8f31f3894c3870ad6b4e7f96cd4e3d62e31233ed9b9a3761801375ecfa697a26336500dcfa3faa861cfa43472839c7c62e0cc6665fb9b269f8b7bd65aa8bcf39a3cf8df6fcced9bc02c435fecea3eee846f109b40110974330ed5d770a2578606b0900bf97eaf856c6bc3710c83115776efcff417328e6ebcbffeadbfdf139d83f8169dd8428e3c943062774bce12dc660e60d7425bf564697492430d52cfa1a3e11369617f29e74180a3526ab4e266b1eb43357a2337d3f997bbbb489a6b27bf76278e928b045e2b0c22fcd90a7a1ee14c69c9745026801ef68eb964b058e29e7d02d25c311fe1deb721973484fa9c1b4aec0bcc8cdd24aedcb8018cf61fd727d3af5182f15f6e1f432aa10347172f860e624b051f9ccfd527bb9d3f07f4d2c2087370a7f02131d8025f00ff6cc9b015623f680ece33899a4ed0d08e64acfe9c6c540436c0d227fe070681208121b9b20f09f8f02a7ecb78a4b32d41363178bdf8c30e009dd12c761e4e3202a27fa0d0a6348a7df2dda5e96c9c1299c83d1252265ae9b04f45feb671c048e4f4e7df72862d90077668ee3c4ce44026ca92521279c8d2594502df4ca7a36ae600000000a46344d6bc7f8d0d42daddc688ee60ab3bb5f9120adcaa9c990105f73bbf5864479ba30100000000479ba301000000004a01000000000000e803000000000000e0a11890ac6d9f7a7e65c820f6c8285db121a453867719de4b15ef245ff57a3900000000",
+      "5554584f5265662f4c4e4d61726b6574732f4e6f76612f76616c6964617465642d7369676e65642d726f772f763112b205c1fb36c55d2527d6f37c39d66bffe770ac7d9f4cdd3938b27824f82a9bcf3736d91058303e9391d68b72c170c720860c99e3c5f57ef612d192728700164038df0a782c137670fd6d96a7395e3132fdb0710ae28cd711af8a02d74d4888497a4d50524c4f52c41f21c88d3654afeba8f25ff20e0342cef71dca03e106d3187edff2fc79fd09bb90f7411621c8bf5f2a1dc728dcba793011ce93c243b01ad76524a192bf9279d38ecd10852d99a08e1edf358bcc4a7c021a15109b9a413ca6aa0c9a8f0b0569dc3dec18dfee946cfaa9a2300906a3430d477bd62c1f2fbf13e539491f196adb4161a1d4512a1f023110286da22f66a5f883e537e18c2d7a5fe588e31f506fc545e945aba9e826a9ec4640ebaa6172b5e8be73c520bce5fe28500e3b71300787c77ceee894c4dc2072ed314b232e990bda88434f52d5010b00f9cc205f98ab9c93ed65a5214b909d43439f14a949ca0b16237bc97592ff618730965e848a8eaeb00ef87f1c8dfc5b90d285c07c5d09a232ca37178b269fa59702197d56b29abe78c159f5ce7a4744fba82004362e7c8e554ec742be4a237d35e3d5b87a79281f4766124c11a808ddf9a50641c4e8896197c230227f8602f4bacb00000000b271cbb3a719a418ea697caf520663d3f83e5febfedecddfa8bb5030a25966858e36470300000000c00e1602000000004a01000000000000e803000000000000ec0d517c34702e58042fdc542bcf0bc3885e177842d8be4c0c45033ec0710c6901000000"
+    ],
+    "nova_expected_statement": {
+      "relation_version": "lnmarkets/sha256-transcript-accounting/v2",
+      "step_count": 3,
+      "journal_len": 276,
+      "journal_sha256_hex": "a3b06cfc596afd5677065e4828929cd3053f4753ab6ee6a70667b4af7e48b250",
+      "initial_state": {
+        "count": 0,
+        "total_collateral": 0,
+        "total_payout": 0,
+        "total_fee": 0,
+        "transcript_chain_digest_hex": "1b72b9c50f4c2db6db36f0dfdd95df52665fc594c35c55d75b97a7fafaa16eda",
+        "journal_sha_low128_le": "281280069843873906277019792457960566947",
+        "journal_sha_high128_le": "107263938874230378760552753582750252805",
+        "epoch": 1
+      },
+      "final_state": {
+        "count": 3,
+        "total_collateral": 244000000,
+        "total_payout": 243997000,
+        "total_fee": 3000,
+        "transcript_chain_digest_hex": "8929194611aa470f065e136bd551dfa83442723aeeca2fda3dc79ca758ddc5e9",
+        "journal_sha_low128_le": "281280069843873906277019792457960566947",
+        "journal_sha_high128_le": "107263938874230378760552753582750252805",
+        "epoch": 1
+      },
+      "initial_state_fields": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "1b72b9c50f4c2db6db36f0dfdd95df52665fc594c35c55d75b97a7fafaa16eda",
+        "281280069843873906277019792457960566947",
+        "107263938874230378760552753582750252805",
+        "1"
+      ],
+      "final_state_fields": [
+        "3",
+        "244000000",
+        "243997000",
+        "3000",
+        "8929194611aa470f065e136bd551dfa83442723aeeca2fda3dc79ca758ddc5e9",
+        "281280069843873906277019792457960566947",
+        "107263938874230378760552753582750252805",
+        "1"
+      ],
+      "row_transcript_digests_hex": [
+        "adbbf2b4436bfd7384ce5f5d4f69229b572b39c2120af555099e538109cf4c49",
+        "0c2e4a8713c93a6edcd409137ccf9517e51f21ff6f0c0cb58ef9f82502f0f97c",
+        "3aab7625e91f16bb4d2e2fce849ba1402430d88d881a917efbc17b69ee016455"
+      ],
+      "verifier_key_pin_hex": null,
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": false,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "secq_claims_verified_count": 18,
+    "bitvm3_statement": {
+      "magic": "UTXOREF_L2_SETTLEMENT_GROTH16_V0\\0",
+      "encoded_len": 304,
+      "network_code": "Regtest",
+      "epoch_id": 1,
+      "assertion_vout": 0,
+      "chain_genesis_hash_hex": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+      "contract_id_hex": "2f68766ff7c12cbc926286506f3b6c343983f0fe0ab65a945fb0ff9eb3f225ae",
+      "commitment_hash_hex": "a3b06cfc596afd5677065e4828929cd3053f4753ab6ee6a70667b4af7e48b250",
+      "assertion_txid_hex": "3f7ee56f1775602c030f33ee7dc4f8404a7560afb1d2551e91f76e74d6dfb594",
+      "settlement_txid_hex": "352820567492b6aa4feb38434c3e62556d7644e1ab7c18a3885fb54d3a862408",
+      "program_hash_hex": "5e492ee8e77c5dd8f49536d023841e322fa3e8f26bcdb78f0f1713cd6e46c86f",
+      "verifying_key_hash_hex": "4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b",
+      "policy_hash_hex": "66fb5449e717a37c74ea6d9b9089f87805400893479e1525943a3e709468333f",
+      "statement_304b_hex": "5554584f5245465f4c325f534554544c454d454e545f47524f544831365f5630000000000f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e22062f68766ff7c12cbc926286506f3b6c343983f0fe0ab65a945fb0ff9eb3f225aea3b06cfc596afd5677065e4828929cd3053f4753ab6ee6a70667b4af7e48b2503f7ee56f1775602c030f33ee7dc4f8404a7560afb1d2551e91f76e74d6dfb594352820567492b6aa4feb38434c3e62556d7644e1ab7c18a3885fb54d3a8624085e492ee8e77c5dd8f49536d023841e322fa3e8f26bcdb78f0f1713cd6e46c86f4eafbd223936cc3c1e9b16e750f1946a57cd5413f86578f6f1d37d9abb53e38b66fb5449e717a37c74ea6d9b9089f87805400893479e1525943a3e709468333f010000000000000000000000",
+      "statement_sha256_hex": "f463a90c8b2a296e4598a8cd339a7ca630c9227b40647b45f89ac6c31fc0fe80",
+      "public_input_limbs_be_dec": [
+        "324849097081544775128000508578942844070",
+        "64847294833160491016369437245429579392"
+      ],
+      "public_input_limbs_be_hex": [
+        "f463a90c8b2a296e4598a8cd339a7ca6",
+        "30c9227b40647b45f89ac6c31fc0fe80"
+      ],
+      "honesty": {
+        "native_statement_verified": true,
+        "nova_snark_verified": false,
+        "bitvm3_onchain_verified": false,
+        "production_ready": false
+      }
+    },
+    "external_nova_snark_receipt": null,
+    "honesty": {
+      "native_statement_verified": true,
+      "nova_snark_verified": false,
+      "bitvm3_onchain_verified": false,
+      "production_ready": false
+    }
+  }
+}
