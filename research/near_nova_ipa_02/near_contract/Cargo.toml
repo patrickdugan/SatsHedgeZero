@@ -1,0 +1,18 @@
+[package]
+name = "shz-near-transparent-ipa-mnr03-state"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Research BN254 transparent IPA verifier for frozen MNR-03 public-accounting statement; no Nova verification"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { version = "=5.17.2", features = ["legacy"] }
+hex = "0.4"
+num-bigint = "0.4"
+
+[dev-dependencies]
+near-sdk = { version = "=5.17.2", features = ["legacy", "unit-testing"] }
+[workspace]

@@ -1,0 +1,40 @@
+{
+  "statement": {
+    "dimension": 8,
+    "epoch_id": 177,
+    "row_count": 3,
+    "collateral_sats": 3900,
+    "payout_sats": 3450,
+    "fee_sats": 450,
+    "conservation_claim": 3,
+    "snapshot_root_hex": "a37f97001d20f39b9411fc47c2092f3da4298c56b9069033b158ed4ccf2e153d",
+    "oracle_receipt_hash_hex": "7a0a6d8d97a231fd0adcef7892d29232d131adfe8c92391deb228b9dd598e51e",
+    "bitcoin_assertion_txid_hex": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+    "nova_journal_sha256_hex": "d87e089251413e3f47f90c9e3aadb21c98d164798f77b953d19b361402a28a40",
+    "nova_proof_sha256_hex": "14e9985b67569c2db18b10eb43e0036cfe76fac21ab2674b35ae6324fe08a043",
+    "commitment_hex": "dae68111bd077d7ff3f4a010147edbbfb15d2b9fe6cfba899789321bfff633083cf7a9d808d5f57a2c6c8857fedc54653d2590cce276f276cb9bcf2f82f0882a"
+  },
+  "proof": {
+    "l_hex": [
+      "7a0fb518a527432cae04b88303f809b63a6029d5f3e31bb55a947e2cb0214b0ba34c5cd6c0a7efdcf65a667d099f36ca5cb3222f1d792117d91411d149bee600",
+      "8a08e4a8d78cf5e6d3fa14fb4771d0b7508d12fc6948e1dd71e6725ed30c360f0cee51fc5072e9dc0a6f0db45293adf0b471788c8955a389d40cead576e9bb0b",
+      "7f5cba6324d923c12cf87add578006f5388651c9f0628a223aebc93207b3910a3819f82b7925a64d052173fa2fb2c23c668a1b7c3d2c4bf6f80e6d6a55675119"
+    ],
+    "r_hex": [
+      "b734f7ecd5ced218e8559bba27ff750012f824ce24bc4b0e539138090996b11799a5335123de9616ca014b53c585b5c78f92a2dccf681fbfcab8f0cfb14a0e1e",
+      "3ce640ba7101d70aa58b2b072599efdbb5924c4e0a2e75f3d5cbb674ef0fbc1969eee9f6c4940267a8fd4d68f270fd9ee2e6fb6ab0d7f8ec9726c559d6e4e40b",
+      "237e95882431a06e0dbac6ecfc681a3a98cca5630037b5c12c1def1103252f1ca5ec33a5308b65642714abdea5a24c7d4461053eed5c735712db6e86e5ef2a19"
+    ],
+    "a_final_hex": "c99cb817921770bb4401b6d7ed01af4a823c32315d931c9730b3fff8d6942b1b",
+    "b_final_hex": "b18846f74f29a45f1f54babf37b6c4e37d5502b9070e159c918b0ca72310e11c"
+  },
+  "honesty": {
+    "frozen_mnr03_public_state_bound": true,
+    "transparent": true,
+    "full_nova_verifier_constrained": false,
+    "source_authenticated": false,
+    "bitcoin_witness_proved": false,
+    "settlement_authorized": false,
+    "production_ready": false
+  }
+}

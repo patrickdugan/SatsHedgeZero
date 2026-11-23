@@ -1,0 +1,42 @@
+{
+  "statement": {
+    "dimension": 16,
+    "epoch_id": 177,
+    "row_count": 3,
+    "collateral_sats": 3900,
+    "payout_sats": 3450,
+    "fee_sats": 450,
+    "conservation_claim": 3,
+    "snapshot_root_hex": "a37f97001d20f39b9411fc47c2092f3da4298c56b9069033b158ed4ccf2e153d",
+    "oracle_receipt_hash_hex": "7a0a6d8d97a231fd0adcef7892d29232d131adfe8c92391deb228b9dd598e51e",
+    "bitcoin_assertion_txid_hex": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+    "nova_journal_sha256_hex": "d87e089251413e3f47f90c9e3aadb21c98d164798f77b953d19b361402a28a40",
+    "nova_proof_sha256_hex": "14e9985b67569c2db18b10eb43e0036cfe76fac21ab2674b35ae6324fe08a043",
+    "commitment_hex": "dae68111bd077d7ff3f4a010147edbbfb15d2b9fe6cfba899789321bfff633083cf7a9d808d5f57a2c6c8857fedc54653d2590cce276f276cb9bcf2f82f0882a"
+  },
+  "proof": {
+    "l_hex": [
+      "d9eeb95ddd7b2759a212bfe1031d461ddbc3863bf5c64b7f44035101cbfef61ec0f4fa9349e945adcb322d52e2a907d2b2a8a078ccb63499a76cf07a234c7706",
+      "546ca65c6ce89693c67e971a2b6868e63159a9ceae11db939a56973f471d1e0ccb4e1202b41c8803b9dee72abca47faa61debb199279fb4027fa812376200022",
+      "9048bd9f4516015ffd15e5f0813a39bbf7f88ea696959432125274c816420a0298d4c8a0e26da59219af61d3e0da830f7747a88705ba02deecd1d243398e4412",
+      "91f19d49432f244ffee30fb5d1f69fccbdbb4268d795825ac00955541e83080d1bd298fa78e47c84e4730affd3c4a13444afa61657ec72376da55f0b0c255e23"
+    ],
+    "r_hex": [
+      "444e91d049cb8111eddb690ebac21daff8bd7adaf3efdc0ad644c46ac007910342ad06d86716e5948e5d38cca1efdcc2223842f674ed4136095c4180f9f62718",
+      "2d0b900a6ea44ee5c4d1da407513f217734eedc266285261d75fd6afcf027c2be9ba8c3e093dddd6938bea0eb7823fccc5153203a0b773ea0a00bfbda0b1752d",
+      "727b86eedb0dcbc972c3baf9c68c0ff4aa3dd6d14c6eca4168b2b058af36212850ba9040a95eac78dea8d50c219986b0b234023ed969ef5425ee341d389ad204",
+      "faf463027a6ec945808ed1d86ad91b2900e5754fd08d888030ac361652d5922c364b06b9e4b70137e7a294635acf342d8228085c87d2f11b2b55e13301df6a0f"
+    ],
+    "a_final_hex": "59ed41bdd28f20b1bfba094a50a0f06f5c2b5d131be7e2a1c399415aba376813",
+    "b_final_hex": "24d78cb8470620041d5682d9cd8e8619297ce7ae4614bd96f74b93293f54b604"
+  },
+  "honesty": {
+    "frozen_mnr03_public_state_bound": true,
+    "transparent": true,
+    "full_nova_verifier_constrained": false,
+    "source_authenticated": false,
+    "bitcoin_witness_proved": false,
+    "settlement_authorized": false,
+    "production_ready": false
+  }
+}
