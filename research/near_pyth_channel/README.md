@@ -31,3 +31,7 @@ node --test research/near_pyth_channel/test/*.test.mjs
 NEAR Chain Signatures currently expose ECDSA/Ed25519 signing paths and should not be assumed to produce native BIP340 Taproot adaptor signatures. SatsHedgeZero's Bitcoin collateral stays under its own Bitcoin-enforced DLC witnesses. NEAR may index state, accept price evidence and slash its own bond, but it cannot make a bare price claim spend a Taproot output. Pyth Pro is a subscribed data service; keep API tokens off the browser and commit neither price API credentials nor private test keys.
 
 Sources: [Pyth NEAR deprecation](https://docs.pyth.network/price-feeds/core/use-real-time-data/pull-integration/near), [Pyth signed formats](https://docs.pyth.network/pro/payload-reference), [official Solana signed wire layout](https://docs.rs/pyth-lazer-protocol/latest/src/pyth_lazer_protocol/message.rs.html), [NEAR Ed25519 verifier](https://docs.rs/near-sdk/latest/near_sdk/env/fn.ed25519_verify.html), [Kohen channel DLC conditional settlement](https://nkohen.github.io/blog/transferring-lightning-dlcs/).
+
+### Separate WASM build gate
+
+GitHub CI also builds the standalone NEAR contract for `wasm32-unknown-unknown` against pinned `near-sdk =5.17.2`. A green build establishes compilation only. The signer registry, on-chain signed-price parser, NEAR testnet deployment, bond economics, external state-proof checks, and Bitcoin settlement integration remain independent acceptance gates.

@@ -44,3 +44,17 @@ jobs:
           echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
           tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
           cargo run --locked --bin shz -- mnr02-regtest /tmp/bitcoin-31.1/bin/bitcoind
+
+  near-fraud-guard-wasm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Compile NEAR bonded oracle contract for WebAssembly
+        run: cargo check --manifest-path research/near_pyth_channel/near_contract/Cargo.toml --target wasm32-unknown-unknown
