@@ -78,5 +78,39 @@
       "canonical_price_usd": 100550,
       "deviation_bps": 1098
     }
+  },
+  "nova_bitvm_summary": {
+    "row_count": 2,
+    "journal_276b_sha256_hex": "9f7173ceead29a08742363a504f23eb49e157eb194a5aa3f627a4e61c4866f4b",
+    "batch_txid_hex": "e816a78cce88b8c19dfff3729363bd452b60a320b4ba1faa18f89c1c5e9868f2",
+    "row0_transcript_600b_bytes": 600,
+    "nova_relation_version": "lnmarkets/sha256-transcript-accounting/v2",
+    "nova_final_state_8_fields": [
+      "2",
+      "3502660",
+      "3500660",
+      "2000",
+      "c5d726750908dbf4ba660432d2a2568e7d61c075b8d42a56c8def3fe73fba743",
+      "239587870357735627896887144652280656287",
+      "100271178036887718561879295170520683934",
+      "1"
+    ],
+    "secq_row0_trader_state_3_fields": [
+      "1",
+      "232990964272528733397446795707744596418",
+      "14714038839268850983565829968748960743"
+    ],
+    "bitvm3_304b_sha256_hex": "e7b6dbc9444e28b9cd698140a3006a9b1fb3d1fb2f6891e272a1692fa3938541",
+    "bitvm3_public_input_limbs_be_dec": [
+      "308001122848272239556016559942973549211",
+      "42139747931558293152199633932723127617"
+    ],
+    "mnr02_bob_offline_txid_hex": "47860b5b6e7ca7b9a94fae453e45c09bb4e5e66738ef9612680b9a55f711bd07",
+    "honesty": {
+      "native_statement_verified": true,
+      "nova_snark_verified": false,
+      "bitvm3_onchain_verified": false,
+      "production_ready": false
+    }
   }
 }

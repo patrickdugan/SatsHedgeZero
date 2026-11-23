@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SatsHedgeZero — Non-Custodial 0-Fee Inverse BTC/USD DLC Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="shz-terminal" class="shz-shell">
+      <!-- Top Header & Instrument Ribbon -->
+      <header class="shz-topbar">
+        <div class="shz-brand">
+          <svg class="shz-logo" viewBox="0 0 28 28" width="22" height="22" aria-hidden="true">
+            <rect x="2" y="2" width="24" height="24" rx="4" fill="#10151e" stroke="#00d285" stroke-width="1.6" />
+            <path d="M8 18.5L13.2 9.5L16.5 14.8L20 9.5" fill="none" stroke="#00d285" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="20" cy="9.5" r="2" fill="#38bdf8" />
+          </svg>
+          <span class="shz-brand-name">SatsHedgeZero</span>
+          <span class="shz-version-tag">v0.2</span>
+        </div>
+
+        <div class="shz-instrument-wrap">
+          <label for="shz-instrument-select" class="sr-only">Instrument</label>
+          <select id="shz-instrument-select" class="shz-instrument-select mono">
+            <option value="BTC-INVERSE-PERP">BTC-INVERSE-PERP</option>
+            <option value="BTC-27DEC26-DLC">BTC-27DEC26-DLC</option>
+            <option value="BTC-28MAR27-DLC">BTC-28MAR27-DLC</option>
+          </select>
+        </div>
+
+        <div class="shz-ticker-strip">
+          <div class="shz-stat">
+            <span class="shz-stat-label">Mark Price</span>
+            <span id="stat-mark-price" class="shz-stat-val mono is-long">$100,000</span>
+          </div>
+          <div class="shz-stat">
+            <span class="shz-stat-label">TradeLayer tx14 VWAP</span>
+            <span id="stat-tl-vwap" class="shz-stat-val mono is-cyan">$108,200</span>
+          </div>
+          <div class="shz-stat">
+            <span class="shz-stat-label">Pyth NEAR Relay</span>
+            <span id="stat-pyth-relay" class="shz-stat-val mono">$100,500 <small class="muted">±20bps</small></span>
+          </div>
+          <div class="shz-stat">
+            <span class="shz-stat-label">24h Volume</span>
+            <span id="stat-vol-24h" class="shz-stat-val mono">$48.29M</span>
+          </div>
+          <div class="shz-stat">
+            <span class="shz-stat-label">Open Interest</span>
+            <span id="stat-oi" class="shz-stat-val mono">$19.45M</span>
+          </div>
+        </div>
+
+        <div class="shz-topbar-badges">
+          <span id="badge-frost" class="shz-pill shz-pill-cyan mono" title="3-of-5 FROST threshold oracle quorum">
+            <span class="dot dot-green"></span>3-of-5 FROST
+          </span>
+          <span class="shz-pill shz-pill-zero-fee mono" title="Protocol-enforced zero maker, taker, and settlement fees">
+            0.00% MAKER / 0.00% TAKER
+          </span>
+          <div class="shz-wallet-box mono">
+            <span class="shz-pill shz-pill-long" title="Active v0 collateral settlement rail">Vanilla BTC P2TR v0</span>
+            <span class="shz-pill shz-pill-muted" title="Reserved for v1; disabled by v0 guard">TAP v1</span>
+            <span id="wallet-balance" class="shz-wallet-bal">2.5000 BTC</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Pro Trading Workspace -->
+      <main class="shz-workspace">
+        <!-- Center-Left Chart Slot -->
+        <section class="shz-panel shz-chart-panel" aria-label="Price and Inverse Payoff Chart">
+          <div class="shz-panel-head shz-chart-head">
+            <div class="shz-chart-tabs" role="tablist">
+              <button
+                type="button"
+                id="btn-chart-candles"
+                class="shz-tab-btn is-active"
+                data-chart-mode="candles"
+                role="tab"
+                aria-selected="true"
+              >
+                Candles &amp; Liq Levels
+              </button>
+              <button
+                type="button"
+                id="btn-chart-payoff"
+                class="shz-tab-btn"
+                data-chart-mode="payoff"
+                role="tab"
+                aria-selected="false"
+              >
+                Inverse Payoff &amp; Dyadic CETs
+              </button>
+            </div>
+            <div class="shz-chart-telemetry mono">
+              <span>Entry: <strong id="chart-meta-entry">$100,000</strong></span>
+              <span>Long Liq: <strong id="chart-meta-long-liq" class="is-long">$90,909</strong></span>
+              <span>Short Liq: <strong id="chart-meta-short-liq" class="is-cyan">∞ UNLIQ (1x)</strong></span>
+              <span>20b CETs: <strong id="chart-meta-cets" class="is-amber">1,524</strong></span>
+            </div>
+          </div>
+
+          <div id="shz-chart-stage" class="shz-chart-stage">
+            <canvas id="shz-main-canvas"></canvas>
+            <div id="shz-chart-fallback" class="shz-fallback-banner mono" hidden>
+              <span>Canvas ready for <code>/charts.js</code> (Candles / Inverse Payoff Visualizer)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Center-Right Orderbook & Recent P2P Fills -->
+        <section class="shz-panel shz-book-panel" aria-label="P2P Zero-Fee Orderbook">
+          <div class="shz-panel-head">
+            <div class="shz-panel-title">
+              <span>P2P Orderbook</span>
+              <span class="shz-micro-badge is-long mono">0 bps FEE</span>
+            </div>
+            <span id="book-engine-tag" class="shz-micro-muted mono">Price-Time P2TR</span>
+          </div>
+
+          <div class="shz-ob-columns mono">
+            <span>Price (USD)</span>
+            <span class="align-right">Size (USD)</span>
+            <span class="align-right">Value (BTC)</span>
+            <span class="align-right">Total (USD)</span>
+          </div>
+
+          <div id="ob-asks" class="shz-ob-side shz-ob-asks mono" aria-label="Asks"></div>
+
+          <div class="shz-ob-spread mono">
+            <span id="ob-mid-price" class="shz-spread-mark">$100,000</span>
+            <span id="ob-spread-info" class="shz-spread-meta">Spread $20 (2.0 bps) · 0 bps fee</span>
+          </div>
+
+          <div id="ob-bids" class="shz-ob-side shz-ob-bids mono" aria-label="Bids"></div>
+
+          <div class="shz-trades-section">
+            <div class="shz-panel-head shz-subhead">
+              <span>Recent P2P Fills</span>
+              <span class="shz-micro-muted mono">LN-DLC · 0 sats fee</span>
+            </div>
+            <div class="shz-trades-cols mono">
+              <span>Price (USD)</span>
+              <span class="align-right">Size (USD)</span>
+              <span class="align-right">Rail</span>
+              <span class="align-right">Time</span>
+            </div>
+            <div id="recent-trades-list" class="shz-trades-list mono"></div>
+          </div>
+        </section>
+
+        <!-- Far-Right Order Entry Ticket -->
+        <aside class="shz-panel shz-ticket-panel" aria-label="Inverse DLC Order Entry">
+          <div class="shz-panel-head">
+            <span class="shz-panel-title">Order Entry</span>
+            <span id="ticket-instrument-badge" class="shz-micro-badge mono">BTC-INVERSE-PERP</span>
+          </div>
+
+          <div class="shz-side-switch" role="tablist">
+            <button type="button" id="tab-side-long" class="shz-side-btn" data-side="Long">
+              Buy / Long
+            </button>
+            <button type="button" id="tab-side-short" class="shz-side-btn is-short-active" data-side="Short">
+              Sell / Short <small>(SatsHedge)</small>
+            </button>
+          </div>
+
+          <form id="shz-order-form" class="shz-ticket-form" autocomplete="off">
+            <!-- Order Type -->
+            <div class="shz-field-row">
+              <div class="shz-segmented">
+                <button type="button" class="shz-seg-btn is-active" data-order-type="limit">Limit</button>
+                <button type="button" class="shz-seg-btn" data-order-type="rfq">RFQ Instant</button>
+              </div>
+              <span class="shz-fee-inline mono">0.00% Fee</span>
+            </div>
+
+            <!-- Quantity USD -->
+            <div class="shz-field">
+              <div class="shz-field-label">
+                <label for="input-usd-notional">Quantity (USD Contracts)</label>
+                <span class="muted mono">$1 / contract</span>
+              </div>
+              <div class="shz-input-group">
+                <span class="shz-input-prefix mono">$</span>
+                <input
+                  id="input-usd-notional"
+                  name="usdNotional"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="10000"
+                  class="shz-input mono"
+                  required
+                />
+                <span class="shz-input-suffix mono">USD</span>
+              </div>
+              <div class="shz-quick-chips mono">
+                <button type="button" class="shz-chip" data-notional="1000">$1k</button>
+                <button type="button" class="shz-chip" data-notional="10000">$10k</button>
+                <button type="button" class="shz-chip" data-notional="50000">$50k</button>
+              </div>
+            </div>
+
+            <!-- Limit Price -->
+            <div class="shz-field">
+              <div class="shz-field-label">
+                <label for="input-limit-price">Limit Price (BTC/USD)</label>
+                <button type="button" id="btn-use-mark" class="shz-link-btn mono">Mark</button>
+              </div>
+              <div class="shz-input-group">
+                <span class="shz-input-prefix mono">$</span>
+                <input
+                  id="input-limit-price"
+                  name="limitPriceUsd"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="100000"
+                  class="shz-input mono"
+                  required
+                />
+                <span class="shz-input-suffix mono">USD</span>
+              </div>
+            </div>
+
+            <!-- Leverage Slider -->
+            <div class="shz-field">
+              <div class="shz-field-label">
+                <label for="input-leverage">Leverage</label>
+                <span id="display-leverage" class="shz-lev-readout mono">1x</span>
+              </div>
+              <input
+                id="input-leverage"
+                name="leverageX"
+                type="range"
+                min="1"
+                max="50"
+                step="1"
+                value="1"
+                class="shz-slider"
+              />
+              <div class="shz-quick-chips mono">
+                <button type="button" class="shz-chip is-selected" data-lev="1">1x</button>
+                <button type="button" class="shz-chip" data-lev="2">2x</button>
+                <button type="button" class="shz-chip" data-lev="5">5x</button>
+                <button type="button" class="shz-chip" data-lev="10">10x</button>
+                <button type="button" class="shz-chip" data-lev="25">25x</button>
+                <button type="button" class="shz-chip" data-lev="50">50x</button>
+              </div>
+              <div id="satshedge-badge" class="shz-satshedge-banner mono">
+                1x SatsHedge — Unliquidatable Synthetic USD
+              </div>
+            </div>
+
+            <!-- Oracle Quorum -->
+            <div class="shz-field">
+              <label for="select-oracle" class="shz-field-label">Oracle Quorum</label>
+              <select id="select-oracle" name="oraclePolicy" class="shz-select mono">
+                <option value="FrostBondedWithFallback">FROST 3-of-5 + NEAR Bond</option>
+                <option value="TradeLayerVwap">TradeLayer L1 VWAP (tx14)</option>
+                <option value="PythNearRelay">Pyth NEAR Relay</option>
+              </select>
+            </div>
+
+            <!-- Collateral Asset -->
+            <div class="shz-field">
+              <label for="select-collateral" class="shz-field-label">Collateral Rail</label>
+              <select id="select-collateral" name="collateral" class="shz-select mono">
+                <option value="VanillaBtc">Vanilla BTC UTXO (v0)</option>
+                <option value="TaprootAsset">Taproot Asset (v1 Disabled Guard)</option>
+              </select>
+              <div id="tap-guard-warning" class="shz-guard-notice mono" hidden>
+                v0 Guard: TAP assets are disabled in v0; submission will be rejected by engine.
+              </div>
+            </div>
+
+            <!-- Live Margin & Risk Summary -->
+            <div class="shz-summary-box mono">
+              <div class="shz-sum-row">
+                <span>Required Margin</span>
+                <strong id="sum-margin">10,000,000 sats (0.1000 BTC)</strong>
+              </div>
+              <div class="shz-sum-row">
+                <span>Est. Liquidation</span>
+                <strong id="sum-liq" class="is-long">∞ UNLIQUIDATABLE</strong>
+              </div>
+              <div class="shz-sum-row">
+                <span>20-bit Dyadic CETs</span>
+                <strong id="sum-cets" class="is-cyan">11,497 CETs</strong>
+              </div>
+              <div class="shz-sum-row">
+                <span>Total P2TR Funding</span>
+                <strong id="sum-funding">11,000,000 sats</strong>
+              </div>
+              <div class="shz-sum-row shz-sum-fee">
+                <span>Protocol Fee</span>
+                <strong class="is-long">0 sats (0.00%)</strong>
+              </div>
+            </div>
+
+            <button type="submit" id="btn-submit-order" class="shz-submit-btn is-short">
+              Open 1x SatsHedge Short (0 Fee)
+            </button>
+
+            <div id="ticket-feedback" class="shz-feedback mono" hidden></div>
+          </form>
+        </aside>
+      </main>
+
+      <!-- Bottom Protocol & Proof Workbench Dock (mounted by /workbench.js) -->
+      <section id="shz-workbench-root" class="shz-workbench-dock" aria-label="Positions and Protocol Workbench"></section>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+    <script type="module" src="/charts.js"></script>
+    <script type="module" src="/workbench.js"></script>
+  </body>
+</html>

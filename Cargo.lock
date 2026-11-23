@@ -411,6 +411,7 @@ dependencies = [
  "shz-dex",
  "shz-dlc",
  "shz-margin",
+ "shz-nova-bitvm",
  "shz-oracle",
  "shz-utxoref",
 ]
@@ -451,6 +452,23 @@ dependencies = [
  "hex",
  "serde",
  "sha2",
+ "thiserror",
+]
+
+[[package]]
+name = "shz-nova-bitvm"
+version = "0.2.0"
+dependencies = [
+ "borsh",
+ "hex",
+ "k256",
+ "serde",
+ "serde_json",
+ "sha2",
+ "shz-dex",
+ "shz-dlc",
+ "shz-margin",
+ "shz-utxoref",
  "thiserror",
 ]
 

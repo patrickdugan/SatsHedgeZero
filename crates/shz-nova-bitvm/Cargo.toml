@@ -1,0 +1,21 @@
+[package]
+name = "shz-nova-bitvm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "MIT native LNMarkets batch statement verifier, 600B Nova v2 transcript/state encoder, Secq BIP-340 claim binder, and 304B UTXORef BitVM3 L2 settlement statement codec."
+
+[dependencies]
+borsh.workspace = true
+hex.workspace = true
+k256.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+shz-dex.workspace = true
+shz-dlc.workspace = true
+shz-margin.workspace = true
+shz-utxoref.workspace = true
+thiserror.workspace = true

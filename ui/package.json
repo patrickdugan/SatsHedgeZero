@@ -1,0 +1,14 @@
+{
+  "name": "satshedgezero-ui",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "SatsHedgeZero Deribit-grade institutional P2P inverse BTC/USD DLC terminal (zero external runtime dependencies)",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test_server.mjs test_workbench.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

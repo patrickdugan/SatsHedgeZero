@@ -20,5 +20,6 @@ serde_json.workspace = true
 shz-dex.workspace = true
 shz-dlc.workspace = true
 shz-margin.workspace = true
+shz-nova-bitvm.workspace = true
 shz-oracle.workspace = true
 shz-utxoref.workspace = true

@@ -10,6 +10,9 @@ use shz_dex::{
 };
 use shz_dlc::{BtcOutPoint, pubkey_x_from_secret};
 use shz_margin::{InverseContractSpec, compress_cet_ranges};
+use shz_nova_bitvm::{
+    NovaBitvmDemoReport, VerificationHonestyFlags, build_verified_nova_bitvm_demo,
+};
 use shz_oracle::{
     fraud_proofs::{
         CanonicalReferenceEvidence, DeviationFraudProof, EquivocationFraudProof,
@@ -64,12 +67,28 @@ struct FraudSimulationReceipt {
 }
 
 #[derive(Serialize)]
+struct NovaBitvmSummaryReceipt {
+    row_count: u32,
+    journal_276b_sha256_hex: String,
+    batch_txid_hex: String,
+    row0_transcript_600b_bytes: usize,
+    nova_relation_version: String,
+    nova_final_state_8_fields: [String; 8],
+    secq_row0_trader_state_3_fields: [String; 3],
+    bitvm3_304b_sha256_hex: String,
+    bitvm3_public_input_limbs_be_dec: [String; 2],
+    mnr02_bob_offline_txid_hex: String,
+    honesty: VerificationHonestyFlags,
+}
+
+#[derive(Serialize)]
 struct FullVerificationReport {
     protocol: &'static str,
     collateral_v0: &'static str,
     fee_bps: u16,
     dex_simulation: DexSimulationReceipt,
     fraud_simulation: FraudSimulationReceipt,
+    nova_bitvm_summary: NovaBitvmSummaryReceipt,
 }
 
 fn run_quote(args: &[String]) -> QuoteSummary {
@@ -381,6 +400,29 @@ fn run_fraud_simulation() -> FraudSimulationReceipt {
     }
 }
 
+fn run_nova_demo() -> NovaBitvmDemoReport {
+    build_verified_nova_bitvm_demo().expect("verified 2-contract Nova/BitVM3 demo")
+}
+
+fn summarize_nova_demo(demo: &NovaBitvmDemoReport) -> NovaBitvmSummaryReceipt {
+    NovaBitvmSummaryReceipt {
+        row_count: demo.row_count,
+        journal_276b_sha256_hex: demo.journal.journal_sha256_hex.clone(),
+        batch_txid_hex: demo.journal.batch_txid_hex.clone(),
+        row0_transcript_600b_bytes: demo.row_transcripts_600b_hex[0].len() / 2,
+        nova_relation_version: demo.nova_expected_statement.relation_version.clone(),
+        nova_final_state_8_fields: demo.nova_expected_statement.final_state_fields.clone(),
+        secq_row0_trader_state_3_fields: demo.secq_row0_claims[0].state_3_fields.clone(),
+        bitvm3_304b_sha256_hex: demo.bitvm3_settlement_statement.statement_sha256_hex.clone(),
+        bitvm3_public_input_limbs_be_dec: demo
+            .bitvm3_settlement_statement
+            .public_input_limbs_be_dec
+            .clone(),
+        mnr02_bob_offline_txid_hex: demo.mnr02_bridge.bob_offline_routed_txid_hex.clone(),
+        honesty: demo.honesty,
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let cmd = args.first().map(String::as_str).unwrap_or("verify-all");
@@ -398,13 +440,19 @@ fn main() {
             let receipt = run_fraud_simulation();
             println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
         }
+        "nova-demo" => {
+            let report = run_nova_demo();
+            println!("{}", serde_json::to_string_pretty(&report).unwrap());
+        }
         "verify-all" => {
+            let nova_demo = run_nova_demo();
             let report = FullVerificationReport {
                 protocol: "SatsHedgeZero v0.2.0",
                 collateral_v0: "VanillaBtc (P2TR UTXO / Lightning Subchannel; TAP v1 hook ready)",
                 fee_bps: 0,
                 dex_simulation: run_dex_simulation(),
                 fraud_simulation: run_fraud_simulation(),
+                nova_bitvm_summary: summarize_nova_demo(&nova_demo),
             };
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
@@ -421,7 +469,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | verify-all | mnr02-regtest [bitcoind_path]]"
+                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | verify-all | mnr02-regtest [bitcoind_path]]"
             );
             std::process::exit(1);
         }

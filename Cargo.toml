@@ -6,6 +6,7 @@ members = [
     "crates/shz-oracle",
     "crates/shz-utxoref",
     "crates/shz-dex",
+    "crates/shz-nova-bitvm",
     "bins/shz-cli",
 ]
 
@@ -22,6 +23,7 @@ shz-dlc = { path = "crates/shz-dlc" }
 shz-oracle = { path = "crates/shz-oracle" }
 shz-utxoref = { path = "crates/shz-utxoref" }
 shz-dex = { path = "crates/shz-dex" }
+shz-nova-bitvm = { path = "crates/shz-nova-bitvm" }
 
 borsh = { version = "1.5", features = ["derive"] }
 hex = "0.4"

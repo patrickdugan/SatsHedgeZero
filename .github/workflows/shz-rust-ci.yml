@@ -16,14 +16,24 @@ jobs:
         with:
           components: clippy
 
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Run workspace unit and e2e tests
         run: cargo test --workspace --locked
 
       - name: Run strict clippy check
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-      - name: Run synthetic verification suite
-        run: cargo run --locked --bin shz -- verify-all
+      - name: Run synthetic and Nova/BitVM3 verification suites
+        run: |
+          cargo run --locked --bin shz -- verify-all
+          cargo run --locked --bin shz -- nova-demo > /dev/null
+
+      - name: Run Deribit terminal HTTP API and workbench tests
+        run: npm --prefix ui test
 
       - name: Install SHA256-pinned Bitcoin Core 31.1 and execute SHZ-MNR-02 regtest
         run: |
