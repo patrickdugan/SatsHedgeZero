@@ -1,0 +1,64 @@
+name: shz-index-admission-fast-stark-replay
+on:
+  push:
+    branches: ["research/shz-index-admission-07-recursive-stark-20261124"]
+    paths: ["research/hourly_index/admission_recursive/fast_hash/**", "research/hourly_index/admission_recursive/near_verifier/**", "research/hourly_index/admission_recursive/fast_sandbox.mjs", ".github/workflows/shz-index-admission-fast-stark-ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: shz-admit09-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  fast-stark-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45286701423'
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/frozen-stark
+      - name: Actual upstream differential and frozen proof tests
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          mkdir -p "$RUNNER_TEMP/shz-admit09"
+          export SHZ_FROZEN_PROOF_DIR="$RUNNER_TEMP/frozen-stark"
+          cargo generate-lockfile --manifest-path "$B/fast_hash/Cargo.toml"
+          python3 "$B/check_lock.py" "$B/fast_hash/Cargo.lock"
+          cargo test --release --locked --manifest-path "$B/fast_hash/Cargo.toml" -- --nocapture | tee "$RUNNER_TEMP/shz-admit09/native.txt"
+          grep 'SHZ_FROZEN_RECEIPT_PARITY' "$RUNNER_TEMP/shz-admit09/native.txt"
+          cp "$B/fast_hash/Cargo.lock" "$RUNNER_TEMP/shz-admit09/fast-Cargo.lock"
+      - name: Compile both hash implementations in one optimized WASM
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          V="$B/near_verifier"
+          cargo generate-lockfile --manifest-path "$V/Cargo.toml"
+          python3 "$B/check_lock.py" "$V/Cargo.lock"
+          cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
+          cp "$V/Cargo.lock" "$RUNNER_TEMP/shz-admit09/near-Cargo.lock"
+      - name: Measure exact matching pair chains and full receipt on sandbox
+        run: |
+          set -euo pipefail
+          npm --prefix research/hourly_index install --no-audit --no-fund
+          node research/hourly_index/admission_recursive/fast_sandbox.mjs "$RUNNER_TEMP/frozen-stark" "$RUNNER_TEMP/shz-admit09/receipt.json"
+          node -e 'const r=require(process.argv[1]);if(r.production_ready||r.can_authorize_dlc_settlement||r.proof_cases.length!==8)process.exit(1);console.log("NEAR application gate:",r.near_verified)' "$RUNNER_TEMP/shz-admit09/receipt.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit09-fast-stark-replay
+          path: ${{ runner.temp }}/shz-admit09
+          retention-days: 14
