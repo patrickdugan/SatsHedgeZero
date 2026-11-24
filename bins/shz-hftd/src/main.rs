@@ -36,6 +36,8 @@ fn main() {
         bind_addr,
         ui_public_dir: ui_dir,
         rollup_interval_ms: rollup_ms,
+        enable_live_oracle: true,
+        enable_auto_mm: true,
     })
     .expect("failed to bind shz-hftd listener");
 

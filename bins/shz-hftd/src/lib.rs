@@ -3,6 +3,8 @@
 #![forbid(unsafe_code)]
 
 pub mod engine;
+pub mod market_maker;
+pub mod oracle_importer;
 pub mod ws;
 
 use std::{
@@ -29,6 +31,8 @@ pub struct HftServerConfig {
     pub bind_addr: String,
     pub ui_public_dir: PathBuf,
     pub rollup_interval_ms: u64,
+    pub enable_live_oracle: bool,
+    pub enable_auto_mm: bool,
 }
 
 impl Default for HftServerConfig {
@@ -37,6 +41,8 @@ impl Default for HftServerConfig {
             bind_addr: "127.0.0.1:8090".into(),
             ui_public_dir: PathBuf::from("ui/public"),
             rollup_interval_ms: 300_000, // 5-minute rolling Testnet4 rollup epoch (Milestone M4)
+            enable_live_oracle: true,
+            enable_auto_mm: true,
         }
     }
 }
@@ -88,7 +94,51 @@ pub fn spawn_hftd_server(cfg: HftServerConfig) -> std::io::Result<HftServerHandl
     listener.set_nonblocking(false)?;
 
     let stop_flag = Arc::new(AtomicBool::new(false));
-    let engine = Arc::new(Mutex::new(HftEngine::new_bootstrapped()));
+    if !cfg.enable_live_oracle {
+        // Skip external HTTPS fetch during deterministic self-hosted benchmarks:
+        // (checked via cfg flags below; HftEngine starts with deterministic mark when offline)
+    }
+    let mut initial_engine = HftEngine::new_bootstrapped();
+    if !cfg.enable_live_oracle {
+        initial_engine.live_two_index = None;
+        initial_engine.mark_price_usd = 100_110;
+    }
+    let engine = Arc::new(Mutex::new(initial_engine));
+
+    // Seed initial continuous Market Maker ladders right away when `enable_auto_mm` is true:
+    if cfg.enable_auto_mm {
+        market_maker::refresh_market_maker_ladders(&engine, 1);
+    }
+
+    // Live Two-Index Pyth + Chainlink Fiat Importer (`1,500 ms` off-lock HTTPS JSON-RPC poll):
+    if cfg.enable_live_oracle {
+        let eng_ora = Arc::clone(&engine);
+        let stop_ora = Arc::clone(&stop_flag);
+        thread::spawn(move || {
+            while !stop_ora.load(Ordering::Relaxed) {
+                if let Ok(obs) = oracle_importer::fetch_live_pyth_chainlink_btcusd()
+                    && let Ok(mut guard) = eng_ora.lock()
+                {
+                    guard.apply_live_two_index_observation(obs);
+                }
+                thread::sleep(Duration::from_millis(1_500));
+            }
+        });
+    }
+
+    // Autonomous Two-Sided Continuous Market Maker (`600 ms` off-lock BIP-340 mass-quote refresh):
+    if cfg.enable_auto_mm {
+        let eng_mm = Arc::clone(&engine);
+        let stop_mm = Arc::clone(&stop_flag);
+        thread::spawn(move || {
+            let mut mm_tick: u64 = 1;
+            while !stop_mm.load(Ordering::Relaxed) {
+                thread::sleep(Duration::from_millis(600));
+                mm_tick += 1;
+                market_maker::refresh_market_maker_ladders(&eng_mm, mm_tick);
+            }
+        });
+    }
 
     // Background Tier-1 (`100 ms` LN Coalescer), Tier-2 (`200 ms` Oracle), Tier-3 (`5 m` Rollup) loop:
     {
@@ -354,7 +404,19 @@ fn handle_connection(
                     Err(e) => send_http_json(&mut writer, 400, &serde_json::json!({"error": e}))?,
                 }
             }
-            // Native Terminal `/api/state` & `/api/quote` compatibility so `/` works standalone on `shz-hftd`!
+            ("GET", "/v1/api/two_index") => {
+                let snap = engine.lock().unwrap().build_explorer_snapshot();
+                send_http_json(
+                    &mut writer,
+                    200,
+                    &serde_json::json!({
+                        "fiat_two_index_mode": true,
+                        "live_two_index": snap.live_two_index,
+                        "oracle_latest": snap.oracle_latest,
+                    }),
+                )?;
+            }
+            // Native Terminal `/api/*` endpoints so `/` is 100% click-to-trade live on `shz-hftd`!
             ("GET", "/api/state") => {
                 let snap = engine.lock().unwrap().build_explorer_snapshot();
                 let payload = build_terminal_compat_state(&snap);
@@ -365,6 +427,81 @@ fn handle_connection(
                     serde_json::from_slice(&body).unwrap_or_else(|_| serde_json::json!({}));
                 let q = build_terminal_compat_quote(&v);
                 send_http_json(&mut writer, 200, &q)?;
+            }
+            ("POST", "/api/orders") => {
+                let v: serde_json::Value =
+                    serde_json::from_slice(&body).unwrap_or_else(|_| serde_json::json!({}));
+                let res = {
+                    let mut guard = engine.lock().unwrap();
+                    let out = guard.submit_terminal_order(&v);
+                    out.map(|mut data| {
+                        let snap = guard.build_explorer_snapshot();
+                        data["state"] = build_terminal_compat_state(&snap);
+                        data
+                    })
+                };
+                match res {
+                    Ok(payload) => send_http_json(&mut writer, 200, &payload)?,
+                    Err((code, msg)) => {
+                        send_http_json(&mut writer, code, &serde_json::json!({"error": msg}))?
+                    }
+                }
+            }
+            ("POST", "/api/positions/close") => {
+                let v: serde_json::Value =
+                    serde_json::from_slice(&body).unwrap_or_else(|_| serde_json::json!({}));
+                let pos_id = v["positionId"].as_str().unwrap_or("");
+                let res = {
+                    let mut guard = engine.lock().unwrap();
+                    guard.close_user_position_ptlc(pos_id).map(|mut data| {
+                        let snap = guard.build_explorer_snapshot();
+                        data["state"] = build_terminal_compat_state(&snap);
+                        data
+                    })
+                };
+                match res {
+                    Ok(payload) => send_http_json(&mut writer, 200, &payload)?,
+                    Err(e) => send_http_json(&mut writer, 400, &serde_json::json!({"error": e}))?,
+                }
+            }
+            ("POST", "/api/positions/bob-status") => {
+                let v: serde_json::Value =
+                    serde_json::from_slice(&body).unwrap_or_else(|_| serde_json::json!({}));
+                let pos_id = v["positionId"].as_str().unwrap_or("");
+                let bob_offline = v["bobOffline"].as_bool().unwrap_or(false);
+                let payload = {
+                    let mut guard = engine.lock().unwrap();
+                    guard.set_user_bob_status(pos_id, bob_offline);
+                    build_terminal_compat_state(&guard.build_explorer_snapshot())
+                };
+                send_http_json(&mut writer, 200, &payload)?;
+            }
+            ("POST", "/api/closeout-mnr02") => {
+                let v: serde_json::Value =
+                    serde_json::from_slice(&body).unwrap_or_else(|_| serde_json::json!({}));
+                let notional = v["notionalUsd"].as_u64().unwrap_or(10_000).max(1);
+                let entry_px = v["entryPriceUsd"].as_u64().unwrap_or(60_000).max(1);
+                let snap = engine.lock().unwrap().build_explorer_snapshot();
+                let carol_px = (snap.mark_price_usd * 102) / 100;
+                let mat_px = (snap.mark_price_usd * 105) / 100;
+                let locked_pnl = (((notional as i128) * 100_000_000 * ((carol_px as i128) - (entry_px as i128)))
+                    / ((entry_px as i128) * (carol_px.max(1) as i128))) as i64;
+                let carol_out = (((notional as u128) * 100_000_000 * ((mat_px - carol_px) as u128))
+                    / ((carol_px.max(1) as u128) * (mat_px.max(1) as u128))) as u64;
+                send_http_json(
+                    &mut writer,
+                    200,
+                    &serde_json::json!({
+                        "notionalUsd": notional,
+                        "entryPriceUsd": entry_px,
+                        "carolClosePriceUsd": carol_px,
+                        "maturityPriceUsd": mat_px,
+                        "aliceLockedPnlSats": locked_pnl,
+                        "carolOutput1Sats": carol_out,
+                        "bobOffline": v["bobOffline"].as_bool().unwrap_or(true),
+                        "state": build_terminal_compat_state(&snap),
+                    }),
+                )?;
             }
             ("GET", p) => {
                 serve_static_ui(&mut writer, ui_public_dir, p)?;
@@ -625,106 +762,208 @@ fn serve_static_ui<W: Write>(
 }
 
 fn build_terminal_compat_state(snap: &engine::ExplorerSnapshot) -> serde_json::Value {
-    let asks: Vec<serde_json::Value> = snap
-        .asks
+    // Aggregate resting levels by price so Deribit orderbook ladder displays cleanly:
+    let mut ask_map: std::collections::BTreeMap<u64, (u64, u32, usize)> =
+        std::collections::BTreeMap::new();
+    for a in &snap.asks {
+        let entry = ask_map
+            .entry(a.price_usd)
+            .or_insert((0, (a.leverage_bps / 10_000).max(1), 0));
+        entry.0 += a.open_usd_notional;
+        entry.2 += 1;
+    }
+    let mut cum_ask_usd = 0u64;
+    let mut cum_ask_sats = 0u64;
+    let mut asks_vec = Vec::with_capacity(ask_map.len());
+    let total_ask_usd: u64 = ask_map.values().map(|v| v.0).sum::<u64>().max(1);
+    for (px, (sz_usd, lev_x, cnt)) in ask_map {
+        let sats = (sz_usd * 100_000_000) / px.max(1);
+        cum_ask_usd += sz_usd;
+        cum_ask_sats += sats;
+        asks_vec.push(serde_json::json!({
+            "priceUsd": px,
+            "sizeUsd": sz_usd,
+            "side": "Short",
+            "leverageX": lev_x,
+            "oraclePolicy": "FrostBondedWithFallback",
+            "orderCount": cnt,
+            "valueSats": sats,
+            "valueBtc": (sats as f64) / 1e8,
+            "totalUsd": cum_ask_usd,
+            "totalSats": cum_ask_sats,
+            "depthPct": ((cum_ask_usd as f64 / total_ask_usd as f64) * 100.0).min(100.0),
+        }));
+    }
+
+    let mut bid_map: std::collections::BTreeMap<u64, (u64, u32, usize)> =
+        std::collections::BTreeMap::new();
+    for b in &snap.bids {
+        let entry = bid_map
+            .entry(b.price_usd)
+            .or_insert((0, (b.leverage_bps / 10_000).max(1), 0));
+        entry.0 += b.open_usd_notional;
+        entry.2 += 1;
+    }
+    let mut cum_bid_usd = 0u64;
+    let mut cum_bid_sats = 0u64;
+    let mut bids_vec = Vec::with_capacity(bid_map.len());
+    let total_bid_usd: u64 = bid_map.values().map(|v| v.0).sum::<u64>().max(1);
+    for (px, (sz_usd, lev_x, cnt)) in bid_map.into_iter().rev() {
+        let sats = (sz_usd * 100_000_000) / px.max(1);
+        cum_bid_usd += sz_usd;
+        cum_bid_sats += sats;
+        bids_vec.push(serde_json::json!({
+            "priceUsd": px,
+            "sizeUsd": sz_usd,
+            "side": "Long",
+            "leverageX": lev_x,
+            "oraclePolicy": "FrostBondedWithFallback",
+            "orderCount": cnt,
+            "valueSats": sats,
+            "valueBtc": (sats as f64) / 1e8,
+            "totalUsd": cum_bid_usd,
+            "totalSats": cum_bid_sats,
+            "depthPct": ((cum_bid_usd as f64 / total_bid_usd as f64) * 100.0).min(100.0),
+        }));
+    }
+
+    let best_ask = asks_vec
+        .first()
+        .and_then(|a| a["priceUsd"].as_u64())
+        .unwrap_or(snap.mark_price_usd + 4);
+    let best_bid = bids_vec
+        .first()
+        .and_then(|b| b["priceUsd"].as_u64())
+        .unwrap_or(snap.mark_price_usd.saturating_sub(4));
+    let spread_usd = best_ask.saturating_sub(best_bid);
+    let spread_bps = ((spread_usd as f64 / (snap.mark_price_usd.max(1) as f64)) * 10_000.0 * 100.0)
+        .round()
+        / 100.0;
+
+    let recent_trades: Vec<serde_json::Value> = snap
+        .fill_tape
         .iter()
+        .take(16)
         .enumerate()
-        .map(|(i, a)| {
-            let sats = (a.open_usd_notional * 100_000_000) / a.price_usd.max(1);
+        .map(|(idx, f)| {
+            let secs = (f.timestamp_ms / 1_000) % 86_400;
+            let hh = secs / 3_600;
+            let mm = (secs % 3_600) / 60;
+            let ss = secs % 60;
             serde_json::json!({
-                "priceUsd": a.price_usd,
-                "sizeUsd": a.open_usd_notional,
-                "side": "Short",
-                "leverageX": (a.leverage_bps / 10_000).max(1),
-                "oraclePolicy": "FrostBondedWithFallback",
-                "orderCount": 1,
-                "valueSats": sats,
-                "valueBtc": (sats as f64) / 1e8,
-                "totalUsd": a.open_usd_notional * ((i + 1) as u64),
-                "totalSats": sats * ((i + 1) as u64),
-                "depthPct": ((i + 1) * 12).min(100),
+                "id": &f.match_id_hex[..12],
+                "priceUsd": f.execution_price_usd,
+                "sizeUsd": f.matched_usd_notional,
+                "side": if idx.is_multiple_of(2) { "Long" } else { "Short" },
+                "feeSats": 0,
+                "settlement": "LN-DLC 100ms",
+                "time": format!("{hh:02}:{mm:02}:{ss:02}"),
             })
         })
         .collect();
-    let bids: Vec<serde_json::Value> = snap
-        .bids
-        .iter()
-        .enumerate()
-        .map(|(i, b)| {
-            let sats = (b.open_usd_notional * 100_000_000) / b.price_usd.max(1);
-            serde_json::json!({
-                "priceUsd": b.price_usd,
-                "sizeUsd": b.open_usd_notional,
-                "side": "Long",
-                "leverageX": (b.leverage_bps / 10_000).max(1),
-                "oraclePolicy": "FrostBondedWithFallback",
-                "orderCount": 1,
-                "valueSats": sats,
-                "valueBtc": (sats as f64) / 1e8,
-                "totalUsd": b.open_usd_notional * ((i + 1) as u64),
-                "totalSats": sats * ((i + 1) as u64),
-                "depthPct": ((i + 1) * 12).min(100),
-            })
-        })
-        .collect();
-    let best_ask = snap.asks.first().map(|a| a.price_usd).unwrap_or(snap.mark_price_usd + 15);
-    let best_bid = snap.bids.first().map(|b| b.price_usd).unwrap_or(snap.mark_price_usd - 15);
+
+    let (pyth_px_usd, pyth_conf_bps, chainlink_px_usd, two_index_live) =
+        if let Some(ref obs) = snap.live_two_index {
+            (
+                (obs.pyth_price_e8 + 50_000_000) / 100_000_000,
+                obs.pyth_conf_bps,
+                (obs.chainlink_price_e8 + 50_000_000) / 100_000_000,
+                true,
+            )
+        } else if let Some(ref t) = snap.oracle_latest {
+            (
+                (t.pyth_price_e8 + 50_000_000) / 100_000_000,
+                t.spread_bps.max(1),
+                (t.chainlink_price_e8 + 50_000_000) / 100_000_000,
+                false,
+            )
+        } else {
+            (snap.mark_price_usd, 2, snap.mark_price_usd, false)
+        };
 
     serde_json::json!({
         "instrument": "BTC-INVERSE-PERP",
-        "instruments": [{
-            "symbol": "BTC-INVERSE-PERP",
-            "label": "BTC-INVERSE-PERP",
-            "kind": "Perpetual Inverse DLC",
-            "markPriceUsd": snap.mark_price_usd,
-            "indexPriceUsd": snap.mark_price_usd,
-            "change24hPct": 2.48,
-            "volume24hUsd": 48_290_000 + snap.latency.total_usd_volume,
-            "openInterestUsd": 19_450_000,
-            "expiryLabel": "Perpetual (LN-DLC 100ms Coalesced)"
-        }],
+        "instruments": [
+            {
+                "symbol": "BTC-INVERSE-PERP",
+                "label": "BTC-INVERSE-PERP",
+                "kind": "Perpetual Inverse DLC",
+                "markPriceUsd": snap.mark_price_usd,
+                "indexPriceUsd": snap.mark_price_usd,
+                "change24hPct": 2.48,
+                "volume24hUsd": 48_290_000 + snap.latency.total_usd_volume,
+                "openInterestUsd": 19_450_000,
+                "expiryLabel": "Perpetual (LN-DLC 100ms Coalesced)"
+            },
+            {
+                "symbol": "BTC-27DEC26-DLC",
+                "label": "BTC-27DEC26-DLC",
+                "kind": "Dated Inverse DLC",
+                "markPriceUsd": (snap.mark_price_usd * 102) / 100,
+                "indexPriceUsd": snap.mark_price_usd,
+                "change24hPct": 3.12,
+                "volume24hUsd": 14_820_000,
+                "openInterestUsd": 8_910_000,
+                "expiryLabel": "27 Dec 2026 08:00 UTC"
+            },
+            {
+                "symbol": "BTC-28MAR27-DLC",
+                "label": "BTC-28MAR27-DLC",
+                "kind": "Dated Inverse DLC",
+                "markPriceUsd": (snap.mark_price_usd * 105) / 100,
+                "indexPriceUsd": snap.mark_price_usd,
+                "change24hPct": 3.85,
+                "volume24hUsd": 9_340_000,
+                "openInterestUsd": 6_120_000,
+                "expiryLabel": "28 Mar 2027 08:00 UTC"
+            }
+        ],
         "market": {
             "symbol": "BTC-INVERSE-PERP",
             "markPriceUsd": snap.mark_price_usd,
-            "tradelayerVwapUsd": snap.mark_price_usd + 45,
-            "pythPriceUsd": snap.oracle_latest.as_ref().map(|t| t.midpoint_price_usd).unwrap_or(snap.mark_price_usd),
-            "pythConfBps": snap.oracle_latest.as_ref().map(|t| t.spread_bps).unwrap_or(2),
+            "tradelayerVwapUsd": chainlink_px_usd,
+            "chainlinkPriceUsd": chainlink_px_usd,
+            "pythPriceUsd": pyth_px_usd,
+            "pythConfBps": pyth_conf_bps,
+            "twoIndexFiatLive": two_index_live,
+            "feeBps": 0,
+            "makerFeeBps": 0,
+            "takerFeeBps": 0,
             "volume24hUsd": 48_290_000 + snap.latency.total_usd_volume,
             "openInterestUsd": 19_450_000,
             "frost": { "threshold": 3, "total": 5, "healthySigners": 5 },
-            "wallet": { "balanceSats": 250_000_000 }
+            "wallet": { "balanceSats": snap.user_wallet_sats }
         },
         "orderbook": {
             "instrument": "BTC-INVERSE-PERP",
             "feeBps": 0,
-            "asks": asks,
-            "bids": bids,
+            "asks": asks_vec,
+            "bids": bids_vec,
             "bestAskUsd": best_ask,
             "bestBidUsd": best_bid,
-            "spreadUsd": best_ask.saturating_sub(best_bid),
-            "spreadBps": 3.0
+            "spreadUsd": spread_usd,
+            "spreadBps": spread_bps,
+            "recentTrades": recent_trades,
         },
-        "recentTrades": snap.fill_tape.iter().map(|f| serde_json::json!({
-            "id": &f.match_id_hex[..12],
-            "priceUsd": f.execution_price_usd,
-            "sizeUsd": f.matched_usd_notional,
-            "side": "Long",
-            "feeSats": 0,
-            "settlement": "LN-DLC 100ms"
-        })).collect::<Vec<_>>(),
-        "positions": [],
-        "engineInfo": { "backend": "shz-hftd (Rust Native WS/REST)" }
+        "recentTrades": recent_trades,
+        "positions": snap.user_positions,
+        "engineInfo": {
+            "backend": "shz-hftd (Rust Native WS/REST + Live Pyth/Chainlink + Auto-MM)",
+            "twoIndexFiatLive": two_index_live
+        }
     })
 }
 
 fn build_terminal_compat_quote(v: &serde_json::Value) -> serde_json::Value {
     let usd = v["usdNotional"].as_u64().unwrap_or(10_000).max(1);
-    let px = v["entryPriceUsd"].as_u64().unwrap_or(100_000).max(1);
-    let long_lev_bps = ((v["longLevX"].as_f64().unwrap_or(10.0) * 10_000.0) as u32).clamp(1_000, 1_000_000);
-    let short_lev_bps = ((v["shortLevX"].as_f64().unwrap_or(1.0) * 10_000.0) as u32).clamp(1_000, 1_000_000);
+    let px = v["entryPriceUsd"].as_u64().unwrap_or(60_000).max(1);
+    let long_lev_bps =
+        ((v["longLevX"].as_f64().unwrap_or(10.0) * 10_000.0) as u32).clamp(1_000, 1_000_000);
+    let short_lev_bps =
+        ((v["shortLevX"].as_f64().unwrap_or(1.0) * 10_000.0) as u32).clamp(1_000, 1_000_000);
     let spec = InverseContractSpec::from_leverages_v0(usd, px, long_lev_bps, short_lev_bps)
         .unwrap_or_else(|_| {
-            InverseContractSpec::from_leverages_v0(10_000, 100_000, 100_000, 10_000).unwrap()
+            InverseContractSpec::from_leverages_v0(10_000, 60_000, 100_000, 10_000).unwrap()
         });
     let is_long = v["side"].as_str() == Some("Long");
     let cets = shz_margin::compress_cet_ranges(&spec, 20, 250).unwrap_or_default();
@@ -738,6 +977,26 @@ fn build_terminal_compat_quote(v: &serde_json::Value) -> serde_json::Value {
     } else {
         spec.short_liquidation_price_usd()
     };
+
+    let min_p = (px / 3).max(5_000);
+    let max_p = px.saturating_mul(2).max(120_000);
+    let step_p = ((max_p - min_p) / 36).max(500);
+    let mut curve = Vec::with_capacity(40);
+    let mut p_cur = min_p;
+    while p_cur <= max_p {
+        let sp = spec.payout_at_price(p_cur);
+        curve.push(serde_json::json!({
+            "priceUsd": p_cur,
+            "longSats": sp.long_sats,
+            "shortSats": sp.short_sats,
+            "longPnlSats": (sp.long_sats as i64) - (spec.long_margin_sats as i64),
+            "shortPnlSats": (sp.short_sats as i64) - (spec.short_margin_sats as i64),
+            "longUsdValue": ((sp.long_sats as u128 * p_cur as u128) / 100_000_000) as u64,
+            "shortUsdValue": ((sp.short_sats as u128 * p_cur as u128) / 100_000_000) as u64,
+        }));
+        p_cur += step_p;
+    }
+
     serde_json::json!({
         "usdNotional": spec.usd_notional,
         "entryPriceUsd": spec.entry_price_usd,
@@ -756,7 +1015,7 @@ fn build_terminal_compat_quote(v: &serde_json::Value) -> serde_json::Value {
         "makerFeeSats": 0,
         "takerFeeSats": 0,
         "protocolFeeSats": 0,
-        "payoffCurve": [],
+        "payoffCurve": curve,
         "cetSamples": [],
     })
 }

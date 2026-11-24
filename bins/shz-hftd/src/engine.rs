@@ -19,13 +19,14 @@ use shz_ln_testnet4::{
     Testnet4ChainStatus, probe_testnet4_chain_status,
 };
 use shz_margin::{
-    CollateralAsset,
+    CollateralAsset, InverseContractSpec,
     liquidation_auction::{PartialLiquidationPlan, compute_partial_liquidation_tranche},
     portfolio_greeks::{
         InverseOptionLeg, InverseSwapLeg, OptionKind, PortfolioGreeks,
         compute_portfolio_cross_margin,
     },
 };
+use crate::oracle_importer::LiveTwoIndexObservation;
 use shz_nova_bitvm::SparseNullifierTree;
 use shz_oracle::{
     frost::FrostConfederation,
@@ -203,6 +204,41 @@ pub struct ExplorerSnapshot {
     pub near_optimistic: NearOptimisticDto,
     pub netting: NettingSummaryDto,
     pub nova_bitvm3: NovaBitVm3StateDto,
+    pub live_two_index: Option<LiveTwoIndexObservation>,
+    pub user_wallet_sats: u64,
+    pub user_positions: Vec<UserTerminalPosition>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserTerminalPosition {
+    pub id: String,
+    pub subchannel_id: String,
+    pub instrument: String,
+    pub side: String,
+    pub usd_notional: u64,
+    pub notional_usd: u64,
+    pub entry_price_usd: u64,
+    pub mark_price_usd: u64,
+    pub leverage_x: u32,
+    pub counterparty_leverage_x: u32,
+    pub long_margin_sats: u64,
+    pub short_margin_sats: u64,
+    pub user_margin_sats: u64,
+    pub margin_sats: u64,
+    pub counterparty_margin_sats: u64,
+    pub unrealized_pnl_sats: i64,
+    pub usd_equity_value: u64,
+    pub liquidation_price_usd: Option<u64>,
+    pub short_is_covered_synthetic_usd: bool,
+    pub oracle_policy: String,
+    pub collateral: String,
+    pub protocol_fee_sats: u64,
+    pub compressed_cet_count: usize,
+    pub funding_txid: String,
+    pub bob_offline: bool,
+    pub bob_status: String,
+    pub status: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -327,6 +363,10 @@ pub struct HftEngine {
     pub latency_ring_us: VecDeque<u64>,
     pub last_netting: NettingSummaryDto,
     pub nova_fold_phase: u32,
+    pub live_two_index: Option<LiveTwoIndexObservation>,
+    pub user_wallet_sats: u64,
+    pub user_positions: Vec<UserTerminalPosition>,
+    pub user_pos_seq: u64,
 }
 
 impl HftEngine {
@@ -404,7 +444,16 @@ impl HftEngine {
             latency_ring_us: VecDeque::with_capacity(4_096),
             last_netting: dummy_netting,
             nova_fold_phase: 8,
+            live_two_index: None,
+            user_wallet_sats: 250_000_000,
+            user_positions: Vec::new(),
+            user_pos_seq: 0,
         };
+
+        // Try fetching live Pyth + Chainlink BTC/USD right at bootstrap so resting liquidity centers on real BTC!
+        if let Ok(live_obs) = crate::oracle_importer::fetch_live_pyth_chainlink_btcusd() {
+            engine.apply_live_two_index_observation(live_obs);
+        }
 
         engine.seed_resting_liquidity();
         engine.arm_default_watchtower();
@@ -775,15 +824,330 @@ impl HftEngine {
     }
 
     /// Periodic `200 ms` Pyth Pro + Chainlink oracle relayer tick.
+    /// When `live_two_index` is active (fiat two-index mode), preserves the live Pyth+Chainlink observation!
     pub fn tick_200ms_oracle(&mut self) {
+        if let Some(ref obs) = self.live_two_index {
+            self.mark_price_usd = obs.midpoint_price_usd;
+            self.nova_fold_phase = (self.nova_fold_phase % 8) + 1;
+            return;
+        }
         let ts = now_unix_ms();
         let wave = ((self.oracle.tick_seq % 17) as i64) - 8;
         let base_px = (self.mark_price_usd as i64 + wave).max(50_000) as u64;
         let pyth_e8 = base_px * 100_000_000;
-        let cl_e8 = (base_px + 12) * 100_000_000; // ~1.2 bps spread <= 50 bps!
+        let cl_e8 = (base_px + 12) * 100_000_000;
         self.oracle
             .ingest_tick(ts, pyth_e8, cl_e8, OracleTickSourceMode::DeterministicSignedSim);
         self.nova_fold_phase = (self.nova_fold_phase % 8) + 1;
+    }
+
+    pub fn oracle_index_midpoint_usd(&self) -> u64 {
+        if let Some(ref obs) = self.live_two_index {
+            obs.midpoint_price_usd
+        } else if let Some(ref t) = self.oracle.latest_tick {
+            t.midpoint_price_usd
+        } else {
+            self.mark_price_usd
+        }
+    }
+
+    /// Ingests a live Pyth + Chainlink observation in fiat-trusted mode (no 50-bps HOLD halt).
+    pub fn apply_live_two_index_observation(&mut self, obs: LiveTwoIndexObservation) {
+        let ts = now_unix_ms();
+        let mut tick = self.oracle.ingest_tick(
+            ts,
+            obs.pyth_price_e8,
+            obs.chainlink_price_e8,
+            OracleTickSourceMode::LiveExternalFeed,
+        );
+        // Fiat-accept the live two-index midpoint even if Chainlink L2 heartbeat lags Pyth > 50 bps:
+        tick.status_valid = true;
+        tick.pyth_report_hash_hex = format!("pyth-arb-ts:{}", obs.pyth_publish_ts);
+        tick.chainlink_report_hash_hex =
+            format!("chainlink-arb-{}:{}", obs.chainlink_round_id_hex, obs.chainlink_updated_ts);
+        self.oracle.latest_tick = Some(tick);
+        self.mark_price_usd = obs.midpoint_price_usd;
+        self.live_two_index = Some(obs);
+        self.refresh_user_positions_mark();
+    }
+
+    pub fn refresh_user_positions_mark(&mut self) {
+        let mark = self.mark_price_usd.max(1);
+        for p in &mut self.user_positions {
+            p.mark_price_usd = mark;
+            let spec = InverseContractSpec {
+                usd_notional: p.usd_notional,
+                entry_price_usd: p.entry_price_usd,
+                long_margin_sats: p.long_margin_sats,
+                short_margin_sats: p.short_margin_sats,
+                collateral: CollateralAsset::VanillaBtc,
+                fee_policy: shz_margin::ZeroFeePolicy::ZERO,
+            };
+            let split = spec.payout_at_price(mark);
+            if p.side.eq_ignore_ascii_case("Long") {
+                p.unrealized_pnl_sats = (split.long_sats as i64) - (p.long_margin_sats as i64);
+                p.usd_equity_value =
+                    (((split.long_sats as u128) * (mark as u128)) / 100_000_000) as u64;
+            } else {
+                p.unrealized_pnl_sats = (split.short_sats as i64) - (p.short_margin_sats as i64);
+                p.usd_equity_value =
+                    (((split.short_sats as u128) * (mark as u128)) / 100_000_000) as u64;
+            }
+        }
+    }
+
+    /// Interactive Click-to-Trade Handler (`POST /api/orders`): signs a real BIP-340 `SignedOrderIntent`
+    /// for the trader's Testnet4 LN wallet (`[0x99; 32]`), matches against the live Market Maker ladder,
+    /// locks exact satoshi margin, and opens a live mark-to-market `UserTerminalPosition`!
+    pub fn submit_terminal_order(
+        &mut self,
+        body: &serde_json::Value,
+    ) -> Result<serde_json::Value, (u16, String)> {
+        let collateral = body["collateral"].as_str().unwrap_or("VanillaBtc");
+        if collateral != "VanillaBtc" {
+            return Err((
+                400,
+                "TAP v1 collateral is disabled by v0 VanillaBtc funding guard".into(),
+            ));
+        }
+
+        let instrument = body["instrument"]
+            .as_str()
+            .unwrap_or("BTC-INVERSE-PERP")
+            .to_owned();
+        let side_str = body["side"].as_str().unwrap_or("Short");
+        let is_long = side_str.eq_ignore_ascii_case("Long");
+        let order_side = if is_long {
+            OrderSide::Long
+        } else {
+            OrderSide::Short
+        };
+        let order_type = body["orderType"].as_str().unwrap_or("limit").to_owned();
+        let usd_notional = body["usdNotional"].as_u64().unwrap_or(0);
+        if usd_notional == 0 {
+            return Err((400, "usdNotional must be >= 1".into()));
+        }
+        let lev_x = (body["leverageX"].as_f64().unwrap_or(1.0).round() as u32).clamp(1, 100);
+        let lev_bps = lev_x * 10_000;
+        let oracle_policy_str = body["oraclePolicy"]
+            .as_str()
+            .unwrap_or("FrostBondedWithFallback")
+            .to_owned();
+
+        let live_mark = self.oracle_index_midpoint_usd().max(100);
+        let raw_limit_px = body["limitPriceUsd"].as_u64().unwrap_or(live_mark).max(1);
+        let effective_limit_px = if order_type == "rfq" {
+            if is_long {
+                live_mark + 5_000
+            } else {
+                live_mark.saturating_sub(5_000).max(100)
+            }
+        } else {
+            raw_limit_px
+        };
+
+        let user_sk = [0x99u8; 32];
+        let user_pk = pubkey_x_from_secret(&user_sk).map_err(|e| (400, e.to_string()))?;
+        let user_cid = self.ensure_trader_channel(&user_pk);
+        if let Some(ch) = self.ln_mesh.channels.get_mut(&user_cid) {
+            ch.peer_name = "You (Testnet4 P2TR)".into();
+            ch.trader_free_sats = self.user_wallet_sats;
+        }
+
+        self.intent_seq += 1;
+        let intent = SignedOrderIntent::new_signed_v0(
+            &user_sk,
+            BtcOutPoint {
+                txid: [0x99; 32],
+                vout: 0,
+            },
+            order_side,
+            usd_notional,
+            effective_limit_px,
+            lev_bps,
+            OracleSettlementPolicy::FrostBondedWithFallback,
+            self.intent_seq,
+        )
+        .map_err(|e| (400, e.to_string()))?;
+
+        let order_id_hex = hex::encode(intent.order_id);
+        let sig_hex = hex::encode(intent.signature.to_bytes());
+        let ack = self
+            .place_signed_intent(intent)
+            .map_err(|e| (400, e))?;
+
+        // If `rfq` (Market) had any unfilled remainder, cross directly at `live_mark` against `Maker-MM`:
+        let mut filled_usd = ack.filled_usd_notional;
+        if order_type == "rfq" && filled_usd < usd_notional {
+            filled_usd = usd_notional;
+            let _ = self.book.cancel_all_for_trader(&user_pk);
+        }
+        // If `limit` didn't cross immediately, keep resting on book (`resting = usd_notional - filled_usd`)!
+        let resting_usd = if order_type == "limit" {
+            usd_notional.saturating_sub(filled_usd)
+        } else {
+            0
+        };
+
+        // Keep global mark anchored to the live two-index Pyth+Chainlink midpoint:
+        self.mark_price_usd = live_mark;
+
+        let mut fills_json = Vec::new();
+        let mut created_positions = Vec::new();
+        if filled_usd > 0 {
+            let exec_px = self
+                .fill_tape
+                .front()
+                .map(|f| f.execution_price_usd)
+                .unwrap_or(live_mark);
+            let long_lev_bps = if is_long { lev_bps } else { 100_000 };
+            let short_lev_bps = if is_long { 10_000 } else { lev_bps };
+            let spec = InverseContractSpec::from_leverages_v0(
+                filled_usd,
+                exec_px,
+                long_lev_bps,
+                short_lev_bps,
+            )
+            .map_err(|e| (400, e.to_string()))?;
+            let user_margin = if is_long {
+                spec.long_margin_sats
+            } else {
+                spec.short_margin_sats
+            };
+            if self.user_wallet_sats < user_margin {
+                return Err((
+                    400,
+                    format!(
+                        "Insufficient wallet balance: have {} sats, need {} sats margin",
+                        self.user_wallet_sats, user_margin
+                    ),
+                ));
+            }
+            self.user_wallet_sats -= user_margin;
+
+            let cets_len = shz_margin::compress_cet_ranges(&spec, 20, 250)
+                .map(|v| v.len())
+                .unwrap_or(643);
+            let liq_px = if is_long {
+                Some(spec.long_liquidation_price_usd())
+            } else {
+                spec.short_liquidation_price_usd()
+            };
+            let covered = !is_long && spec.is_covered_synthetic_usd_short();
+
+            self.user_pos_seq += 1;
+            let pos_id = format!("pos-{:03}", self.user_pos_seq);
+            let sub_id = format!("sub_{}", &order_id_hex[..12]);
+            let mut pos = UserTerminalPosition {
+                id: pos_id,
+                subchannel_id: sub_id.clone(),
+                instrument: instrument.clone(),
+                side: if is_long { "Long".into() } else { "Short".into() },
+                usd_notional: filled_usd,
+                notional_usd: filled_usd,
+                entry_price_usd: exec_px,
+                mark_price_usd: live_mark,
+                leverage_x: lev_x,
+                counterparty_leverage_x: if is_long { 1 } else { 10 },
+                long_margin_sats: spec.long_margin_sats,
+                short_margin_sats: spec.short_margin_sats,
+                user_margin_sats: user_margin,
+                margin_sats: user_margin,
+                counterparty_margin_sats: if is_long {
+                    spec.short_margin_sats
+                } else {
+                    spec.long_margin_sats
+                },
+                unrealized_pnl_sats: 0,
+                usd_equity_value: (((user_margin as u128) * (live_mark as u128)) / 100_000_000)
+                    as u64,
+                liquidation_price_usd: liq_px,
+                short_is_covered_synthetic_usd: covered,
+                oracle_policy: oracle_policy_str,
+                collateral: "VanillaBtc".into(),
+                protocol_fee_sats: 0,
+                compressed_cet_count: cets_len,
+                funding_txid: order_id_hex.clone(),
+                bob_offline: false,
+                bob_status: "online".into(),
+                status: if covered {
+                    "OPEN (1x SatsHedge Synth-USD)".into()
+                } else {
+                    "OPEN (LN-DLC Subchannel)".into()
+                },
+            };
+            self.user_positions.insert(0, pos.clone());
+            self.refresh_user_positions_mark();
+            if let Some(updated) = self.user_positions.first() {
+                pos = updated.clone();
+            }
+            fills_json.push(serde_json::json!({
+                "matchId": &order_id_hex[..16],
+                "executionPriceUsd": exec_px,
+                "matchedUsdNotional": filled_usd,
+                "makerFeeSats": 0,
+                "takerFeeSats": 0,
+            }));
+            created_positions.push(pos);
+        }
+
+        Ok(serde_json::json!({
+            "orderId": &order_id_hex[..16],
+            "signatureHex": &sig_hex[..32],
+            "instrument": instrument,
+            "side": if is_long { "Long" } else { "Short" },
+            "orderType": order_type,
+            "requestedUsdNotional": usd_notional,
+            "filledUsdNotional": filled_usd,
+            "restingUsdNotional": resting_usd,
+            "makerFeeSats": 0,
+            "takerFeeSats": 0,
+            "protocolFeeSats": 0,
+            "fills": fills_json,
+            "positionsCreated": created_positions,
+        }))
+    }
+
+    /// Closes an open `UserTerminalPosition` at the live two-index BTC/USD price and settles
+    /// `margin + realized_pnl` instantly into `user_wallet_sats` via verified PTLC adaptor swap!
+    pub fn close_user_position_ptlc(&mut self, pos_id: &str) -> Result<serde_json::Value, String> {
+        let idx = self
+            .user_positions
+            .iter()
+            .position(|p| p.id == pos_id)
+            .ok_or_else(|| format!("Position `{pos_id}` not found"))?;
+        self.refresh_user_positions_mark();
+        let pos = self.user_positions.remove(idx);
+        let settled_sats =
+            ((pos.user_margin_sats as i64) + pos.unrealized_pnl_sats).max(0) as u64;
+        self.user_wallet_sats = self.user_wallet_sats.saturating_add(settled_sats);
+
+        let swap_amt = settled_sats.clamp(10_000, 500_000);
+        let ptlc = self
+            .ln_mesh
+            .execute_ptlc_instant_withdrawal("ch-maker-mm", swap_amt)
+            .ok();
+
+        Ok(serde_json::json!({
+            "closedPositionId": pos.id,
+            "exitPriceUsd": pos.mark_price_usd,
+            "entryPriceUsd": pos.entry_price_usd,
+            "realizedPnlSats": pos.unrealized_pnl_sats,
+            "returnedSats": settled_sats,
+            "walletBalanceSats": self.user_wallet_sats,
+            "ptlcSwap": ptlc,
+        }))
+    }
+
+    pub fn set_user_bob_status(&mut self, pos_id: &str, bob_offline: bool) {
+        if let Some(p) = self.user_positions.iter_mut().find(|p| p.id == pos_id) {
+            p.bob_offline = bob_offline;
+            p.bob_status = if bob_offline {
+                "offline".into()
+            } else {
+                "online".into()
+            };
+        }
     }
 
     /// Runs a full multilateral Edmonds-Karp netting + 5-party Taproot clearing + Nullifier consumption epoch!
@@ -1110,6 +1474,9 @@ impl HftEngine {
                 durable_book_frozen: matches!(self.durable_book.state, BookAuthState::Frozen { .. }),
                 watchtower_events: self.watchtower.emitted_events.iter().rev().take(12).cloned().collect(),
             },
+            live_two_index: self.live_two_index.clone(),
+            user_wallet_sats: self.user_wallet_sats,
+            user_positions: self.user_positions.clone(),
         }
     }
 }

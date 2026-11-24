@@ -278,14 +278,18 @@ function renderPane4Oracle(snap) {
     fillEl.style.width = `${Math.min(100, Math.max(3, (spreadBps / 50) * 100))}%`;
   }
 
+  const live2 = snap.live_two_index;
   const oBox = document.getElementById("oracle-live-box");
   if (oBox) {
-    const pythUsd = tick.pyth_price_e8 ? (tick.pyth_price_e8 / 1e8).toFixed(2) : "100110.00";
-    const clUsd = tick.chainlink_price_e8 ? (tick.chainlink_price_e8 / 1e8).toFixed(2) : "100122.00";
+    const pythUsd = tick.pyth_price_e8 ? (tick.pyth_price_e8 / 1e8).toFixed(2) : "60000.00";
+    const clUsd = tick.chainlink_price_e8 ? (tick.chainlink_price_e8 / 1e8).toFixed(2) : "60000.00";
+    const modeLbl = live2
+      ? `FIAT 2-INDEX LIVE (${esc(live2.chainlink_round_id_hex)})`
+      : esc(snap.frost_quorum);
     oBox.innerHTML = `
-      <div class="exp-kv-cell"><span>Pyth Pro Lazer (200ms)</span><strong class="is-long">$${pythUsd}</strong></div>
-      <div class="exp-kv-cell"><span>Chainlink Streams v3</span><strong class="is-cyan">$${clUsd}</strong></div>
-      <div class="exp-kv-cell"><span>Threshold FROST</span><strong>${esc(snap.frost_quorum)}</strong></div>
+      <div class="exp-kv-cell"><span>Pyth BTC/USD (${live2 ? "Arbitrum Live" : "200ms"})</span><strong class="is-long">$${pythUsd}</strong></div>
+      <div class="exp-kv-cell"><span>Chainlink BTC/USD (${live2 ? "Arbitrum Live" : "v3"})</span><strong class="is-cyan">$${clUsd}</strong></div>
+      <div class="exp-kv-cell"><span>Oracle Mode</span><strong class="is-amber">${modeLbl}</strong></div>
     `;
   }
 

@@ -128,6 +128,8 @@ fn main() {
                 bind_addr: "127.0.0.1:0".into(),
                 ui_public_dir: PathBuf::from("ui/public"),
                 rollup_interval_ms: 60_000,
+                enable_live_oracle: false,
+                enable_auto_mm: false,
             })
             .expect("spawn ephemeral shz-hftd"),
         )
