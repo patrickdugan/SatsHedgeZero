@@ -1,0 +1,10 @@
+[package]
+name = "shz-admission-recursive-methods"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+[build-dependencies]
+risc0-build = "=3.0.7"
+[package.metadata.risc0]
+methods = ["guest"]

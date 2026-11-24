@@ -1,0 +1,71 @@
+name: shz-index-admission-hash-replay
+on:
+  push:
+    branches: ["research/shz-index-admission-07-recursive-stark-20261124"]
+    paths:
+      - "research/hourly_index/admission_recursive/hash_replay/**"
+      - "research/hourly_index/admission_recursive/near_resumable/**"
+      - "research/hourly_index/admission_recursive/replay_sandbox.mjs"
+      - ".github/workflows/shz-index-admission-hash-replay-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: shz-admit11-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45286701423'
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/frozen-stark
+      - name: Native framing tests and actual archived receipt replay
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          R="$B/hash_replay"
+          OUT="$RUNNER_TEMP/shz-admit11"
+          mkdir -p "$OUT"
+          cargo generate-lockfile --manifest-path "$R/Cargo.toml"
+          python3 "$B/check_lock.py" "$R/Cargo.lock"
+          cargo test --release --locked --manifest-path "$R/Cargo.toml" -- --nocapture | tee "$OUT/tests.txt"
+          cargo run --release --locked --manifest-path "$R/Cargo.toml" -- "$RUNNER_TEMP/frozen-stark" "$OUT/trace" | tee "$OUT/native.jsonl"
+          cp "$R/Cargo.lock" "$OUT/native-Cargo.lock"
+      - name: Build bounded NEAR verifier
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          V="$B/near_resumable"
+          cargo generate-lockfile --manifest-path "$V/Cargo.toml"
+          python3 "$B/check_lock.py" "$V/Cargo.lock"
+          cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
+          wasm="$V/target/wasm32-unknown-unknown/release/shz_near_stark_resumable.wasm"
+          test "$(wc -c < "$wasm")" -le 4194304
+          wc -c < "$wasm" | tee "$RUNNER_TEMP/shz-admit11/wasm-bytes.txt"
+          cp "$V/Cargo.lock" "$RUNNER_TEMP/shz-admit11/near-Cargo.lock"
+      - name: Validate real STARK hash batches and finalize in sandbox
+        run: |
+          set -euo pipefail
+          npm --prefix research/hourly_index install --no-audit --no-fund
+          node research/hourly_index/admission_recursive/replay_sandbox.mjs "$RUNNER_TEMP/frozen-stark" "$RUNNER_TEMP/shz-admit11/trace" "$RUNNER_TEMP/shz-admit11/receipt.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit11-hash-replay
+          path: ${{ runner.temp }}/shz-admit11
+          retention-days: 14

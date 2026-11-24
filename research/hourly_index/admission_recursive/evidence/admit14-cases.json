@@ -1,0 +1,110 @@
+{
+  "schema": "shz/admit14-frozen-reference-cases/v1",
+  "approved_image_id_words": [
+    4124999267,
+    4135257485,
+    291679620,
+    10755074,
+    188879572,
+    3504088577,
+    489955474,
+    2003416056
+  ],
+  "sdk": "3.1.0",
+  "synthetic": true,
+  "reference_cases_verified_locally": true,
+  "cases": [
+    {
+      "id": "pyth4-two",
+      "source": "pyth",
+      "reports": 4,
+      "leaves": 2,
+      "folds": 8,
+      "segment_folds": [
+        3,
+        5
+      ],
+      "snapshot_pin": "4dc8558664f1723829c468875e277831a3ab56065b55f54a224275b0ddeb8ae2",
+      "journal_sha256": "ee594915da506879146f7ed785c94285a093d82916554eefd4cbe6c6ae4be386",
+      "proof_enabled": false
+    },
+    {
+      "id": "chainlink16-two",
+      "source": "chainlink",
+      "reports": 16,
+      "leaves": 2,
+      "folds": 32,
+      "segment_folds": [
+        15,
+        17
+      ],
+      "snapshot_pin": "24ca3803e15158a04616c073038bda0c7189839e9c339049d9e37177c610ad41",
+      "journal_sha256": "ee2f5844ba982231c084dda0653d543fec11451d22c17650c0847e1e4dfeedea",
+      "proof_enabled": true
+    },
+    {
+      "id": "pyth16-four",
+      "source": "pyth",
+      "reports": 16,
+      "leaves": 4,
+      "folds": 32,
+      "segment_folds": [
+        7,
+        8,
+        7,
+        10
+      ],
+      "snapshot_pin": "4fe15eb7769b095b664f6bc8c43c9ea481586e47a7d9c0ab1db1f0fcce14c421",
+      "journal_sha256": "c0a3a4d0afcd086399a18e0683790e4a2cf3b16dfebb8faa9ebd418ab8fec701",
+      "proof_enabled": true
+    },
+    {
+      "id": "pyth32-four",
+      "source": "pyth",
+      "reports": 32,
+      "leaves": 4,
+      "folds": 64,
+      "segment_folds": [
+        15,
+        16,
+        15,
+        18
+      ],
+      "snapshot_pin": "5722781be79f59f6bc5f05ba800f66b6b2113db4544b994980326a18e6cbf101",
+      "journal_sha256": "e0bdc39b2824b63c5818b6e2b007bbf8912696288e5f894df3bbd40fc8afe059",
+      "proof_enabled": true
+    },
+    {
+      "id": "pyth128-four",
+      "source": "pyth",
+      "reports": 128,
+      "leaves": 4,
+      "folds": 256,
+      "segment_folds": [
+        63,
+        64,
+        63,
+        66
+      ],
+      "snapshot_pin": "0d91d5bd3eed483002426e9c46e71e3e58eff23433ffe64ea1b5b8925e4be874",
+      "journal_sha256": "f954ebc6b28f749038472920418438729747ccfc108512be5eb0208d04f3b48e",
+      "proof_enabled": false
+    },
+    {
+      "id": "chainlink128-four",
+      "source": "chainlink",
+      "reports": 128,
+      "leaves": 4,
+      "folds": 256,
+      "segment_folds": [
+        63,
+        64,
+        63,
+        66
+      ],
+      "snapshot_pin": "46add723feeace974ebf4cb127a0ea313024220c7cda78977f500732804ef896",
+      "journal_sha256": "37d31fecaf7266280475d0a2318dcf8c5a8b6fd35603071111871e6bec151d1c",
+      "proof_enabled": false
+    }
+  ]
+}

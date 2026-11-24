@@ -1,0 +1,134 @@
+name: shz-index-admission-recursive-stark
+on:
+  push:
+    branches: ["research/shz-index-admission-07-*"]
+    paths:
+      - "research/hourly_index/admission_recursive/core/**"
+      - "research/hourly_index/admission_recursive/host/**"
+      - "research/hourly_index/admission_recursive/methods/**"
+      - "research/hourly_index/admission_recursive/Cargo.toml"
+      - "research/hourly_index/admission_recursive/check_lock.py"
+  workflow_dispatch:
+    inputs:
+      leaves:
+        description: "Balanced leaf count (four-report synthetic fixture)"
+        required: true
+        type: choice
+        default: "2"
+        options: ["2", "4"]
+permissions:
+  contents: read
+concurrency:
+  group: shz-admit07-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  recursive-stark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RISC0_PROVER: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Independent reference and ordinary Rust relation parity
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          mkdir -p "$RUNNER_TEMP/shz-admit07"
+          node --test "$B/tests/reference.test.mjs" | tee "$RUNNER_TEMP/shz-admit07/reference.txt"
+          cargo test --release --manifest-path "$B/core/Cargo.toml" -- --nocapture | tee "$RUNNER_TEMP/shz-admit07/native-rust.txt"
+          cp "$B/core/Cargo.lock" "$RUNNER_TEMP/shz-admit07/core-Cargo.lock"
+      - name: Install pinned RISC Zero guest toolchain
+        run: |
+          set -euo pipefail
+          curl -fsSL https://risczero.com/install | bash
+          export PATH="$HOME/.risc0/bin:$PATH"
+          rzup install rust 1.97.0
+          rustup toolchain list --verbose | tee "$RUNNER_TEMP/shz-admit07/toolchains.txt"
+          rustc -Vv | tee -a "$RUNNER_TEMP/shz-admit07/toolchains.txt"
+          echo "$HOME/.risc0/bin" >> "$GITHUB_PATH"
+      - name: Compile the pinned guest image and local prover
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          unset RISC0_DEV_MODE RISC0_SKIP_BUILD
+          cargo generate-lockfile --manifest-path "$B/Cargo.toml"
+          python3 "$B/check_lock.py" "$B/Cargo.lock"
+          cargo build --release --locked --manifest-path "$B/Cargo.toml" -p shz-admission-recursive-host
+          python3 "$B/check_lock.py" "$B/methods/guest/Cargo.lock"
+          cp "$B/Cargo.lock" "$RUNNER_TEMP/shz-admit07/host-Cargo.lock"
+          if [ -f "$B/methods/guest/Cargo.lock" ]; then cp "$B/methods/guest/Cargo.lock" "$RUNNER_TEMP/shz-admit07/guest-Cargo.lock"; fi
+      - name: Prove real succinct child receipts and balanced recursive root
+        env:
+          LEAVES: ${{ inputs.leaves || '2' }}
+        run: |
+          set -euo pipefail
+          unset RISC0_DEV_MODE BONSAI_API_URL BONSAI_API_KEY
+          B=research/hourly_index/admission_recursive
+          case "$LEAVES" in 2|4) ;; *) exit 2;; esac
+          EXE="$B/target/release/shz-admission-recursive-host"
+          OUT="$RUNNER_TEMP/shz-admit07/proof"
+          /usr/bin/time -v -o "$RUNNER_TEMP/shz-admit07/prove-time.txt" "$EXE" prove "$B/fixtures/4-expected.json" "$B/fixtures/4-plan-$LEAVES.json" "$OUT" | tee "$RUNNER_TEMP/shz-admit07/prove-log.jsonl"
+          /usr/bin/time -v -o "$RUNNER_TEMP/shz-admit07/verify-time.txt" "$EXE" verify "$B/fixtures/4-expected.json" "$LEAVES" "$OUT/root.bin" | tee "$RUNNER_TEMP/shz-admit07/independent.json"
+          "$EXE" expected "$B/fixtures/4-expected.json" "$LEAVES" > "$RUNNER_TEMP/shz-admit07/expected.json"
+          "$EXE" profile "$B/fixtures/4-expected.json" "$LEAVES" "$OUT/root.bin" "$OUT/mutated-seal.bin" | tee "$RUNNER_TEMP/shz-admit07/verifier-profile.json"
+          node --input-type=module - "$RUNNER_TEMP/shz-admit07" "$LEAVES" <<'JS'
+          import {readFileSync} from 'node:fs';
+          const dir=process.argv[2],n=Number(process.argv[3]),r=p=>JSON.parse(readFileSync(dir+'/'+p,'utf8'));
+          const v=r('independent.json'),negative=r('proof/negative.json'),metrics=r('proof/metrics.json');
+          if(!v.independent_succinct_verified||v.segments!==n||v.height!==Math.log2(n)||v.folds!==8||metrics.length!==2*n-1||metrics.some(x=>!x.succinct_verified)||!negative.actual_child_substitution_rejected||!negative.substituted_child_journal_rejected||v.nova_wrapped||v.source_authentication||v.near_verified||v.production_ready)throw Error('missing proof or scope gate');
+          for(const k of ['wrong_endpoint_rejected','wrong_image_rejected','wrong_snapshot_rejected','wrong_genesis_rejected','wrong_fold_count_rejected','trailing_rejected','tampered_journal_rejected'])if(!v[k])throw Error('missing negative control '+k);
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/shz-admit07
+          retention-days: 7
+
+  near-stark-probe:
+    needs: recursive-stark
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/shz-admit07
+      - name: Build verification-only patched STARK NEAR WASM
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          V="$B/near_verifier"
+          mkdir -p "$RUNNER_TEMP/shz-admit08-near"
+          cargo generate-lockfile --manifest-path "$V/Cargo.toml"
+          python3 "$B/check_lock.py" "$V/Cargo.lock"
+          cp "$V/Cargo.lock" "$RUNNER_TEMP/shz-admit08-near/Cargo.lock"
+          cargo tree --locked --manifest-path "$V/Cargo.toml" --target wasm32-unknown-unknown -e features > "$RUNNER_TEMP/shz-admit08-near/features.txt"
+          cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
+          wc -c "$V/target/wasm32-unknown-unknown/release/shz_near_stark_probe.wasm" | tee "$RUNNER_TEMP/shz-admit08-near/wasm-bytes.txt"
+      - name: Real sandbox receipt verification within 300 TGas
+        run: |
+          set -euo pipefail
+          npm --prefix research/hourly_index install --no-audit --no-fund
+          node research/hourly_index/admission_recursive/near_sandbox.mjs "$RUNNER_TEMP/shz-admit07" "$RUNNER_TEMP/shz-admit08-near/receipt.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit08-near-stark-probe
+          path: ${{ runner.temp }}/shz-admit08-near
+          retention-days: 7

@@ -1,0 +1,37 @@
+{
+  "schema": "shz/admit10-sandbox-result/v1",
+  "commit": "e04381725477cd3bb0d4acd9ceff7771fbd17a04",
+  "run": 45325547122,
+  "job": 138214150496,
+  "wasm_bytes": 1466868,
+  "receipt_sha256": "6f5022763d431b43060edcee19f4f2266060abb335f9663a1c4554d78dca0750",
+  "rpc_transport_passed": true,
+  "hash_pair_cases": [
+    {
+      "n": 0,
+      "upstream_TGas": 2.575709097712,
+      "fast_TGas": 2.576065229328
+    },
+    {
+      "n": 32,
+      "upstream_TGas": 5.957534362376,
+      "fast_TGas": 4.58936176966
+    },
+    {
+      "n": 128,
+      "upstream_TGas": 16.100210461212,
+      "fast_TGas": 10.626419608016
+    },
+    {
+      "n": 512,
+      "upstream_TGas": 56.670806588592,
+      "fast_TGas": 34.774542693476
+    }
+  ],
+  "pair_outputs_equal": true,
+  "full_upstream": "Exceeded the prepaid gas",
+  "full_fast": "Exceeded the prepaid gas",
+  "receipt_limit_TGas": 300,
+  "near_verified": false,
+  "production_ready": false
+}

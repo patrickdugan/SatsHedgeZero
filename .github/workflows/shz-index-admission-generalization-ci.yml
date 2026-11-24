@@ -1,0 +1,221 @@
+name: shz-index-admission-independent-receipt
+on:
+  push:
+    branches: ["research/shz-index-admission-07-recursive-stark-20261124"]
+    paths:
+      - "research/hourly_index/admission_recursive/generalize/**"
+      - "research/hourly_index/admission_recursive/generalize_*.mjs"
+      - "research/hourly_index/admission_recursive/evidence/admit14-cases.json"
+      - ".github/workflows/shz-index-admission-generalization-ci.yml"
+  workflow_dispatch:
+    inputs:
+      case:
+        description: "Bounded fresh CPU proof case; all reports synthetic"
+        type: choice
+        required: true
+        default: chainlink16-two
+        options: [chainlink16-two, pyth16-four, pyth32-four]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: shz-admit14-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CASE_ID: ${{ inputs.case || 'chainlink16-two' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45286701423'
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/original
+      - name: Regenerate independently frozen reference statements
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          OUT="$RUNNER_TEMP/shz-admit14-preflight"
+          mkdir -p "$OUT"
+          node "$B/generalize_fixtures.mjs" "$OUT/fixtures" | tee "$OUT/reference.json"
+          test -f "$OUT/fixtures/$CASE_ID/expected.json"
+      - name: Compile generic planner and replay archived receipt before fresh proving
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          R="$B/generalize"
+          OUT="$RUNNER_TEMP/shz-admit14-preflight"
+          cargo generate-lockfile --manifest-path "$R/Cargo.toml"
+          python3 "$B/check_lock.py" "$R/Cargo.lock"
+          cargo run --release --locked --manifest-path "$R/Cargo.toml" -- "$RUNNER_TEMP/original" "$OUT/fixtures/pyth4-two" "$RUNNER_TEMP/original" "$OUT/plan" | tee "$OUT/native.jsonl"
+          cp "$R/Cargo.lock" "$OUT/planner-Cargo.lock"
+      - name: Re-run actual baseline sandbox with generalized harness
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          V="$B/near_fused"
+          OUT="$RUNNER_TEMP/shz-admit14-preflight"
+          cargo generate-lockfile --manifest-path "$V/Cargo.toml"
+          python3 "$B/check_lock.py" "$V/Cargo.lock"
+          cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
+          cp "$V/Cargo.lock" "$OUT/near-Cargo.lock"
+          npm --prefix research/hourly_index install --no-audit --no-fund
+          node "$B/generalize_sandbox.mjs" "$RUNNER_TEMP/original" "$OUT/plan" "$OUT/fixtures/pyth4-two" "$RUNNER_TEMP/original" "$OUT/receipt.json"
+          node -e 'const r=require(process.argv[1]);if(r.fresh_receipt||!r.near_verified||r.best.transactions!==2||r.production_ready)process.exit(1)' "$OUT/receipt.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit14-preflight
+          path: ${{ runner.temp }}/shz-admit14-preflight
+          retention-days: 14
+  fresh-proof:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RAYON_NUM_THREADS: '2'
+      RISC0_PROVER: local
+      CASE_ID: ${{ inputs.case || 'chainlink16-two' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.100.0
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45286701423'
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/original
+      - uses: actions/download-artifact@v4
+        with:
+          name: shz-admit14-preflight
+          path: ${{ runner.temp }}/preflight
+      - name: Install pinned RISC Zero guest toolchain
+        run: |
+          set -euo pipefail
+          curl -fsSL https://risczero.com/install | bash
+          export PATH="$HOME/.risc0/bin:$PATH"
+          rzup install rust 1.97.0
+          echo "$HOME/.risc0/bin" >> "$GITHUB_PATH"
+      - name: Rebuild exact approved guest and compare receiver-owned journal before proving
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          OUT="$RUNNER_TEMP/shz-admit14-fresh"
+          mkdir -p "$OUT"
+          case "$CASE_ID" in chainlink16-two|pyth16-four|pyth32-four) ;; *) exit 2;; esac
+          cp -r "$RUNNER_TEMP/preflight/fixtures/$CASE_ID" "$OUT/receiver"
+          cp "$RUNNER_TEMP/original/host-Cargo.lock" "$B/Cargo.lock"
+          cp "$RUNNER_TEMP/original/guest-Cargo.lock" "$B/methods/guest/Cargo.lock"
+          python3 "$B/check_lock.py" "$B/Cargo.lock" "$B/methods/guest/Cargo.lock"
+          unset RISC0_DEV_MODE RISC0_SKIP_BUILD BONSAI_API_URL BONSAI_API_KEY
+          cargo build --release --locked --manifest-path "$B/Cargo.toml" -p shz-admission-recursive-host
+          cmp "$RUNNER_TEMP/original/guest-Cargo.lock" "$B/methods/guest/Cargo.lock"
+          leaves=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["leaves"])' "$OUT/receiver/expected.json")
+          "$B/target/release/shz-admission-recursive-host" expected "$OUT/receiver/claim.json" "$leaves" > "$OUT/compiled-expected.json"
+          python3 - "$OUT" <<'PY'
+          import sys,json
+          from pathlib import Path
+          d=Path(sys.argv[1]);a=json.loads((d/"receiver/expected.json").read_text());b=json.loads((d/"compiled-expected.json").read_text())
+          assert all(a[k]==b[k] for k in ["image_id_words","journal_hex","snapshot_pin","sdk"]), "guest or receiver statement drift"
+          print("Approved guest and frozen receiver journal match")
+          PY
+      - name: Prove a fresh recursive receipt and verify separately
+        run: |
+          set -euo pipefail
+          unset RISC0_DEV_MODE BONSAI_API_URL BONSAI_API_KEY
+          B=research/hourly_index/admission_recursive
+          EXE="$B/target/release/shz-admission-recursive-host"
+          OUT="$RUNNER_TEMP/shz-admit14-fresh"
+          C="$OUT/receiver"
+          leaves=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["leaves"])' "$C/expected.json")
+          /usr/bin/time -v -o "$OUT/prove-time.txt" "$EXE" prove "$C/claim.json" "$C/plan.json" "$OUT/proof" | tee "$OUT/prove-log.jsonl"
+          "$EXE" verify "$C/claim.json" "$leaves" "$OUT/proof/root.bin" | tee "$OUT/independent.json"
+          "$EXE" profile "$C/claim.json" "$leaves" "$OUT/proof/root.bin" "$OUT/proof/mutated-seal.bin" | tee "$OUT/verifier-profile.json"
+          python3 - "$OUT" "$RUNNER_TEMP/original" <<'PY'
+          import hashlib,json,sys
+          from pathlib import Path
+          out,old=map(Path,sys.argv[1:])
+          r=lambda f:json.loads((out/f).read_text())
+          e,v,n,p=r("receiver/expected.json"),r("independent.json"),r("proof/negative.json"),r("verifier-profile.json")
+          assert v["independent_succinct_verified"] and v["snapshot_pin"]==e["snapshot_pin"] and v["folds"]==e["folds"] and v["segments"]==e["leaves"] and v["image_id_words"]==e["image_id_words"]
+          assert n["actual_child_substitution_rejected"] and n["substituted_child_journal_rejected"] and p["actual_succinct_verified"] and p["tampered_seal_rejected"]
+          assert not v["source_authentication"] and not v["production_ready"] and not v["near_verified"]
+          fresh=(out/"proof/root.bin").read_bytes();prior=(old/"proof/root.bin").read_bytes()
+          assert hashlib.sha256(fresh).digest()!=hashlib.sha256(prior).digest()
+          print(json.dumps({"fresh_stark_verified":True,"case":e["id"],"reports":e["reports"],"folds":e["folds"],"receipt_bytes":len(fresh),"receipt_sha256":hashlib.sha256(fresh).hexdigest(),"near_verified":False}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit14-fresh-proof
+          path: ${{ runner.temp }}/shz-admit14-fresh
+          retention-days: 30
+  fresh-near:
+    needs: [preflight, fresh-proof]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CASE_ID: ${{ inputs.case || 'chainlink16-two' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45286701423'
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/original
+      - uses: actions/download-artifact@v4
+        with:
+          name: shz-admit14-preflight
+          path: ${{ runner.temp }}/preflight
+      - uses: actions/download-artifact@v4
+        with:
+          name: shz-admit14-fresh-proof
+          path: ${{ runner.temp }}/fresh
+      - name: Independently validate new proof and dynamic transcript with old-proof substitution controls
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          R="$B/generalize"
+          OUT="$RUNNER_TEMP/shz-admit14-near"
+          mkdir -p "$OUT"
+          cp "$RUNNER_TEMP/preflight/planner-Cargo.lock" "$R/Cargo.lock"
+          python3 "$B/check_lock.py" "$R/Cargo.lock"
+          cargo run --release --locked --manifest-path "$R/Cargo.toml" -- "$RUNNER_TEMP/fresh" "$RUNNER_TEMP/preflight/fixtures/$CASE_ID" "$RUNNER_TEMP/original" "$OUT/plan" | tee "$OUT/native.jsonl"
+      - name: Measure fresh proof verification in NEAR sandbox
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          V="$B/near_fused"
+          OUT="$RUNNER_TEMP/shz-admit14-near"
+          cp "$RUNNER_TEMP/preflight/near-Cargo.lock" "$V/Cargo.lock"
+          python3 "$B/check_lock.py" "$V/Cargo.lock"
+          cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
+          npm --prefix research/hourly_index install --no-audit --no-fund
+          node "$B/generalize_sandbox.mjs" "$RUNNER_TEMP/fresh" "$OUT/plan" "$RUNNER_TEMP/preflight/fixtures/$CASE_ID" "$RUNNER_TEMP/original" "$OUT/receipt.json"
+          node -e 'const r=require(process.argv[1]);if(!r.fresh_receipt||!r.near_verified||r.production_ready||r.source_authentication||r.can_authorize_dlc_settlement)process.exit(1)' "$OUT/receipt.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit14-independent-near
+          path: ${{ runner.temp }}/shz-admit14-near
+          retention-days: 30

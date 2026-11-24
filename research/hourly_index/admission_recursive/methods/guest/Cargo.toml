@@ -1,0 +1,12 @@
+[package]
+name = "shz-admission-recursive-guest"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+[workspace]
+[dependencies]
+risc0-zkvm = { version = "=3.1.0", default-features = false, features = ["std"] }
+shz-admission-recursive-core = { path = "../../core" }
+[profile.release]
+panic = "abort"
