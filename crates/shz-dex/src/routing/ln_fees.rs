@@ -16,6 +16,7 @@
 //! observed leg must carry the zero DLC fee policy.
 use super::*;
 use super::durable::{AckBundle,Disposition,DurableError,DurableRouter,Phase};
+use super::tiered_durable::{DurableTieredRouter,TieredDurableError};
 use sha2::{Digest,Sha256};
 use std::{fs::{File,OpenOptions},io::{self,Read,Write},path::Path};
 use thiserror::Error;
@@ -47,6 +48,32 @@ pub enum LedgerError{
 }
 impl From<DurableError> for LedgerError{fn from(e:DurableError)->Self{Self::Router(e.to_string())}}
 type L<X>=Result<X,LedgerError>;
+
+/// Read-only view of a router that authenticates batch resolutions. Implemented by the
+/// HFT-05 `DurableRouter` and the HFT-06 `DurableTieredRouter`; the ledger trusts only
+/// what this view reports from the router's own journal.
+pub trait ResolutionSource{
+ type Error:std::fmt::Display;
+ fn batch(&self,sequence:u64)->Result<Option<(&Batch,Phase)>,Self::Error>;
+ fn acknowledgement(&self,sequence:u64)->Result<Option<&AckBundle>,Self::Error>;
+ fn fee_totals(&self)->Result<(u128,u128),Self::Error>;
+ fn next_resolution(&self)->Result<u64,Self::Error>;
+}
+impl ResolutionSource for DurableRouter{
+ type Error=DurableError;
+ fn batch(&self,s:u64)->Result<Option<(&Batch,Phase)>,DurableError>{DurableRouter::batch(self,s)}
+ fn acknowledgement(&self,s:u64)->Result<Option<&AckBundle>,DurableError>{DurableRouter::acknowledgement(self,s)}
+ fn fee_totals(&self)->Result<(u128,u128),DurableError>{DurableRouter::fee_totals(self)}
+ fn next_resolution(&self)->Result<u64,DurableError>{DurableRouter::next_resolution(self)}
+}
+impl ResolutionSource for DurableTieredRouter{
+ type Error=TieredDurableError;
+ fn batch(&self,s:u64)->Result<Option<(&Batch,Phase)>,TieredDurableError>{DurableTieredRouter::batch(self,s)}
+ fn acknowledgement(&self,s:u64)->Result<Option<&AckBundle>,TieredDurableError>{DurableTieredRouter::acknowledgement(self,s)}
+ fn fee_totals(&self)->Result<(u128,u128),TieredDurableError>{DurableTieredRouter::fee_totals(self)}
+ fn next_resolution(&self)->Result<u64,TieredDurableError>{DurableTieredRouter::next_resolution(self)}
+}
+fn src<X,E:std::fmt::Display>(r:Result<X,E>)->L<X>{r.map_err(|e|LedgerError::Router(e.to_string()))}
 
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
 pub struct RecipientPolicy{
@@ -389,10 +416,10 @@ impl FeeLedger{
  }
  /// Apply an authenticated HFT-05 resolution. `bundle` must equal the bundle the
  /// durable router recorded for that sequence and the router phase must agree.
- pub fn observe_resolution(&mut self,router:&DurableRouter,bundle:&AckBundle,now_us:u64)->L<bool>{
-  let recorded=router.acknowledgement(bundle.sequence)?.ok_or(LedgerError::BadResolution)?;
+ pub fn observe_resolution<S:ResolutionSource>(&mut self,router:&S,bundle:&AckBundle,now_us:u64)->L<bool>{
+  let recorded=src(router.acknowledgement(bundle.sequence))?.ok_or(LedgerError::BadResolution)?;
   if recorded!=bundle{return Err(LedgerError::BadResolution)}
-  let (batch,phase)=router.batch(bundle.sequence)?.ok_or(LedgerError::UnknownBatch)?;
+  let (batch,phase)=src(router.batch(bundle.sequence))?.ok_or(LedgerError::UnknownBatch)?;
   if batch.digest()!=bundle.batch{return Err(LedgerError::BadResolution)}
   self.observe_batch(batch)?;
   match (bundle.disposition,phase){
@@ -460,25 +487,25 @@ impl FeeLedger{
  }
  /// Compare against the durable router: committed totals per role, batch phases,
  /// digests, and the fee evidence of every committed channel.
- pub fn reconcile(&self,router:&DurableRouter)->L<ReconcileReport>{
+ pub fn reconcile<S:ResolutionSource>(&self,router:&S)->L<ReconcileReport>{
   let (lo,lr)=self.committed_by_role();
-  let (ro,rr)=router.fee_totals()?;
+  let (ro,rr)=src(router.fee_totals())?;
   let mut mm=Vec::new();
   if lo!=ro{mm.push(Mismatch::OracleTotal{ledger:lo,router:ro})}
   if lr!=rr{mm.push(Mismatch::RouterTotal{ledger:lr,router:rr})}
   for (seq,rec) in &self.state.batches{
-   let got=router.batch(*seq)?;
+   let got=src(router.batch(*seq))?;
    let state=match rec.state{St::Accrued=>BatchState::Accrued,St::Committed{..}=>BatchState::Committed,St::Reversed=>BatchState::Reversed};
    let Some((b,phase))=got else{mm.push(Mismatch::Phase{sequence:*seq,ledger:state,router:None});continue};
    if b.digest()!=rec.digest{mm.push(Mismatch::BatchDigest{sequence:*seq})}
    let ok=matches!((&rec.state,phase),(St::Accrued,Phase::Sealed|Phase::Prepared)|(St::Committed{..},Phase::Committed)|(St::Reversed,Phase::Aborted));
    if !ok{mm.push(Mismatch::Phase{sequence:*seq,ledger:state,router:Some(phase)})}
    if let St::Committed{fee_evidence,..}=&rec.state{
-    let expect:Vec<_>=router.acknowledgement(*seq)?.map(|a|a.channels.iter().filter(|c|c.fee_evidence!=[0;32]).map(|c|(c.channel.clone(),c.fee_evidence)).collect()).unwrap_or_default();
+    let expect:Vec<_>=src(router.acknowledgement(*seq))?.map(|a|a.channels.iter().filter(|c|c.fee_evidence!=[0;32]).map(|c|(c.channel.clone(),c.fee_evidence)).collect()).unwrap_or_default();
     if *fee_evidence!=expect{mm.push(Mismatch::FeeEvidence{sequence:*seq})}
    }
   }
-  for seq in 1..router.next_resolution()?{
+  for seq in 1..src(router.next_resolution())?{
    if !self.state.batches.contains_key(&seq){mm.push(Mismatch::MissingInLedger{sequence:seq})}
   }
   Ok(ReconcileReport{ledger_oracle:lo,ledger_router:lr,router_oracle:ro,router_router:rr,mismatches:mm})

@@ -1,7 +1,7 @@
 # SHZ HFT-06: tiered router and Lightning fee ledger
 
-Code: `crates/shz-dex/src/routing/tiered.rs`, `crates/shz-dex/src/routing/ln_fees.rs`.
-Tests: `crates/shz-dex/tests/hft06_router.rs`, `crates/shz-dex/tests/hft06_ln_fees.rs`.
+Code: `crates/shz-dex/src/routing/tiered.rs`, `tiered_durable.rs`, `ln_fees.rs`.
+Tests: `crates/shz-dex/tests/hft06_router.rs`, `hft06_tiered_durable.rs`, `hft06_ln_fees.rs`.
 Builds on HFT-01 (router, partitioned collateral), HFT-03 (100 ms batches), HFT-04
 (oracle packets) and HFT-05 (durable WAL, signed channel acknowledgements).
 
@@ -65,7 +65,7 @@ callback, channel or trait object toward the oracle.
 `FeeLedger` records obligations per `(router id, batch sequence, batch digest)`:
 
 `Accrued` (sealed `Batch` observed) -> `Committed` (an `AckBundle` with `Disposition::Commit` that
-equals the bundle the `DurableRouter` recorded, with each channel's `fee_evidence`) or `Reversed`
+equals the bundle the `DurableRouter` or `DurableTieredRouter` recorded, with each channel's `fee_evidence`) or `Reversed`
 (`FencedAbort`). Collection is recorded per recipient when `LightningAdapter::verify_fee_receipt`
 accepts a `FeeReceipt`.
 
@@ -85,15 +85,47 @@ Accrued-only and reversed amounts are never revenue and never instructed.
   state, a torn or altered tail fails closed, and a persisted-but-unapplied event is applied on reopen.
 - Disconnection: `AdapterError::Disconnected` leaves obligations outstanding. Time passing changes no
   quantity; only instruction emission can occur. The ledger holds no handle to channel balances.
-- `reconcile(&DurableRouter)` compares committed totals per role with `fee_totals()`, batch phases,
+- `reconcile(&router)` (either router) compares committed totals per role with `fee_totals()`, batch phases,
   digests and fee evidence, and reports `Mismatch` entries.
+
+## 2a. Durable tiered router (`tiered_durable.rs`, gate G-LN-2)
+
+`DurableTieredRouter` is the HFT-05 `DurableRouter` design applied to `TieredRouter`. Tests:
+`crates/shz-dex/tests/hft06_tiered_durable.rs`.
+
+- Journal: magic `SHZWAL06`, a genesis frame holding the configuration hash, then length-prefixed JSON
+  events (`ingest_mark`, `submit` with its `Entitlement`, `process_one`, `set_emergency_hold`,
+  `seal_batch`, `prepare`, `resolve`) chained by `SHZ/HFT/WAL-FRAME/V1`. Each frame is fsynced before
+  the command is applied or answered. Rejected commands are journaled because they can advance the
+  clock. A failed write poisons the writer. A torn or altered tail, a foreign magic, or a different
+  configuration fails closed (`Corrupt`, `Config`). `open(.., Some(tip))` rejects a rolled-back valid
+  prefix (`Rollback`). The file is locked exclusively for the writer lifetime.
+- Configuration hash (`SHZ/HFT06/WAL-CONFIG/V1`): scope, router id, tariff id, execution policy id,
+  revenue split, entitlement key, fee recipients, every allocation with both signatures, and each
+  lane's peer, monitor and initial head.
+- Resolution: `Sealed -> Prepared` (every channel owner's `BatchApproval` verifies) `-> Committed` or
+  `Aborted` (`FencedAbort`). A bundle carries per-channel owner, peer and monitor BIP340 signatures,
+  heads, evidence and fee evidence, in batch account order. Resolution is strictly in sequence, an
+  exact retry is idempotent, a different bundle for a resolved sequence is rejected, and time alone
+  never releases collateral. A fenced abort frees collateral, keeps the commitment head and cancels
+  the batch's surviving maker quotes.
+- Shared gate: `durable::plan_resolution` and `durable::ack_message` verify both routers. The HFT-05
+  digest tag stays `SHZ/HFT/CHANNEL-ACK/V1`; the tiered router signs under `SHZ/HFT06/CHANNEL-ACK/V1`
+  with its own configuration hash, so acknowledgements cannot cross routers.
+- `ln_fees::ResolutionSource` (`batch`, `acknowledgement`, `fee_totals`, `next_resolution`) is
+  implemented for both routers. `FeeLedger::observe_resolution` and `reconcile` accept either.
+- Verified in the tests: replay after restart (book, marks, fills, balances, batches, phases), restart
+  at every stage reaching the same state, crash between append and apply, torn and corrupt tails,
+  configuration substitution on nine fields, pinned-tip rollback, the acknowledgement state machine,
+  HFT-05 bundle and HFT-05 domain-tag rejection, and a premium/intermediate/standard loop with commits,
+  one fenced abort, mock-adapter receipts and a clean reconcile.
 
 ## 3. Modelled versus external gates
 
 Modelled and tested: tier and tariff logic, entitlement signatures, delay arms, early-window
 protection, stale-quote and collar guards, HOLD, cancel priority, fee conservation, batch sealing,
 the obligation state machine, receipt idempotence and overpayment checks, group commit, journal
-recovery, and reconciliation against the HFT-05 router, all with synthetic funds and a mock adapter.
+recovery, the tiered durable router, and reconciliation against both routers, all with synthetic funds and a mock adapter.
 
 External gates, not provided here:
 

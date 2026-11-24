@@ -4,6 +4,7 @@
 mod coalescer;
 pub mod durable;
 pub mod tiered;
+pub mod tiered_durable;
 pub mod ln_fees;
 use serde::{Serialize,Deserialize};
 pub use coalescer::{Batch, BatchApproval, ChannelObligation, ChannelPayout, COALESCE_US};

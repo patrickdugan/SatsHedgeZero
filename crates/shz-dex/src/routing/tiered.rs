@@ -477,3 +477,20 @@ impl TieredRouter{
   Ok(Some(batch))
  }
 }
+
+/// Narrow accessors for the durable tiered router (`tiered_durable`). Nothing here
+/// bypasses admission or matching; they expose only what an acknowledged HFT-05-style
+/// resolution must read and write.
+impl TieredRouter{
+ pub fn config(&self)->&TieredConfig{&self.cfg}
+ /// Retained mark history, oldest first.
+ pub fn marks(&self)->&[MarkView]{&self.marks}
+ pub fn clock_us(&self)->u64{self.clock}
+ pub fn batch_sequence(&self)->u64{self.batch_sequence}
+ pub(super) fn account_count(&self)->usize{self.accounts.len()}
+ pub(super) fn account_owner(&self,k:&Outpoint)->Option<Key>{self.accounts.get(k).map(|a|a.owner)}
+ pub(super) fn account_balance(&self,k:&Outpoint)->Option<Balance>{self.accounts.get(k).map(|a|a.balance)}
+ pub(super) fn set_account_balance(&mut self,k:&Outpoint,b:Balance){if let Some(a)=self.accounts.get_mut(k){a.balance=b}}
+ /// Pull a resting maker quote (used when a fenced abort cancels a batch's makers).
+ pub(super) fn cancel_resting(&mut self,id:Key){self.remove(id);}
+}
