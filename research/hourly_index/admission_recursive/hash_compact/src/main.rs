@@ -4,7 +4,8 @@ use std::{fs,path::Path,time::Instant,panic::{catch_unwind,AssertUnwindSafe}};
 type R<T>=Result<T,Box<dyn std::error::Error>>;
 fn run()->R<()>{
     let args:Vec<_>=std::env::args().collect();
-    if args.len()!=3{return Err("usage: shz-stark-hash-compact ARCHIVE_DIR NEW_OUTPUT_DIR".into())}
+    if args.len()!=3 && !(args.len()==4&&args[3]=="--fused"){return Err("usage: shz-stark-hash-compact ARCHIVE_DIR NEW_OUTPUT_DIR [--fused]".into())}
+    let fused=args.len()==4;
     let dir=Path::new(&args[1]);let out=Path::new(&args[2]);fs::create_dir(out)?;
     let pins:serde_json::Value=serde_json::from_str(include_str!("../../evidence/admit08-frozen-pins.json"))?;
     let proof=fs::read(dir.join("proof/root.bin"))?;
@@ -16,7 +17,7 @@ fn run()->R<()>{
     let mut alternate=calls.clone();let c=&mut alternate[0];assert!(!c.words.is_empty());
     c.words[0]=(c.words[0]+1)%risc0_core::field::baby_bear::P;c.output=c.computed();assert!(c.valid_hash());
     let mut profiles=Vec::new();
-    for cap in PROFILES{
+    for cap in if fused{FUSED_PROFILES}else{PROFILES}{
         let dst=out.join(cap.to_string());fs::create_dir(&dst)?;
         let frames=partition(&calls,cap)?;let alt=partition(&alternate,cap)?;
         assert_eq!(frames.len(),alt.len());assert!(frames.iter().skip(1).eq(alt.iter().skip(1)));
@@ -45,11 +46,22 @@ fn run()->R<()>{
         let wrong_boundary=match decode_tape(&boundary,count,frames.len(),cap){Ok(t)=>!replay(&r,image,t,cap,start,root,sha).accepted(),Err(_)=>true};assert!(wrong_boundary);
         let mut bad_frame=parse_frame(&frames[0],cap)?;bad_frame[0].output[0]=(bad_frame[0].output[0]+1)%risc0_core::field::baby_bear::P;
         let bad_frame=encode_frame(&bad_frame,cap)?;assert!(validate_frame(&bad_frame,cap).is_err());
-        fs::write(dst.join("forged-output.bin"),bad_frame)?;fs::write(dst.join("alternate-first.bin"),&alt[0])?;
+        fs::write(dst.join("forged-output.bin"),bad_frame)?;
+        if fused{
+            let mut forged_last=parse_frame(frames.last().unwrap(),cap)?;
+            forged_last[0].output[0]=(forged_last[0].output[0]+1)%risc0_core::field::baby_bear::P;
+            let wrong=encode_frame(&forged_last,cap)?;assert!(validate_frame(&wrong,cap).is_err());
+            fs::write(dst.join("forged-last.bin"),wrong)?;
+            let mut different_last=parse_frame(frames.last().unwrap(),cap)?;
+            let c=different_last.iter_mut().find(|c|!c.words.is_empty()).unwrap();
+            c.words[0]=(c.words[0]+1)%risc0_core::field::baby_bear::P;c.output=c.computed();
+            let wrong=encode_frame(&different_last,cap)?;assert!(validate_frame(&wrong,cap).is_ok());
+            fs::write(dst.join("valid-wrong-last.bin"),wrong)?;
+        }fs::write(dst.join("alternate-first.bin"),&alt[0])?;
         fs::write(dst.join("tape.bin"),&tape)?;fs::write(dst.join("alternate-tape.bin"),alt_tape)?;fs::write(dst.join("wrong-boundary.bin"),boundary)?;
         profiles.push(serde_json::json!({"cap":cap,"frame_count":frames.len(),"calls":count,"permutations":work,"frames":rows,"initial_commitment":hex::encode(start),"terminal_commitment":hex::encode(root),"alternate_terminal_commitment":hex::encode(alt_root),"tape_bytes":tape.len(),"full_transcript_bytes":frames.iter().map(|x|x.len()+4).sum::<usize>(),"native_compact_verify_seconds":elapsed,"native_verified":true,"upstream_pass_wrong_root_rejected":true,"wrong_boundary_rejected":true,"alternate_tape_rejected":true,"forged_output_rejected":true}));
     }
-    assert_eq!(profiles.iter().map(|p|p["frame_count"].as_u64().unwrap()).collect::<Vec<_>>(),vec![12,3,2]);
+    assert_eq!(profiles.iter().map(|p|p["frame_count"].as_u64().unwrap()).collect::<Vec<_>>(),if fused{vec![2,2,2]}else{vec![12,3,2]});
     let m=serde_json::json!({"schema":"shz/admit12-plan/v1","receipt_sha256":hex::encode(digest),"profiles":profiles,"near_verified":false,"production_ready":false});
     fs::write(out.join("manifest.json"),serde_json::to_vec_pretty(&m)?)?;println!("{m}");Ok(())
 }

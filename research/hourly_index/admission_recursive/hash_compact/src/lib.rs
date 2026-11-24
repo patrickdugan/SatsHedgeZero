@@ -9,9 +9,10 @@ pub use shz_stark_hash_replay::{Call,Hash32,sha,decode_receipt,trace,extend_comm
 use std::{collections::BTreeMap,rc::Rc,sync::Mutex};
 
 pub const PROFILES:[usize;3]=[512,2048,3072];
+pub const FUSED_PROFILES:[usize;3]=[3072,3456,3584];
 const MAX_WORDS:usize=8192;
 pub const MAX_TAPE:usize=4+4*MAX_BATCHES+32*MAX_CALLS;
-pub fn allowed_cap(cap:usize)->bool{PROFILES.contains(&cap)}
+pub fn allowed_cap(cap:usize)->bool{PROFILES.contains(&cap)||FUSED_PROFILES.contains(&cap)}
 fn push(b:&mut Vec<u8>,v:u32){b.extend(v.to_le_bytes());}
 fn read_u32(b:&[u8],p:&mut usize)->Result<u32,String>{
     let end=p.checked_add(4).ok_or("offset overflow")?;

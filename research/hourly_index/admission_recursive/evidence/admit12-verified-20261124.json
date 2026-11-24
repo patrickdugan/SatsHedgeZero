@@ -1,0 +1,42 @@
+{
+  "schema": "shz/admit12-verified-result/v1",
+  "commit": "318b768d17a55d28d4419f64780ba79ebb2f6246",
+  "run": 45327356269,
+  "job": 138220039135,
+  "receipt_sha256": "6f5022763d431b43060edcee19f4f2266060abb335f9663a1c4554d78dca0750",
+  "profiles": [
+    {
+      "cap": 512,
+      "transactions": 13,
+      "tape_bytes": 148212,
+      "total_TGas": 528.155788724711,
+      "final_TGas": 90.162640868159,
+      "max_batch_TGas": 39.440748534703
+    },
+    {
+      "cap": 2048,
+      "transactions": 4,
+      "tape_bytes": 148176,
+      "total_TGas": 503.188654179958,
+      "final_TGas": 90.140026104845,
+      "max_batch_TGas": 149.366392629411
+    },
+    {
+      "cap": 3072,
+      "transactions": 3,
+      "tape_bytes": 148172,
+      "total_TGas": 500.60983190047705,
+      "final_TGas": 90.335666070715,
+      "batch_TGas": [
+        221.984392403751,
+        188.289773426011
+      ]
+    }
+  ],
+  "near_verified": true,
+  "all_strong_wrong_commitment_controls_rejected": true,
+  "source_authentication": false,
+  "provider_completeness": false,
+  "production_ready": false,
+  "can_authorize_dlc_settlement": false
+}

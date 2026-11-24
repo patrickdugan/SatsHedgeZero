@@ -1,0 +1,71 @@
+name: shz-index-admission-fused-replay
+on:
+  push:
+    branches: ["research/shz-index-admission-07-recursive-stark-20261124"]
+    paths:
+      - "research/hourly_index/admission_recursive/hash_compact/**"
+      - "research/hourly_index/admission_recursive/near_fused/**"
+      - "research/hourly_index/admission_recursive/fused_sandbox.mjs"
+      - ".github/workflows/shz-index-admission-fused-replay-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: shz-admit13-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  fused-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45286701423'
+          name: shz-admit07-recursive-stark
+          path: ${{ runner.temp }}/frozen-stark
+      - name: Actual frozen receipt, compact replay and reconstructed commitment tests
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          R="$B/hash_compact"
+          OUT="$RUNNER_TEMP/shz-admit13"
+          mkdir -p "$OUT"
+          cargo generate-lockfile --manifest-path "$R/Cargo.toml"
+          python3 "$B/check_lock.py" "$R/Cargo.lock"
+          cargo test --release --locked --manifest-path "$R/Cargo.toml" -- --nocapture | tee "$OUT/tests.txt"
+          cargo run --release --locked --manifest-path "$R/Cargo.toml" -- "$RUNNER_TEMP/frozen-stark" "$OUT/plan" --fused | tee "$OUT/native.jsonl"
+          cp "$R/Cargo.lock" "$OUT/native-Cargo.lock"
+      - name: Build atomic terminal verifier WASM
+        run: |
+          set -euo pipefail
+          B=research/hourly_index/admission_recursive
+          V="$B/near_fused"
+          cargo generate-lockfile --manifest-path "$V/Cargo.toml"
+          python3 "$B/check_lock.py" "$V/Cargo.lock"
+          cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
+          wasm="$V/target/wasm32-unknown-unknown/release/shz_near_stark_fused.wasm"
+          test "$(wc -c < "$wasm")" -le 4194304
+          wc -c < "$wasm" | tee "$RUNNER_TEMP/shz-admit13/wasm-bytes.txt"
+          cp "$V/Cargo.lock" "$RUNNER_TEMP/shz-admit13/near-Cargo.lock"
+      - name: Benchmark three two-transaction atomic terminal profiles in real sandbox
+        run: |
+          set -euo pipefail
+          npm --prefix research/hourly_index install --no-audit --no-fund
+          node research/hourly_index/admission_recursive/fused_sandbox.mjs "$RUNNER_TEMP/frozen-stark" "$RUNNER_TEMP/shz-admit13/plan" "$RUNNER_TEMP/shz-admit13/receipt.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-admit13-fused-replay
+          path: ${{ runner.temp }}/shz-admit13
+          retention-days: 14
