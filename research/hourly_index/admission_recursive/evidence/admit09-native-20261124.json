@@ -1,0 +1,22 @@
+{
+  "schema": "shz/admit09-native-and-transport/v1",
+  "commit": "efb00b9b93ac433b02677a948f7d6e562d57053f",
+  "run_id": 45319884302,
+  "job_id": 138195605685,
+  "receipt_sha256": "6f5022763d431b43060edcee19f4f2266060abb335f9663a1c4554d78dca0750",
+  "rust_tests_passed": 4,
+  "upstream_native_mean_seconds": 0.01200157745,
+  "fast_native_mean_seconds": 0.01024456005,
+  "both_valid": true,
+  "both_mutated_seal_rejected": true,
+  "both_wrong_image_rejected": true,
+  "wasm_compiled": true,
+  "wasm_bytes": 1604190,
+  "base64_wasm_bytes": 2138920,
+  "transport_error": "Failed to buffer the request body: length limit exceeded",
+  "hash_cases_completed": 0,
+  "proof_cases_completed": 0,
+  "near_verified": false,
+  "optimized_near_gas_measured": false,
+  "production_ready": false
+}

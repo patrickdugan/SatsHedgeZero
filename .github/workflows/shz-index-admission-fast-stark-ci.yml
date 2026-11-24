@@ -50,6 +50,21 @@ jobs:
           python3 "$B/check_lock.py" "$V/Cargo.lock"
           cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
           cp "$V/Cargo.lock" "$RUNNER_TEMP/shz-admit09/near-Cargo.lock"
+          wasm="$V/target/wasm32-unknown-unknown/release/shz_near_stark_probe.wasm"
+          bytes=$(wc -c < "$wasm")
+          echo "stripped WASM bytes: $bytes"
+          # Preserve the protocol's ordinary deployment-size limit. If needed,
+          # choose a smaller build of the same verifier for the RPC transport.
+          if [ "$bytes" -gt 1500000 ]; then
+            CARGO_PROFILE_RELEASE_OPT_LEVEL=s cargo build --release --locked --target wasm32-unknown-unknown --manifest-path "$V/Cargo.toml"
+            echo "size-optimized stripped WASM bytes: $(wc -c < "$wasm")"
+            echo 's' > "$RUNNER_TEMP/shz-admit09/wasm-opt-level.txt"
+          else
+            echo '3' > "$RUNNER_TEMP/shz-admit09/wasm-opt-level.txt"
+          fi
+          test "$(wc -c < "$wasm")" -le 4194304
+          sha256sum "$wasm" | tee "$RUNNER_TEMP/shz-admit09/wasm.sha256"
+          wc -c < "$wasm" | tee "$RUNNER_TEMP/shz-admit09/wasm-bytes.txt"
       - name: Measure exact matching pair chains and full receipt on sandbox
         run: |
           set -euo pipefail

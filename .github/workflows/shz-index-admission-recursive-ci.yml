@@ -2,11 +2,12 @@ name: shz-index-admission-recursive-stark
 on:
   push:
     branches: ["research/shz-index-admission-07-*"]
-  pull_request:
     paths:
-      - "research/hourly_index/admission_recursive/**"
-      - "docs/SHZ_INDEX_ADMISSION_07_RECURSIVE_STARK.md"
-      - ".github/workflows/shz-index-admission-recursive-ci.yml"
+      - "research/hourly_index/admission_recursive/core/**"
+      - "research/hourly_index/admission_recursive/host/**"
+      - "research/hourly_index/admission_recursive/methods/**"
+      - "research/hourly_index/admission_recursive/Cargo.toml"
+      - "research/hourly_index/admission_recursive/check_lock.py"
   workflow_dispatch:
     inputs:
       leaves:
