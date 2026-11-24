@@ -1,0 +1,72 @@
+name: shz-hft06-oracle-relay
+on:
+  push:
+    branches: ["research/shz-hft06-*"]
+    paths:
+      - "crates/**"
+      - "deploy/hft06/**"
+      - "evidence/hft06/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/shz-hft06-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native tests (oracle, relay, router, LN ledger, HFT-01..05 parity)
+        run: cargo test --locked --release -p shz-oracle -p shz-relay -p shz-dex -p shz-dlc -p shz-margin
+      - name: Live connectors compile (no credentials in CI)
+        run: cargo check --locked -p shz-relay --features live
+      - name: Collator replay determinism and pinned receipt
+        run: |
+          cargo build --locked --release -p shz-relay --bins
+          O=1800000000000000
+          ./target/release/shz-collator gen-fixture --origin-us $O --seconds 120 --seed 20261124 --out rec.jsonl
+          ./target/release/shz-collator replay --recording rec.jsonl --origin-us $O > a.json
+          ./target/release/shz-collator replay --recording rec.jsonl --origin-us $O > b.json
+          A=$(jq -r .chain_receipt a.json); B=$(jq -r .chain_receipt b.json)
+          P=$(jq -r .chain_receipt evidence/hft06/collator_replay_120s.json)
+          echo "replay=$A pinned=$P"
+          test "$A" = "$B" && test "$A" = "$P"
+  relay-bench:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --locked --release -p shz-relay --bins
+      - name: Loopback relay benchmark (trusted relay, 60 s, 4 clients/tier)
+        run: ./target/release/shz-relay bench --clients 4 --seconds 60 --out relay_bench_trusted_linux.json
+      - name: Loopback relay benchmark (dev federation, 30 s)
+        run: ./target/release/shz-relay bench --clients 4 --seconds 30 --mode federated --out relay_bench_federated_linux.json
+      - name: Gate on zero loss and verification failures
+        run: |
+          for f in relay_bench_*_linux.json; do
+            jq -e '[.tiers[] | .lost, .verify_failures] | all(. == 0)' "$f"
+            jq '{mode, slots, valid_slots, hold_slots, certify_durable, realized_lead_premium_vs_standard, deliveries_per_second}' "$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hft06-relay-bench
+          path: relay_bench_*_linux.json
+          retention-days: 30
+  router-bench:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo run --locked --release -p shz-dex --example hft06_router_bench -- --orders 20000 --out router_bench_linux.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hft06-router-bench
+          path: router_bench_linux.json
+          retention-days: 30

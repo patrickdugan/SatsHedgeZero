@@ -53,6 +53,23 @@ Replay receipt (`evidence/hft06/collator_replay_120s.json`, pinned in CI): chain
 
 305 slots, 2,745 deliveries, 0 lost, 0 verification failures, 61 deliveries/s, 824 B per delivery, 668 B checkpoint log and 134 B signer lock per slot. Federated (dev): certification p50 15.4 ms / p99 53.2 ms (four fsyncs + four signatures), realized premium-vs-standard lead p50 181.7 ms, p99 199.8 ms, 0 lost. The configured 200 ms gap is not the realized advantage: certification latency, scheduler slip (Windows timer, 1.7–6.7 ms server send after release) and the clock-bound margin all move it, and network paths are absent here. CI repeats both runs on Linux and uploads the receipts.
 
+### End-to-end stage budget (synthetic, Windows x86_64)
+
+Router and fee path from `cargo run --release -p shz-dex --example hft06_router_bench -- --orders 20000` (`evidence/hft06/router_bench_windows.json`, FeedOnly arm):
+
+| Stage | p50 | p99 |
+| --- | ---: | ---: |
+| Source ingest: native verify + normalize per report | 127 µs | 1.15 ms |
+| Certification: durable lock + trusted signature per slot | 2.82 ms | 4.61 ms |
+| Relay delivery: premium receive − boundary | 10.4 ms | 19.8 ms |
+| Router admission (signature + entitlement), admitted | 290 µs | 555 µs |
+| Matching per fill | 7.8 µs | 32.0 µs |
+| 100 ms batch seal (HFT-03 `seal_legs`) | 5.0 µs | 13.9 µs |
+| Fee commitment per batch, in-memory ledger | 0.81 ms | 1.36 ms |
+| Fee commitment per batch, fsync'd WAL | 10.3 ms | 12.1 ms |
+
+Sustained router throughput in that loop: 3,603 orders/s and 1,641 fills/s single-threaded. The WAL appends about 3.86 kB per batch. Fee conservation holds exactly (18,215 sat = maker + taker fees = oracle + router dues = batch dues), and the ledger reconciles clean against the HFT-05 `DurableRouter`. All three execution arms produce 9,107 fills from 20,000 intents. Premium takers fill 3,036 times under FeedOnly and 3,392 under SchedulerOnly/Combined. The configured leads are reported per mechanism, and the Combined sum is flagged `double_counted`, never as a measured advantage. Admission p50 varied between 300 and 630 µs across runs on this laptop. Not measured: real Lightning transport, cross-router contention, WAL cost on the tiered matching path (the tiered engine is in-memory, gate G-LN-2).
+
 ## 5. Operating
 
 ```
