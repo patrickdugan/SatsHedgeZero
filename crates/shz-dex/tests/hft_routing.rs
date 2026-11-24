@@ -287,7 +287,7 @@ mod durable_hft05{
    let previous=d.head(&a.channel).unwrap().unwrap();let mut next=previous;next.revision+=1;
    if disp==Disposition::Commit{next.commitment+=1;next.state=[130+n+b.sequence()as u8;32];}
    let mut c=ChannelAck{channel:a.channel.clone(),previous,next,evidence:[150+n+b.sequence()as u8;32],
-    fee_evidence:if disp==Disposition::Commit&&a.fee_sats>0{[180+n+b.sequence()as u8;32]}else{[0;32]},signatures:[ZERO;3]};
+    fee_evidence:if disp==Disposition::Commit&&a.fee_sats>0{let mut v=[0;32];v[0]=n;v[1..9].copy_from_slice(&b.sequence().to_le_bytes());v[31]=180;v}else{[0;32]},signatures:[ZERO;3]};
    resign(d,b.sequence(),disp,&mut c);channels.push(c);
   }
   AckBundle{sequence:b.sequence(),batch:b.digest(),disposition:disp,channels}
@@ -387,9 +387,19 @@ mod durable_hft05{
   assert_eq!(d.head(&channel(1)).unwrap().unwrap(),abort.channels[0].next);
   assert_eq!(d.head(&channel(1)).unwrap().unwrap().commitment,11);
   assert_eq!(d.fee_totals().unwrap(),(154,66));assert!(!d.resolve(abort).unwrap());
-  let tip=d.tip().unwrap();drop(d);let d=reopen(&path,&p,&g,tip);
+  let tip=d.tip().unwrap();drop(d);let mut d=reopen(&path,&p,&g,tip);
   assert_eq!(d.batch(2).unwrap().unwrap().1,Phase::Aborted);
   assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),committed);
+  post_take(&mut d,&p,NOW+600_000,3,1000,1000);
+  d.process_one(NOW+800_000).unwrap();let c=d.seal_fill_batch().unwrap().unwrap();
+  assert_eq!(c.sequence(),3);
+  d.prepare(3,approvals(&c)).unwrap();
+  let next=ack(&d,&c,Disposition::Commit);assert!(d.resolve(next).unwrap());
+  let head=d.head(&channel(1)).unwrap().unwrap();
+  assert_eq!((head.revision,head.commitment),(3,12));
+  assert_eq!(d.fee_totals().unwrap(),(308,132));
+  let bal=d.balance(&channel(1)).unwrap().unwrap();
+  assert_eq!(bal.committed,2_000_000);assert_eq!(bal.paid_fees,40);assert!(bal.conserved());
  }
  #[test]fn hft05_reject_torn_hash_and_config_substitution(){
   let t=Temp::new();let path=t.path("router.wal");let(p,g)=setup(100_000_000);
