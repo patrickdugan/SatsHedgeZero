@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Join public Lighter BTC volume to matched L2 latency probes; no actual tier inference."""
 from __future__ import annotations
-import argparse, json, math
+import argparse, json, math, os
 from collections import Counter, defaultdict
 from datetime import datetime, UTC
 from pathlib import Path
@@ -41,7 +41,7 @@ def trade_weights(day,local=None):
     if pc.count_distinct(table["id"]).as_py()!=table.num_rows:
         raise ValueError("Duplicate trade IDs")
     weights=defaultdict(lambda:[0,0])
-    for batch in table.iter_batches():
+    for batch in table.to_batches():
         _,ts,price,size,side=[c.to_pylist() for c in batch.columns]
         for t,p,q,buy in zip(ts,price,size,side,strict=True):
             if type(t) is not int or not start<=t<start+86400000 or type(p) is not int or type(q) is not int or p<=0 or q<=0 or type(buy) is not bool:
@@ -150,6 +150,17 @@ def selftest():
     z=replay(b,0,2000,{0:(10*USD_SCALE,20*USD_SCALE),1000:(30*USD_SCALE,40*USD_SCALE)})
     assert z["clean_sequence"]
     assert sum(x["counts"]["volume_units"] for x in z["rows"])==100*USD_SCALE
+    # trade_weights on a local fixture file: market filter, side mapping, integer notional.
+    import pyarrow as pa, pyarrow.parquet as pq, tempfile, os
+    start=utc_ms(DAYS[0])
+    fixture=pa.table(dict(id=[1,2,3,4],timestamp=[start+10,start+20,start+1500,start+30],price=[1000,1000,1001,5],
+        size=[2,3,1,7],is_maker_ask=[True,False,True,True],public_market_index=[1,1,1,0],
+        trade_type=["trade","trade","trade","trade"]))
+    with tempfile.TemporaryDirectory() as d:
+        path=os.path.join(d,"trades.parquet");pq.write_table(fixture,path)
+        w=trade_weights(DAYS[0],path)
+    assert w["trade_count"]==3 and w["rows"]==[(0,2000,3000),(1,1001,0)]
+    assert w["matched_notional_units"]==6001
     print("volume-weighted replay fixture passed")
 
 def main():
@@ -164,7 +175,18 @@ def main():
         print(json.dumps({k:v for k,v in z.items() if k!="rows"}));return
     if a.cmd=="aggregate":
         z=aggregate(a.root);write(a.output,z)
-        for row in z["rows"]:print(json.dumps({k:v for k,v in row.items() if k!="conditional_bins"}))
+        for row in z["rows"]:
+            print(json.dumps({k:v for k,v in row.items() if k!="conditional_bins"}))
+            if os.environ.get("GITHUB_ACTIONS")=="true":
+                # Public annotations: aggregate figures only, readable without artifact access.
+                f=row["winner_volume_fractions"]
+                print(f"::notice title=revenue-join {row['day']}::covered_hours={row['covered_hours']} missing={len(row['missing'])} dirty={len(row['dirty'])} "
+                      f"volume_usd={row['volume_usd']:.0f} unknown_usd={row['unknown_volume_usd']:.0f} "
+                      f"winner_vol_frac free={f['free']} middle={f['middle']} premium={f['premium']} "
+                      f"scenario_fee_usd={row['ex_post_scenario_taker_fee_usd']:.2f}")
+                for m in row["markouts"]:
+                    if m["tier"]=="free" or m["horizon_ms"]==5000:continue
+                    print(f"::notice title=markout {row['day']} {m['tier']} {m['horizon_ms']}ms::gross_bps={m['gross_bps']} net_bps={m['net_bps']} volume_usd={m['volume_usd']:.0f}")
         return
     start=utc_ms(a.hour);day=a.hour[:10];w=json.loads(a.weights.read_text())
     assert w["schema"]=="shz/l2-volume-weights/v1" and w["day"]==day and w["symbol"]=="BTC" and w["usd_scale"]==USD_SCALE
@@ -173,4 +195,6 @@ def main():
     with a.book.open("rb") as f:sha=file_digest(f,"sha256").hexdigest()
     z.update(hour=a.hour,sha256=sha,clock="received",schema="shz/l2-weighted-hour/v1")
     write(a.output,z);print(json.dumps(dict(hour=a.hour,clean=z["clean_sequence"],sha256=sha)))
+    if os.environ.get("GITHUB_ACTIONS")=="true":
+        print(f"::notice title=book {a.hour}::sha256={sha} clean={z['clean_sequence']} bytes={a.book.stat().st_size}")
 if __name__=="__main__":main()
