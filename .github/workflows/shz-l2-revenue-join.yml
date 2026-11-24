@@ -1,0 +1,117 @@
+name: shz-l2-revenue-join
+on:
+  push:
+    branches: ["research/l2-revenue-join-*"]
+    paths:
+      - "research/public_l2/**"
+      - ".github/workflows/shz-l2-revenue-join.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python research/public_l2/published_revenue.py --output published.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lighter-published-days
+          path: published.json
+  weights:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        day: ["2026-10-11","2026-11-23"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install 'pyarrow>=16,<24'
+          python research/public_l2/revenue_join.py selftest
+          python research/public_l2/revenue_join.py weights --day "${{ matrix.day }}" --output weights.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weights-${{ matrix.day }}
+          path: weights.json
+          retention-days: 1
+  replay:
+    needs: weights
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        day: ["2026-10-11","2026-11-23"]
+        start: [0,6,12,18]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: weights-${{ matrix.day }}
+      - run: pip install 'pyarrow>=16,<24'
+      - name: Fixed-hour replay with received clock
+        env:
+          DAY: ${{ matrix.day }}
+          START: ${{ matrix.start }}
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          raw="$RUNNER_TEMP/l2.parquet"
+          trap 'rm -f "$raw"' EXIT
+          for i in $(seq "$START" "$((START+5))"); do
+            h=$(printf '%02d' "$i"); rm -f "$raw"
+            if curl --fail --silent --show-error --location --retry 2 --max-time 120 --max-filesize 200000000 "https://api.cryptohftdata.com/v1/download?file=lighter/$DAY/$h/BTC_orderbook.parquet" -o "$raw"; then
+              if ! python research/public_l2/revenue_join.py hour --hour "${DAY}T${h}:00:00" --weights weights.json --book "$raw" --output "results/$DAY-$h.weighted.json"; then
+                rm -f "results/$DAY-$h.weighted.json"
+                echo "$DAY,$h,replay_failed" >> results/failures.csv
+              fi
+            else
+              echo "$DAY,$h,download_failed" >> results/failures.csv
+            fi
+            sleep 1.1
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weighted-${{ matrix.day }}-${{ matrix.start }}
+          path: results
+          retention-days: 14
+  aggregate:
+    needs: [replay,published]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: weighted-*
+          path: hourly
+      - uses: actions/download-artifact@v4
+        with:
+          name: lighter-published-days
+          path: published
+      - run: |
+          python research/public_l2/revenue_join.py aggregate --root hourly --output summary.json
+          cat published/published.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: revenue-join-aggregate
+          path: |
+            summary.json
+            published/published.json
+          retention-days: 14
