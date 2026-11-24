@@ -1,0 +1,15 @@
+# HFT-03: exact-leg 100 ms fill coalescer (research)
+
+Stacked on HFT-02 at 504845d. Motivation: product roadmap M2 proposes 100 ms channel updates; do not collapse inverse DLCs into an arithmetic VWAP or net signed USD quantity. For same-direction positions before rounding/clipping, the effective entry is Q_total / sum(Q_i / P_i); opposite directions, individual rounding and liquidation boundaries require exact legs. The batch groups obligations, retains every existing DLC leg and keeps priority fees separate.
+
+## State machine and commitments
+
+One trusted single writer per router and canonical allocation snapshot, as HFT-01. The successful matching mutation appends its taker receipt ID to an immutable local log and retains the maker's side, required to identify exact long/short collateral and payouts. Seal at most one nonempty elapsed [k*100000,(k+1)*100000) microsecond window at a time using the monotone router execution clock. Cursor advances exactly once after manifest construction, with consecutive per-router sequence and previous digest; boundary fills go into the next window. Empty windows need no record. A fill must be in the router's own pending map, not supplied by a caller. No omission from an elapsed window, repeat seal, or arbitrary client timestamp.
+
+Canonical tagged hashes bind scope, router, batch sequence, interval, previous digest, ordered leg hashes, sorted channel obligations, oracle/router fee totals. Leg hash binds both intent IDs, outpoints, owners, maker side, execution time, mark, integer contract terms and all fee splits; validate_v0 fixes vanilla BTC and zero DLC fees. Sum exact margins and fee obligations by funding outpoint and verify each batch obligation is covered by pending reserves. Exact payout helper sums existing independently clamped and rounded leg payouts and checks total margin conservation. This is diagnostic arithmetic at a shared settlement price only, not proof of an oracle event or a channel state.
+
+Every participating channel owner can sign a channel-specific tagged approval of the exact batch digest. Require all, exactly once, verify BIP340 and reject duplicates, unknown channels and replay across batch digests. Owner consent alone cannot advance Lightning state. No channel release, fee realization, commitment broadcast, durable journal or crash recovery. The caller must retain returned batches; dropping one or restarting the router is unsafe in production. A future durable single-writer journal and atomic PTLC/LN commit acknowledgement must be designed before any release or withdrawal.
+
+## Native gates
+
+Exercise partial fills, different maker directions and leverage, exact 100 ms boundary, cursor and hash-chain, no duplicate seal, exact account reserve and fee totals, all owner approvals, missing/duplicate/replayed approvals, per-leg payout conservation including liquidation and arithmetic-VWAP counterexample. Preserve HFT-01/02 tests. No live Lightning or network throughput claims. This is commitment preparation, distinct from the actual live LDK integration in the product roadmap.

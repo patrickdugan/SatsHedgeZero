@@ -1,6 +1,8 @@
 //! HFT-01 research router: signed scoped intents, immutable collateral partitions,
 //! cached dual-relay marks, delayed eligibility and separately accounted priority fees.
 //! One trusted single writer per router; no live LN funding or settlement authority.
+mod coalescer;
+pub use coalescer::{Batch, BatchApproval, ChannelObligation, ChannelPayout, COALESCE_US};
 use crate::OrderSide;
 use shz_dlc::{Bip340Signature,BtcOutPoint,bip340_sign,bip340_verify,bip340_verify_joint,pubkey_x_from_secret,tagged_hash};
 use shz_margin::{InverseContractSpec,ZeroFeePolicy};
@@ -175,7 +177,7 @@ struct Quote{intent:Intent,remaining:u64,hold_per_unit:u64}
 pub struct Fill{
  pub maker_id:Key,pub taker_id:Key,pub maker_channel:BtcOutPoint,pub taker_channel:BtcOutPoint,
  pub scope:Scope,pub router:u32,pub execution_us:u64,pub maker_owner:Key,pub taker_owner:Key,
- pub mark_id:Key,pub spec:InverseContractSpec,pub maker_fee_sats:u64,pub taker_fee_sats:u64,
+ pub mark_id:Key,pub maker_side:OrderSide,pub spec:InverseContractSpec,pub maker_fee_sats:u64,pub taker_fee_sats:u64,
  pub oracle_due_sats:u64,pub router_due_sats:u64,
 }
 #[derive(Debug,Clone)]
@@ -186,6 +188,7 @@ pub struct Router{
  locations:BTreeMap<Key,(OrderSide,BookKey)>,expirations:BTreeMap<(u64,Key),()>,
  mark:Option<Mark>,fills:BTreeMap<Key,Fill>,
  engine:Engine,bid_sizes:SizeIndex,ask_sizes:SizeIndex,
+ fill_log:Vec<Key>,batch_cursor:usize,batch_sequence:u64,last_batch_digest:Key,
 }
 impl Router{
  pub fn new(policy:Policy,registry:&Registry,id:u32)->R<Self>{Self::new_with_engine(policy,registry,id,Engine::Scan)}
@@ -195,7 +198,7 @@ impl Router{
   for a in &registry.allocations{if let Some(s)=a.shares.iter().find(|s|s.router==id){
    accounts.insert(op(&a.channel),Account{owner:a.owner,balance:Balance{cap:s.sats,free:s.sats,resting:0,pending:0},last_seq:0});
   }}
-  Ok(Self{scope:policy.scope(),policy,id,clock:0,arrival:0,activation:0,accounts,queue:BTreeMap::new(),bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),mark:None,fills:BTreeMap::new(),engine,bid_sizes:BTreeMap::new(),ask_sizes:BTreeMap::new()})
+  Ok(Self{scope:policy.scope(),policy,id,clock:0,arrival:0,activation:0,accounts,queue:BTreeMap::new(),bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),mark:None,fills:BTreeMap::new(),engine,bid_sizes:BTreeMap::new(),ask_sizes:BTreeMap::new(),fill_log:Vec::new(),batch_cursor:0,batch_sequence:0,last_batch_digest:[0;32]})
  }
  pub fn balance(&self,channel:&BtcOutPoint)->Option<Balance>{self.accounts.get(&op(channel)).map(|a|a.balance)}
  pub fn resting(&self)->usize{self.locations.len()}
@@ -350,7 +353,8 @@ impl Router{
   if q.remaining==n{
    self.book_mut(side).remove(&key);self.locations.remove(&maker_id);self.expirations.remove(&(q.intent.expires_us,maker_id));
   }else{self.book_mut(side).get_mut(&key).unwrap().remaining-=n;}
-  let fill=Fill{maker_id,taker_id:i.id(),maker_channel:q.intent.channel,taker_channel:i.channel.clone(),scope:self.scope,router:self.id,execution_us:self.clock,maker_owner:q.intent.owner,taker_owner:i.owner,mark_id:m.id,spec,maker_fee_sats:mf,taker_fee_sats:tf,oracle_due_sats:oracle,router_due_sats:total-oracle};
+  let fill=Fill{maker_id,taker_id:i.id(),maker_channel:q.intent.channel,taker_channel:i.channel.clone(),scope:self.scope,router:self.id,execution_us:self.clock,maker_owner:q.intent.owner,taker_owner:i.owner,mark_id:m.id,maker_side:q.intent.side,spec,maker_fee_sats:mf,taker_fee_sats:tf,oracle_due_sats:oracle,router_due_sats:total-oracle};
+  self.fill_log.push(fill.taker_id);
   self.fills.insert(fill.taker_id,fill.clone());
   Ok(Outcome::Filled(Box::new(fill)))
  }
