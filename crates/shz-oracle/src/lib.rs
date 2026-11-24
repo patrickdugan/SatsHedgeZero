@@ -3,6 +3,7 @@
 
 pub mod fraud_proofs;
 pub mod frost;
+pub mod hft_packets;
 pub mod pyth_lazer;
 pub mod pyth_near_relay;
 pub mod tradelayer;

@@ -1,0 +1,18 @@
+name: shz-hft04-oracle-packet
+on:
+  push:
+    branches: ["research/shz-hft04-*"]
+    paths:
+      - "crates/shz-oracle/**"
+      - ".github/workflows/shz-hft04-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --locked --release -p shz-oracle -p shz-dex
