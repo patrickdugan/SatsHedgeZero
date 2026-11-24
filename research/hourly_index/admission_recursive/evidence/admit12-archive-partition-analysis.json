@@ -1,0 +1,55 @@
+{
+  "schema": "shz/admit12-archive-analysis/v1",
+  "source_artifact": 14889986640,
+  "actual_calls": 4630,
+  "unique_calls": 4233,
+  "actual_permutations": 5661,
+  "unique_permutations": 5243,
+  "max_call_words": 2636,
+  "profiles": [
+    {
+      "cap": 512,
+      "frames": 12,
+      "tape_bytes": 148212
+    },
+    {
+      "cap": 2048,
+      "frames": 3,
+      "permutations": [
+        2048,
+        2048,
+        1565
+      ],
+      "calls": [
+        1604,
+        1716,
+        1310
+      ],
+      "frame_bytes": [
+        189516,
+        193564,
+        147870
+      ],
+      "tape_bytes": 148176
+    },
+    {
+      "cap": 3072,
+      "frames": 2,
+      "permutations": [
+        3069,
+        2592
+      ],
+      "calls": [
+        2462,
+        2168
+      ],
+      "frame_bytes": [
+        286086,
+        244860
+      ],
+      "tape_bytes": 148172
+    }
+  ],
+  "native_archive_parse_measured": true,
+  "larger_batch_gas_measured": false
+}
