@@ -1,0 +1,69 @@
+name: shz-hft02-event-parity
+on:
+  push:
+    branches: ["research/shz-event-parity-*"]
+    paths:
+      - "crates/shz-dex/**"
+      - "crates/shz-dlc/**"
+      - "scripts/hft_event_summary.py"
+      - ".github/workflows/shz-hft02-event-parity.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native tests and build
+        run: |
+          set -euo pipefail
+          cargo test --locked -p shz-dex -p shz-dlc --release
+          cargo build --locked -p shz-dex --release --example hft_event_replay
+      - name: 36 scenarios across 4 engines
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/hft02-parity"
+          mkdir -p "$out"
+          bin=target/release/examples/hft_event_replay
+          count=0
+          for seed in 107 109 113; do
+            for regime in quiet shock; do
+              for shards in 1 4; do
+                for adoption in 0 20 100; do
+                  key="$seed-$regime-$shards-$adoption"
+                  "$bin" "$seed" "$regime" "$shards" "$adoption" scan > "$out/replay-$key.csv" 2> "$out/state-$key.txt"
+                  for engine in indexed joint both; do
+                    "$bin" "$seed" "$regime" "$shards" "$adoption" "$engine" > "$out/$engine-$key.csv" 2> "$out/$engine-$key.state"
+                    cmp "$out/replay-$key.csv" "$out/$engine-$key.csv"
+                    cmp "$out/state-$key.txt" "$out/$engine-$key.state"
+                    printf '%s,%s,pass\n' "$key" "$engine" >> "$out/parity.csv"
+                    count=$((count+1))
+                  done
+                done
+              done
+            done
+          done
+          test "$count" -eq 108
+          python3 scripts/hft_event_summary.py "$out" | tee "$out/report.txt"
+          python3 - "$out" <<'PY'
+          import json, sys
+          from pathlib import Path
+          d=Path(sys.argv[1])
+          p=d/'summary.json'
+          s=json.loads(p.read_text())
+          assert len(s['arms']) == 36
+          s.update(engine_scenarios=144, parity_comparisons=108, exact_receipt_and_state_parity=True)
+          p.write_text(json.dumps(s, indent=2, sort_keys=True)+'\n')
+          print('144 native scenarios; 108 exact receipt/state comparisons; all matched.')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-hft02-event-parity
+          path: ${{ runner.temp }}/hft02-parity
+          retention-days: 14

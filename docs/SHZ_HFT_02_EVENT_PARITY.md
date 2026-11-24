@@ -1,0 +1,9 @@
+# HFT-02C: indexed/joint event-time receipt parity
+
+Integration of PR #23 (504845d3eacd8ecdbfd27a2588859940c649df66) and PR #24 (974bc5c48312cc6b056d8fbec8ddbbcacba750d4). Both parents are retained in the merge commit; neither source branch is modified. HFT-02C uses the same four engines as #23 and the exact frozen 36 scenarios from #24.
+
+## Mandatory equality gate
+
+Run all 36 event-time scenarios under each of scan, indexed, joint and both. Each scenario has 568 scheduled events, 168 taker intents, signed changing oracle marks, quote cancellations and mixed/free/paid eligibility. Compare the three experimental engine traces byte-for-byte with scan, independently within each scenario. Each row contains the committed intent ID, maker receipt ID, mark digest, exact long/short margin and fee split in addition to the outcome and execution time. Retained receipt must equal the returned receipt. Compare terminal state output byte-for-byte (per-router pending-fill count and all 32 account balances); all queues and resting books must be empty at the end. This is 144 runs, 108 pairs, 81,792 scheduled events. Archive divergent rows and state if any comparison fails. Report timing only via PR #23's same-host benchmark; event-clock replay assumes no backlog.
+
+These are research-only equivalence gates, not production performance guarantees, authentic provider data or Lightning settlement. After passing, test smart routing on the same market paths with privacy-preserving public capacity/price bands, without inspecting hidden books or splitting reserved collateral across simultaneous uncoordinated fills. Compare blind assignment, affinity routing and quoted executable capacity, with quote leakage and probing costs measured independently. Further extensions: realistic skew, price update loss and transport backlog; single-router parallel BIP340 workers with deterministic admission order.

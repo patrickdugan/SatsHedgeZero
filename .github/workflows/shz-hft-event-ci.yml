@@ -1,0 +1,48 @@
+name: shz-hft-event-replay
+on:
+  push:
+    branches: ["research/shz-hft-routing-02-*"]
+    paths:
+      - "crates/shz-dex/**"
+      - "scripts/hft_event_summary.py"
+      - ".github/workflows/shz-hft-event-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native tests and build
+        run: |
+          set -euo pipefail
+          cargo test --locked -p shz-dex --release
+          cargo build --locked -p shz-dex --release --example hft_event_replay
+      - name: Registered event-time factorial
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/hft02"
+          mkdir -p "$out"
+          for seed in 107 109 113; do
+            for regime in quiet shock; do
+              for shards in 1 4; do
+                for adoption in 0 20 100; do
+                  target/release/examples/hft_event_replay "$seed" "$regime" "$shards" "$adoption" > "$out/replay-$seed-$regime-$shards-$adoption.csv"
+                done
+              done
+            done
+          done
+          target/release/examples/hft_event_replay 107 shock 4 20 > "$out/repeat.csv"
+          cmp "$out/repeat.csv" "$out/replay-107-shock-4-20.csv"
+          python3 scripts/hft_event_summary.py "$out" | tee "$out/report.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-hft02-event-replay
+          path: ${{ runner.temp }}/hft02
+          retention-days: 14
