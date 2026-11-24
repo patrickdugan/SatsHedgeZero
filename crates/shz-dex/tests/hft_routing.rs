@@ -153,3 +153,38 @@ fn ready(r:&mut Router,t:u64)->Outcome{r.process_one(t).unwrap().unwrap()}
   }
  }
 }
+
+
+#[test]
+fn public_hint_requires_distinct_owners_and_rounds_conservatively(){
+ let(p,g)=setup(100_000_000);
+ let mut r=Router::new_with_engine(p.clone(),&g,1,Engine::Both).unwrap();
+ r.update_mark(good_marks(&p),NOW).unwrap();
+ assert_eq!(r.public_liquidity_hint(NOW),LiquidityHint::default());
+ let make=|owner:u8,seq:u64,qty:u64,price:u64,side:OrderSide|{
+  let mut i=order(&p,owner,seq,Action::Post,side,Tier::Priority,qty);
+  i.limit_usd=price;i.expires_us=NOW+500_000;i.signed(&sk(owner)).unwrap()
+ };
+ let a=make(1,1,100,100001,OrderSide::Short);let id=a.id();
+ for i in [a,make(1,2,200,100002,OrderSide::Short),make(2,1,99,100003,OrderSide::Short)] {
+  r.submit(i,NOW).unwrap();assert!(matches!(ready(&mut r,NOW),Outcome::Posted(_)));
+ }
+ assert_eq!(r.public_liquidity_hint(NOW).ask_ceiling,None);
+ r.submit(make(2,2,100,100051,OrderSide::Short),NOW).unwrap();ready(&mut r,NOW);
+ assert_eq!(r.public_liquidity_hint(NOW).ask_ceiling,Some(100100));
+ r.submit(make(3,1,100,99999,OrderSide::Long),NOW).unwrap();ready(&mut r,NOW);
+ r.submit(make(4,1,100,99949,OrderSide::Long),NOW).unwrap();ready(&mut r,NOW);
+ assert_eq!(r.public_liquidity_hint(NOW).bid_floor,Some(99900));
+ assert_eq!(r.public_liquidity_hint(NOW+500_000),LiquidityHint::default());
+ assert_eq!(r.public_liquidity_hint(NOW+MAX_AGE_US+1),LiquidityHint::default());
+ assert_eq!(r.public_liquidity_hint(NOW-1),LiquidityHint::default());
+ let mut cancel=order(&p,1,3,Action::Cancel,OrderSide::Short,Tier::Priority,0);
+ cancel.limit_usd=0;cancel.leverage_bps=0;cancel.max_fee_sats=0;cancel.cancel_target=id;
+ r.submit(cancel.signed(&sk(1)).unwrap(),NOW).unwrap();ready(&mut r,NOW);
+ assert_eq!(r.public_liquidity_hint(NOW).ask_ceiling,Some(100100));
+ let mut take=order(&p,3,2,Action::Take,OrderSide::Long,Tier::Priority,200);
+ take.limit_usd=100002;
+ r.submit(take.signed(&sk(3)).unwrap(),NOW).unwrap();
+ assert!(matches!(ready(&mut r,NOW+100_000),Outcome::Filled(_)));
+ assert_eq!(r.public_liquidity_hint(NOW+100_000).ask_ceiling,None);
+}
