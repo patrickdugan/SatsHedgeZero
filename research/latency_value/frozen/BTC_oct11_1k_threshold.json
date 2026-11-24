@@ -1,0 +1,14 @@
+{
+ "policy": "threshold",
+ "label": "BTC_oct11_1k",
+ "train_symbol": "BTC",
+ "train_days": [
+  "2026-10-11"
+ ],
+ "size_usd": 1000,
+ "tierset": "shz_candidate",
+ "spec": {
+  "rule": null,
+  "train_mean_gain_bps": 0.0
+ }
+}

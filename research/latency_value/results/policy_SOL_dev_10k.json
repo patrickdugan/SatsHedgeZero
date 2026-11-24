@@ -1,0 +1,1549 @@
+{
+ "train_symbol": "SOL",
+ "test_symbol": "SOL",
+ "train_days": [
+  "2026-10-11",
+  "2026-10-12",
+  "2026-10-13",
+  "2026-10-14",
+  "2026-10-15",
+  "2026-10-16",
+  "2026-10-17",
+  "2026-10-18",
+  "2026-10-19",
+  "2026-10-20",
+  "2026-10-21",
+  "2026-10-22",
+  "2026-10-23",
+  "2026-10-24",
+  "2026-10-25",
+  "2026-10-26",
+  "2026-10-27",
+  "2026-10-28",
+  "2026-10-29",
+  "2026-10-30",
+  "2026-10-31",
+  "2026-11-01",
+  "2026-11-02",
+  "2026-11-03",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06",
+  "2026-11-07"
+ ],
+ "test_days": [
+  "2026-11-08",
+  "2026-11-09",
+  "2026-11-10",
+  "2026-11-11",
+  "2026-11-12",
+  "2026-11-13",
+  "2026-11-14",
+  "2026-11-15",
+  "2026-11-16",
+  "2026-11-17",
+  "2026-11-18",
+  "2026-11-19",
+  "2026-11-20",
+  "2026-11-21"
+ ],
+ "size_usd": 10000,
+ "tierset": "shz_candidate",
+ "train_decisions": 1952639,
+ "test_decisions": 1065628,
+ "policies": {
+  "free_only": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-08",
+     "decisions": 63306,
+     "common": 63288,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 63306,
+     "vol_gain": 0.0,
+     "vol_common": 23088861.438602,
+     "chosen": [
+      63306,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-09",
+     "decisions": 75782,
+     "common": 75782,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75782,
+     "vol_gain": 0.0,
+     "vol_common": 26961276.002063997,
+     "chosen": [
+      75782,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-10",
+     "decisions": 75822,
+     "common": 75802,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75822,
+     "vol_gain": 0.0,
+     "vol_common": 29434271.854091,
+     "chosen": [
+      75822,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-11",
+     "decisions": 76421,
+     "common": 76421,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76421,
+     "vol_gain": 0.0,
+     "vol_common": 20185625.522565,
+     "chosen": [
+      76421,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-12",
+     "decisions": 74579,
+     "common": 74578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 74579,
+     "vol_gain": 0.0,
+     "vol_common": 22598241.221652,
+     "chosen": [
+      74579,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-13",
+     "decisions": 78416,
+     "common": 78411,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78416,
+     "vol_gain": 0.0,
+     "vol_common": 32107478.606601,
+     "chosen": [
+      78416,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-14",
+     "decisions": 76629,
+     "common": 76615,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76629,
+     "vol_gain": 0.0,
+     "vol_common": 45856218.383425996,
+     "chosen": [
+      76629,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-15",
+     "decisions": 77018,
+     "common": 77015,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77018,
+     "vol_gain": 0.0,
+     "vol_common": 34798773.045674,
+     "chosen": [
+      77018,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 77311,
+     "common": 77311,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77311,
+     "vol_gain": 0.0,
+     "vol_common": 24323217.751024,
+     "chosen": [
+      77311,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 77562,
+     "common": 77561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77562,
+     "vol_gain": 0.0,
+     "vol_common": 31333277.314503003,
+     "chosen": [
+      77562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 76573,
+     "common": 76572,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76573,
+     "vol_gain": 0.0,
+     "vol_common": 29418541.258703,
+     "chosen": [
+      76573,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 78529,
+     "common": 78528,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78529,
+     "vol_gain": 0.0,
+     "vol_common": 28321276.046471998,
+     "chosen": [
+      78529,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 81171,
+     "common": 81169,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81171,
+     "vol_gain": 0.0,
+     "vol_common": 41888008.334118,
+     "chosen": [
+      81171,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 76509,
+     "common": 76501,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76509,
+     "vol_gain": 0.0,
+     "vol_common": 33984717.826174,
+     "chosen": [
+      76509,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {},
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "pr30_score_bins": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-08",
+     "decisions": 63306,
+     "common": 63288,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 63306,
+     "vol_gain": 0.0,
+     "vol_common": 23088861.438602,
+     "chosen": [
+      63306,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-09",
+     "decisions": 75782,
+     "common": 75782,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75782,
+     "vol_gain": 0.0,
+     "vol_common": 26961276.002063997,
+     "chosen": [
+      75782,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-10",
+     "decisions": 75822,
+     "common": 75802,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75822,
+     "vol_gain": 0.0,
+     "vol_common": 29434271.854091,
+     "chosen": [
+      75822,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-11",
+     "decisions": 76421,
+     "common": 76421,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76421,
+     "vol_gain": 0.0,
+     "vol_common": 20185625.522565,
+     "chosen": [
+      76421,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-12",
+     "decisions": 74579,
+     "common": 74578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 74579,
+     "vol_gain": 0.0,
+     "vol_common": 22598241.221652,
+     "chosen": [
+      74579,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-13",
+     "decisions": 78416,
+     "common": 78411,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78416,
+     "vol_gain": 0.0,
+     "vol_common": 32107478.606601,
+     "chosen": [
+      78416,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-14",
+     "decisions": 76629,
+     "common": 76615,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76629,
+     "vol_gain": 0.0,
+     "vol_common": 45856218.383425996,
+     "chosen": [
+      76629,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-15",
+     "decisions": 77018,
+     "common": 77015,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77018,
+     "vol_gain": 0.0,
+     "vol_common": 34798773.045674,
+     "chosen": [
+      77018,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 77311,
+     "common": 77311,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77311,
+     "vol_gain": 0.0,
+     "vol_common": 24323217.751024,
+     "chosen": [
+      77311,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 77562,
+     "common": 77561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77562,
+     "vol_gain": 0.0,
+     "vol_common": 31333277.314503003,
+     "chosen": [
+      77562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 76573,
+     "common": 76572,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76573,
+     "vol_gain": 0.0,
+     "vol_common": 29418541.258703,
+     "chosen": [
+      76573,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 78529,
+     "common": 78528,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78529,
+     "vol_gain": 0.0,
+     "vol_common": 28321276.046471998,
+     "chosen": [
+      78529,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 81171,
+     "common": 81169,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81171,
+     "vol_gain": 0.0,
+     "vol_common": 41888008.334118,
+     "chosen": [
+      81171,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 76509,
+     "common": 76501,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76509,
+     "vol_gain": 0.0,
+     "vol_common": 33984717.826174,
+     "chosen": [
+      76509,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {
+    "cuts": [
+     0.1,
+     0.25,
+     0.5,
+     1.0,
+     2.0,
+     5.0,
+     10.0,
+     20.0
+    ],
+    "choice": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "threshold": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-08",
+     "decisions": 63306,
+     "common": 63288,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 63306,
+     "vol_gain": 0.0,
+     "vol_common": 23088861.438602,
+     "chosen": [
+      63306,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-09",
+     "decisions": 75782,
+     "common": 75782,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75782,
+     "vol_gain": 0.0,
+     "vol_common": 26961276.002063997,
+     "chosen": [
+      75782,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-10",
+     "decisions": 75822,
+     "common": 75802,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75822,
+     "vol_gain": 0.0,
+     "vol_common": 29434271.854091,
+     "chosen": [
+      75822,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-11",
+     "decisions": 76421,
+     "common": 76421,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76421,
+     "vol_gain": 0.0,
+     "vol_common": 20185625.522565,
+     "chosen": [
+      76421,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-12",
+     "decisions": 74579,
+     "common": 74578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 74579,
+     "vol_gain": 0.0,
+     "vol_common": 22598241.221652,
+     "chosen": [
+      74579,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-13",
+     "decisions": 78416,
+     "common": 78411,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78416,
+     "vol_gain": 0.0,
+     "vol_common": 32107478.606601,
+     "chosen": [
+      78416,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-14",
+     "decisions": 76629,
+     "common": 76615,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76629,
+     "vol_gain": 0.0,
+     "vol_common": 45856218.383425996,
+     "chosen": [
+      76629,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-15",
+     "decisions": 77018,
+     "common": 77015,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77018,
+     "vol_gain": 0.0,
+     "vol_common": 34798773.045674,
+     "chosen": [
+      77018,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 77311,
+     "common": 77311,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77311,
+     "vol_gain": 0.0,
+     "vol_common": 24323217.751024,
+     "chosen": [
+      77311,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 77562,
+     "common": 77561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77562,
+     "vol_gain": 0.0,
+     "vol_common": 31333277.314503003,
+     "chosen": [
+      77562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 76573,
+     "common": 76572,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76573,
+     "vol_gain": 0.0,
+     "vol_common": 29418541.258703,
+     "chosen": [
+      76573,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 78529,
+     "common": 78528,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78529,
+     "vol_gain": 0.0,
+     "vol_common": 28321276.046471998,
+     "chosen": [
+      78529,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 81171,
+     "common": 81169,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81171,
+     "vol_gain": 0.0,
+     "vol_common": 41888008.334118,
+     "chosen": [
+      81171,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 76509,
+     "common": 76501,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76509,
+     "vol_gain": 0.0,
+     "vol_common": 33984717.826174,
+     "chosen": [
+      76509,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {
+    "rule": null,
+    "train_mean_gain_bps": 0.0
+   },
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "gbm": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-08",
+     "decisions": 63306,
+     "common": 63288,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 63306,
+     "vol_gain": 0.0,
+     "vol_common": 23088861.438602,
+     "chosen": [
+      63306,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-09",
+     "decisions": 75782,
+     "common": 75782,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75782,
+     "vol_gain": 0.0,
+     "vol_common": 26961276.002063997,
+     "chosen": [
+      75782,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-10",
+     "decisions": 75822,
+     "common": 75802,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 75822,
+     "vol_gain": 0.0,
+     "vol_common": 29434271.854091,
+     "chosen": [
+      75822,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-11",
+     "decisions": 76421,
+     "common": 76421,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76421,
+     "vol_gain": 0.0,
+     "vol_common": 20185625.522565,
+     "chosen": [
+      76421,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-12",
+     "decisions": 74579,
+     "common": 74578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 74579,
+     "vol_gain": 0.0,
+     "vol_common": 22598241.221652,
+     "chosen": [
+      74579,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-13",
+     "decisions": 78416,
+     "common": 78411,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78416,
+     "vol_gain": 0.0,
+     "vol_common": 32107478.606601,
+     "chosen": [
+      78416,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-14",
+     "decisions": 76629,
+     "common": 76615,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76629,
+     "vol_gain": 0.0,
+     "vol_common": 45856218.383425996,
+     "chosen": [
+      76629,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-15",
+     "decisions": 77018,
+     "common": 77015,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77018,
+     "vol_gain": 0.0,
+     "vol_common": 34798773.045674,
+     "chosen": [
+      77018,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 77311,
+     "common": 77311,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77311,
+     "vol_gain": 0.0,
+     "vol_common": 24323217.751024,
+     "chosen": [
+      77311,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 77562,
+     "common": 77561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 77562,
+     "vol_gain": 0.0,
+     "vol_common": 31333277.314503003,
+     "chosen": [
+      77562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 76573,
+     "common": 76572,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76573,
+     "vol_gain": 0.0,
+     "vol_common": 29418541.258703,
+     "chosen": [
+      76573,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 78529,
+     "common": 78528,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 78529,
+     "vol_gain": 0.0,
+     "vol_common": 28321276.046471998,
+     "chosen": [
+      78529,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 81171,
+     "common": 81169,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81171,
+     "vol_gain": 0.0,
+     "vol_common": 41888008.334118,
+     "chosen": [
+      81171,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 76509,
+     "common": 76501,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 76509,
+     "vol_gain": 0.0,
+     "vol_common": 33984717.826174,
+     "chosen": [
+      76509,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {
+    "margin": 0.0,
+    "validation_gains": {
+     "0.0": 0.0,
+     "0.1": 0.0,
+     "0.25": 0.0,
+     "0.5": 0.0,
+     "1.0": 0.0,
+     "2.0": 0.0
+    },
+    "model_sha256": "b1280fa3efb2edabd2f41cfc703d507c8949005067f8d9f1f8a8ee466aa0ae55",
+    "features": [
+     "r1",
+     "r5",
+     "r30",
+     "vol_score",
+     "rv60",
+     "spread_bps",
+     "depth10_usd",
+     "imb10",
+     "depletion",
+     "flow1_signed",
+     "flow5_usd",
+     "flow60_usd",
+     "flow_accel",
+     "liq60_usd",
+     "xdiv5",
+     "abs_r1"
+    ],
+    "directional": [
+     "r1",
+     "r5",
+     "r30",
+     "flow1_signed",
+     "imb10",
+     "xdiv5"
+    ]
+   },
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "ex_post_oracle": {
+   "mean_net_saving_bps_common": {
+    "point": 0.04843662033268598,
+    "lo95": 0.039329672847490046,
+    "hi95": 0.0583225266354088
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.048437422901704746,
+    "lo95": 0.039250049808274616,
+    "hi95": 0.05846488398250776
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.1999884662355281,
+    "lo95": 0.14856183700511497,
+    "hi95": 0.25314709531508756
+   },
+   "chosen_share": {
+    "standard": 0.9306821892818131,
+    "intermediate": 0.06364697624311673,
+    "premium": 0.005670834475070099
+   },
+   "paid_choices": 73867,
+   "paid_choices_positive": 73865,
+   "usd_gain_per_day_per_decision_stream": 3686.5596101410633,
+   "per_day": [
+    {
+     "day": "2026-11-08",
+     "decisions": 63306,
+     "common": 63288,
+     "gain_sum": 1524.9090894873189,
+     "gain_completion_sum": 1524.9090894873189,
+     "completion_known": 63306,
+     "vol_gain": 4646722.299666187,
+     "vol_common": 23088861.438602,
+     "chosen": [
+      61333,
+      1785,
+      188
+     ],
+     "chosen_common_positive": 1973,
+     "usd_gain": 1524.9090894873189
+    },
+    {
+     "day": "2026-11-09",
+     "decisions": 75782,
+     "common": 75782,
+     "gain_sum": 2682.209605384855,
+     "gain_completion_sum": 2682.209605384855,
+     "completion_known": 75782,
+     "vol_gain": 1951681.928096809,
+     "vol_common": 26961276.002063997,
+     "chosen": [
+      71214,
+      4295,
+      273
+     ],
+     "chosen_common_positive": 4568,
+     "usd_gain": 2682.209605384855
+    },
+    {
+     "day": "2026-11-10",
+     "decisions": 75822,
+     "common": 75802,
+     "gain_sum": 2643.1217503909056,
+     "gain_completion_sum": 2643.1217503909056,
+     "completion_known": 75822,
+     "vol_gain": 3592697.9011791833,
+     "vol_common": 29434271.854091,
+     "chosen": [
+      71702,
+      3835,
+      285
+     ],
+     "chosen_common_positive": 4120,
+     "usd_gain": 2643.1217503909056
+    },
+    {
+     "day": "2026-11-11",
+     "decisions": 76421,
+     "common": 76421,
+     "gain_sum": 2060.0267415072776,
+     "gain_completion_sum": 2060.0267415072776,
+     "completion_known": 76421,
+     "vol_gain": 2279743.365038705,
+     "vol_common": 20185625.522565,
+     "chosen": [
+      72719,
+      3473,
+      229
+     ],
+     "chosen_common_positive": 3702,
+     "usd_gain": 2060.0267415072776
+    },
+    {
+     "day": "2026-11-12",
+     "decisions": 74579,
+     "common": 74578,
+     "gain_sum": 2520.3650723418004,
+     "gain_completion_sum": 2520.3650723418004,
+     "completion_known": 74579,
+     "vol_gain": 4009009.7841347926,
+     "vol_common": 22598241.221652,
+     "chosen": [
+      70479,
+      3829,
+      271
+     ],
+     "chosen_common_positive": 4100,
+     "usd_gain": 2520.3650723418004
+    },
+    {
+     "day": "2026-11-13",
+     "decisions": 78416,
+     "common": 78411,
+     "gain_sum": 3976.6533821554585,
+     "gain_completion_sum": 3976.6533821554585,
+     "completion_known": 78416,
+     "vol_gain": 7415081.089403572,
+     "vol_common": 32107478.606601,
+     "chosen": [
+      72673,
+      5304,
+      439
+     ],
+     "chosen_common_positive": 5743,
+     "usd_gain": 3976.6533821554585
+    },
+    {
+     "day": "2026-11-14",
+     "decisions": 76629,
+     "common": 76615,
+     "gain_sum": 6998.421603912864,
+     "gain_completion_sum": 7002.861153835807,
+     "completion_known": 76629,
+     "vol_gain": 13882753.865431968,
+     "vol_common": 45856218.383425996,
+     "chosen": [
+      69344,
+      6266,
+      1019
+     ],
+     "chosen_common_positive": 7283,
+     "usd_gain": 6998.421603912865
+    },
+    {
+     "day": "2026-11-15",
+     "decisions": 77018,
+     "common": 77015,
+     "gain_sum": 5512.77177340981,
+     "gain_completion_sum": 5512.77177340981,
+     "completion_known": 77018,
+     "vol_gain": 8403511.834374808,
+     "vol_common": 34798773.045674,
+     "chosen": [
+      70565,
+      5714,
+      739
+     ],
+     "chosen_common_positive": 6453,
+     "usd_gain": 5512.77177340981
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 77311,
+     "common": 77311,
+     "gain_sum": 3860.452402371408,
+     "gain_completion_sum": 3860.452402371408,
+     "completion_known": 77311,
+     "vol_gain": 2824808.328432833,
+     "vol_common": 24323217.751024,
+     "chosen": [
+      71417,
+      5462,
+      432
+     ],
+     "chosen_common_positive": 5894,
+     "usd_gain": 3860.452402371408
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 77562,
+     "common": 77561,
+     "gain_sum": 3817.408188043354,
+     "gain_completion_sum": 3817.408188043354,
+     "completion_known": 77562,
+     "vol_gain": 4573053.268235322,
+     "vol_common": 31333277.314503003,
+     "chosen": [
+      71914,
+      5219,
+      429
+     ],
+     "chosen_common_positive": 5648,
+     "usd_gain": 3817.4081880433546
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 76573,
+     "common": 76572,
+     "gain_sum": 2751.8963738174793,
+     "gain_completion_sum": 2751.8963738174793,
+     "completion_known": 76573,
+     "vol_gain": 3521088.322538631,
+     "vol_common": 29418541.258703,
+     "chosen": [
+      71872,
+      4454,
+      247
+     ],
+     "chosen_common_positive": 4701,
+     "usd_gain": 2751.8963738174793
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 78529,
+     "common": 78528,
+     "gain_sum": 2975.9385559268285,
+     "gain_completion_sum": 2975.9385559268285,
+     "completion_known": 78529,
+     "vol_gain": 3963442.1954007247,
+     "vol_common": 28321276.046471998,
+     "chosen": [
+      73169,
+      5101,
+      259
+     ],
+     "chosen_common_positive": 5360,
+     "usd_gain": 2975.9385559268285
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 81171,
+     "common": 81169,
+     "gain_sum": 5198.6134836555875,
+     "gain_completion_sum": 5198.6134836555875,
+     "completion_known": 81171,
+     "vol_gain": 8898435.694858031,
+     "vol_common": 41888008.334118,
+     "chosen": [
+      73209,
+      7439,
+      523
+     ],
+     "chosen_common_positive": 7962,
+     "usd_gain": 5198.6134836555875
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 76509,
+     "common": 76501,
+     "gain_sum": 5089.046519569939,
+     "gain_completion_sum": 5089.046519569939,
+     "completion_known": 76509,
+     "vol_gain": 14893033.27056111,
+     "vol_common": 33984717.826174,
+     "chosen": [
+      70151,
+      5648,
+      710
+     ],
+     "chosen_common_positive": 6358,
+     "usd_gain": 5089.046519569939
+    }
+   ]
+  }
+ },
+ "label": "SOL_dev_10k",
+ "heldout_is_out_of_sample": true
+}

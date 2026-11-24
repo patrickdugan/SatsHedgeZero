@@ -1,0 +1,933 @@
+{
+ "train_symbol": "ETH",
+ "test_symbol": "ETH",
+ "train_days": [
+  "2026-11-01",
+  "2026-11-02",
+  "2026-11-03",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06",
+  "2026-11-07",
+  "2026-11-08",
+  "2026-11-09",
+  "2026-11-10",
+  "2026-11-11",
+  "2026-11-12",
+  "2026-11-13",
+  "2026-11-14"
+ ],
+ "test_days": [
+  "2026-11-15",
+  "2026-11-16",
+  "2026-11-17",
+  "2026-11-18",
+  "2026-11-19",
+  "2026-11-20",
+  "2026-11-21"
+ ],
+ "size_usd": 10000,
+ "tierset": "shz_candidate",
+ "train_decisions": 1092964,
+ "test_decisions": 572381,
+ "policies": {
+  "free_only": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-15",
+     "decisions": 81646,
+     "common": 81646,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81646,
+     "vol_gain": 0.0,
+     "vol_common": 282897344.12975705,
+     "chosen": [
+      81646,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 81578,
+     "common": 81578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81578,
+     "vol_gain": 0.0,
+     "vol_common": 236375444.194602,
+     "chosen": [
+      81578,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 81862,
+     "common": 81862,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81862,
+     "vol_gain": 0.0,
+     "vol_common": 237194665.68935,
+     "chosen": [
+      81862,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 81378,
+     "common": 81378,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81378,
+     "vol_gain": 0.0,
+     "vol_common": 186740326.617793,
+     "chosen": [
+      81378,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 82060,
+     "common": 82060,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 82060,
+     "vol_gain": 0.0,
+     "vol_common": 210233263.371508,
+     "chosen": [
+      82060,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 83562,
+     "common": 83561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 83562,
+     "vol_gain": 0.0,
+     "vol_common": 318401711.071127,
+     "chosen": [
+      83562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 80295,
+     "common": 80290,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 80295,
+     "vol_gain": 0.0,
+     "vol_common": 190015786.062195,
+     "chosen": [
+      80295,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {},
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "pr30_score_bins": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-15",
+     "decisions": 81646,
+     "common": 81646,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81646,
+     "vol_gain": 0.0,
+     "vol_common": 282897344.12975705,
+     "chosen": [
+      81646,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 81578,
+     "common": 81578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81578,
+     "vol_gain": 0.0,
+     "vol_common": 236375444.194602,
+     "chosen": [
+      81578,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 81862,
+     "common": 81862,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81862,
+     "vol_gain": 0.0,
+     "vol_common": 237194665.68935,
+     "chosen": [
+      81862,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 81378,
+     "common": 81378,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81378,
+     "vol_gain": 0.0,
+     "vol_common": 186740326.617793,
+     "chosen": [
+      81378,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 82060,
+     "common": 82060,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 82060,
+     "vol_gain": 0.0,
+     "vol_common": 210233263.371508,
+     "chosen": [
+      82060,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 83562,
+     "common": 83561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 83562,
+     "vol_gain": 0.0,
+     "vol_common": 318401711.071127,
+     "chosen": [
+      83562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 80295,
+     "common": 80290,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 80295,
+     "vol_gain": 0.0,
+     "vol_common": 190015786.062195,
+     "chosen": [
+      80295,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {
+    "cuts": [
+     0.1,
+     0.25,
+     0.5,
+     1.0,
+     2.0,
+     5.0,
+     10.0,
+     20.0
+    ],
+    "choice": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   },
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "threshold": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-15",
+     "decisions": 81646,
+     "common": 81646,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81646,
+     "vol_gain": 0.0,
+     "vol_common": 282897344.12975705,
+     "chosen": [
+      81646,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 81578,
+     "common": 81578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81578,
+     "vol_gain": 0.0,
+     "vol_common": 236375444.194602,
+     "chosen": [
+      81578,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 81862,
+     "common": 81862,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81862,
+     "vol_gain": 0.0,
+     "vol_common": 237194665.68935,
+     "chosen": [
+      81862,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 81378,
+     "common": 81378,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81378,
+     "vol_gain": 0.0,
+     "vol_common": 186740326.617793,
+     "chosen": [
+      81378,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 82060,
+     "common": 82060,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 82060,
+     "vol_gain": 0.0,
+     "vol_common": 210233263.371508,
+     "chosen": [
+      82060,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 83562,
+     "common": 83561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 83562,
+     "vol_gain": 0.0,
+     "vol_common": 318401711.071127,
+     "chosen": [
+      83562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 80295,
+     "common": 80290,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 80295,
+     "vol_gain": 0.0,
+     "vol_common": 190015786.062195,
+     "chosen": [
+      80295,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {
+    "rule": null,
+    "train_mean_gain_bps": 0.0
+   },
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "gbm": {
+   "mean_net_saving_bps_common": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.0,
+    "lo95": 0.0,
+    "hi95": 0.0
+   },
+   "chosen_share": {
+    "standard": 1.0,
+    "intermediate": 0.0,
+    "premium": 0.0
+   },
+   "paid_choices": 0,
+   "paid_choices_positive": 0,
+   "usd_gain_per_day_per_decision_stream": 0.0,
+   "per_day": [
+    {
+     "day": "2026-11-15",
+     "decisions": 81646,
+     "common": 81646,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81646,
+     "vol_gain": 0.0,
+     "vol_common": 282897344.12975705,
+     "chosen": [
+      81646,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 81578,
+     "common": 81578,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81578,
+     "vol_gain": 0.0,
+     "vol_common": 236375444.194602,
+     "chosen": [
+      81578,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 81862,
+     "common": 81862,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81862,
+     "vol_gain": 0.0,
+     "vol_common": 237194665.68935,
+     "chosen": [
+      81862,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 81378,
+     "common": 81378,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 81378,
+     "vol_gain": 0.0,
+     "vol_common": 186740326.617793,
+     "chosen": [
+      81378,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 82060,
+     "common": 82060,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 82060,
+     "vol_gain": 0.0,
+     "vol_common": 210233263.371508,
+     "chosen": [
+      82060,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 83562,
+     "common": 83561,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 83562,
+     "vol_gain": 0.0,
+     "vol_common": 318401711.071127,
+     "chosen": [
+      83562,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 80295,
+     "common": 80290,
+     "gain_sum": 0.0,
+     "gain_completion_sum": 0.0,
+     "completion_known": 80295,
+     "vol_gain": 0.0,
+     "vol_common": 190015786.062195,
+     "chosen": [
+      80295,
+      0,
+      0
+     ],
+     "chosen_common_positive": 0,
+     "usd_gain": 0.0
+    }
+   ],
+   "frozen_spec": {
+    "margin": 0.1,
+    "validation_gains": {
+     "0.0": -5.2864909298370555e-06,
+     "0.1": 4.701836164607558e-06,
+     "0.25": 0.0,
+     "0.5": 0.0,
+     "1.0": 0.0,
+     "2.0": 0.0
+    },
+    "model_sha256": "88f618c1c93a01b6c3f4fe8603a0da25700f133e8607ff83628b6c015eda04f1",
+    "features": [
+     "r1",
+     "r5",
+     "r30",
+     "vol_score",
+     "rv60",
+     "spread_bps",
+     "depth10_usd",
+     "imb10",
+     "depletion",
+     "flow1_signed",
+     "flow5_usd",
+     "flow60_usd",
+     "flow_accel",
+     "liq60_usd",
+     "xdiv5",
+     "abs_r1"
+    ],
+    "directional": [
+     "r1",
+     "r5",
+     "r30",
+     "flow1_signed",
+     "imb10",
+     "xdiv5"
+    ]
+   },
+   "in_sample": {
+    "mean_net_saving_bps_common": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "mean_net_saving_bps_completion": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "volume_weighted_net_saving_bps": {
+     "point": 0.0,
+     "lo95": 0.0,
+     "hi95": 0.0
+    },
+    "chosen_share": {
+     "standard": 1.0,
+     "intermediate": 0.0,
+     "premium": 0.0
+    },
+    "paid_choices": 0,
+    "paid_choices_positive": 0,
+    "usd_gain_per_day_per_decision_stream": 0.0
+   }
+  },
+  "ex_post_oracle": {
+   "mean_net_saving_bps_common": {
+    "point": 0.03905583533025894,
+    "lo95": 0.030406693170984093,
+    "hi95": 0.04862395855593944
+   },
+   "mean_net_saving_bps_completion": {
+    "point": 0.039055425926361916,
+    "lo95": 0.030095775803415326,
+    "hi95": 0.04862211344860368
+   },
+   "volume_weighted_net_saving_bps": {
+    "point": 0.158704978706771,
+    "lo95": 0.11180384894911914,
+    "hi95": 0.20632379119964894
+   },
+   "chosen_share": {
+    "standard": 0.9241449314355298,
+    "intermediate": 0.07215823026969798,
+    "premium": 0.0036968382947721885
+   },
+   "paid_choices": 43418,
+   "paid_choices_positive": 43418,
+   "usd_gain_per_day_per_decision_stream": 3193.511963879566,
+   "per_day": [
+    {
+     "day": "2026-11-15",
+     "decisions": 81646,
+     "common": 81646,
+     "gain_sum": 3934.347949834755,
+     "gain_completion_sum": 3934.347949834755,
+     "completion_known": 81646,
+     "vol_gain": 54211476.259809524,
+     "vol_common": 282897344.12975705,
+     "chosen": [
+      74825,
+      6451,
+      370
+     ],
+     "chosen_common_positive": 6821,
+     "usd_gain": 3934.347949834755
+    },
+    {
+     "day": "2026-11-16",
+     "decisions": 81578,
+     "common": 81578,
+     "gain_sum": 2521.278987033233,
+     "gain_completion_sum": 2521.278987033233,
+     "completion_known": 81578,
+     "vol_gain": 27754215.138770953,
+     "vol_common": 236375444.194602,
+     "chosen": [
+      75873,
+      5508,
+      197
+     ],
+     "chosen_common_positive": 5705,
+     "usd_gain": 2521.278987033233
+    },
+    {
+     "day": "2026-11-17",
+     "decisions": 81862,
+     "common": 81862,
+     "gain_sum": 2503.3809960316466,
+     "gain_completion_sum": 2503.3809960316466,
+     "completion_known": 81862,
+     "vol_gain": 33548243.738238048,
+     "vol_common": 237194665.68935,
+     "chosen": [
+      76533,
+      5116,
+      213
+     ],
+     "chosen_common_positive": 5329,
+     "usd_gain": 2503.3809960316466
+    },
+    {
+     "day": "2026-11-18",
+     "decisions": 81378,
+     "common": 81378,
+     "gain_sum": 1898.0805594934895,
+     "gain_completion_sum": 1898.0805594934895,
+     "completion_known": 81378,
+     "vol_gain": 16194487.143259395,
+     "vol_common": 186740326.617793,
+     "chosen": [
+      76824,
+      4414,
+      140
+     ],
+     "chosen_common_positive": 4554,
+     "usd_gain": 1898.0805594934895
+    },
+    {
+     "day": "2026-11-19",
+     "decisions": 82060,
+     "common": 82060,
+     "gain_sum": 2331.418739718967,
+     "gain_completion_sum": 2331.418739718967,
+     "completion_known": 82060,
+     "vol_gain": 16161492.585867718,
+     "vol_common": 210233263.371508,
+     "chosen": [
+      76521,
+      5391,
+      148
+     ],
+     "chosen_common_positive": 5539,
+     "usd_gain": 2331.418739718967
+    },
+    {
+     "day": "2026-11-20",
+     "decisions": 83562,
+     "common": 83561,
+     "gain_sum": 4909.39162913948,
+     "gain_completion_sum": 4909.39162913948,
+     "completion_known": 83562,
+     "vol_gain": 59793737.339548014,
+     "vol_common": 318401711.071127,
+     "chosen": [
+      74587,
+      8475,
+      500
+     ],
+     "chosen_common_positive": 8975,
+     "usd_gain": 4909.39162913948
+    },
+    {
+     "day": "2026-11-21",
+     "decisions": 80295,
+     "common": 80290,
+     "gain_sum": 4256.684885905392,
+     "gain_completion_sum": 4256.684885905392,
+     "completion_known": 80295,
+     "vol_gain": 56081572.17921343,
+     "vol_common": 190015786.062195,
+     "chosen": [
+      73800,
+      5947,
+      548
+     ],
+     "chosen_common_positive": 6495,
+     "usd_gain": 4256.684885905392
+    }
+   ]
+  }
+ },
+ "label": "ETH_dev_10k",
+ "heldout_is_out_of_sample": true
+}

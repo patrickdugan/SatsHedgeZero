@@ -1,0 +1,41 @@
+{
+ "policy": "gbm",
+ "label": "BTC_oct11_1k",
+ "train_symbol": "BTC",
+ "train_days": [
+  "2026-10-11"
+ ],
+ "size_usd": 1000,
+ "tierset": "shz_candidate",
+ "spec": {
+  "margin": 0.0,
+  "validation_gains": null,
+  "model_sha256": "ad86d521e238e835a6db73462a42f31e2c579efc2e5b1791fee314580cc757c0",
+  "features": [
+   "r1",
+   "r5",
+   "r30",
+   "vol_score",
+   "rv60",
+   "spread_bps",
+   "depth10_usd",
+   "imb10",
+   "depletion",
+   "flow1_signed",
+   "flow5_usd",
+   "flow60_usd",
+   "flow_accel",
+   "liq60_usd",
+   "xdiv5",
+   "abs_r1"
+  ],
+  "directional": [
+   "r1",
+   "r5",
+   "r30",
+   "flow1_signed",
+   "imb10",
+   "xdiv5"
+  ]
+ }
+}

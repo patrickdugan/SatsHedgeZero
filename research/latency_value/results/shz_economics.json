@@ -1,0 +1,1747 @@
+{
+ "schema": "shz-lv/shz-economics/v1",
+ "tariff_ppm": {
+  "standard": [
+   0,
+   0
+  ],
+  "intermediate": [
+   0,
+   50
+  ],
+  "premium": [
+   20,
+   200
+  ]
+ },
+ "split_federation": 0.7,
+ "cost_parameters_usd_per_day": {
+  "market_data_licensing": [
+   100.0,
+   700.0,
+   3300.0
+  ],
+  "oracle_signers_compute_bandwidth": [
+   25.0,
+   75.0,
+   250.0
+  ],
+  "public_mirrors_and_archive": [
+   5.0,
+   20.0,
+   60.0
+  ],
+  "proof_generation": [
+   5.0,
+   40.0,
+   200.0
+  ],
+  "watchtowers": [
+   3.0,
+   15.0,
+   50.0
+  ],
+  "router_compute_bandwidth_per_router": [
+   10.0,
+   40.0,
+   150.0
+  ]
+ },
+ "lightning_parameters": {
+  "liquidity_per_router_usd": [
+   200000.0,
+   1000000.0,
+   5000000.0
+  ],
+  "cost_of_capital_annual": [
+   0.05,
+   0.1,
+   0.2
+  ],
+  "ln_fees_rebalancing_bps_of_fee_flow": [
+   10.0,
+   50.0,
+   200.0
+  ]
+ },
+ "adoption_scenarios": {
+  "latency_optimal_BTC": {
+   "taker_int": 0.037802425756392734,
+   "taker_prem": 0.002161382510091387,
+   "maker_prem": 0.0,
+   "provenance": "ex-post latency-optimal volume share, displayed depth"
+  },
+  "latency_optimal_ETH": {
+   "taker_int": 0.1010923201868938,
+   "taker_prem": 0.012691607815741092,
+   "maker_prem": 0.0,
+   "provenance": "ex-post latency-optimal volume share, displayed depth"
+  },
+  "latency_optimal_SOL": {
+   "taker_int": 0.07658010355212545,
+   "taker_prem": 0.013135709362004646,
+   "maker_prem": 0.0,
+   "provenance": "ex-post latency-optimal volume share, displayed depth"
+  },
+  "lighter_observed_mix": {
+   "taker_int": 0.06483397185009208,
+   "taker_prem": 0.11233315775117159,
+   "maker_prem": 0.9222445890052178,
+   "provenance": "Lighter public trades, volume-weighted trade-level fee-rate shares"
+  },
+  "no_maker_fees": {
+   "taker_int": 0.06483397185009208,
+   "taker_prem": 0.11233315775117159,
+   "maker_prem": 0.0,
+   "provenance": "Lighter taker mix, makers free"
+  }
+ },
+ "breakeven": [
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "low_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 84972608.1396117,
+    "per_router": 53729949.75673282,
+    "routers_total": 53729949.75673282,
+    "system": 84972608.1396117,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "low_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 84972608.1396117,
+    "per_router": 53729949.75673282,
+    "routers_total": 161189849.27019846,
+    "system": 161189849.27019846,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "low_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 84972608.1396117,
+    "per_router": 53729949.75673282,
+    "routers_total": 268649748.7836641,
+    "system": 268649748.7836641,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "base_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 525486054.92499655,
+    "per_router": 452908851.2069107,
+    "routers_total": 452908851.2069107,
+    "system": 525486054.92499655,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "base_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 525486054.92499655,
+    "per_router": 452908851.2069107,
+    "routers_total": 1358726553.6207323,
+    "system": 1358726553.6207323,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "base_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 525486054.92499655,
+    "per_router": 452908851.2069107,
+    "routers_total": 2264544256.0345535,
+    "system": 2264544256.0345535,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "high_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 2422850289.4963193,
+    "per_router": 4232263799.1633415,
+    "routers_total": 4232263799.1633415,
+    "system": 4232263799.1633415,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "high_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 2422850289.4963193,
+    "per_router": 4232263799.1633415,
+    "routers_total": 12696791397.490025,
+    "system": 12696791397.490025,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_BTC",
+   "cost": "high_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.02322397789837914,
+   "breakeven_daily_volume_usd": {
+    "federation": 2422850289.4963193,
+    "per_router": 4232263799.1633415,
+    "routers_total": 21161318995.816708,
+    "system": 21161318995.816708,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "low_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 25989967.052423257,
+    "per_router": 16433997.431401243,
+    "routers_total": 16433997.431401243,
+    "system": 25989967.052423257,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "low_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 25989967.052423257,
+    "per_router": 16433997.431401243,
+    "routers_total": 49301992.29420373,
+    "system": 49301992.29420373,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "low_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 25989967.052423257,
+    "per_router": 16433997.431401243,
+    "routers_total": 82169987.15700622,
+    "system": 82169987.15700622,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "base_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 160726680.66830683,
+    "per_router": 138528007.7702022,
+    "routers_total": 138528007.7702022,
+    "system": 160726680.66830683,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "base_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 160726680.66830683,
+    "per_router": 138528007.7702022,
+    "routers_total": 415584023.3106066,
+    "system": 415584023.3106066,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "base_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 160726680.66830683,
+    "per_router": 138528007.7702022,
+    "routers_total": 692640038.8510109,
+    "system": 692640038.8510109,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "high_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 741059978.9228883,
+    "per_router": 1294492414.7402024,
+    "routers_total": 1294492414.7402024,
+    "system": 1294492414.7402024,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "high_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 741059978.9228883,
+    "per_router": 1294492414.7402024,
+    "routers_total": 3883477244.2206073,
+    "system": 3883477244.2206073,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_ETH",
+   "cost": "high_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.0759293757249291,
+   "breakeven_daily_volume_usd": {
+    "federation": 741059978.9228883,
+    "per_router": 1294492414.7402024,
+    "routers_total": 6472462073.701012,
+    "system": 6472462073.701012,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "low_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 30566248.849610265,
+    "per_router": 19327675.7168967,
+    "routers_total": 19327675.7168967,
+    "system": 30566248.849610265,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "low_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 30566248.849610265,
+    "per_router": 19327675.7168967,
+    "routers_total": 57983027.15069011,
+    "system": 57983027.15069011,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "low_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 30566248.849610265,
+    "per_router": 19327675.7168967,
+    "routers_total": 96638378.5844835,
+    "system": 96638378.5844835,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "base_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 189027239.17155746,
+    "per_router": 162919850.94109413,
+    "routers_total": 162919850.94109413,
+    "system": 189027239.17155746,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "base_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 189027239.17155746,
+    "per_router": 162919850.94109413,
+    "routers_total": 488759552.82328236,
+    "system": 488759552.82328236,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "base_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 189027239.17155746,
+    "per_router": 162919850.94109413,
+    "routers_total": 814599254.7054707,
+    "system": 814599254.7054707,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "high_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 871544918.9510214,
+    "per_router": 1522425065.1442323,
+    "routers_total": 1522425065.1442323,
+    "system": 1522425065.1442323,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "high_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 871544918.9510214,
+    "per_router": 1522425065.1442323,
+    "routers_total": 4567275195.432697,
+    "system": 4567275195.432697,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "latency_optimal_SOL",
+   "cost": "high_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.06456147050007202,
+   "breakeven_daily_volume_usd": {
+    "federation": 871544918.9510214,
+    "per_router": 1522425065.1442323,
+    "routers_total": 7612125325.721161,
+    "system": 7612125325.721161,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "low_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 4469440.478999352,
+    "per_router": 2826120.2949400307,
+    "routers_total": 2826120.2949400307,
+    "system": 4469440.478999352,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "low_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 4469440.478999352,
+    "per_router": 2826120.2949400307,
+    "routers_total": 8478360.884820092,
+    "system": 8478360.884820092,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "low_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 4469440.478999352,
+    "per_router": 2826120.2949400307,
+    "routers_total": 14130601.474700153,
+    "system": 14130601.474700153,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "base_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 27639832.370128177,
+    "per_router": 23822372.846969455,
+    "routers_total": 23822372.846969455,
+    "system": 27639832.370128177,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "base_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 27639832.370128177,
+    "per_router": 23822372.846969455,
+    "routers_total": 71467118.54090837,
+    "system": 71467118.54090837,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "base_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 27639832.370128177,
+    "per_router": 23822372.846969455,
+    "routers_total": 119111864.23484728,
+    "system": 119111864.23484728,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "high_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 127438540.43691632,
+    "per_router": 222611163.24339604,
+    "routers_total": 222611163.24339604,
+    "system": 222611163.24339604,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "high_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 127438540.43691632,
+    "per_router": 222611163.24339604,
+    "routers_total": 667833489.7301881,
+    "system": 667833489.7301881,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "lighter_observed_mix",
+   "cost": "high_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.4415322192284328,
+   "breakeven_daily_volume_usd": {
+    "federation": 127438540.43691632,
+    "per_router": 222611163.24339604,
+    "routers_total": 1113055816.2169802,
+    "system": 1113055816.2169802,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "low_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 7676118.839477961,
+    "per_router": 4853769.804196407,
+    "routers_total": 4853769.804196407,
+    "system": 7676118.839477961,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "low_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 7676118.839477961,
+    "per_router": 4853769.804196407,
+    "routers_total": 14561309.412589222,
+    "system": 14561309.412589222,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "low_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 7676118.839477961,
+    "per_router": 4853769.804196407,
+    "routers_total": 24268849.020982035,
+    "system": 24268849.020982035,
+    "fed_cost": 138.0,
+    "router_cost": 37.397260273972606
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "base_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 47470514.25637397,
+    "per_router": 40914151.52990942,
+    "routers_total": 40914151.52990942,
+    "system": 47470514.25637397,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "base_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 47470514.25637397,
+    "per_router": 40914151.52990942,
+    "routers_total": 122742454.58972825,
+    "system": 122742454.58972825,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "base_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 47470514.25637397,
+    "per_router": 40914151.52990942,
+    "routers_total": 204570757.6495471,
+    "system": 204570757.6495471,
+    "fed_cost": 850.0,
+    "router_cost": 313.972602739726
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "high_cost",
+   "routers": 1,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 218871553.54676533,
+    "per_router": 382327441.6741559,
+    "routers_total": 382327441.6741559,
+    "system": 382327441.6741559,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "high_cost",
+   "routers": 3,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 218871553.54676533,
+    "per_router": 382327441.6741559,
+    "routers_total": 1146982325.0224676,
+    "system": 1146982325.0224676,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  },
+  {
+   "adoption": "no_maker_fees",
+   "cost": "high_cost",
+   "routers": 5,
+   "fee_rate_bps_on_all_volume": 0.2570833014273892,
+   "breakeven_daily_volume_usd": {
+    "federation": 218871553.54676533,
+    "per_router": 382327441.6741559,
+    "routers_total": 1911637208.3707795,
+    "system": 1911637208.3707795,
+    "fed_cost": 3860.0,
+    "router_cost": 2889.72602739726
+   }
+  }
+ ],
+ "sensitivity_system_breakeven_vs_rate": [
+  {
+   "fee_rate_bps": 0.01,
+   "low": 374346949.68941545,
+   "base": 3155503545.1228743,
+   "high": 29487000279.56388
+  },
+  {
+   "fee_rate_bps": 0.012,
+   "low": 311955791.4078462,
+   "base": 2629586287.602395,
+   "high": 24572500232.9699
+  },
+  {
+   "fee_rate_bps": 0.01441,
+   "low": 259782754.81569427,
+   "base": 2189801211.049878,
+   "high": 20462873198.864594
+  },
+  {
+   "fee_rate_bps": 0.0173,
+   "low": 216385520.0516852,
+   "base": 1823990488.5103319,
+   "high": 17044508832.117847
+  },
+  {
+   "fee_rate_bps": 0.02077,
+   "low": 180234448.57458612,
+   "base": 1519260252.8275754,
+   "high": 14196918767.24308
+  },
+  {
+   "fee_rate_bps": 0.02493,
+   "low": 150159225.70774785,
+   "base": 1265745505.46445,
+   "high": 11827918283.017998
+  },
+  {
+   "fee_rate_bps": 0.02993,
+   "low": 125074156.26108101,
+   "base": 1054294535.6240809,
+   "high": 9851988065.34042
+  },
+  {
+   "fee_rate_bps": 0.03593,
+   "low": 104187851.29123724,
+   "base": 878236444.509567,
+   "high": 8206791060.273831
+  },
+  {
+   "fee_rate_bps": 0.04313,
+   "low": 86795026.59156397,
+   "base": 731626140.7657951,
+   "high": 6836772612.929255
+  },
+  {
+   "fee_rate_bps": 0.05177,
+   "low": 72309629.06884594,
+   "base": 609523574.4877099,
+   "high": 5695769804.822075
+  },
+  {
+   "fee_rate_bps": 0.06215,
+   "low": 60232815.71832912,
+   "base": 507723820.6151045,
+   "high": 4744489184.161524
+  },
+  {
+   "fee_rate_bps": 0.07461,
+   "low": 50173830.54408464,
+   "base": 422933057.9175545,
+   "high": 3952151223.638101
+  },
+  {
+   "fee_rate_bps": 0.08957,
+   "low": 41793786.94757345,
+   "base": 352294690.75838727,
+   "high": 3292062105.56703
+  },
+  {
+   "fee_rate_bps": 0.10752,
+   "low": 34816494.576768555,
+   "base": 293480612.45562446,
+   "high": 2742466543.8582473
+  },
+  {
+   "fee_rate_bps": 0.12907,
+   "low": 29003405.10493651,
+   "base": 244480014.3428275,
+   "high": 2284574283.6882215
+  },
+  {
+   "fee_rate_bps": 0.15495,
+   "low": 24159209.402350143,
+   "base": 203646566.31964338,
+   "high": 1903000986.0964103
+  },
+  {
+   "fee_rate_bps": 0.18601,
+   "low": 20125098.09630748,
+   "base": 169641607.71586874,
+   "high": 1585237367.8600008
+  },
+  {
+   "fee_rate_bps": 0.2233,
+   "low": 16764305.852638397,
+   "base": 141312294.90026304,
+   "high": 1320510536.4784536
+  },
+  {
+   "fee_rate_bps": 0.26806,
+   "low": 13965043.262307521,
+   "base": 117716315.19521281,
+   "high": 1100014932.4615338
+  },
+  {
+   "fee_rate_bps": 0.32179,
+   "low": 11633268.581665538,
+   "base": 98060957.30516404,
+   "high": 916342965.2743675
+  },
+  {
+   "fee_rate_bps": 0.38629,
+   "low": 9690826.831898715,
+   "base": 81687425.12420395,
+   "high": 763338431.7368784
+  },
+  {
+   "fee_rate_bps": 0.46373,
+   "low": 8072519.562879594,
+   "base": 68046137.73365696,
+   "high": 635865703.7406223
+  },
+  {
+   "fee_rate_bps": 0.55668,
+   "low": 6724634.434314426,
+   "base": 56684334.718741015,
+   "high": 529693904.5693015
+  },
+  {
+   "fee_rate_bps": 0.66827,
+   "low": 5601732.079689578,
+   "base": 47218991.50228013,
+   "high": 441243812.82361734
+  },
+  {
+   "fee_rate_bps": 0.80223,
+   "low": 4666329.477698608,
+   "base": 39334150.369879894,
+   "high": 367562921.8498919
+  },
+  {
+   "fee_rate_bps": 0.96304,
+   "low": 3887138.1218787944,
+   "base": 32766069.375341356,
+   "high": 306186661.8163718
+  },
+  {
+   "fee_rate_bps": 1.15609,
+   "low": 3238043.315740257,
+   "base": 27294618.456373416,
+   "high": 255057999.63293403
+  },
+  {
+   "fee_rate_bps": 1.38784,
+   "low": 2697335.065205034,
+   "base": 22736796.353490848,
+   "high": 212466856.98325366
+  },
+  {
+   "fee_rate_bps": 1.66604,
+   "low": 2246926.542516479,
+   "base": 18940142.764416665,
+   "high": 176988549.3719471
+  },
+  {
+   "fee_rate_bps": 2.0,
+   "low": 1871734.7484470769,
+   "base": 15777517.725614369,
+   "high": 147435001.39781937
+  }
+ ],
+ "lighter_effective_fee_bps_reference": 0.7467183921680631,
+ "revenue_at_volume": {
+  "1e+06": {
+   "latency_optimal_BTC": 2.3223977898379142,
+   "latency_optimal_ETH": 7.59293757249291,
+   "latency_optimal_SOL": 6.4561470500072025,
+   "lighter_observed_mix": 44.15322192284328,
+   "no_maker_fees": 25.70833014273892
+  },
+  "1e+07": {
+   "latency_optimal_BTC": 23.22397789837914,
+   "latency_optimal_ETH": 75.9293757249291,
+   "latency_optimal_SOL": 64.56147050007202,
+   "lighter_observed_mix": 441.5322192284328,
+   "no_maker_fees": 257.0833014273892
+  },
+  "1e+08": {
+   "latency_optimal_BTC": 232.2397789837914,
+   "latency_optimal_ETH": 759.2937572492909,
+   "latency_optimal_SOL": 645.6147050007203,
+   "lighter_observed_mix": 4415.322192284328,
+   "no_maker_fees": 2570.833014273892
+  },
+  "1e+09": {
+   "latency_optimal_BTC": 2322.397789837914,
+   "latency_optimal_ETH": 7592.93757249291,
+   "latency_optimal_SOL": 6456.147050007203,
+   "lighter_observed_mix": 44153.22192284328,
+   "no_maker_fees": 25708.33014273892
+  }
+ },
+ "oracle_lead": {
+  "BTC": {
+   "100ms/fee0.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.0,
+    "time_share": 0.1781845039301825,
+    "volume_share": 0.23402747337202634,
+    "mean_edge_bps": 0.17310988473387365,
+    "pickoff_usd_per_day_upper": 26448.152769228716
+   },
+   "100ms/fee0.5": {
+    "max_maker_loss_coverage_by_full_rebate": 0.5848423629372794,
+    "time_share": 0.012972139662406169,
+    "volume_share": 0.03156431067834423,
+    "mean_edge_bps": 0.3549312287995487,
+    "pickoff_usd_per_day_upper": 3940.571463569689
+   },
+   "100ms/fee2.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.7818712565440874,
+    "time_share": 0.0003161427566276826,
+    "volume_share": 0.002175289847823225,
+    "mean_edge_bps": 0.5579658841023347,
+    "pickoff_usd_per_day_upper": 146.24259526899093
+   },
+   "200ms/fee0.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.0,
+    "time_share": 0.2939794415942537,
+    "volume_share": 0.37139004776316986,
+    "mean_edge_bps": 0.20063296496898111,
+    "pickoff_usd_per_day_upper": 50578.4189307114
+   },
+   "200ms/fee0.5": {
+    "max_maker_loss_coverage_by_full_rebate": 0.5579903044580585,
+    "time_share": 0.028437367772446195,
+    "volume_share": 0.06614988189437564,
+    "mean_edge_bps": 0.3960729174060095,
+    "pickoff_usd_per_day_upper": 9648.795366423683
+   },
+   "200ms/fee2.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.7641212492480105,
+    "time_share": 0.0009710688683961659,
+    "volume_share": 0.005976561475141365,
+    "mean_edge_bps": 0.6173856596296027,
+    "pickoff_usd_per_day_upper": 506.0562006844865
+   }
+  },
+  "ETH": {
+   "100ms/fee0.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.0,
+    "time_share": 0.1321271820393571,
+    "volume_share": 0.22829152760471896,
+    "mean_edge_bps": 0.3708691189240559,
+    "pickoff_usd_per_day_upper": 41868.76374143708
+   },
+   "100ms/fee0.5": {
+    "max_maker_loss_coverage_by_full_rebate": 0.5175948449146346,
+    "time_share": 0.03111963486117672,
+    "volume_share": 0.0821516845586966,
+    "mean_edge_bps": 0.4660065298418177,
+    "pickoff_usd_per_day_upper": 12267.63182311583
+   },
+   "100ms/fee2.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.72293553390896,
+    "time_share": 0.0014498876683588491,
+    "volume_share": 0.009726027052014852,
+    "mean_edge_bps": 0.7664984029569942,
+    "pickoff_usd_per_day_upper": 836.2732818979686
+   },
+   "200ms/fee0.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.0,
+    "time_share": 0.2175055709171235,
+    "volume_share": 0.34866585948208095,
+    "mean_edge_bps": 0.4557180539121959,
+    "pickoff_usd_per_day_upper": 84712.43933258043
+   },
+   "200ms/fee0.5": {
+    "max_maker_loss_coverage_by_full_rebate": 0.47142134385998696,
+    "time_share": 0.06614185365301906,
+    "volume_share": 0.1546574013711105,
+    "mean_edge_bps": 0.5606223212254491,
+    "pickoff_usd_per_day_upper": 31471.90164267424
+   },
+   "200ms/fee2.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.712326360066531,
+    "time_share": 0.004672417875061753,
+    "volume_share": 0.026337565150176212,
+    "mean_edge_bps": 0.8077017953023677,
+    "pickoff_usd_per_day_upper": 2978.1023323791487
+   }
+  },
+  "SOL": {
+   "100ms/fee0.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.0,
+    "time_share": 0.13366880131190162,
+    "volume_share": 0.18541749107448519,
+    "mean_edge_bps": 0.3762654579882312,
+    "pickoff_usd_per_day_upper": 42962.53347083244
+   },
+   "100ms/fee0.5": {
+    "max_maker_loss_coverage_by_full_rebate": 0.5021418560338187,
+    "time_share": 0.0314923379209659,
+    "volume_share": 0.06678935481899147,
+    "mean_edge_bps": 0.49573455984980774,
+    "pickoff_usd_per_day_upper": 13186.325943359338
+   },
+   "100ms/fee2.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.7404596955855131,
+    "time_share": 0.0016138560196829535,
+    "volume_share": 0.008920631014916412,
+    "mean_edge_bps": 0.7010247984105532,
+    "pickoff_usd_per_day_upper": 849.2651567840247
+   },
+   "200ms/fee0.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.0,
+    "time_share": 0.22273400708446323,
+    "volume_share": 0.3047673641065152,
+    "mean_edge_bps": 0.4653520048594605,
+    "pickoff_usd_per_day_upper": 88580.86542346826
+   },
+   "200ms/fee0.5": {
+    "max_maker_loss_coverage_by_full_rebate": 0.45544827693781925,
+    "time_share": 0.06708204933435057,
+    "volume_share": 0.13480909998909313,
+    "mean_edge_bps": 0.5978195007383095,
+    "pickoff_usd_per_day_upper": 34006.41006229897
+   },
+   "200ms/fee2.0": {
+    "max_maker_loss_coverage_by_full_rebate": 0.7332297365328059,
+    "time_share": 0.005488299784188515,
+    "volume_share": 0.024197468454678187,
+    "mean_edge_bps": 0.727658059065253,
+    "pickoff_usd_per_day_upper": 3146.0743829719245
+   }
+  }
+ },
+ "router_competition": {
+  "alpha": 0.5,
+  "logit_beta": 4.0,
+  "rows": [
+   {
+    "routers": 1,
+    "depth_per_book_rel": 1.0,
+    "impact_cost_multiplier": 1.0,
+    "router_markup_bps": null
+   },
+   {
+    "routers": 2,
+    "depth_per_book_rel": 0.7071067811865476,
+    "impact_cost_multiplier": 1.189207115002721,
+    "router_markup_bps": 0.5
+   },
+   {
+    "routers": 3,
+    "depth_per_book_rel": 0.5773502691896257,
+    "impact_cost_multiplier": 1.3160740129524924,
+    "router_markup_bps": 0.37499999999999994
+   },
+   {
+    "routers": 5,
+    "depth_per_book_rel": 0.4472135954999579,
+    "impact_cost_multiplier": 1.4953487812212205,
+    "router_markup_bps": 0.3125
+   },
+   {
+    "routers": 8,
+    "depth_per_book_rel": 0.3535533905932738,
+    "impact_cost_multiplier": 1.681792830507429,
+    "router_markup_bps": 0.2857142857142857
+   },
+   {
+    "routers": 13,
+    "depth_per_book_rel": 0.2773500981126146,
+    "impact_cost_multiplier": 1.8988289221159418,
+    "router_markup_bps": 0.2708333333333333
+   }
+  ]
+ },
+ "elasticities": {
+  "BTC/momentum/1000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.3684,
+    "revenue_max_bps_per_volume": 0.025988637051975755,
+    "share_at_max": 0.07054461740492876,
+    "at": {
+     "0.5": {
+      "share": 0.048797672913806274,
+      "fee_elasticity_of_revenue": -0.3445921958087945
+     },
+     "2.0": {
+      "share": 0.005256715139290897,
+      "fee_elasticity_of_revenue": -0.2624617115835224
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 0.3684,
+    "revenue_max_bps_per_volume": 0.033910915119541016,
+    "share_at_max": 0.09204917242003534,
+    "at": {
+     "0.5": {
+      "share": 0.06649972628277837,
+      "fee_elasticity_of_revenue": -0.20032152770714173
+     },
+     "2.0": {
+      "share": 0.007630178125711564,
+      "fee_elasticity_of_revenue": -0.9006936396578824
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 0.3684,
+    "revenue_max_bps_per_volume": 0.038530274631001164,
+    "share_at_max": 0.10458815046417254,
+    "at": {
+     "0.5": {
+      "share": 0.07574308862797163,
+      "fee_elasticity_of_revenue": -0.23738296237713108
+     },
+     "2.0": {
+      "share": 0.009198113445029663,
+      "fee_elasticity_of_revenue": -0.864527789124419
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.6343019026745078,
+   "latency_elasticity_at_2.0bp": 0.8071764337506361
+  },
+  "BTC/momentum/10000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.3684,
+    "revenue_max_bps_per_volume": 0.02621773550490783,
+    "share_at_max": 0.07116649159855545,
+    "at": {
+     "0.5": {
+      "share": 0.05021365244639314,
+      "fee_elasticity_of_revenue": -0.5140070549163163
+     },
+     "2.0": {
+      "share": 0.005563871349501643,
+      "fee_elasticity_of_revenue": -0.5571656006817756
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 0.3684,
+    "revenue_max_bps_per_volume": 0.034275999001766456,
+    "share_at_max": 0.09304017101456694,
+    "at": {
+     "0.5": {
+      "share": 0.06788527315742032,
+      "fee_elasticity_of_revenue": -0.1896019151125239
+     },
+     "2.0": {
+      "share": 0.007688344411938304,
+      "fee_elasticity_of_revenue": -0.7108589844347066
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 0.4729,
+    "revenue_max_bps_per_volume": 0.03855605470410722,
+    "share_at_max": 0.08153109474330138,
+    "at": {
+     "0.5": {
+      "share": 0.07718091701464741,
+      "fee_elasticity_of_revenue": -0.22797494510839678
+     },
+     "2.0": {
+      "share": 0.009455901299016797,
+      "fee_elasticity_of_revenue": -0.3812205638410018
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.6201645174280521,
+   "latency_elasticity_at_2.0bp": 0.7651259151196018
+  },
+  "BTC/both/100000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.3684,
+    "revenue_max_bps_per_volume": 0.026223264101565596,
+    "share_at_max": 0.0711814986470293,
+    "at": {
+     "0.5": {
+      "share": 0.05219892642062461,
+      "fee_elasticity_of_revenue": -0.33473064896234117
+     },
+     "2.0": {
+      "share": 0.004988876903618712,
+      "fee_elasticity_of_revenue": -1.0435632533630326
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 0.4729,
+    "revenue_max_bps_per_volume": 0.03384036692558663,
+    "share_at_max": 0.07155924492617177,
+    "at": {
+     "0.5": {
+      "share": 0.06784073001450566,
+      "fee_elasticity_of_revenue": -0.19066188164925557
+     },
+     "2.0": {
+      "share": 0.007374561247082279,
+      "fee_elasticity_of_revenue": -0.796600700836066
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 0.4729,
+    "revenue_max_bps_per_volume": 0.03874280733868829,
+    "share_at_max": 0.08192600409957346,
+    "at": {
+     "0.5": {
+      "share": 0.07767774532228805,
+      "fee_elasticity_of_revenue": -0.18774608543148763
+     },
+     "2.0": {
+      "share": 0.0087256864066887,
+      "fee_elasticity_of_revenue": -0.9201619282958828
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.5734811905547266,
+   "latency_elasticity_at_2.0bp": 0.8065535529982907
+  },
+  "ETH/momentum/1000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.607,
+    "revenue_max_bps_per_volume": 0.06399914242045049,
+    "share_at_max": 0.1054351604949761,
+    "at": {
+     "0.5": {
+      "share": 0.12440688524824699,
+      "fee_elasticity_of_revenue": 0.18541350797898448
+     },
+     "2.0": {
+      "share": 0.019702085558963117,
+      "fee_elasticity_of_revenue": -0.8538195258249466
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 0.7791,
+    "revenue_max_bps_per_volume": 0.084824096565941,
+    "share_at_max": 0.10887446613520858,
+    "at": {
+     "0.5": {
+      "share": 0.16073765029074089,
+      "fee_elasticity_of_revenue": 0.27557424474875447
+     },
+     "2.0": {
+      "share": 0.0307270102569615,
+      "fee_elasticity_of_revenue": -0.6585630269935872
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 0.7791,
+    "revenue_max_bps_per_volume": 0.09739096701563288,
+    "share_at_max": 0.12500445002648297,
+    "at": {
+     "0.5": {
+      "share": 0.18054626244527075,
+      "fee_elasticity_of_revenue": 0.3383962884553767
+     },
+     "2.0": {
+      "share": 0.0372394748630204,
+      "fee_elasticity_of_revenue": -0.7069174127406923
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.5373022217880177,
+   "latency_elasticity_at_2.0bp": 0.9184843748404665
+  },
+  "ETH/momentum/10000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.607,
+    "revenue_max_bps_per_volume": 0.06694093602416357,
+    "share_at_max": 0.1102816079475512,
+    "at": {
+     "0.5": {
+      "share": 0.1300197344971542,
+      "fee_elasticity_of_revenue": 0.1893400113923459
+     },
+     "2.0": {
+      "share": 0.021906454361669922,
+      "fee_elasticity_of_revenue": -0.8419105004221326
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.08934054638815576,
+    "share_at_max": 0.08934054638815576,
+    "at": {
+     "0.5": {
+      "share": 0.1669422651712351,
+      "fee_elasticity_of_revenue": 0.24656548409308554
+     },
+     "2.0": {
+      "share": 0.03234118918388118,
+      "fee_elasticity_of_revenue": -0.7410921986925427
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.10188713541959413,
+    "share_at_max": 0.10188713541959413,
+    "at": {
+     "0.5": {
+      "share": 0.18430192111814717,
+      "fee_elasticity_of_revenue": 0.35358957342942754
+     },
+     "2.0": {
+      "share": 0.038927848498137116,
+      "fee_elasticity_of_revenue": -0.7855691473682671
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.5033404960903979,
+   "latency_elasticity_at_2.0bp": 0.8294466127799294
+  },
+  "ETH/both/100000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.607,
+    "revenue_max_bps_per_volume": 0.07060762955532232,
+    "share_at_max": 0.11632228921799394,
+    "at": {
+     "0.5": {
+      "share": 0.13440434673574111,
+      "fee_elasticity_of_revenue": 0.2870103726533084
+     },
+     "2.0": {
+      "share": 0.02685830634899168,
+      "fee_elasticity_of_revenue": -0.611068971097571
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.09008728883404409,
+    "share_at_max": 0.09008728883404409,
+    "at": {
+     "0.5": {
+      "share": 0.16586563044566632,
+      "fee_elasticity_of_revenue": 0.36430454410689905
+     },
+     "2.0": {
+      "share": 0.038109931888872364,
+      "fee_elasticity_of_revenue": -0.4983991240328056
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.10127235622900144,
+    "share_at_max": 0.10127235622900144,
+    "at": {
+     "0.5": {
+      "share": 0.17956195183195003,
+      "fee_elasticity_of_revenue": 0.37691802595221024
+     },
+     "2.0": {
+      "share": 0.043958300244727064,
+      "fee_elasticity_of_revenue": -0.4394695745385513
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.4179018868012168,
+   "latency_elasticity_at_2.0bp": 0.7107672689313446
+  },
+  "SOL/momentum/1000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.7791,
+    "revenue_max_bps_per_volume": 0.05395939404035209,
+    "share_at_max": 0.06925862410518815,
+    "at": {
+     "0.5": {
+      "share": 0.1016126269752177,
+      "fee_elasticity_of_revenue": 0.26570604503863327
+     },
+     "2.0": {
+      "share": 0.02193982754889716,
+      "fee_elasticity_of_revenue": -0.6191994346030494
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.0738232595685791,
+    "share_at_max": 0.0738232595685791,
+    "at": {
+     "0.5": {
+      "share": 0.13292647326289636,
+      "fee_elasticity_of_revenue": 0.2769357249715726
+     },
+     "2.0": {
+      "share": 0.029401973814687378,
+      "fee_elasticity_of_revenue": -0.6345677088556216
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.08766581674953976,
+    "share_at_max": 0.08766581674953976,
+    "at": {
+     "0.5": {
+      "share": 0.15172158527494797,
+      "fee_elasticity_of_revenue": 0.25731520370462435
+     },
+     "2.0": {
+      "share": 0.035900831284504456,
+      "fee_elasticity_of_revenue": -0.48701654712034226
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.578346660021108,
+   "latency_elasticity_at_2.0bp": 0.7104650641333522
+  },
+  "SOL/momentum/10000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 0.7791,
+    "revenue_max_bps_per_volume": 0.05960453191100557,
+    "share_at_max": 0.07650434079194657,
+    "at": {
+     "0.5": {
+      "share": 0.10807207247766473,
+      "fee_elasticity_of_revenue": 0.32568330884889996
+     },
+     "2.0": {
+      "share": 0.021705483630715457,
+      "fee_elasticity_of_revenue": -0.6010082922521223
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.07733936713360297,
+    "share_at_max": 0.07733936713360297,
+    "at": {
+     "0.5": {
+      "share": 0.1380891304512055,
+      "fee_elasticity_of_revenue": 0.2587598838440609
+     },
+     "2.0": {
+      "share": 0.03229095494478437,
+      "fee_elasticity_of_revenue": -0.4192247285277755
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 1.0,
+    "revenue_max_bps_per_volume": 0.09097846543445812,
+    "share_at_max": 0.09097846543445812,
+    "at": {
+     "0.5": {
+      "share": 0.15602805235700581,
+      "fee_elasticity_of_revenue": 0.28823115596839355
+     },
+     "2.0": {
+      "share": 0.03856334880515924,
+      "fee_elasticity_of_revenue": -0.365031711803248
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.5298116790700357,
+   "latency_elasticity_at_2.0bp": 0.8291707709392571
+  },
+  "SOL/both/100000": {
+   "delta_100ms": {
+    "revenue_max_fee_bps": 1.2836,
+    "revenue_max_bps_per_volume": 0.0607122280725448,
+    "share_at_max": 0.04729840142766033,
+    "at": {
+     "0.5": {
+      "share": 0.09590182632447264,
+      "fee_elasticity_of_revenue": 0.4808285281953295
+     },
+     "2.0": {
+      "share": 0.027062770717360515,
+      "fee_elasticity_of_revenue": -0.5194700640043792
+     }
+    }
+   },
+   "delta_160ms": {
+    "revenue_max_fee_bps": 1.2836,
+    "revenue_max_bps_per_volume": 0.08220094642110685,
+    "share_at_max": 0.06403937863906735,
+    "at": {
+     "0.5": {
+      "share": 0.12001527340931681,
+      "fee_elasticity_of_revenue": 0.4969700258189881
+     },
+     "2.0": {
+      "share": 0.03810558900020314,
+      "fee_elasticity_of_revenue": -0.3505968304370919
+     }
+    }
+   },
+   "delta_200ms": {
+    "revenue_max_fee_bps": 1.2836,
+    "revenue_max_bps_per_volume": 0.09113409564000922,
+    "share_at_max": 0.07099882801496511,
+    "at": {
+     "0.5": {
+      "share": 0.13206374716376817,
+      "fee_elasticity_of_revenue": 0.5157387861804439
+     },
+     "2.0": {
+      "share": 0.04350582703376488,
+      "fee_elasticity_of_revenue": -0.29688781028739086
+     }
+    }
+   },
+   "latency_elasticity_at_0.5bp": 0.46160429167906547,
+   "latency_elasticity_at_2.0bp": 0.6848990923019374
+  }
+ },
+ "regime_revenue": {
+  "BTC": {
+   "regimes": {
+    "rv<p50": {
+     "volume_share": 0.3083510663287117,
+     "bps_A": 0.04419067080196266,
+     "bps_B": 0.0007929056141841374,
+     "share_of_revenue_A": 0.2579978762338889,
+     "share_of_revenue_B": 0.06585864384066546
+    },
+    "p50-p90": {
+     "volume_share": 0.4394451211121139,
+     "bps_A": 0.06934796256612899,
+     "bps_B": 0.0032658035492211576,
+     "share_of_revenue_A": 0.4048733983556973,
+     "share_of_revenue_B": 0.2712572454453435
+    },
+    "p90-p99": {
+     "volume_share": 0.19739861194092775,
+     "bps_A": 0.0371406846738768,
+     "bps_B": 0.004398442904394388,
+     "share_of_revenue_A": 0.21683802471962438,
+     "share_of_revenue_B": 0.36533413247688334
+    },
+    "p99-p99.9": {
+     "volume_share": 0.04414651059632111,
+     "bps_A": 0.013469202010525469,
+     "bps_B": 0.002388939836091808,
+     "share_of_revenue_A": 0.078637084484503,
+     "share_of_revenue_B": 0.1984250521215387
+    },
+    ">p99.9": {
+     "volume_share": 0.010658690021925507,
+     "bps_A": 0.007134559665191209,
+     "bps_B": 0.0011934152578782933,
+     "share_of_revenue_A": 0.04165361620628637,
+     "share_of_revenue_B": 0.09912492611556897
+    }
+   },
+   "blended_bps_A": 0.17128307971768514,
+   "blended_bps_B": 0.012039507161769785
+  },
+  "ETH": {
+   "regimes": {
+    "rv<p50": {
+     "volume_share": 0.26244110978538443,
+     "bps_A": 0.03859694667065036,
+     "bps_B": 0.0026905607016525094,
+     "share_of_revenue_A": 0.13874097535993252,
+     "share_of_revenue_B": 0.0493269184641696
+    },
+    "p50-p90": {
+     "volume_share": 0.42320945982442393,
+     "bps_A": 0.09078739956040352,
+     "bps_B": 0.013894322736137834,
+     "share_of_revenue_A": 0.3263453058316763,
+     "share_of_revenue_B": 0.2547291069476286
+    },
+    "p90-p99": {
+     "volume_share": 0.2438971617788444,
+     "bps_A": 0.09971917838661751,
+     "bps_B": 0.023119952259259252,
+     "share_of_revenue_A": 0.3584515684493468,
+     "share_of_revenue_B": 0.4238655531122316
+    },
+    "p99-p99.9": {
+     "volume_share": 0.056809148005532585,
+     "bps_A": 0.036533831780501895,
+     "bps_B": 0.010594849237017808,
+     "share_of_revenue_A": 0.13132488168337086,
+     "share_of_revenue_B": 0.1942387934728867
+    },
+    ">p99.9": {
+     "volume_share": 0.01364312060581469,
+     "bps_A": 0.012556930260971108,
+     "bps_B": 0.0042458002781681015,
+     "share_of_revenue_A": 0.04513726867567341,
+     "share_of_revenue_B": 0.07783962800308346
+    }
+   },
+   "blended_bps_A": 0.2781942866591444,
+   "blended_bps_B": 0.054545485212235505
+  },
+  "SOL": {
+   "regimes": {
+    "rv<p50": {
+     "volume_share": 0.34577525700627143,
+     "bps_A": 0.07897214836786218,
+     "bps_B": 0.003832221521441215,
+     "share_of_revenue_A": 0.21951441514782025,
+     "share_of_revenue_B": 0.08675249313834892
+    },
+    "p50-p90": {
+     "volume_share": 0.402046273804392,
+     "bps_A": 0.13869727368370188,
+     "bps_B": 0.012468615056868804,
+     "share_of_revenue_A": 0.3855289686872067,
+     "share_of_revenue_B": 0.2822601553990875
+    },
+    "p90-p99": {
+     "volume_share": 0.19049870043576025,
+     "bps_A": 0.08587183065837511,
+     "bps_B": 0.0157941823163677,
+     "share_of_revenue_A": 0.23869307185160674,
+     "share_of_revenue_B": 0.35754318620684117
+    },
+    "p99-p99.9": {
+     "volume_share": 0.04885643904486407,
+     "bps_A": 0.03977391308007688,
+     "bps_B": 0.008397176366468053,
+     "share_of_revenue_A": 0.11055729707698296,
+     "share_of_revenue_B": 0.19009234749027804
+    },
+    ">p99.9": {
+     "volume_share": 0.01282332970871221,
+     "bps_A": 0.01644320504263567,
+     "bps_B": 0.0036819994254526107,
+     "share_of_revenue_A": 0.04570624723638337,
+     "share_of_revenue_B": 0.0833518177654444
+    }
+   },
+   "blended_bps_A": 0.3597583708326517,
+   "blended_bps_B": 0.04417419468659838
+  }
+ },
+ "subscription_scenarios": [
+  {
+   "subscribers": 10,
+   "monthly_usd": 100.0,
+   "revenue_usd_per_day": 32.87671232876713,
+   "federation_usd_per_day": 23.013698630136986
+  },
+  {
+   "subscribers": 10,
+   "monthly_usd": 500.0,
+   "revenue_usd_per_day": 164.3835616438356,
+   "federation_usd_per_day": 115.06849315068492
+  },
+  {
+   "subscribers": 10,
+   "monthly_usd": 2000.0,
+   "revenue_usd_per_day": 657.5342465753424,
+   "federation_usd_per_day": 460.27397260273966
+  },
+  {
+   "subscribers": 50,
+   "monthly_usd": 100.0,
+   "revenue_usd_per_day": 164.3835616438356,
+   "federation_usd_per_day": 115.06849315068492
+  },
+  {
+   "subscribers": 50,
+   "monthly_usd": 500.0,
+   "revenue_usd_per_day": 821.917808219178,
+   "federation_usd_per_day": 575.3424657534246
+  },
+  {
+   "subscribers": 50,
+   "monthly_usd": 2000.0,
+   "revenue_usd_per_day": 3287.671232876712,
+   "federation_usd_per_day": 2301.3698630136983
+  },
+  {
+   "subscribers": 200,
+   "monthly_usd": 100.0,
+   "revenue_usd_per_day": 657.5342465753424,
+   "federation_usd_per_day": 460.27397260273966
+  },
+  {
+   "subscribers": 200,
+   "monthly_usd": 500.0,
+   "revenue_usd_per_day": 3287.671232876712,
+   "federation_usd_per_day": 2301.3698630136983
+  },
+  {
+   "subscribers": 200,
+   "monthly_usd": 2000.0,
+   "revenue_usd_per_day": 13150.684931506848,
+   "federation_usd_per_day": 9205.479452054793
+  }
+ ],
+ "subscription_breakeven_note": "flat revenue covers base federation cost when subscribers*monthly*12/365*0.7 >= federation cost",
+ "production_ready": false,
+ "demand_observed": false
+}

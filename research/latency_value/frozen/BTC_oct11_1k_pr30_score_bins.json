@@ -1,0 +1,33 @@
+{
+ "policy": "pr30_score_bins",
+ "label": "BTC_oct11_1k",
+ "train_symbol": "BTC",
+ "train_days": [
+  "2026-10-11"
+ ],
+ "size_usd": 1000,
+ "tierset": "shz_candidate",
+ "spec": {
+  "cuts": [
+   0.1,
+   0.25,
+   0.5,
+   1.0,
+   2.0,
+   5.0,
+   10.0,
+   20.0
+  ],
+  "choice": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ }
+}

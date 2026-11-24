@@ -1,0 +1,11 @@
+{
+ "policy": "free_only",
+ "label": "BTC_oct11_1k",
+ "train_symbol": "BTC",
+ "train_days": [
+  "2026-10-11"
+ ],
+ "size_usd": 1000,
+ "tierset": "shz_candidate",
+ "spec": {}
+}

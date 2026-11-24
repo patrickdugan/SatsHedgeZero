@@ -1,0 +1,63 @@
+name: shz-price-of-200ms
+on:
+  push:
+    branches: ["research/price-of-200ms-*"]
+    paths:
+      - "research/latency_value/**"
+      - "research/public_l2/**"
+      - ".github/workflows/shz-price-of-200ms.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r research/latency_value/requirements.txt
+      - name: Unit tests and selftests
+        working-directory: research/latency_value
+        run: |
+          python -m pytest -q tests
+          python engine.py --selftest
+          python ../public_l2/pilot.py --selftest
+          python ../public_l2/revenue_join.py selftest
+      - name: Recompute committed receipts from committed aggregates
+        working-directory: research/latency_value
+        run: python verify_receipts.py
+  heldout:
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - symbol: BTC
+            days: "2026-11-22 2026-11-23"
+          - symbol: ETH
+            days: "2026-11-22 2026-11-23"
+          - symbol: SOL
+            days: "2026-11-22 2026-11-23"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r research/latency_value/requirements.txt
+      - name: Fetch bounded public data, replay, evaluate frozen policies
+        env:
+          SYMBOL: ${{ matrix.symbol }}
+          DAYS: ${{ matrix.days }}
+        run: bash research/latency_value/ci/heldout.sh "$SYMBOL" $DAYS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: heldout-${{ matrix.symbol }}
+          path: research/latency_value/ci-out
+          retention-days: 14
