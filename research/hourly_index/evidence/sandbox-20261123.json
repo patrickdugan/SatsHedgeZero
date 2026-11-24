@@ -1,0 +1,26 @@
+{
+  "schema": "shz/near-8h-public-checkpoint-sandbox/v1",
+  "network": "near-sandbox",
+  "checkpoint_root": "c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5",
+  "packet_hex": "53485a4944583031c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5",
+  "authenticated_sources": false,
+  "bitcoin_header_finality": false,
+  "zk_witness_verified": false,
+  "nova_verified": false,
+  "dlc_authorized": false,
+  "public_hours_published": 8,
+  "valid_inclusion_checks": 8,
+  "qualified_hours": 7,
+  "hold_hours": 1,
+  "tampered_report_rejected": true,
+  "receipt_gas_burnt": "1509152653200",
+  "receipt_TGas": 1.5091526532,
+  "provenance": {
+    "repo": "patrickdugan/SatsHedgeZero",
+    "head_commit": "15b5024cb8609206d713d4ca0c821acbf4f06122",
+    "workflow_run_id": 45211089127,
+    "job_id": 137819778459,
+    "url": "https://github.com/patrickdugan/SatsHedgeZero/actions/runs/45211089127",
+    "environment": "NEAR sandbox; actual WASM transaction receipt"
+  }
+}

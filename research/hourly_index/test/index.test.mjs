@@ -1,0 +1,55 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {dirname,resolve} from 'node:path';
+import {checkpoint,verifyInclusion,parseRecord,leafHash,makeHour,makeHold,opReturnScript,HOURLY_US} from '../index.mjs';
+import {parseTx,verifyPacketInTransaction,verifyTxMerkleInHeader} from '../bitcoin_packet.mjs';
+const fx=JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)),'../fixtures/checkpoint.json'),'utf8'));
+const cp=fx.checkpoint;
+const change=(f)=>{let n=structuredClone(fx);f(n);return n;};
+function verifyAt(x,i){return verifyInclusion({record:x.records[i],checkpoint:x.checkpoint,siblings:x.checkpoint.inclusion[i].siblings})}
+test('exact eight records; three-level Merkle proofs verify',()=>{assert.equal(cp.leaves.length,8);for(let i=0;i<8;i++)assert.equal(verifyAt(fx,i),true)});
+test('OP_RETURN packet is 8-byte discriminator + 32-byte root; 42-byte script',()=>{assert.equal(Buffer.from(cp.packet_hex,'hex').length,40);assert.equal(opReturnScript(cp).length,42);assert.equal(opReturnScript(cp).toString('hex').slice(0,4),'6a28')});
+test('deterministic SHA256 root and fixture parity',()=>assert.deepEqual(checkpoint(fx.records),cp));
+test('hour 4 is HOLD and cannot authorize a price',()=>{assert.equal(fx.records[4].status,2);assert.equal(fx.records[4].index_price_e8,'0');assert.equal(verifyAt(fx,4),true)});
+test('mutating any accepted index invalidates Merkle proof',()=>{let z=change(x=>x.records[0].index_price_e8='10010000000001');assert.equal(verifyAt(z,0),false)});
+test('changing signed source digest invalidates leaf commitment',()=>{let z=change(x=>x.records[7].pyth_report_hash='33'.repeat(32));assert.equal(verifyAt(z,7),false)});
+test('altered Chainlink observation gets excluded by spread gate',()=>{let z=change(x=>x.records[1].chainlink_price_e8='10300000000000');assert.equal(verifyAt(z,1),false)});
+test('wrong price average rejected',()=>{let z=change(x=>x.records[1].index_price_e8='10000100000000');assert.throws(()=>parseRecord(z.records[1]),/mean/)});
+test('wrong policy hash invalidates checkpoint',()=>{let z=change(x=>x.records[5].policy_hash='33'.repeat(32));assert.equal(verifyAt(z,5),false)});
+test('wrong network invalidates checkpoint',()=>{let z=change(x=>x.records[5].genesis='33'.repeat(32));assert.equal(verifyAt(z,5),false)});
+test('wrong starting hour invalidates checkpoint',()=>{let z=change(x=>x.checkpoint.start_hour='498008');assert.equal(verifyAt(z,5),false)});
+test('reordering hourly records invalidates checkpoint',()=>{let z=change(x=>[x.records[0],x.records[1]]=[x.records[1],x.records[0]]);assert.throws(()=>checkpoint(z.records),/align|nonconsecutive/)});
+test('misaligned 8-hour start rejected',()=>{let z=change(x=>x.records.forEach(r=>r.hour_id=String(Number(r.hour_id)+1)));assert.throws(()=>checkpoint(z.records),/align|stale\/future/)});
+test('inclusion path must contain exactly 3 siblings',()=>{let z=change(x=>x.checkpoint.inclusion[3].siblings.pop());assert.equal(verifyAt(z,3),false)});
+test('bad sibling rejected',()=>{let z=change(x=>x.checkpoint.inclusion[3].siblings[2]='ff'.repeat(32));assert.equal(verifyAt(z,3),false)});
+test('cannot fake HOLD with nonzero price',()=>{let z=change(x=>x.records[4].index_price_e8='1');assert.equal(verifyAt(z,4),false)});
+test('cannot fake HOLD with nonzero report hash',()=>{let z=change(x=>x.records[4].pyth_report_hash='ff'.repeat(32));assert.equal(verifyAt(z,4),false)});
+test('missing HOLD reason rejected',()=>{let z=change(x=>x.records[4].hold_reason=0);assert.equal(verifyAt(z,4),false)});
+test('future timestamp rejected',()=>{let z=change(x=>x.records[6].chainlink_publish_us=String((BigInt(x.records[6].hour_id)+1n)*HOURLY_US+1n));assert.equal(verifyAt(z,6),false)});
+test('stale timestamp rejected',()=>{let z=change(x=>x.records[6].chainlink_publish_us=String((BigInt(x.records[6].hour_id)+1n)*HOURLY_US-400_000_000n));assert.equal(verifyAt(z,6),false)});
+test('misaligned observation timestamps rejected',()=>{let z=change(x=>x.records[6].chainlink_publish_us=String(BigInt(x.records[6].pyth_publish_us)-100_000_000n));assert.equal(verifyAt(z,6),false)});
+test('invalid decimal encoding rejected',()=>{let z=change(x=>x.records[6].pyth_price_e8='0100');assert.equal(verifyAt(z,6),false)});
+test('overflow rejected',()=>{let z=change(x=>x.records[6].pyth_price_e8='18446744073709551616');assert.equal(verifyAt(z,6),false)});
+test('unauthorized additional fields rejected',()=>{let z=change(x=>x.records[6].evil='extra');assert.equal(verifyAt(z,6),false)});
+test('zero source digest on qualified record rejected',()=>{let z=change(x=>x.records[6].chainlink_report_hash='00'.repeat(32));assert.equal(verifyAt(z,6),false)});
+test('merkle leaf hash matches exposed leaf list',()=>assert.equal(leafHash(fx.records[3]),cp.leaves[3]));
+function txFixture({script=opReturnScript(cp),sat=0n,withWitness=true}={}) {
+ const inBytes=Buffer.concat([Buffer.alloc(32),Buffer.alloc(4),Buffer.from([0]),Buffer.from([0xff,0xff,0xff,0xff])]);
+ const out=Buffer.concat([(()=>{let b=Buffer.alloc(8);b.writeBigUInt64LE(sat);return b})(),Buffer.from([script.length]),script]);
+ const data=Buffer.concat([Buffer.from('02000000','hex'),...(withWitness?[Buffer.from([0,1])]:[]),Buffer.from([1]),inBytes,Buffer.from([1]),out,...(withWitness?[Buffer.from([1,1,0x00])]:[]),Buffer.alloc(4)]);
+ return data.toString('hex');
+}
+test('synthetic witness tx includes exact anchored OP_RETURN packet',()=>{let tx=txFixture();let r=verifyPacketInTransaction(tx,cp);assert.equal(r.valid,true);assert.equal(r.bitcoin_finality_verified,false);assert.notEqual(r.txid,r.wtxid)});
+test('synthetic non-witness tx includes packet',()=>{let tx=txFixture({withWitness:false});let r=verifyPacketInTransaction(tx,cp);assert.equal(r.valid,true);assert.equal(r.txid,r.wtxid)});
+test('Bitcoin packet value must be zero sats',()=>assert.equal(verifyPacketInTransaction(txFixture({sat:1n}),cp).valid,false));
+test('Bitcoin packet must match exact checkpoint root',()=>{let corrupted=Buffer.from(opReturnScript(cp));corrupted[20]^=1;assert.equal(verifyPacketInTransaction(txFixture({script:corrupted}),cp).valid,false)});
+test('truncated and trailing Bitcoin tx bytes rejected',()=>{const tx=txFixture();assert.throws(()=>parseTx(tx.slice(0,-2)),/truncated/);assert.throws(()=>parseTx(tx+'00'),/trailing/)});
+test('bitcoin tx inclusion relative to synthetic (untrusted) header works',()=>{
+ let tx=verifyPacketInTransaction(txFixture(),cp);let header=Buffer.alloc(80);Buffer.from(tx.txid,'hex').reverse().copy(header,36);
+ let v=verifyTxMerkleInHeader({txid:tx.txid,header_hex:header.toString('hex'),branch:[],tx_index:0});
+ assert.equal(v.valid,true);assert.equal(v.bitcoin_finality_verified,false);
+ header[37]^=1;assert.equal(verifyTxMerkleInHeader({txid:tx.txid,header_hex:header.toString('hex'),branch:[],tx_index:0}).valid,false);
+});
+test('missing source reports may only be HOLD; HOLD has no settlement price',()=>{let h=makeHold({policy_hash:fx.records[0].policy_hash,hour_id:fx.records[0].hour_id});assert.equal(h.index_price_e8,'0');assert.equal(h.status,2)});

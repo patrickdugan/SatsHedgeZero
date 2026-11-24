@@ -5,8 +5,11 @@
 //!    (eliminating greedy-allocation starvation), and durable pre-signing reservation book.
 
 pub mod mnr02;
+pub mod mnr03;
+pub mod n_party_packer;
 pub mod pnl_batch;
 pub mod signing_target;
+pub mod watchtower;
 
 use thiserror::Error;
 
@@ -431,5 +434,130 @@ mod tests {
             .unwrap();
         assert_eq!(book_ok.last_settled_epoch, 1);
         assert!(book_ok.consumed_obligation_ids.contains("o1"));
+    }
+
+    #[test]
+    fn test_dynamic_5_vault_n_party_packer_and_watchtower_automation() {
+        use super::{
+            mnr02::{
+                Mnr02TaprootTree, SegwitTx, SegwitTxIn, SIGHASH_SINGLE_ANYONECANPAY,
+            },
+            n_party_packer::{
+                pack_dynamic_n_party_clearing_tx, CounterpartyAuthMode, DynamicVaultInputSpec,
+            },
+            watchtower::{ShzWatchtowerEngine, WatchtowerActionKind, WatchtowerArmedAssertion},
+        };
+        use k256::{
+            elliptic_curve::{bigint::U256, ops::Reduce},
+            ProjectivePoint, Scalar,
+        };
+        use shz_dlc::{adaptor_sign, pubkey_x_from_secret};
+
+        let sk = |b: u8| [b; 32];
+        let pk = |b: u8| pubkey_x_from_secret(&[b; 32]).unwrap();
+        let spk = |b: u8| {
+            let mut v = vec![0x51, 0x20];
+            v.extend_from_slice(&pk(b));
+            v
+        };
+
+        let guard_sk = sk(0x24);
+        let guard_pk = pk(0x24);
+        let t_scalar = <Scalar as Reduce<U256>>::reduce(U256::from_u64(60_000));
+        let t_pt = ProjectivePoint::GENERATOR * t_scalar;
+
+        // Build 3 offline `0x83` vaults (Bob, Dave, Eve all offline!) + 2 online bilateral `0x00` vaults = 5 vaults!
+        let mut legs = Vec::new();
+        for (idx, (online_seed, offline_seed)) in [(0x11u8, 0x22u8), (0x12, 0x25), (0x13, 0x26)]
+            .into_iter()
+            .enumerate()
+        {
+            let tree = Mnr02TaprootTree::build(pk(online_seed), pk(offline_seed), guard_pk, 150, 20, 60)
+                .unwrap();
+            let txid_hex = format!("{:064x}", idx + 1);
+            let pinned_spk = spk(0x40 + idx as u8);
+            let tmpl = SegwitTx {
+                version: 2,
+                inputs: vec![SegwitTxIn::from_display_txid(
+                    &txid_hex,
+                    0,
+                    0xffff_fffe,
+                    10_000_000,
+                    tree.script_pubkey.clone(),
+                )
+                .unwrap()],
+                outputs: vec![(6_000_000, pinned_spk.clone())],
+                locktime: 150,
+            };
+            let sh83 = tmpl
+                .bip341_sighash(0, SIGHASH_SINGLE_ANYONECANPAY, Some(&tree.route_leaf_hash))
+                .unwrap();
+            let asig = adaptor_sign(&sk(offline_seed), &sh83, &t_pt).unwrap();
+            legs.push(DynamicVaultInputSpec::Offline0x83RouteLeg {
+                label: format!("offline-vault-{idx}"),
+                tree,
+                funding_txid_display: txid_hex,
+                funding_vout: 0,
+                funding_sats: 10_000_000,
+                offline_pinned_sats: 6_000_000,
+                offline_pinned_spk: pinned_spk,
+                offline_0x83_adaptor_sig: asig,
+                counterparty_auth: CounterpartyAuthMode::OnlineSecretKey(sk(online_seed)),
+            });
+        }
+
+        for (j, (a_s, b_s)) in [(0x11u8, 0x12u8), (0x12, 0x13)].into_iter().enumerate() {
+            let tree = derive_utxoref_funding_output(pk(a_s), pk(b_s), 144).unwrap();
+            legs.push(DynamicVaultInputSpec::Bilateral0x00Leg {
+                label: format!("bilateral-vault-{j}"),
+                tree,
+                funding_txid_display: format!("{:064x}", 100 + j),
+                funding_vout: 0,
+                funding_sats: 10_000_000,
+                party_a_sk: sk(a_s),
+                party_b_sk: sk(b_s),
+            });
+        }
+
+        // Total in = 50,000,000; 3x6,000,000 = 18,000,000; extra = 31,996,670; anchor = 330; fee = 3,000
+        let (packed_tx, receipt) = pack_dynamic_n_party_clearing_tx(
+            &legs,
+            &[(15_998_335, spk(0x51)), (15_998_335, spk(0x52))],
+            spk(0x55),
+            3_000,
+            150,
+            &t_scalar,
+            &guard_sk,
+        )
+        .unwrap();
+        assert_eq!(receipt.total_vault_inputs, 5);
+        assert_eq!(receipt.offline_0x83_vaults, 3);
+        assert_eq!(receipt.bilateral_0x00_vaults, 2);
+        assert_eq!(receipt.total_outputs, 6);
+
+        // Test Watchtower automated boundary slash + CLTV fallback trigger
+        let mut wt = ShzWatchtowerEngine::new();
+        wt.arm_unilateral_exit("vault-0", 170, packed_tx.clone());
+        wt.arm_bitvm3_assertion(WatchtowerArmedAssertion {
+            assert_outpoint: "abcd:0".into(),
+            canonical_boundary_hash: [0x11; 32],
+            operator_boundary_commit: [0x22; 32], // mismatch!
+            slashed: false,
+            prebuilt_boundary_slash_tx: Some(packed_tx),
+            prebuilt_equivocation_slash_tx: None,
+            prebuilt_garbled_gate_slash_tx: None,
+        });
+        let actions_150 = wt.poll_chain_height(150, false, false);
+        assert_eq!(actions_150.len(), 1);
+        assert!(matches!(
+            actions_150[0].0,
+            WatchtowerActionKind::SlashBitVm3BoundaryMismatch { .. }
+        ));
+        let actions_170 = wt.poll_chain_height(170, false, false);
+        assert_eq!(actions_170.len(), 1);
+        assert!(matches!(
+            actions_170[0].0,
+            WatchtowerActionKind::BroadcastUnilateralCltvExit { .. }
+        ));
     }
 }

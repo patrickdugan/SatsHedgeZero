@@ -1,0 +1,185 @@
+{
+  "milestone": "SHZ-MNR-05: Batched BitVM3 Settlement & PTLC Lightning Clearing for Multilateral LN-DLC",
+  "trusted_setup_ceremony": false,
+  "bitvm3_tapscript_disprove_regtest_verified": true,
+  "full_groth16_garbled_circuit_l1_verified": false,
+  "nova_secq256k1_bip340_auth_verified": true,
+  "nova_unified_batch_nullifier_verified": true,
+  "ptlc_atomic_ln_double_offline_verified": true,
+  "production_ready": false,
+  "peak_rss_kib": 2594004,
+  "core_regtest": {
+    "scenario": "SHZ-MNR-05: Batched BitVM3 Taproot Assert/Disprove + PTLC Lightning Double-Offline Multilateral LN-DLC Clearing on Bitcoin Core 31.1",
+    "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+    "network_code": "Regtest",
+    "regtest_genesis_hash_hex": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+    "shzidx01_anchor_txid": "e417069ac992f14a37dc0d2697a93e8cc073ec7046e42e1c0fbdc29cc853a952",
+    "shzidx01_anchor_vout": 0,
+    "oracle_checkpoint_root_hex": "412a3b800c88540e009ed3d27a814feacbb702bb274fad7de9f390765aca051d",
+    "funded_vault_outpoints": [
+      "2bfb6584d5fe3e05a6fb6d623abff6a7daa2bcbe6c0ff0187b83f6cfede4d398:0",
+      "ec3a1fb6db3df47e5e2e131238cd4e833ef21a0b2080aacb33814028b2e74ff3:1",
+      "fa193d1248935ff72ccc96611a05478d633fe09fe7dc2d0c96e0697b05498da0:0"
+    ],
+    "double_offline_clearing_txid": "6dc7c59c6e4473ae8b121e5cb9d1e562f7ebf6ec7b9c9d89920065a27aba2530",
+    "double_offline_clearing_wtxid": "7eb3c151692d34130bbd82fad6fdd9fd1568d739c17f548b53ba8811264e9360",
+    "double_offline_clearing_vsize": 599,
+    "double_offline_clearing_stripped_bytes": 348,
+    "cpfp_child_txid": "0d0eacd52e9e00400570ef8aaad60715980905cb6a14ef29d848f0bf1ff4610d",
+    "cleared_outputs_sats": [
+      55000000,
+      35000000,
+      71498500,
+      82498500,
+      330
+    ],
+    "ptlc_lightning_bridge": {
+      "channel_id_hex": "03ef6d8d652afc5bd14e56523f7368e6c8e3f1a28eb422b15ad57a8cee021ac2",
+      "ptlc_point_compressed_hex": "035ef41280b738218ccbc6b20d0637bfda052e6ae701233d9a10799c61c2416cd7",
+      "alice_posted_margin_sats": 60500000,
+      "alice_winner_pnl_sats": 11000000,
+      "alice_fee_share_sats": 1500,
+      "ln_ptlc_settled_to_alice_sats": 71498500,
+      "router_lp_l1_reimbursement_vout2_sats": 71498500,
+      "alice_ln_balance_before_sats": 5000000,
+      "alice_ln_balance_after_sats": 76498500,
+      "router_lp_ln_balance_before_sats": 95000000,
+      "router_lp_ln_balance_after_sats": 23501500,
+      "ptlc_secret_extracted_and_verified": true,
+      "bob_online_at_l1_clearing": false,
+      "alice_online_at_l1_clearing": false,
+      "frost_threshold_quorum": "2-of-3 {signer_1, signer_3}",
+      "frost_attested_price_usd": 60000,
+      "forged_ptlc_claim_rejected": true
+    },
+    "bitvm3_taproot_drills": {
+      "honest_assertion_txid": "b1cfc3f93d8074cb992bd8ffd7825e4457ef84dddb2ee57e6c0cdd79f062dc2f",
+      "honest_assertion_vout": 0,
+      "challenge_csv_blocks": 10,
+      "bond_sats": 1000000,
+      "optimistic_payout_txid": "43f4686456e7cc91a7c788c298e66e52590fb25956e5a1023f55e2a6ff1ebbd7",
+      "optimistic_payout_vsize": 145,
+      "disprove_boundary_bad_assert_txid": "986b11f2f8196b6657186dbe58b0438d3aad9502e225a713a0003e1c1d32f8ba",
+      "disprove_boundary_slash_txid": "fc4d90d270cf307350d9c82be86b8db7c6740b2ca4d36b90c02866f2f1dc7ff7",
+      "disprove_boundary_slash_vsize": 181,
+      "disprove_equivocation_bad_assert_txid": "95ad59a4541112edb8af609ae6c0af2582998851777bb384eae88ee925385d04",
+      "disprove_equivocation_slash_txid": "a4db7cc2a7fe57bb7d8ea0c3b40bc549bd600bc0e68873c704931a5ef4c4a611",
+      "disprove_equivocation_slash_vsize": 189,
+      "honest_operator_unslashable_verified": true,
+      "premature_csv_rejected_verified": true
+    },
+    "unilateral_fallback_ab_txid": "74821f309b7a25edd7e3cc6ec1593cf7a400017e41de2745ddfbdd9d26218cdd",
+    "unilateral_fallback_bc_txid": "d4e4705c1dc0c35818de76be25788743738310fe15e9da2848708ded619843fb",
+    "mempool_adversarial_probes": [
+      {
+        "probe_id": "clearing-premature-before-maturity",
+        "description": "Broadcast double-offline clearing tx at height 148 (< maturity 150)",
+        "core_accepted": false,
+        "core_reject_reason": "non-final"
+      },
+      {
+        "probe_id": "clearing-shave-1sat-offline-bob-vout0",
+        "description": "Shave 1 sat from offline Bob's 0x83 output vout[0] to RouterLP vout[2]",
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+      },
+      {
+        "probe_id": "clearing-swap-bob-vout0-vout1",
+        "description": "Swap offline Bob's vout[0] and vout[1] across the two 0x83 inputs",
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+      },
+      {
+        "probe_id": "clearing-premature-unilateral-cltv",
+        "description": "Broadcast unilateral CLTV fallback at height 150 (< 170)",
+        "core_accepted": false,
+        "core_reject_reason": "non-final"
+      },
+      {
+        "probe_id": "bitvm3-premature-optimistic-payout-before-csv",
+        "description": "Operator attempts bond reclaim at 1 confirmation (< CSV 10)",
+        "core_accepted": false,
+        "core_reject_reason": "non-BIP68-final"
+      },
+      {
+        "probe_id": "bitvm3-grief-honest-operator-boundary-leaf",
+        "description": "Malicious Challenger attempts boundary slash against honest Operator",
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Script failed an OP_VERIFY operation)"
+      },
+      {
+        "probe_id": "bitvm3-boundary-slash-wrong-preimage",
+        "description": "Challenger submits non-matching boundary preimage on Leaf 1",
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)"
+      },
+      {
+        "probe_id": "bitvm3-equivocation-without-second-preimage",
+        "description": "Attempt Leaf 2 equivocation slash with only pre_0 (missing pre_1)",
+        "core_accepted": false,
+        "core_reject_reason": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)"
+      }
+    ],
+    "bitvm3_tapscript_disprove_regtest_verified": true,
+    "full_groth16_garbled_circuit_l1_verified": false,
+    "production_ready": false
+  },
+  "secq_auth_proof": {
+    "relation": "shz/mnr05-secq256k1-bip340-batch-auth/v1",
+    "curve_cycle": "Secq256k1Engine / Secp256k1Engine (Spartan + IPA, zero trusted setup)",
+    "trusted_setup_ceremony": false,
+    "signature_steps": 8,
+    "primary_constraints": 144959,
+    "secondary_constraints": 10787,
+    "auth_accumulator_root_hex": "22c844af430cc87eeb982c177bc626098a9300f57d9d927e6e5b712d34bcafaa",
+    "vk_sha256_hex": "da8001750089b51e77c778b0f65c2de30a6f711ff482431c0cf0a32c966cb126",
+    "proof_bytes": 11980,
+    "proof_sha256_hex": "0e71f5584d13c21790c2d04f59060f083bb52f5ba72bc117d4c22075706b678b",
+    "setup_seconds": 6.407023667,
+    "fold_seconds": 3.343991032,
+    "compress_seconds": 32.574358715,
+    "verify_seconds": 0.626315992,
+    "wrong_accumulator_rejected": true,
+    "nova_authorization_verified": true
+  },
+  "unified_batch_proof": {
+    "relation": "shz/mnr05-unified-bitvm3-batch-clearing/v1",
+    "curve_cycle": "Bn256EngineIPA / GrumpkinEngine (Spartan + IPA, zero trusted setup)",
+    "trusted_setup_ceremony": false,
+    "folds": 3,
+    "primary_constraints": 962221,
+    "secondary_constraints": 10538,
+    "initial_nullifier_root_hex": "357792c40bde114590f705f669b40ebc5a2f7b6f720ec94f55600bada1a3e9a2",
+    "final_nullifier_root_hex": "2f5a7a598a9ad8ccff71c79d978d3084fc8ab98ac5cdc3b2ff3a936f5b9c35b0",
+    "oracle_checkpoint_root_hex": "412a3b800c88540e009ed3d27a814feacbb702bb274fad7de9f390765aca051d",
+    "settlement_txid_hex": "6dc7c59c6e4473ae8b121e5cb9d1e562f7ebf6ec7b9c9d89920065a27aba2530",
+    "auth_accumulator_root_hex": "22c844af430cc87eeb982c177bc626098a9300f57d9d927e6e5b712d34bcafaa",
+    "bitvm3_statement_304b_sha256_hex": "88e8aeed905bb3c5c766e9159b4565938f6a90381d3b31301a09095dc6b62a01",
+    "bitvm3_public_limbs_be_dec": [
+      "181983168258950892611874677116868322707",
+      "190632911977054312384666283156780231169"
+    ],
+    "vk_sha256_hex": "3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6",
+    "proof_bytes": 12784,
+    "proof_sha256_hex": "2fe9382559b439006c2bc4054d185cd0292b19a03664331cae39b535f103950e",
+    "setup_seconds": 23.215323791,
+    "fold_seconds": 3.159660569,
+    "compress_seconds": 123.331325858,
+    "verify_seconds": 4.601543498,
+    "wrong_txid_rejected": true,
+    "wrong_nullifier_root_rejected": true
+  },
+  "independent_verification": {
+    "secq_vk_reconstructed_match": true,
+    "secq_proof_verified": true,
+    "secq_tampered_proof_rejected": true,
+    "secq_mutated_state_rejected": true,
+    "secq_verify_seconds": 12.532039323,
+    "unified_vk_reconstructed_match": true,
+    "unified_proof_verified": true,
+    "unified_tampered_proof_rejected": true,
+    "unified_mutated_state_rejected": true,
+    "unified_verify_seconds": 44.167832103,
+    "peak_rss_kib": 2594004
+  }
+}

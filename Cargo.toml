@@ -7,7 +7,9 @@ members = [
     "crates/shz-utxoref",
     "crates/shz-dex",
     "crates/shz-nova-bitvm",
+    "crates/shz-ln-testnet4",
     "bins/shz-cli",
+    "bins/shz-hftd",
 ]
 
 [workspace.package]
@@ -24,8 +26,10 @@ shz-oracle = { path = "crates/shz-oracle" }
 shz-utxoref = { path = "crates/shz-utxoref" }
 shz-dex = { path = "crates/shz-dex" }
 shz-nova-bitvm = { path = "crates/shz-nova-bitvm" }
+shz-ln-testnet4 = { path = "crates/shz-ln-testnet4" }
 
 borsh = { version = "1.5", features = ["derive"] }
+ed25519-dalek = { version = "2.1", default-features = false, features = ["std", "fast"] }
 hex = "0.4"
 k256 = { version = "0.13", features = ["arithmetic", "schnorr", "ecdsa", "sha256"] }
 rand_core = { version = "0.6", features = ["getrandom"] }

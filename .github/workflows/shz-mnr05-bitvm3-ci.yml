@@ -1,0 +1,36 @@
+name: shz-mnr05-bitvm3-ln-dlc
+
+on:
+  push:
+    branches: ["main", "feat/**", "research/**"]
+  pull_request:
+
+jobs:
+  mnr05-bitvm3-core31-and-nova-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable with clippy
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Install SHA256-pinned Bitcoin Core 31.1
+        run: |
+          curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
+          echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
+
+      - name: Strict clippy check on MNR-05 crate
+        run: cargo clippy --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --all-targets --locked -- -D warnings
+
+      - name: Run R1CS constraint-level honest & adversarial soundness suite
+        run: cargo test --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --locked -- --test-threads=1 --nocapture
+
+      - name: Execute live Bitcoin Core 31.1 regtest drills (Anchor + Double-Offline PTLC + BitVM3 Assert/Disprove/CSV)
+        run: cargo run --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --locked -- run-regtest /tmp/bitcoin-31.1/bin/bitcoind
+
+      - name: Independently reconstruct VKs and verify persisted Secq256k1 + BN254 Nova/Spartan/IPA proofs
+        run: cargo run --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --locked -- verify-persisted research/mnr05_bitvm3_ln_dlc/artifacts

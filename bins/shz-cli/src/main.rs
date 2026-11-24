@@ -1,6 +1,7 @@
 //! `shz` — Command-line runner and deterministic verification harness for `SatsHedgeZero`.
 
 mod mnr02_regtest;
+mod mnr03_harness;
 mod testnet_clearing;
 
 use std::path::PathBuf;
@@ -559,9 +560,49 @@ fn main() {
             );
             println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
         }
+        "mnr03-regtest" => {
+            let default_bitcoind = std::env::var("BITCOIND_BIN")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("bitcoind"));
+            let bitcoind = args
+                .get(1)
+                .map(PathBuf::from)
+                .unwrap_or(default_bitcoind);
+            let nova_bin = args
+                .get(2)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("LNM_NOVA_BIN").ok().map(PathBuf::from));
+            let bundle_dir = args
+                .get(3)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("SHZ_NOVA_BUNDLE_OUT").ok().map(PathBuf::from));
+            let receipt = mnr03_harness::run_mnr03_core_regtest(
+                &bitcoind,
+                nova_bin.as_deref(),
+                bundle_dir.as_deref(),
+            );
+            println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
+        }
+        "mnr03-testnet4-live" => {
+            let wallet = args.get(1).map(String::as_str).unwrap_or("m16");
+            let nova_bin = args
+                .get(2)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("LNM_NOVA_BIN").ok().map(PathBuf::from));
+            let bundle_dir = args
+                .get(3)
+                .map(PathBuf::from)
+                .or_else(|| std::env::var("SHZ_NOVA_BUNDLE_OUT").ok().map(PathBuf::from));
+            let receipt = mnr03_harness::run_mnr03_wsl_testnet4_live_broadcast(
+                wallet,
+                nova_bin.as_deref(),
+                bundle_dir.as_deref(),
+            );
+            println!("{}", serde_json::to_string_pretty(&receipt).unwrap());
+        }
         _ => {
             eprintln!(
-                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]\n  testnet4-live env: SHZ_CHAIN (default testnet4; e.g. signet), SHZ_BITCOIN_CLI_DIRECT=1, SHZ_WSL_BITCOIN_CLI, SHZ_WSL_BITCOIN_DATADIR, SHZ_BITCOIN_CLI_EXTRA_ARGS"
+                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir] | mnr03-regtest [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | mnr03-testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]\n  testnet4-live env: SHZ_CHAIN (default testnet4; e.g. signet), SHZ_BITCOIN_CLI_DIRECT=1, SHZ_WSL_BITCOIN_CLI, SHZ_WSL_BITCOIN_DATADIR, SHZ_BITCOIN_CLI_EXTRA_ARGS"
             );
             std::process::exit(1);
         }

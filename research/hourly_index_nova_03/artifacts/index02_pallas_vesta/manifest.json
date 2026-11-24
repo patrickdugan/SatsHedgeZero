@@ -1,0 +1,13 @@
+{
+  "relation": "shz/hourly-index-checkpoint-nova/v1",
+  "nova_version": "0.76.0",
+  "claim": {
+    "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+    "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+    "start_hour": "498000",
+    "checkpoint_root": "c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5"
+  },
+  "steps": 8,
+  "verifier_key_sha256": "d598f7431c5f2a9545d84d413124baa100969b40afc578d27a74f8dad5caf90e",
+  "proof_sha256": "15a48918d06118c720033225a076e767f585ae3e74f940390aa037cf01c60af7"
+}

@@ -53,7 +53,7 @@ pub struct TestnetThreePartyClearingReceipt {
     pub clearing_report: ThreePartyClearingReport,
 }
 
-struct IsolatedCoreNode {
+pub(crate) struct IsolatedCoreNode {
     child: Child,
     cli_path: PathBuf,
     datadir: PathBuf,
@@ -61,7 +61,7 @@ struct IsolatedCoreNode {
 }
 
 impl IsolatedCoreNode {
-    fn spawn(bitcoind_path: &Path) -> Self {
+    pub(crate) fn spawn(bitcoind_path: &Path) -> Self {
         let cli_path = bitcoind_path
             .parent()
             .expect("bin dir")
@@ -126,7 +126,7 @@ impl IsolatedCoreNode {
         panic!("bitcoind RPC failed to become ready");
     }
 
-    fn cli_raw(&self, args: &[&str]) -> Result<String, String> {
+    pub(crate) fn cli_raw(&self, args: &[&str]) -> Result<String, String> {
         let out = Command::new(&self.cli_path)
             .arg("-regtest")
             .arg(format!("-datadir={}", self.datadir.display()))
@@ -143,23 +143,23 @@ impl IsolatedCoreNode {
         }
     }
 
-    fn cli_json(&self, args: &[&str]) -> Value {
+    pub(crate) fn cli_json(&self, args: &[&str]) -> Value {
         let txt = self.cli_raw(args).expect("bitcoin-cli JSON call succeeded");
         serde_json::from_str(&txt).expect("valid JSON from bitcoin-cli")
     }
 
-    fn height(&self) -> u64 {
+    pub(crate) fn height(&self) -> u64 {
         self.cli_raw(&["getblockcount"]).unwrap().parse().unwrap()
     }
 
-    fn mine_blocks(&self, count: u64, miner_addr: &str) -> u64 {
+    pub(crate) fn mine_blocks(&self, count: u64, miner_addr: &str) -> u64 {
         let c = count.to_string();
         self.cli_raw(&["generatetoaddress", &c, miner_addr])
             .expect("generatetoaddress");
         self.height()
     }
 
-    fn fund_raw_script(&self, script_pubkey: &[u8], sats: u64) -> (String, u32) {
+    pub(crate) fn fund_raw_script(&self, script_pubkey: &[u8], sats: u64) -> (String, u32) {
         assert_eq!(script_pubkey.len(), 34);
         assert_eq!(&script_pubkey[..2], &[0x51, 0x20]);
         let out_x_hex = hex::encode(&script_pubkey[2..]);
@@ -194,7 +194,7 @@ impl IsolatedCoreNode {
         (txid, vout)
     }
 
-    fn test_mempool_accept(&self, raw_tx_hex: &str) -> (bool, String) {
+    pub(crate) fn test_mempool_accept(&self, raw_tx_hex: &str) -> (bool, String) {
         let arg = format!("[\"{raw_tx_hex}\"]");
         let res = self.cli_json(&["testmempoolaccept", &arg]);
         let entry = &res[0];
@@ -215,7 +215,7 @@ impl Drop for IsolatedCoreNode {
     }
 }
 
-fn run_external_lnm_nova_prover(
+pub(crate) fn run_external_lnm_nova_prover(
     lnm_nova_bin: &Path,
     witness_bytes: &[u8],
     persist_dir: Option<&Path>,
@@ -602,7 +602,7 @@ fn live_chain() -> String {
 /// (`wsl -e $SHZ_WSL_BITCOIN_CLI`); `SHZ_BITCOIN_CLI_DIRECT=1` runs the binary
 /// directly (inside WSL or Linux). `SHZ_BITCOIN_CLI_EXTRA_ARGS` adds
 /// whitespace-separated arguments such as `-rpcport=` or `-signetchallenge=`.
-fn wsl_testnet4_cli(wallet: Option<&str>, args: &[&str]) -> Result<String, String> {
+pub(crate) fn wsl_testnet4_cli(wallet: Option<&str>, args: &[&str]) -> Result<String, String> {
     let cli_bin =
         std::env::var("SHZ_WSL_BITCOIN_CLI").unwrap_or_else(|_| "bitcoin-cli".to_owned());
     let mut cmd = if std::env::var("SHZ_BITCOIN_CLI_DIRECT").as_deref() == Ok("1") {
@@ -634,12 +634,12 @@ fn wsl_testnet4_cli(wallet: Option<&str>, args: &[&str]) -> Result<String, Strin
     }
 }
 
-fn wsl_testnet4_json(wallet: Option<&str>, args: &[&str]) -> Value {
+pub(crate) fn wsl_testnet4_json(wallet: Option<&str>, args: &[&str]) -> Value {
     let txt = wsl_testnet4_cli(wallet, args).expect("WSL testnet4 bitcoin-cli JSON call succeeded");
     serde_json::from_str(&txt).expect("valid JSON from WSL bitcoin-cli")
 }
 
-fn btc_float_to_sats(val: f64) -> u64 {
+pub(crate) fn btc_float_to_sats(val: f64) -> u64 {
     (val * 100_000_000.0).round() as u64
 }
 

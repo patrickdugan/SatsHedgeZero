@@ -1,4 +1,6 @@
 /target
+research/**/target/
+research/**/node_modules/
 **/*.rs.bk
 .DS_Store
 

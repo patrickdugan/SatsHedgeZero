@@ -1,0 +1,42 @@
+name: shz-hourly-index-near-research
+
+on:
+  push:
+    branches: ["research/shz-hourly-index-near-*"]
+  pull_request:
+
+jobs:
+  hourly-index-near:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deterministic fixture and adversarial transaction tests
+        run: |
+          node research/hourly_index/fixtures/generate.mjs
+          git diff --exit-code -- research/hourly_index/fixtures/checkpoint.json
+          npm --prefix research/hourly_index test
+      - name: Verify the NEAR native SHA256 implementation against the same fixture
+        run: cargo test --manifest-path research/hourly_index/near_contract/Cargo.toml -- --nocapture
+      - name: Build the NEAR WASM contract
+        run: cargo build --release --target wasm32-unknown-unknown --manifest-path research/hourly_index/near_contract/Cargo.toml
+      - name: Install sandbox dependencies
+        run: npm --prefix research/hourly_index install --no-audit --no-fund
+      - name: Real NEAR sandbox execution and gas receipt
+        run: |
+          mkdir -p /tmp/shz-hourly
+          SHZ_HOURLY_SANDBOX_REPORT=/tmp/shz-hourly/receipt.json npm --prefix research/hourly_index run sandbox
+          node -e 'const r=require("/tmp/shz-hourly/receipt.json");if(r.valid_inclusion_checks!==8||r.qualified_hours!==7||r.hold_hours!==1||r.zk_witness_verified||r.bitcoin_header_finality||r.authenticated_sources||r.dlc_authorized||!Number.isFinite(r.receipt_TGas)||r.receipt_TGas>300)process.exit(1)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-hourly-near-sandbox-receipt
+          path: /tmp/shz-hourly/receipt.json
+          retention-days: 10
+          if-no-files-found: ignore

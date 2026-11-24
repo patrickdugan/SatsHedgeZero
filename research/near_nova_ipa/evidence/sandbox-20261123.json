@@ -1,0 +1,25 @@
+{
+  "schema": "shz/near-transparent-ipa-sandbox/v1",
+  "network": "near-sandbox",
+  "relation": "shz/near-transparent-bn254-ipa/v1",
+  "sandboxRuntime": "near-sandbox@0.3.5",
+  "transparent": true,
+  "validProofAccepted": true,
+  "tamperedProofRejected": true,
+  "canAuthorizeNova": false,
+  "receiptGasBurnt": "21690105195258",
+  "receiptGasTgas": 21.690105195258,
+  "sourceVerified": false,
+  "novaVerified": false,
+  "bitcoinEnforced": false,
+  "productionReady": false,
+  "provenance": {
+    "repository": "patrickdugan/SatsHedgeZero",
+    "workflowRunId": 45190204126,
+    "jobId": 137746231959,
+    "headCommit": "55ec16eb7c18f81f0e882c7047d791a6260abfe1",
+    "workflowUrl": "https://github.com/patrickdugan/SatsHedgeZero/actions/runs/45190204126",
+    "name": "shz-ipa-near-sandbox-receipt",
+    "measuredIn": "NEAR sandbox WASM transaction via near-api-js callFunctionRaw"
+  }
+}

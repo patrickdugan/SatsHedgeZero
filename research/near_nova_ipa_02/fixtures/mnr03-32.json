@@ -1,0 +1,44 @@
+{
+  "statement": {
+    "dimension": 32,
+    "epoch_id": 177,
+    "row_count": 3,
+    "collateral_sats": 3900,
+    "payout_sats": 3450,
+    "fee_sats": 450,
+    "conservation_claim": 3,
+    "snapshot_root_hex": "a37f97001d20f39b9411fc47c2092f3da4298c56b9069033b158ed4ccf2e153d",
+    "oracle_receipt_hash_hex": "7a0a6d8d97a231fd0adcef7892d29232d131adfe8c92391deb228b9dd598e51e",
+    "bitcoin_assertion_txid_hex": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+    "nova_journal_sha256_hex": "d87e089251413e3f47f90c9e3aadb21c98d164798f77b953d19b361402a28a40",
+    "nova_proof_sha256_hex": "14e9985b67569c2db18b10eb43e0036cfe76fac21ab2674b35ae6324fe08a043",
+    "commitment_hex": "dae68111bd077d7ff3f4a010147edbbfb15d2b9fe6cfba899789321bfff633083cf7a9d808d5f57a2c6c8857fedc54653d2590cce276f276cb9bcf2f82f0882a"
+  },
+  "proof": {
+    "l_hex": [
+      "43566676446d84824f2a68dbcefe48eb77d13aa683ff2c6a550a84b66ca42a0fe648a93f3fec32f3c0254353f3b9b8afa93bd8dd377b4305f7dc6ba33d4c9611",
+      "76137cd1f787b75979417991fbf5db49ef6a1f1508ae1b408b9675306635e1020a9b2815bddacdf3aadad4c1b27bf65f4c6361d5ddc9a1a7612ea45087c5de0b",
+      "8c299a2659c00594bf880de8c8254d65f0127645c2639b1b8b318efb39ada926971b2df7c6aedc54a4c115e28110ca1b4e28b667f8b7ec84ecc90520e75f2d17",
+      "ce373413885f4f70e188a909cc58f0866af45fbc7eddf0edab51af7d8e9aa12d57777a4a0d3a2a668f42193b67e6b3c8ff857466580aa14eb4a78b6de49ef801",
+      "c8f3f44c470d5a852043588ed0953f1f1c25de345081cb5f5f2fe212d858632eaf0a16d6af490abd8962093f47d94ba73de5602f675c430f86492f9e0f7a061f"
+    ],
+    "r_hex": [
+      "060107325a7fe74f3884c9939da71fd65d1db60b845fb9ec26d61d4531ebee1db92d81b635fd74a78a025b16128873f16b4bff674ed836f9a691a5343f581a22",
+      "5ed9c3886faba32e3cee7f04445277a64b4794b05e9825bd0287cdeef5201600a3fc8cb752d02077fee460476ca3f2b6d088a28177d8344a07bc4798da316d06",
+      "eff00da56ae3f67cc6293583c32395c1e12a00095299cf09c94698cb30836524f5554cef682e49c2d2f4eb9183ec12d84d8dbf15ffdcefbfc668d9751d0d5b09",
+      "99477a61066e06b1471a9c6d9eb784508de74eeaf753f4bf0e6559f187e56e167ac105afeac1469e3f8d0d5ab4d8952745cdae9798cef0244decb372c666b105",
+      "4df1bdb19aec8efd0d8b94c33b415441b23ce4304d330df73ac4f00c4268e310faa0e845a8656b46d082043a802fc8b72ce36e6487512347fe67b0bc61fa4330"
+    ],
+    "a_final_hex": "9a15cc9d9054f667718c4d8b2067cc39a2f009fdf384afed2d1c97c871dd7a22",
+    "b_final_hex": "4f9b1a29f8ab0b7f4b59d3049cb8a6d4a2ccfb812feb8f0864fc1e4bb5a5c823"
+  },
+  "honesty": {
+    "frozen_mnr03_public_state_bound": true,
+    "transparent": true,
+    "full_nova_verifier_constrained": false,
+    "source_authenticated": false,
+    "bitcoin_witness_proved": false,
+    "settlement_authorized": false,
+    "production_ready": false
+  }
+}

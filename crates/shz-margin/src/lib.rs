@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
+pub mod liquidation_auction;
+pub mod portfolio_greeks;
+
 pub const SATS_PER_BTC: u128 = 100_000_000;
 pub const BPS_DENOMINATOR: u128 = 10_000;
 
@@ -549,5 +552,62 @@ mod tests {
             assert!(err <= 250, "price {sample_price}: err {err} > 250");
             assert_eq!(cet.payout.total_sats(), spec.total_collateral_sats());
         }
+    }
+
+    #[test]
+    fn test_portfolio_cross_margin_greeks_and_partial_liquidation_auction() {
+        use super::liquidation_auction::compute_partial_liquidation_tranche;
+        use super::portfolio_greeks::{
+            compute_portfolio_cross_margin, InverseOptionLeg, InverseSwapLeg, OptionKind,
+        };
+
+        // Long $100,000 inverse perp @ $100,000 hedged with a Long 1.0 BTC $95,000 Put (30d, 60% IV)
+        let swaps = vec![InverseSwapLeg {
+            instrument_id: "BTC-PERP".into(),
+            signed_usd_notional: 100_000,
+            entry_price_usd: 100_000,
+        }];
+        let options = vec![InverseOptionLeg {
+            instrument_id: "BTC-30D-95000-P".into(),
+            kind: OptionKind::Put,
+            signed_size_mbtc: 1_000,
+            strike_usd: 95_000,
+            days_to_expiry: 30,
+            iv_bps: 6_000,
+            entry_premium_sats: 4_500_000,
+        }];
+        let opt_only = compute_portfolio_cross_margin(&[], &options, 100_000).unwrap();
+        let swap_only = compute_portfolio_cross_margin(&swaps, &[], 100_000).unwrap();
+        let greeks = compute_portfolio_cross_margin(&swaps, &options, 100_000).unwrap();
+        assert!(
+            greeks.cross_initial_margin_sats < greeks.isolated_initial_margin_sats,
+            "protective put hedge must reduce SPAN cross-margin below isolated sum"
+        );
+        assert!(greeks.margin_efficiency_saved_bps > 1_500);
+        assert!(greeks.net_vega_sats_per_vol_pt > 0);
+        assert!(opt_only.net_gamma_sats_per_1pct2 > 0, "long option must have positive gamma");
+        assert!(
+            greeks.net_gamma_sats_per_1pct2 > swap_only.net_gamma_sats_per_1pct2,
+            "long put convexity must offset inverse long swap negative BTC gamma"
+        );
+
+        // Partial liquidation Dutch auction: $50,000 Long at $100,000 (50,000,000 sats value)
+        // with equity 2,000,000 sats (4.00% < 5.00% maintenance, target restore = 6.50%)
+        let plan = compute_partial_liquidation_tranche(
+            true,
+            50_000,
+            2_000_000,
+            100_000,
+            500, // 5.00% MM
+            650, // 6.50% restore target
+            250, // 250ms into 1000ms Dutch auction -> 50 bps discount
+            1_000,
+            200,
+        )
+        .unwrap();
+        assert!(!plan.healthy);
+        assert!(plan.tranche_notional_usd > 0 && plan.tranche_notional_usd < 50_000);
+        assert!(plan.remaining_notional_usd > 20_000);
+        assert!(plan.post_tranche_margin_bps >= 650);
     }
 }

@@ -1,0 +1,27 @@
+{
+  "statement": {
+    "epoch_hash_hex": "7a0a6d8d97a231fd0adcef7892d29232d131adfe8c92391deb228b9dd598e51e",
+    "pyth_price_e8": "10000000000000",
+    "chainlink_price_e8": "10020000000000",
+    "mean_e8": "10010000000000",
+    "commitment_hex": "622ccbf3ff50158c6fe4d7ea2851f554315bfd49fcbe01f19def92bb6822b92791edf8025342b2662c4db53b8c990ef1128b1ec809731273cbad2487c1d7b516"
+  },
+  "proof": {
+    "l_hex": [
+      "1246cb8c1bf06e6bd89df335043f24168931d4b3927996de928f942030e1cb09a2f44a4f18e328d07596eb8cb41b0d51972d46e1ca96301a90b4865f065f0c19",
+      "d0b52e7411649876d55ab8f93cfd36b71700ffacf2612d2551418d37e8316105e98d596141986216d0df9d50b25e50f2d3407a7e564de4b4167206db656e8605"
+    ],
+    "r_hex": [
+      "ca3400096efdb739af60408f48413424b65b2101b2a23053c933baad65df030ded667a8b0f7497b6a0d6ff2cd6d9a77086b5fd4690525308e651dacc3402f926",
+      "aedd4cffcbf44683d91d6683955285a4b1b31bb571c1622c13a7799cab732e0e151b946c100f2254a8368a47723229da304146278e5d2d665b391edbab1cd92b"
+    ],
+    "a_final_hex": "4c1bcd6ef67e5eb1a2ad90fae5c0c9746eab55e23d811286471883fea6905e30",
+    "b_final_hex": "af9214b76eedadf188cdc27464aad02ad0bc7a96b2d64e80ccb64c14c979d312"
+  },
+  "parameters": {
+    "generator_sha256": "858fcd2ddd7248bcb8b21b5a38e5f3df857cadd7e2e3dd605bfde85707b15824",
+    "setup": "transparent deterministic hash-to-curve",
+    "statement": "IPA proof of two-source public vector inner product only",
+    "nova_verified": false
+  }
+}

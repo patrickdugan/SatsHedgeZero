@@ -1,0 +1,58 @@
+name: shz-near-nova-ipa02-mnr03-state
+
+on:
+  push:
+    branches: ["research/near-nova-ipa-02-*"]
+  pull_request:
+    paths:
+      - "research/near_nova_ipa_02/**"
+      - "docs/SHZ_NEAR_IPA02_STATE_BINDING.md"
+      - ".github/workflows/shz-near-nova-ipa02-ci.yml"
+
+jobs:
+  transparent-ipa02-mnr03-state:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regenerate and verify transparent generators and frozen proof fixtures
+        run: |
+          node research/near_nova_ipa_02/fixtures/build.mjs
+          git diff --exit-code -- research/near_nova_ipa_02/fixtures/ research/near_nova_ipa_02/near_contract/src/generators.rs
+      - name: Independent JavaScript IPA reference and negative controls
+        run: npm --prefix research/near_nova_ipa_02 test
+      - name: Verify original MNR-03 testnet4 Bitcoin transaction and Nova archive pins
+        run: node research/near_nova_ipa_02/evidence_gate.mjs > /tmp/shz-ipa02-archive-gate.json
+      - name: Run native NEAR BN254 host proof tests
+        run: cargo test --manifest-path research/near_nova_ipa_02/near_contract/Cargo.toml -- --nocapture
+      - name: Compile transparent NEAR contract WASM
+        env:
+          RUSTFLAGS: "-C target-feature=-reference-types,-bulk-memory,-multivalue,-nontrapping-fptoint,-sign-ext,-extended-const"
+        run: cargo build --release --manifest-path research/near_nova_ipa_02/near_contract/Cargo.toml --target wasm32-unknown-unknown
+      - name: Enforce fail-closed authorization gates
+        run: |
+          grep -F 'pub fn can_authorize_nova(&self)->bool {false}' research/near_nova_ipa_02/near_contract/src/lib.rs
+          grep -F 'pub fn can_authorize_dlc_settlement(&self)->bool {false}' research/near_nova_ipa_02/near_contract/src/lib.rs
+          grep -F 'pub fn can_authorize_oracle_epoch(&self)->bool {false}' research/near_nova_ipa_02/near_contract/src/lib.rs
+      - name: Install sandbox harness
+        run: npm --prefix research/near_nova_ipa_02 install --no-audit --no-fund
+      - name: Run actual NEAR sandbox 8, 16 and 32-dimensional proof checks and gas receipts
+        env:
+          SHZ_IPA02_SANDBOX_RECEIPT: ${{ runner.temp }}/ipa02-mnr03-sandbox-receipt.json
+        run: npm --prefix research/near_nova_ipa_02 run sandbox
+      - name: Preserve independently measured receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shz-ipa02-mnr03-near-sandbox-and-archive
+          path: |
+            ${{ runner.temp }}/ipa02-mnr03-sandbox-receipt.json
+            /tmp/shz-ipa02-archive-gate.json
+          if-no-files-found: ignore

@@ -1,0 +1,20 @@
+[package]
+name = "shz-ln-testnet4"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Testnet4 Lightning peer mesh, BOLT-11/PTLC atomic margin swaps, and 100ms asynchronous DLC subchannel state coalescer."
+
+[dependencies]
+borsh.workspace = true
+hex.workspace = true
+k256.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+shz-dlc.workspace = true
+shz-margin.workspace = true
+shz-utxoref.workspace = true
+thiserror.workspace = true

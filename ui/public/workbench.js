@@ -1631,7 +1631,12 @@ function renderTab1Positions(vm, ui) {
               Bob: ${bobOffline ? "Offline" : "Online"}
             </button>
           </td>
-          <td>
+          <td style="display:flex; gap:5px;">
+            ${
+              !pos.isMnr02Reference && !pos.id.startsWith("pos-satshedge")
+                ? `<button class="shz-wb-btn shz-wb-mono" style="border-color:#00d285;color:#00d285;" data-action="close-ptlc" data-pos-id="${escapeHtml(pos.id)}">⚡ Settle PTLC</button>`
+                : ""
+            }
             <button class="shz-wb-btn shz-wb-btn-primary shz-wb-mono" data-action="closeout-mnr02" data-pos-id="${escapeHtml(pos.id)}">
               Close Out via Carol (MNR-02 0x83)
             </button>
@@ -2082,6 +2087,15 @@ export class ShzWorkbenchController {
         }
       }
       this.render();
+    } else if (action === "close-ptlc") {
+      const posId = btn.getAttribute("data-pos-id");
+      if (
+        typeof window !== "undefined" &&
+        window.SHZ_API &&
+        typeof window.SHZ_API.closePositionPtlc === "function"
+      ) {
+        Promise.resolve(window.SHZ_API.closePositionPtlc(posId)).catch(() => {});
+      }
     } else if (action === "closeout-mnr02") {
       const posId = btn.getAttribute("data-pos-id");
       this.openMnr02Closeout(posId);

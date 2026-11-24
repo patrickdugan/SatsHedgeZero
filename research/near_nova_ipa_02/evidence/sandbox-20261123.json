@@ -1,0 +1,28 @@
+{
+  "schema": "shz/near-ipa02-sandbox/v1",
+  "network": "near-sandbox",
+  "relation": "shz/near-ipa02-frozen-mnr03-state/v2",
+  "researchOnly": true,
+  "transparent": true,
+  "frozenMnr03SourceCommitmentBound": true,
+  "fullNovaPallasVerifierConstrained": false,
+  "sourceAuthenticated": false,
+  "bitcoinWitnessProved": false,
+  "canAuthorizeNova": false,
+  "canAuthorizeDlcSettlement": false,
+  "productionReady": false,
+  "measurements": [
+    {"dimension": 8, "rounds": 3, "receiptGasBurnt": "37566946552755", "receiptTGas": 37.566946552755, "validAccepted": true, "accountingTamperRejected": true, "proofTamperRejected": true},
+    {"dimension": 16, "rounds": 4, "receiptGasBurnt": "63156292021030", "receiptTGas": 63.15629202103, "validAccepted": true, "accountingTamperRejected": true, "proofTamperRejected": true},
+    {"dimension": 32, "rounds": 5, "receiptGasBurnt": "110879454240841", "receiptTGas": 110.879454240841, "validAccepted": true, "accountingTamperRejected": true, "proofTamperRejected": true}
+  ],
+  "provenance": {
+    "repository": "patrickdugan/SatsHedgeZero",
+    "workflowRunId": 45202930807,
+    "workflowJobId": 137790893907,
+    "workflowUrl": "https://github.com/patrickdugan/SatsHedgeZero/actions/runs/45202930807",
+    "headCommit": "77c19c49432cfa5d84e22d96075594727620b0ec",
+    "measurementMethod": "near-api-js v7 callFunctionRaw transaction receipts; sum of receipts_outcome gas_burnt fields",
+    "sourceCodePinned": "research/near_nova_ipa_02/sandbox.mjs"
+  }
+}

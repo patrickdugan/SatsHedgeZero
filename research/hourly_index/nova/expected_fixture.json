@@ -1,0 +1,6 @@
+{
+  "genesis": "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043",
+  "policy_hash": "143106ed1935608212f76af8e7a1da5921e9b806ec7311d4cc72c96c999bd736",
+  "start_hour": "498000",
+  "checkpoint_root": "c26ae9643756ac6b7fbfd2a5b4c66f2a5fb76aaaf9ef17600b741f0d7fdd3af5"
+}
