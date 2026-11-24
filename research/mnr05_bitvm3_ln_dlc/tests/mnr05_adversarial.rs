@@ -20,6 +20,8 @@ use nova_snark::{
 use shz_dlc::{bip340_sign, pubkey_x_from_secret};
 use shz_mnr05_bitvm3_ln_dlc::{
     bitvm3_taproot::{derive_wire_connector_pair, hash_boundary_preimage, BitVm3AssertionTree},
+    garbled_gate_disprove::GarbledNandGate,
+    in_circuit_sighash::synthesize_and_bind_bip341_tapsighash,
     ptlc_lightning::{
         canonical_index03_clearing_oracle_witness, execute_ptlc_lightning_double_offline_clearing,
     },
@@ -301,4 +303,86 @@ fn test_ptlc_double_offline_and_unified_batch_r1cs_adversarial_suite() {
     let (_p0, _p1, h0, h1) = derive_wire_connector_pair(&[0x77; 32], 0);
     assert!(BitVm3AssertionTree::build(pk_a, pk_a, 10, bh, bh, h0, h1).is_err());
     assert!(BitVm3AssertionTree::build(pk_a, pk_b, 10, bh, bh, h0, h0).is_err());
+
+    // --- In-Circuit BIP-341 TapSighash Reconstruction (`0x83`, `0x01`, `0x00`) + Garbled NAND Gate ---
+    let g_gate = GarbledNandGate::garble_deterministic(&[0x42; 32], 1);
+    for u in 0..2 {
+        for v in 0..2 {
+            let (bit_c, _lc) = g_gate
+                .evaluate(u, v, &g_gate.labels_a[u], &g_gate.labels_b[v])
+                .unwrap();
+            assert_eq!(bit_c, usize::from(!(u == 1 && v == 1)));
+        }
+    }
+
+    let spk0: [u8; 34] = _orig.ab_leg.tree.script_pubkey.clone().try_into().unwrap();
+    let spk1: [u8; 34] = _orig.bc_leg.tree.script_pubkey.clone().try_into().unwrap();
+    let spk2: [u8; 34] = _orig.ca_tree.script_pubkey.clone().try_into().unwrap();
+    let spks = [spk0, spk1, spk2];
+    let amts = [99_000_000u64, 90_000_000, 55_000_000];
+
+    for (inp_idx, h_type, leaf_hash, slot_idx) in [
+        (0usize, 0x83u8, &_orig.ab_leg.tree.route_leaf_hash, 0usize),
+        (0usize, 0x01u8, &_orig.ab_leg.tree.route_leaf_hash, 1usize),
+        (2usize, 0x00u8, &_orig.ca_tree.cet_leaf_hash, 6usize),
+    ] {
+        let mut cs_sh = TestConstraintSystem::<BnScalar>::new();
+        let mut tx_bits = Vec::with_capacity(348 * 8);
+        for (bi, b) in bundle.stripped_clearing_tx_348b.iter().enumerate() {
+            for j in (0..8).rev() {
+                tx_bits.push(nova_snark::frontend::gadgets::boolean::Boolean::from(
+                    nova_snark::frontend::gadgets::boolean::AllocatedBit::alloc(
+                        cs_sh.namespace(|| format!("tx_{bi}_{j}")),
+                        Some((b >> j) & 1 != 0),
+                    )
+                    .unwrap(),
+                ));
+            }
+        }
+        synthesize_and_bind_bip341_tapsighash(
+            cs_sh.namespace(|| format!("sh_mode_{h_type:02x}")),
+            &tx_bits,
+            &amts,
+            &spks,
+            inp_idx,
+            h_type,
+            leaf_hash,
+            &bundle.bip340_auth_slots[slot_idx].sighash32,
+        )
+        .unwrap();
+        assert!(
+            cs_sh.is_satisfied(),
+            "in-circuit BIP-341 TapSighash failed for 0x{h_type:02x}: {:?}",
+            cs_sh.which_is_unsatisfied()
+        );
+    }
+
+    // Mutated sighash MUST fail in-circuit `TapSighash` binding!
+    let mut bad_sh = bundle.bip340_auth_slots[1].sighash32;
+    bad_sh[0] ^= 0x01;
+    let mut cs_bad_sh = TestConstraintSystem::<BnScalar>::new();
+    let mut tx_bits_bad = Vec::with_capacity(348 * 8);
+    for (bi, b) in bundle.stripped_clearing_tx_348b.iter().enumerate() {
+        for j in (0..8).rev() {
+            tx_bits_bad.push(nova_snark::frontend::gadgets::boolean::Boolean::from(
+                nova_snark::frontend::gadgets::boolean::AllocatedBit::alloc(
+                    cs_bad_sh.namespace(|| format!("txb_{bi}_{j}")),
+                    Some((b >> j) & 1 != 0),
+                )
+                .unwrap(),
+            ));
+        }
+    }
+    synthesize_and_bind_bip341_tapsighash(
+        cs_bad_sh.namespace(|| "bad_sh"),
+        &tx_bits_bad,
+        &amts,
+        &spks,
+        0,
+        0x01,
+        &_orig.ab_leg.tree.route_leaf_hash,
+        &bad_sh,
+    )
+    .unwrap();
+    assert!(!cs_bad_sh.is_satisfied(), "mutated TapSighash must fail R1CS");
 }

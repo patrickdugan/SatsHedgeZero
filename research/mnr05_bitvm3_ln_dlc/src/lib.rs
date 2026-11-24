@@ -5,6 +5,8 @@
 
 pub mod bitvm3_taproot;
 pub mod core_regtest;
+pub mod garbled_gate_disprove;
+pub mod in_circuit_sighash;
 pub mod progress;
 pub mod ptlc_lightning;
 pub mod secq_schnorr_circuit;

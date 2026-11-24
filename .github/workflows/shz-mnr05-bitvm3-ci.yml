@@ -27,7 +27,7 @@ jobs:
         run: cargo clippy --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --all-targets --locked -- -D warnings
 
       - name: Run R1CS constraint-level honest & adversarial soundness suite
-        run: cargo test --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --locked -- --nocapture
+        run: cargo test --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --locked -- --test-threads=1 --nocapture
 
       - name: Execute live Bitcoin Core 31.1 regtest drills (Anchor + Double-Offline PTLC + BitVM3 Assert/Disprove/CSV)
         run: cargo run --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --locked -- run-regtest /tmp/bitcoin-31.1/bin/bitcoind

@@ -50,6 +50,7 @@ use crate::{
         derive_wire_connector_pair, encode_boundary_preimage, hash_boundary_preimage,
         BitVm3AssertionTree,
     },
+    garbled_gate_disprove::{GarbledGateTaprootTree, GarbledNandGate},
     ptlc_lightning::{
         build_shzidx01_op_return_spk, canonical_index03_clearing_oracle_witness,
         execute_ptlc_lightning_double_offline_clearing, LnPtlcAtomicBridgeReceipt,
@@ -696,6 +697,68 @@ pub fn run_mnr05_core_regtest_drills(
         "sendrawtransaction",
         &hex::encode(uni_bundle.bc_unilateral_fallback_tx.serialize_segwit()),
     ])?;
+    node.mine_blocks(1, &miner_addr);
+
+    // --- Drill E: BitVM3 Garbled NAND Gate Tapscript Disprover on Core 31.1 ---
+    let garbled = GarbledNandGate::garble_deterministic(&[0x88u8; 32], 7);
+    let gate_tree = GarbledGateTaprootTree::build(
+        operator_pk,
+        challenger_pk,
+        challenge_csv_blocks,
+        garbled.commitments.clone(),
+    )
+    .map_err(|e| format!("GarbledGateTaprootTree: {e}"))?;
+    let (gate_txid, gate_vout) = node.fund_p2tr_script(&gate_tree.script_pubkey, bond_sats);
+    node.mine_blocks(1, &miner_addr);
+
+    // Honest `(1, 1) -> NAND(1, 1) = 0` CANNOT be slashed (`OP_NUMNOTEQUAL` fails!)
+    let (bit_honest, lc_honest) = garbled
+        .evaluate(1, 1, &garbled.labels_a[1], &garbled.labels_b[1])
+        .unwrap();
+    assert_eq!(bit_honest, 0);
+    let grief_gate_tx = gate_tree
+        .sign_disprove_garbled_gate_tx(
+            &gate_txid,
+            gate_vout,
+            bond_sats,
+            slash_fee_sats,
+            &challenger_sk,
+            p2tr_spk_from_seed(0x54),
+            &garbled.labels_a[1],
+            &garbled.labels_b[1],
+            &lc_honest,
+        )
+        .unwrap();
+    let (gg_grief_ok, gg_grief_reason) =
+        node.test_mempool_accept(&hex::encode(grief_gate_tx.serialize_segwit()));
+    assert!(!gg_grief_ok);
+    probes.push(CoreMempoolProbe {
+        probe_id: "bitvm3-garbled-nand-grief-honest-gate".into(),
+        description: "Challenger attempts garbled NAND slash against honest (1,1)->0 output label".into(),
+        core_accepted: gg_grief_ok,
+        core_reject_reason: gg_grief_reason,
+    });
+
+    // Dishonest Operator claims `(1, 1) -> 1` (`labels_c[1]`): Core 31.1 IMMEDIATELY SLASHES BOND!
+    let valid_gate_slash = gate_tree
+        .sign_disprove_garbled_gate_tx(
+            &gate_txid,
+            gate_vout,
+            bond_sats,
+            slash_fee_sats,
+            &challenger_sk,
+            p2tr_spk_from_seed(0x54),
+            &garbled.labels_a[1],
+            &garbled.labels_b[1],
+            &garbled.labels_c[1],
+        )
+        .unwrap();
+    let valid_gg_hex = hex::encode(valid_gate_slash.serialize_segwit());
+    let (gg_ok, gg_reason) = node.test_mempool_accept(&valid_gg_hex);
+    if !gg_ok {
+        return Err(format!("Core rejected valid garbled gate slash: {gg_reason}"));
+    }
+    let _gg_slash_txid = node.cli_raw(&["sendrawtransaction", &valid_gg_hex])?;
     node.mine_blocks(1, &miner_addr);
 
     let assertion_txid_be: [u8; 32] = hex::decode(&honest_assert_txid)

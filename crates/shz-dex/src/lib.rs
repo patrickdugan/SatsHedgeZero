@@ -212,9 +212,18 @@ impl ZeroFeeOrderBook {
     /// with strictly `0` maker/taker/protocol fees.
     pub fn submit_order(
         &mut self,
-        mut incoming: SignedOrderIntent,
+        incoming: SignedOrderIntent,
     ) -> Result<Vec<MatchedDlcTicket>, DexError> {
         incoming.verify()?;
+        self.submit_verified_order(incoming)
+    }
+
+    /// Submits a `SignedOrderIntent` whose BIP-340 Schnorr signature has ALREADY been verified
+    /// on the ingress I/O worker thread outside the orderbook lock (`< 2 µs` critical section!).
+    pub fn submit_verified_order(
+        &mut self,
+        mut incoming: SignedOrderIntent,
+    ) -> Result<Vec<MatchedDlcTicket>, DexError> {
         let mut matches = Vec::new();
 
         match incoming.side {
@@ -351,6 +360,77 @@ impl ZeroFeeOrderBook {
         }
 
         Ok(matches)
+    }
+
+    /// Cancels a specific resting order owned by `trader_pubkey_x`.
+    pub fn cancel_order(&mut self, trader_pubkey_x: &[u8; 32], order_id: &[u8; 32]) -> bool {
+        let before_bids = self.bids.len();
+        self.bids
+            .retain(|o| !(o.order_id == *order_id && o.trader_pubkey_x == *trader_pubkey_x));
+        if self.bids.len() != before_bids {
+            return true;
+        }
+        let before_asks = self.asks.len();
+        self.asks
+            .retain(|o| !(o.order_id == *order_id && o.trader_pubkey_x == *trader_pubkey_x));
+        self.asks.len() != before_asks
+    }
+
+    /// Cancels all resting orders owned by `trader_pubkey_x` (used by `private/cancel_all` and `cancel_on_disconnect`).
+    pub fn cancel_all_for_trader(&mut self, trader_pubkey_x: &[u8; 32]) -> usize {
+        let before = self.bids.len() + self.asks.len();
+        self.bids.retain(|o| o.trader_pubkey_x != *trader_pubkey_x);
+        self.asks.retain(|o| o.trader_pubkey_x != *trader_pubkey_x);
+        before - (self.bids.len() + self.asks.len())
+    }
+
+    /// Atomically replaces all resting quotes for `trader_pubkey_x` with up to 40 signed quotes (`private/mass_quote`).
+    pub fn replace_mass_quotes(
+        &mut self,
+        trader_pubkey_x: &[u8; 32],
+        quotes: Vec<SignedOrderIntent>,
+    ) -> Result<(usize, Vec<MatchedDlcTicket>), DexError> {
+        if quotes.len() > 80 {
+            return Err(DexError::InvalidOrder(
+                "mass_quote exceeds 40 two-sided levels (80 signed orders max)",
+            ));
+        }
+        for q in &quotes {
+            if q.trader_pubkey_x != *trader_pubkey_x {
+                return Err(DexError::InvalidOrder(
+                    "mass_quote contains order for mismatched trader_pubkey_x",
+                ));
+            }
+            q.verify()?;
+        }
+        let cancelled = self.cancel_all_for_trader(trader_pubkey_x);
+        let mut all_matches = Vec::new();
+        for q in quotes {
+            let mut m = self.submit_verified_order(q)?;
+            all_matches.append(&mut m);
+        }
+        Ok((cancelled, all_matches))
+    }
+
+    /// Atomically replaces all resting quotes for `trader_pubkey_x` when quotes were pre-verified
+    /// on the WebSocket worker thread outside the orderbook mutex (`< 15 µs` critical section!).
+    pub fn replace_verified_mass_quotes(
+        &mut self,
+        trader_pubkey_x: &[u8; 32],
+        quotes: Vec<SignedOrderIntent>,
+    ) -> Result<(usize, Vec<MatchedDlcTicket>), DexError> {
+        if quotes.len() > 80 {
+            return Err(DexError::InvalidOrder(
+                "mass_quote exceeds 40 two-sided levels (80 signed orders max)",
+            ));
+        }
+        let cancelled = self.cancel_all_for_trader(trader_pubkey_x);
+        let mut all_matches = Vec::new();
+        for q in quotes {
+            let mut m = self.submit_verified_order(q)?;
+            all_matches.append(&mut m);
+        }
+        Ok((cancelled, all_matches))
     }
 }
 

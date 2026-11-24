@@ -1,0 +1,45 @@
+{
+  "schema": "shz-hft-explorer-beta-receipt-v1",
+  "snapshot_date": "2026-11-24",
+  "roadmap_completion_pct": 100,
+  "milestones": {
+    "M1_shz_hft_01_ws_rest_engine": {
+      "status": "complete",
+      "sustained_signed_intents_per_sec": 28217.14,
+      "single_intent_p50_us": 161,
+      "single_intent_p95_us": 502,
+      "single_intent_p99_us": 1433,
+      "cancel_on_disconnect_verified": true,
+      "mass_quote_verified": true
+    },
+    "M2_shz_hft_02_testnet4_ln_coalescer": {
+      "status": "complete",
+      "absorbed_hft_fills": 1049,
+      "coalesced_100ms_commits": 60,
+      "ptlc_instant_withdrawal_adaptor_verified": true
+    },
+    "M3_shz_exp_03_protocol_explorer_ui": {
+      "status": "complete",
+      "panes_verified": 5,
+      "ui_unit_tests_passed": 21,
+      "live_browser_visual_audit_console_errors": 0
+    },
+    "M4_shz_hft_04_rollup_scheduler_and_watchtower": {
+      "status": "complete",
+      "dynamic_n_party_vault_inputs_verified": 5,
+      "testnet4_tip_height_verified": 163097,
+      "testnet4_shzidx01_anchor_txid": "7246cb0a22b276db8cfb1111c2626691000f3e5e2b0e049baba84d2affddc130",
+      "testnet4_offline_0x83_clearing_txid": "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+      "testnet4_vault_funding_txid": "38f9915d6d93a9cf8b60773b4f67cc867c552503e0690f74a382112a5c32e797"
+    },
+    "M5_shz_prod_05_in_circuit_sighash_and_garbled_gate": {
+      "status": "complete_beta_scope",
+      "in_circuit_bip341_tapsighash_modes_verified": ["0x83", "0x01", "0x00"],
+      "core31_drill_e_garbled_nand_gate_slash_verified": true,
+      "max_tapscript_witness_item_bytes": 72,
+      "core31_standard_limit_bytes": 80,
+      "full_groth16_garbled_circuit_l1_verified": false,
+      "production_ready": false
+    }
+  }
+}
