@@ -10,6 +10,7 @@ from datetime import datetime, UTC
 from hashlib import file_digest
 from itertools import groupby
 from operator import itemgetter
+from bisect import bisect_left
 import argparse
 import heapq
 import json
@@ -26,6 +27,8 @@ FEE_FAMILIES={
 }
 PAIRS=((100,300),(140,300),(200,300),(100,200),(300,600))
 THRESHOLDS=(0,.5,1,1.5,2,2.8,5,10,20)
+SCORE_CUTS=(.1,.25,.5,1.,2.,5.,10.,20.)
+COST_PAIRS={(100,300):(2,0),(140,300):(1.96,0),(200,300):(.5,0),(100,200):(2,.5),(300,600):(0,0)}
 
 class Side:
     def __init__(self,sign):
@@ -124,6 +127,7 @@ class Aggregate:
     def __init__(self):
         self.outcomes=defaultdict(Counter);self.pairs=defaultdict(Counter);self.saving=defaultdict(list)
         self.winners=defaultdict(Counter);self.net=defaultdict(list)
+        self.conditional=defaultdict(Counter)
     def add(self,cohort,n,side,mid,results):
         for d,e in results.items():self.outcomes[cohort,n,d][e[0]]+=1
         for f,s in PAIRS:
@@ -131,7 +135,8 @@ class Aggregate:
             if any(e[0] in ("unknown","below_lot") for e in (a,b)):c["unknown"]+=1
             elif a[0]==b[0]=="full":
                 c["common"]+=1;self.saving[k].append(cost(b,side,mid)-cost(a,side,mid))
-                self.net[k].append(cost(b,side,mid)-cost(a,side,mid,2 if f==100 else 1.96 if f==140 else .5 if f==200 else 0))
+                fee_fast,fee_slow=COST_PAIRS[f,s]
+                self.net[k].append(cost(b,side,mid,fee_slow)-cost(a,side,mid,fee_fast))
             elif a[0]=="full":c["fast_only"]+=1
             elif b[0]=="full":c["slow_only"]+=1
             else:c["neither"]+=1
@@ -143,8 +148,22 @@ class Aggregate:
             elif any(e[0]!="full" for e in es):winner="not_all_full"
             else:winner=min((cost(results[d],side,mid,fee),fee,name) for name,d,fee in tiers)[2]
             self.winners[k][winner]+=1
+    def condition(self,score,side,mid,results):
+        bucket=bisect_left(SCORE_CUTS,score)
+        for family,tiers in FEE_FAMILIES.items():
+            c=self.conditional[bucket,family]
+            c["directional_ticks"]+=1
+            for name,d,fee in tiers:c[name+"_status_"+results[d][0]]+=1
+            if any(results[d][0]!="full" for _,d,_ in tiers):continue
+            c["common"]+=1
+            vals=[(name,cost(results[d],side,mid,fee),fee) for name,d,fee in tiers]
+            base=vals[0][1]
+            for name,v,_ in vals:c[name+"_net_saving_sum_bps"]+=base-v
+            winner=min(vals,key=lambda x:(x[1],x[2],x[0]))[0]
+            c["winner_"+winner]+=1
     def report(self,total):
         return dict(
+          conditional_score_bins=[dict(bin=k[0],family=k[1],counts=dict(v)) for k,v in sorted(self.conditional.items())],
           outcomes=[dict(cohort=k[0],usd=k[1],delay_ms=k[2],counts=dict(v)) for k,v in sorted(self.outcomes.items())],
           pairs=[dict(cohort=k[0],usd=k[1],fast_ms=k[2],slow_ms=k[3],counts=dict(v),
             gross_saving_quantiles_bps=quantiles(self.saving[k]),
@@ -158,14 +177,21 @@ class Aggregate:
 
 def replay(book,start,end):
     total=0;valid=0;momentum=0;last_mid=None;last_t=None;agg=Aggregate()
+    history={};feature_missing=0;score_grid=Counter()
     for t in range(start,end-GRID_MS,GRID_MS):
         total+=1
         state=book.view(t)
+        history.pop(t-31000,None)
+        history[t]=None if state is None else state[2]
         if state is None:last_mid=None;last_t=None;continue
         valid+=1;mid=state[2]
         direction=(1 if mid>last_mid else -1 if mid<last_mid else 0) if last_mid is not None and last_t==t-GRID_MS else 0
         last_mid=mid;last_t=t
         momentum+=direction!=0
+        anchors=[history.get(t-lag) for lag in (1000,5000,30000)]
+        score=None if any(x is None for x in anchors) else max(abs(10000*math.log(mid/x))/math.sqrt(lag) for x,lag in zip(anchors,(1,5,30)))
+        if score is None:feature_missing+=1
+        else:score_grid[bisect_left(SCORE_CUTS,score)]+=1
         # BTC base lot = 1e-5; fixed +/-20bp arrival limit.
         requests={(side,n):(math.floor(n/mid*100000)/100000,mid*(1+side*.002)) for side in (1,-1) for n in SIZES}
         results=defaultdict(dict)
@@ -174,9 +200,13 @@ def replay(book,start,end):
             for k,(q,lim) in requests.items():results[k][d]=book.fill(v,k[0],q,lim)
         for (side,n),res in results.items():
             agg.add("buy" if side==1 else "sell",n,side,mid,res)
-            if side==direction:agg.add("causal_momentum",n,side,mid,res)
+            if side==direction:
+                agg.add("causal_momentum",n,side,mid,res)
+                if n==1000 and score is not None:agg.condition(score,side,mid,res)
     book.view(end)
-    return dict(wall_ticks=total,arrival_valid=valid,causal_direction_ticks=momentum,
+    return dict(wall_ticks=total,expected_wall_ticks=(end-start)//GRID_MS,right_edge_not_probed=(end-start)//GRID_MS-total,
+                arrival_valid=valid,causal_direction_ticks=momentum,score_feature_missing_valid_book=feature_missing,
+                score_grid_counts={str(k):v for k,v in sorted(score_grid.items())},score_cuts=SCORE_CUTS,
                 sequence_counts=dict(book.count),clean_sequence=book.count["gaps"]==0 and book.count["unseeded"]==0,
                 **agg.report(total))
 
@@ -199,6 +229,8 @@ def selftest():
     w=next(x for x in z["winners"] if x["family"]=="shz_candidate")
     assert w["counts"]=={"middle":1}
     assert next(x for x in z["winners"] if x["family"]=="venue_discounted")["counts"]=={"priority":1}
+    a.condition(.2,1,100,r)
+    assert next(x for x in a.report(1)["conditional_score_bins"] if x["family"]=="shz_candidate")["counts"]["winner_middle"]==1
     print("public L2 pilot selftests passed")
 
 def main():
@@ -215,7 +247,7 @@ def main():
     for clock in ("publication","received"):
         reports[clock]=replay(Book(messages(a.book,"BTC",start,clock)),start,start+3600000)
         assert reports[clock]["arrival_valid"]>0,"empty or unusable archive"
-    out=dict(schema="shz/public-l2-pilot/v1",source="CryptoHFTData Lighter public BTC L2",hour_utc=a.hour,
+    out=dict(schema="shz/public-l2-pilot/v2",source="CryptoHFTData Lighter public BTC L2",hour_utc=a.hour,
         sha256=digest,bytes=a.book.stat().st_size,grid_ms=GRID_MS,delays_ms=DELAYS,notionals_usd=SIZES,
         reports=reports,full_visible_depth_only=True,actual_order_execution=False,observed_fee_tier=False,
         no_private_data=True,exploratory=True)
