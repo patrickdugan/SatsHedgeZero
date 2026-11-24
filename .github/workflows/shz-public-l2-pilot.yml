@@ -1,0 +1,49 @@
+name: shz-public-l2-pilot
+on:
+  push:
+    branches: ["research/l2-public-pilot-*"]
+    paths:
+      - "research/public_l2/**"
+      - ".github/workflows/shz-public-l2-pilot.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { day: "2026-09-02", hour: "12" }
+          - { day: "2026-10-11", hour: "12" }
+          - { day: "2026-11-23", hour: "12" }
+          - { day: "2026-11-23", hour: "20" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Selftests and dependency
+        run: |
+          python research/public_l2/pilot.py --selftest
+          pip install 'pyarrow>=16,<24'
+      - name: Download one public archive hour and replay both clocks
+        env:
+          DAY: ${{ matrix.day }}
+          HOUR: ${{ matrix.hour }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/l2-summary"
+          raw="$RUNNER_TEMP/l2-btc.parquet"
+          curl --fail --location --retry 2 --retry-delay 3 --max-time 120 --max-filesize 200000000 "https://api.cryptohftdata.com/v1/download?file=lighter/$DAY/$HOUR/BTC_orderbook.parquet" -o "$raw"
+          python research/public_l2/pilot.py --book "$raw" --hour "${DAY}T${HOUR}:00:00" --output "$RUNNER_TEMP/l2-summary/summary.json" | tee "$RUNNER_TEMP/l2-summary/report.jsonl"
+          rm -f "$raw"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-l2-${{ matrix.day }}-${{ matrix.hour }}-summary
+          path: ${{ runner.temp }}/l2-summary
+          if-no-files-found: ignore
+          retention-days: 14
