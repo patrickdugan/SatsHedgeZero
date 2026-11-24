@@ -101,3 +101,55 @@ fn ready(r:&mut Router,t:u64)->Outcome{r.process_one(t).unwrap().unwrap()}
  let a=r.balance(&channel(1)).unwrap();let b=r2.balance(&channel(1)).unwrap();
  assert_eq!(a.resting+b.resting,0);assert!(a.pending>0);assert_eq!(b.pending,0);assert!(a.conserved()&&b.conserved());assert_eq!(a.cap+b.cap,400_000);
 }
+
+#[test]fn hft02_engines_preserve_ordered_outcomes_and_balances(){
+ let(p,g)=setup(100_000_000);
+ let mut engines=[Engine::Scan,Engine::Indexed,Engine::Joint,Engine::Both].map(|e|Router::new_with_engine(p.clone(),&g,1,e).unwrap());
+ let mut intents=Vec::new();
+ // Exact size boundary, self-match, partial fills crossing a size bucket,
+ // price-time ties, collar boundaries, and resting quote cancellation.
+ for (k,(owner,qty,price,side)) in [(1,7,98000,OrderSide::Short),(2,8,98000,OrderSide::Short),(3,17,98000,OrderSide::Short),(1,64,102000,OrderSide::Long),(4,32,101999,OrderSide::Long)].into_iter().enumerate(){
+  let mut i=order(&p,owner,k as u64+1,Action::Post,side,Tier::Priority,qty);
+  i.limit_usd=price;intents.push(i.signed(&sk(owner)).unwrap());
+ }
+ let cancel_id=intents[3].id();
+ for (k,(owner,qty,price,side)) in [(2,8,98000,OrderSide::Long),(4,9,98000,OrderSide::Long),(1,1,98000,OrderSide::Long),(3,20,102000,OrderSide::Short),(4,5,101999,OrderSide::Short),(1,256,100000,OrderSide::Long)].into_iter().enumerate(){
+  let mut i=order(&p,owner,20+k as u64,Action::Take,side,Tier::Priority,qty);
+  i.limit_usd=price;intents.push(i.signed(&sk(owner)).unwrap());
+ }
+ let mut i=order(&p,1,99,Action::Cancel,OrderSide::Long,Tier::Priority,0);
+ i.limit_usd=0;i.leverage_bps=0;i.max_fee_sats=0;i.cancel_target=cancel_id;
+ let cancel=i.signed(&sk(1)).unwrap();
+ let mut traces=Vec::new();
+ for r in &mut engines{
+  r.update_mark(good_marks(&p),NOW).unwrap();
+  for (j,i) in intents.iter().enumerate(){r.submit(i.clone(),NOW+j as u64).unwrap();}
+  let mut trace=Vec::new();
+  while let Some(o)=r.process_one(NOW+300_000).unwrap(){trace.push(format!("{o:?}"));}
+  r.submit(cancel.clone(),NOW+300_001).unwrap();trace.push(format!("{:?}",ready(r,NOW+300_001)));
+  // Same authenticated replay/tamper decisions in both verifier variants.
+  let mut bad=order(&p,4,100,Action::Post,OrderSide::Short,Tier::Priority,3);bad.signature.s=[255;32];
+  assert_eq!(r.submit(bad,NOW+300_002),Err(Reject::Signature));
+  assert!(r.process_one(NOW+10_000_001).unwrap().is_none());
+  assert_eq!(r.resting(),0);
+  for n in 1..=4{let b=r.balance(&channel(n)).unwrap();assert!(b.conserved());trace.push(format!("{b:?}"));}
+  traces.push(trace);
+ }
+ assert!(traces[0].iter().any(|e|e.starts_with("Filled")));
+ assert!(traces.iter().all(|t|t==&traces[0]));
+}
+
+#[test]fn hft02_joint_verifier_matches_reference_on_mutations(){
+ use shz_dlc::{bip340_verify,bip340_verify_joint};
+ for n in 1..=12u8{
+  let(p,_)=setup(1_000_000);
+  let i=order(&p,(n%4)+1,n as u64,Action::Post,OrderSide::Short,Tier::Priority,100);
+  let h=i.id();assert!(bip340_verify_joint(&i.owner,&h,&i.signature).is_ok());
+  let mut bad_h=h;bad_h[0]^=1;
+  let mut bad_sig=i.signature;bad_sig.r_x[0]^=1;
+  for (msg,sig) in [(bad_h,i.signature),(h,bad_sig)]{
+   assert!(bip340_verify(&i.owner,&msg,&sig).is_err());
+   assert!(bip340_verify_joint(&i.owner,&msg,&sig).is_err());
+  }
+ }
+}

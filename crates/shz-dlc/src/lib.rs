@@ -7,7 +7,7 @@ use k256::{
     AffinePoint, EncodedPoint, ProjectivePoint, Scalar, U256,
     elliptic_curve::{
         Group,
-        ops::Reduce,
+        ops::{Reduce, LinearCombination},
         point::AffineCoordinates,
         sec1::{FromEncodedPoint, ToEncodedPoint},
     },
@@ -205,6 +205,24 @@ pub fn bip340_verify(
     msg: &[u8],
     sig: &Bip340Signature,
 ) -> Result<(), DlcError> {
+    bip340_verify_impl(pubkey_x, msg, sig, false)
+}
+
+/// Same BIP-340 checks, with joint scalar multiplication for the router hot path.
+pub fn bip340_verify_joint(
+    pubkey_x: &[u8; 32],
+    msg: &[u8],
+    sig: &Bip340Signature,
+) -> Result<(), DlcError> {
+    bip340_verify_impl(pubkey_x, msg, sig, true)
+}
+
+fn bip340_verify_impl(
+    pubkey_x: &[u8; 32],
+    msg: &[u8],
+    sig: &Bip340Signature,
+    joint: bool,
+) -> Result<(), DlcError> {
     let p = lift_x_even(pubkey_x)?;
     let s = scalar_from_bytes(&sig.s).or_else(|_| {
         if sig.s == [0u8; 32] {
@@ -214,7 +232,11 @@ pub fn bip340_verify(
         }
     })?;
     let e = bip340_challenge(&sig.r_x, pubkey_x, msg);
-    let r_check = (ProjectivePoint::GENERATOR * s) - (p * e);
+    let r_check = if joint {
+        ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &s, &p, &(-e))
+    } else {
+        (ProjectivePoint::GENERATOR * s) - (p * e)
+    };
     if bool::from(r_check.is_identity()) {
         return Err(DlcError::InvalidSchnorrSignature);
     }

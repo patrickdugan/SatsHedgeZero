@@ -2,12 +2,27 @@
 //! cached dual-relay marks, delayed eligibility and separately accounted priority fees.
 //! One trusted single writer per router; no live LN funding or settlement authority.
 use crate::OrderSide;
-use shz_dlc::{Bip340Signature,BtcOutPoint,bip340_sign,bip340_verify,pubkey_x_from_secret,tagged_hash};
+use shz_dlc::{Bip340Signature,BtcOutPoint,bip340_sign,bip340_verify,bip340_verify_joint,pubkey_x_from_secret,tagged_hash};
 use shz_margin::{InverseContractSpec,ZeroFeePolicy};
 use std::collections::{BTreeMap,BTreeSet};
 type Key=[u8;32];
 type Outpoint=([u8;32],u32);
 type BookKey=(u64,u64);
+type SizeIndex=BTreeMap<u32,BTreeSet<BookKey>>;
+/// Implementation switch only; signed policy and economic semantics remain identical.
+#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+pub enum Engine{Scan,Indexed,Joint,Both}
+impl Engine{
+ fn indexed(self)->bool{matches!(self,Self::Indexed|Self::Both)}
+ fn joint(self)->bool{matches!(self,Self::Joint|Self::Both)}
+}
+fn index_add(idx:&mut SizeIndex,q:u64,k:BookKey){assert!(idx.entry(q.ilog2()).or_default().insert(k));}
+fn index_remove(idx:&mut SizeIndex,q:u64,k:BookKey){
+ let bucket=q.ilog2();
+ let set=idx.get_mut(&bucket).expect("size bucket");
+ assert!(set.remove(&k));
+ if set.is_empty(){idx.remove(&bucket);}
+}
 const ORDER_CAP:usize=200_000;
 const MAX_NOTIONAL:u64=1_000_000;
 const MAX_PRICE:u64=100_000_000;
@@ -121,13 +136,16 @@ impl Intent{
   tagged_hash(b"SHZ/HFT/INTENT/V1",&b)
  }
  pub fn signed(mut self,sk:&Key)->R<Self>{self.owner=public(sk);self.signature=sign(sk,&self.id())?;Ok(self)}
- fn check(&self)->R<()>{
+ fn check(&self,engine:Engine)->R<()>{
   if self.sequence==0||self.router==0||self.max_fee_ppm>TAKER_PPM{return Err(Reject::Bounds)}
   if self.action==Action::Cancel{
    if self.cancel_target==[0;32]||self.quantity!=0||self.limit_usd!=0||self.leverage_bps!=0||self.max_fee_ppm!=0||self.max_fee_sats!=0{return Err(Reject::Bounds)}
   }else if self.quantity==0||self.quantity>MAX_NOTIONAL||self.limit_usd==0||self.limit_usd>MAX_PRICE||!(1000..=1_000_000).contains(&self.leverage_bps)||self.cancel_target!=[0;32]{return Err(Reject::Bounds)}
   if rate_ppm(self.tier,self.action)>self.max_fee_ppm{return Err(Reject::FeeLimit)}
-  verify(&self.owner,&self.id(),&self.signature)
+  if engine.joint(){
+   if self.signature.s>=SECP_ORDER{return Err(Reject::Signature)}
+   bip340_verify_joint(&self.owner,&self.id(),&self.signature).map_err(|_|Reject::Signature)
+  }else{verify(&self.owner,&self.id(),&self.signature)}
  }
 }
 #[derive(Debug,Clone)]
@@ -167,15 +185,17 @@ pub struct Router{
  queue:BTreeMap<(u64,u64),Intent>,bids:BTreeMap<BookKey,Quote>,asks:BTreeMap<BookKey,Quote>,
  locations:BTreeMap<Key,(OrderSide,BookKey)>,expirations:BTreeMap<(u64,Key),()>,
  mark:Option<Mark>,fills:BTreeMap<Key,Fill>,
+ engine:Engine,bid_sizes:SizeIndex,ask_sizes:SizeIndex,
 }
 impl Router{
- pub fn new(policy:Policy,registry:&Registry,id:u32)->R<Self>{
+ pub fn new(policy:Policy,registry:&Registry,id:u32)->R<Self>{Self::new_with_engine(policy,registry,id,Engine::Scan)}
+ pub fn new_with_engine(policy:Policy,registry:&Registry,id:u32,engine:Engine)->R<Self>{
   if id==0||policy.scope()!=registry.scope||policy.relay_keys[0]==policy.relay_keys[1]{return Err(Reject::Scope)}
   let mut accounts=BTreeMap::new();
   for a in &registry.allocations{if let Some(s)=a.shares.iter().find(|s|s.router==id){
    accounts.insert(op(&a.channel),Account{owner:a.owner,balance:Balance{cap:s.sats,free:s.sats,resting:0,pending:0},last_seq:0});
   }}
-  Ok(Self{scope:policy.scope(),policy,id,clock:0,arrival:0,activation:0,accounts,queue:BTreeMap::new(),bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),mark:None,fills:BTreeMap::new()})
+  Ok(Self{scope:policy.scope(),policy,id,clock:0,arrival:0,activation:0,accounts,queue:BTreeMap::new(),bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),mark:None,fills:BTreeMap::new(),engine,bid_sizes:BTreeMap::new(),ask_sizes:BTreeMap::new()})
  }
  pub fn balance(&self,channel:&BtcOutPoint)->Option<Balance>{self.accounts.get(&op(channel)).map(|a|a.balance)}
  pub fn resting(&self)->usize{self.locations.len()}
@@ -203,7 +223,7 @@ impl Router{
  pub fn submit(&mut self,intent:Intent,now:u64)->R<u64>{
   self.clock(now)?;
   if intent.scope!=self.scope||intent.router!=self.id{return Err(Reject::Scope)}
-  intent.check()?;
+  intent.check(self.engine)?;
   let due=now.checked_add(delay_us(intent.tier,intent.action)).ok_or(Reject::Clock)?;
   if due>=intent.expires_us{return Err(Reject::Expired)}
   if self.queue.len()>=ORDER_CAP{return Err(Reject::Capacity)}
@@ -216,9 +236,34 @@ impl Router{
  }
  fn book(&self,side:OrderSide)->&BTreeMap<BookKey,Quote>{match side{OrderSide::Long=>&self.bids,OrderSide::Short=>&self.asks}}
  fn book_mut(&mut self,side:OrderSide)->&mut BTreeMap<BookKey,Quote>{match side{OrderSide::Long=>&mut self.bids,OrderSide::Short=>&mut self.asks}}
+ fn sizes(&self,side:OrderSide)->&SizeIndex{match side{OrderSide::Long=>&self.bid_sizes,OrderSide::Short=>&self.ask_sizes}}
+ fn sizes_mut(&mut self,side:OrderSide)->&mut SizeIndex{match side{OrderSide::Long=>&mut self.bid_sizes,OrderSide::Short=>&mut self.ask_sizes}}
+ /// All keys inside the inclusive oracle collar and taker limit, in book order.
+ fn indexed_choice(&self,side:OrderSide,i:&Intent,m:&Mark)->Option<BookKey>{
+  let denom=10_000u128*100_000_000;
+  let mark=m.price_e8 as u128;
+  let mut lo=(mark*(10_000-COLLAR_BPS)).div_ceil(denom)as u64;
+  let mut hi=(mark*(10_000+COLLAR_BPS)/denom)as u64;
+  if side==OrderSide::Short{hi=hi.min(i.limit_usd)}else{lo=lo.max(i.limit_usd)}
+  if lo>hi{return None}
+  let (first,last)=if side==OrderSide::Short{(lo,hi)}else{(u64::MAX-hi,u64::MAX-lo)};
+  let mut best=None;
+  let book=self.book(side);
+  for (_,bucket) in self.sizes(side).range(i.quantity.ilog2()..){
+   for &key in bucket.range((first,0)..=(last,u64::MAX)){
+    if best.is_some_and(|b|key>=b){break}
+    let q=&book[&key];
+    if q.remaining>=i.quantity&&q.intent.owner!=i.owner{
+     best=Some(key);break
+    }
+   }
+  }
+  best
+ }
  fn remove(&mut self,id:Key)->Option<Quote>{
   let (side,key)=self.locations.remove(&id)?;let q=self.book_mut(side).remove(&key)?;
   self.expirations.remove(&(q.intent.expires_us,id));
+  if self.engine.indexed(){index_remove(self.sizes_mut(side),q.remaining,key);}
   let b=&mut self.accounts.get_mut(&op(&q.intent.channel)).unwrap().balance;
   let hold=q.remaining*q.hold_per_unit;b.resting-=hold;b.free+=hold;Some(q)
  }
@@ -261,18 +306,22 @@ impl Router{
   let id=i.id();let side=i.side;
   let key=(if side==OrderSide::Long{u64::MAX-i.limit_usd}else{i.limit_usd},activation);
   self.locations.insert(id,(side,key));self.expirations.insert((i.expires_us,id),());
-  let remaining=i.quantity;self.book_mut(side).insert(key,Quote{intent:i,remaining,hold_per_unit:unit});Ok(Outcome::Posted(id))
+  let remaining=i.quantity;
+  if self.engine.indexed(){index_add(self.sizes_mut(side),remaining,key);}
+  self.book_mut(side).insert(key,Quote{intent:i,remaining,hold_per_unit:unit});Ok(Outcome::Posted(id))
  }
  fn take(&mut self,i:&Intent,m:&Mark)->R<Outcome>{
   if self.fills.len()>=ORDER_CAP{return Err(Reject::Capacity)}
   // V1 FOK within one private maker quote; price then actual local arrival.
   let side=if i.side==OrderSide::Long{OrderSide::Short}else{OrderSide::Long};
-  let chosen=self.book(side).iter().find(|(_,q)|{
-   let p=q.intent.limit_usd;
-   q.intent.owner!=i.owner&&q.remaining>=i.quantity&&m.allows(p)&&
-    if i.side==OrderSide::Long{p<=i.limit_usd}else{p>=i.limit_usd}
-  }).map(|(k,q)|(*k,q.clone())).ok_or(Reject::NoLiquidity)?;
-  let (key,q)=chosen;let price=q.intent.limit_usd;let n=i.quantity;
+  let key=if self.engine.indexed(){self.indexed_choice(side,i,m)}else{
+   self.book(side).iter().find(|(_,q)|{
+    let p=q.intent.limit_usd;
+    q.intent.owner!=i.owner&&q.remaining>=i.quantity&&m.allows(p)&&
+     if i.side==OrderSide::Long{p<=i.limit_usd}else{p>=i.limit_usd}
+   }).map(|(k,_)|*k)
+  }.ok_or(Reject::NoLiquidity)?;
+  let q=self.book(side)[&key].clone();let price=q.intent.limit_usd;let n=i.quantity;
   let (long,short)=if i.side==OrderSide::Long{(i.leverage_bps,q.intent.leverage_bps)}else{(q.intent.leverage_bps,i.leverage_bps)};
   let spec=InverseContractSpec::from_leverages_v0(n,price,long,short).map_err(|_|Reject::Bounds)?;
   debug_assert_eq!(spec.fee_policy,ZeroFeePolicy::ZERO);
@@ -294,6 +343,10 @@ impl Router{
   let b=&mut self.accounts.get_mut(&op(&i.channel)).unwrap().balance;
   b.free-=taker_debit;b.pending+=taker_debit;
   let maker_id=q.intent.id();
+  if self.engine.indexed(){
+   index_remove(self.sizes_mut(side),q.remaining,key);
+   if q.remaining>n{index_add(self.sizes_mut(side),q.remaining-n,key);}
+  }
   if q.remaining==n{
    self.book_mut(side).remove(&key);self.locations.remove(&maker_id);self.expirations.remove(&(q.intent.expires_us,maker_id));
   }else{self.book_mut(side).get_mut(&key).unwrap().remaining-=n;}

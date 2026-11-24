@@ -1,0 +1,86 @@
+name: shz-hft02-matched-controls
+on:
+  push:
+    branches: ["research/shz-hft02-*"]
+    paths:
+      - "crates/shz-dex/**"
+      - "crates/shz-dlc/**"
+      - ".github/workflows/shz-hft02-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shz-hft02-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  matched:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [cross, deep]
+        orders: [20000, 100000]
+    env:
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Native adversarial parity and release build
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hft02"
+          cargo test --locked -p shz-dex -p shz-dlc --release | tee "$RUNNER_TEMP/hft02/tests.txt"
+          cargo build --locked -p shz-dex --release --example hft02_bench
+      - uses: actions/checkout@v4
+        with:
+          repository: tradelayer-wallet/tl-orderbook-server
+          ref: 9284a178e8c4dcddb67b6ce38db80519ca68e4de
+          path: _tl_orderbook
+          persist-credentials: false
+      - name: Same-host implementation factorial and parallel routing
+        env:
+          MODE: ${{ matrix.mode }}
+          ORDERS: ${{ matrix.orders }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/hft02"
+          TL="$GITHUB_WORKSPACE/_tl_orderbook"
+          test "$(git -C "$TL" rev-parse HEAD)" = 9284a178e8c4dcddb67b6ce38db80519ca68e4de
+          node "$TL/rust/tl-orderbook/scripts/gen-workload.cjs" "$MODE" "$ORDERS" 20261030 > "$OUT/workload.tsv"
+          sha256sum "$OUT/workload.tsv" > "$OUT/workload.sha256"
+          rustc -Vv > "$OUT/host.txt"
+          nproc >> "$OUT/host.txt"; lscpu >> "$OUT/host.txt"
+          BENCH="$GITHUB_WORKSPACE/target/release/examples/hft02_bench"
+          for shards in 1 4; do
+            for engine in scan indexed joint both; do
+              "$BENCH" "$OUT/workload.tsv" "$MODE" "$shards" "$engine" serial | tee "$OUT/result-$shards-$engine-serial.json"
+            done
+          done
+          "$BENCH" "$OUT/workload.tsv" "$MODE" 4 both parallel | tee "$OUT/result-4-both-parallel.json"
+          node --input-type=module - "$OUT" <<'JS'
+          import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
+          const d=process.argv[2];
+          const rows=readdirSync(d).filter(x=>x.startsWith('result-')&&x.endsWith('.json')).map(x=>JSON.parse(readFileSync(d+'/'+x,'utf8')));
+          if(rows.length!==9)throw Error('missing arm');
+          const fields=['orders','posted','fills','rejected','resting','matched_usd','maker_fee_sats','taker_fee_sats','oracle_due_sats','router_due_sats','receipt_digest'];
+          for(const k of [1,4]){
+            const rs=rows.filter(x=>x.router_shards===k), base=rs.find(x=>x.engine==='scan'&&x.schedule==='serial');
+            if(!base||base.fills<=0||rs.length!==(k===1?4:5))throw Error('missing matched control or fill');
+            for(const r of rs){
+              if(fields.some(f=>r[f]!==base[f])||!r.signature_verification_timed||r.live_settlement)throw Error('semantic divergence '+JSON.stringify(r));
+            }
+          }
+          const summary={schema:'shz/hft02/v1',parity:true,rows,live_settlement:false,actual_network_latency:false,production_ready:false};
+          writeFileSync(d+'/summary.json',JSON.stringify(summary,null,2)+'\n');
+          console.log(JSON.stringify(summary));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-hft02-${{ matrix.mode }}-${{ matrix.orders }}
+          path: ${{ runner.temp }}/hft02
+          retention-days: 14
