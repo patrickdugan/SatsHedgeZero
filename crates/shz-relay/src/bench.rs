@@ -29,6 +29,23 @@ pub struct BenchOptions {
     pub state_dir: std::path::PathBuf,
     /// One client per tier is made slow (sleeps per message) to exercise backpressure.
     pub slow_client: bool,
+    /// Federated mode over the network vote transport: five member tasks
+    /// (own collator, own lock, own key) connect to the relay over loopback
+    /// WebSockets instead of the in-process development signers.
+    pub remote_members: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FederationReceipt {
+    pub transport: &'static str,
+    pub members: usize,
+    pub certified: u64,
+    pub quorum_timeouts: u64,
+    pub skipped_slots: u64,
+    pub votes_accepted: u64,
+    pub disagreements: u64,
+    pub refusals: u64,
+    pub equivocations: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -61,7 +78,11 @@ pub struct BenchReceipt {
     pub reports: u64,
     pub rejected_reports: u64,
     pub ingest_verify_normalize: Summary,
+    /// Proposal broadcast to quorum certificate (remote) or lock + signatures (local).
     pub certify_durable: Summary,
+    /// Slot boundary to certificate formed (what the premium tier waits for).
+    pub certify_after_boundary: Summary,
+    pub federation: Option<FederationReceipt>,
     pub server_send_after_release: BTreeMap<&'static str, Summary>,
     pub tiers: BTreeMap<&'static str, TierResult>,
     /// Per-sequence realized lead, first receiving client of each tier.
@@ -120,13 +141,39 @@ pub async fn run(opts: BenchOptions) -> Result<BenchReceipt, String> {
         subscriber_queue: 64,
         clients,
         source: SourceConfig::Synthetic { seed: 20261124 },
+        member_listen: None,
         frost_maturity_group_key: None,
     };
-    if opts.mode == SecurityMode::Federated {
-        // SAFETY: single-threaded setup before the runtime spawns workers that read env.
-        unsafe { std::env::set_var(crate::config::ENV_DEV_FEDERATION, "1") };
+    let remote = opts.remote_members && opts.mode == SecurityMode::Federated;
+    let mut cfg = cfg;
+    if remote {
+        // Members and relay must agree on slot 1: fix the origin up front.
+        let now_us = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|e| e.to_string())?.as_micros() as u64;
+        cfg.policy.origin_us = (now_us / 1_000_000 + 4) * 1_000_000;
+        cfg.member_listen = Some("127.0.0.1:0".into());
     }
-    let relay = start(cfg, StartOptions { run_seconds: Some(opts.seconds), relay_key: Some([0x5e; 32]), collator: None }).await?;
+    let member_cfg_base = cfg.clone();
+    let relay = start(
+        cfg,
+        StartOptions { run_seconds: Some(opts.seconds), relay_key: Some([0x5e; 32]), collator: None, dev_federation: Some(opts.mode == SecurityMode::Federated && !remote) },
+    )
+    .await?;
+    let mut members = Vec::new();
+    if remote {
+        let addr = relay.member_addr.ok_or("member endpoint not bound")?;
+        for i in 0..5usize {
+            let mc = crate::member::MemberConfig {
+                member: i as u8,
+                relay_url: format!("ws://{addr}"),
+                policy: member_cfg_base.policy.clone(),
+                state_dir: opts.state_dir.join(format!("members/m{i}")),
+                source: SourceConfig::Synthetic { seed: 20261124 },
+                reconnect_ms: 100,
+            };
+            let secret = shz_oracle::collator::fixture::FEDERATION_SECRETS[i];
+            members.push(crate::member::start_member(mc, secret, crate::member::MemberOptions { collator: None, run_seconds: Some(opts.seconds) }).await?);
+        }
+    }
     let url = format!("ws://{}", relay.ws_addr);
     let mut handles = Vec::new();
     for (n, (id, tier, sk)) in secrets.into_iter().enumerate() {
@@ -177,6 +224,9 @@ pub async fn run(opts: BenchOptions) -> Result<BenchReceipt, String> {
     // Let the last standard release drain, then close every socket.
     tokio::time::sleep(Duration::from_millis(600)).await;
     let _ = relay.shared.shutdown.send(true);
+    for m in members {
+        m.shutdown().await;
+    }
     let mut records = Vec::new();
     for h in handles {
         if let Ok(Ok(r)) = tokio::time::timeout(Duration::from_secs(10), h).await {
@@ -244,7 +294,12 @@ pub async fn run(opts: BenchOptions) -> Result<BenchReceipt, String> {
         schema: "shz-hft06-relay-bench/v1",
         synthetic: true,
         production_ready: false,
-        platform: format!("{}-{} (loopback, single process)", std::env::consts::OS, std::env::consts::ARCH),
+        platform: format!(
+            "{}-{} (loopback, single process{})",
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+            if remote { ", relay + 5 member tasks over WebSocket" } else { "" }
+        ),
         mode: opts.mode,
         release: opts.release,
         seconds: opts.seconds,
@@ -255,6 +310,21 @@ pub async fn run(opts: BenchOptions) -> Result<BenchReceipt, String> {
         rejected_reports: pm.rejected_reports,
         ingest_verify_normalize: pm.ingest_us.summary(),
         certify_durable: pm.certify_us.summary(),
+        certify_after_boundary: hub.metrics.certify_after_boundary.summary(),
+        federation: relay.shared.fed.as_ref().map(|f| {
+            let s = f.snapshot();
+            FederationReceipt {
+                transport: "websocket-loopback",
+                members: 5,
+                certified: s.metrics.certified,
+                quorum_timeouts: s.metrics.quorum_timeouts,
+                skipped_slots: hub.metrics.skipped_slots,
+                votes_accepted: s.metrics.votes_accepted,
+                disagreements: s.metrics.disagreements,
+                refusals: s.metrics.refusals,
+                equivocations: s.metrics.equivocations,
+            }
+        }),
         server_send_after_release: send,
         tiers,
         realized_lead_premium_vs_standard: lead(0, 2),

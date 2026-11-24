@@ -4,84 +4,262 @@
   "title": "SHZ HFT-06 relay configuration",
   "description": "Secrets are not part of this file: the relay key comes from SHZ_RELAY_SIGNING_KEY(_FILE), provider credentials from PYTH_LAZER_ACCESS_TOKEN, CHAINLINK_DS_CLIENT_ID, CHAINLINK_DS_CLIENT_SECRET.",
   "type": "object",
-  "required": ["mode", "policy", "ws_listen", "http_listen", "state_dir", "clients", "source"],
+  "required": [
+    "mode",
+    "policy",
+    "ws_listen",
+    "http_listen",
+    "state_dir",
+    "clients",
+    "source"
+  ],
   "additionalProperties": false,
   "$defs": {
-    "hex32": { "type": "string", "pattern": "^(0x)?[0-9a-fA-F]{64}$" },
-    "tier": { "enum": ["premium", "intermediate", "standard"] }
+    "hex32": {
+      "type": "string",
+      "pattern": "^(0x)?[0-9a-fA-F]{64}$"
+    },
+    "tier": {
+      "enum": [
+        "premium",
+        "intermediate",
+        "standard"
+      ]
+    }
   },
   "properties": {
     "mode": {
-      "enum": ["trusted_relay", "federated"],
+      "enum": [
+        "trusted_relay",
+        "federated"
+      ],
       "description": "trusted_relay: one pinned relay key (initial deployment). federated: HFT-04 4-of-5 BIP340 certificates. Never mixed."
     },
     "policy": {
       "type": "object",
-      "required": ["network", "market", "epoch", "members"],
+      "required": [
+        "network",
+        "market",
+        "epoch",
+        "members"
+      ],
       "additionalProperties": false,
       "properties": {
-        "network": { "$ref": "#/$defs/hex32" },
-        "market": { "$ref": "#/$defs/hex32" },
-        "epoch": { "type": "integer", "minimum": 1 },
-        "origin_us": { "type": "integer", "minimum": 0, "description": "Unix microseconds of slot 1; 0 = next whole second + 2 s at start." },
-        "members": { "type": "array", "items": { "$ref": "#/$defs/hex32" }, "minItems": 5, "maxItems": 5, "uniqueItems": true }
+        "network": {
+          "$ref": "#/$defs/hex32"
+        },
+        "market": {
+          "$ref": "#/$defs/hex32"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "origin_us": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unix microseconds of slot 1; 0 = next whole second + 2 s at start."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hex32"
+          },
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true
+        }
       }
     },
     "release": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "intermediate_delay_us": { "type": "integer", "exclusiveMinimum": 0, "exclusiveMaximum": 200000, "default": 100000 },
-        "standard_delay_us": { "const": 200000 },
-        "max_clock_uncertainty_us": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 2000 },
-        "certification_deadline_us": { "type": "integer", "exclusiveMinimum": 0, "maximum": 200000, "default": 200000 }
+        "intermediate_delay_us": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 200000,
+          "default": 100000
+        },
+        "standard_delay_us": {
+          "const": 200000
+        },
+        "max_clock_uncertainty_us": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000,
+          "default": 2000
+        },
+        "certification_deadline_us": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 200000,
+          "default": 200000
+        }
       }
     },
-    "ws_listen": { "type": "string" },
-    "http_listen": { "type": "string" },
-    "state_dir": { "type": "string" },
-    "history": { "type": "integer", "minimum": 16, "default": 3000 },
-    "subscriber_queue": { "type": "integer", "minimum": 1, "default": 256 },
+    "ws_listen": {
+      "type": "string"
+    },
+    "http_listen": {
+      "type": "string"
+    },
+    "state_dir": {
+      "type": "string"
+    },
+    "history": {
+      "type": "integer",
+      "minimum": 16,
+      "default": 3000
+    },
+    "subscriber_queue": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 256
+    },
     "clients": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "tier", "pubkey"],
+        "required": [
+          "id",
+          "tier",
+          "pubkey"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "tier": { "$ref": "#/$defs/tier" },
-          "pubkey": { "$ref": "#/$defs/hex32", "description": "BIP340 x-only key used for challenge-response authentication." },
-          "max_connections": { "type": "integer", "minimum": 1, "default": 2 }
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tier": {
+            "$ref": "#/$defs/tier"
+          },
+          "pubkey": {
+            "$ref": "#/$defs/hex32",
+            "description": "BIP340 x-only key used for challenge-response authentication."
+          },
+          "max_connections": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 2
+          }
         }
       }
     },
     "source": {
       "oneOf": [
-        { "type": "object", "required": ["kind", "seed"], "properties": { "kind": { "const": "synthetic" }, "seed": { "type": "integer" } }, "additionalProperties": false },
-        { "type": "object", "required": ["kind", "path", "recorded_origin_us"], "properties": { "kind": { "const": "recorded" }, "path": { "type": "string" }, "recorded_origin_us": { "type": "integer" } }, "additionalProperties": false },
         {
           "type": "object",
-          "required": ["kind", "pyth_url", "chainlink_url", "chainlink_feed_id", "pyth_signers", "chainlink_don"],
+          "required": [
+            "kind",
+            "seed"
+          ],
+          "properties": {
+            "kind": {
+              "const": "synthetic"
+            },
+            "seed": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "path",
+            "recorded_origin_us"
+          ],
+          "properties": {
+            "kind": {
+              "const": "recorded"
+            },
+            "path": {
+              "type": "string"
+            },
+            "recorded_origin_us": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "pyth_url",
+            "chainlink_url",
+            "chainlink_feed_id",
+            "pyth_signers",
+            "chainlink_don"
+          ],
           "additionalProperties": false,
           "properties": {
-            "kind": { "const": "live" },
-            "pyth_url": { "type": "string" },
-            "chainlink_url": { "type": "string" },
-            "chainlink_feed_id": { "$ref": "#/$defs/hex32" },
-            "pyth_signers": { "type": "array", "items": { "$ref": "#/$defs/hex32" }, "minItems": 1 },
+            "kind": {
+              "const": "live"
+            },
+            "pyth_url": {
+              "type": "string"
+            },
+            "chainlink_url": {
+              "type": "string"
+            },
+            "chainlink_feed_id": {
+              "$ref": "#/$defs/hex32"
+            },
+            "pyth_signers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/hex32"
+              },
+              "minItems": 1
+            },
             "chainlink_don": {
               "type": "array",
               "minItems": 1,
               "items": {
                 "type": "object",
-                "required": ["config_digest", "f", "signers", "active_from_s", "active_until_s"],
+                "required": [
+                  "config_digest",
+                  "f",
+                  "signers",
+                  "active_from_s",
+                  "active_until_s"
+                ],
                 "properties": {
-                  "config_digest": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 255 }, "minItems": 32, "maxItems": 32 },
-                  "f": { "type": "integer", "minimum": 1 },
-                  "signers": { "type": "array", "items": { "type": "array", "items": { "type": "integer" }, "minItems": 20, "maxItems": 20 } },
-                  "active_from_s": { "type": "integer" },
-                  "active_until_s": { "type": "integer" }
+                  "config_digest": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "minItems": 32,
+                    "maxItems": 32
+                  },
+                  "f": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "signers": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "minItems": 20,
+                      "maxItems": 20
+                    }
+                  },
+                  "active_from_s": {
+                    "type": "integer"
+                  },
+                  "active_until_s": {
+                    "type": "integer"
+                  }
                 }
               }
             }
@@ -89,6 +267,13 @@
         }
       ]
     },
-    "frost_maturity_group_key": { "$ref": "#/$defs/hex32", "description": "Packet keys must differ from this FROST maturity attestation group key." }
+    "frost_maturity_group_key": {
+      "$ref": "#/$defs/hex32",
+      "description": "Packet keys must differ from this FROST maturity attestation group key."
+    },
+    "member_listen": {
+      "type": "string",
+      "description": "Federated mode: address of the authenticated member vote endpoint (members authenticate with policy.members keys)."
+    }
   }
 }

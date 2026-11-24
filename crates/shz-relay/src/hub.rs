@@ -18,7 +18,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 
 use crate::{
-    envelope::{CertifiedPacket, EnvelopeError, Hash, PacketVerifier, WireCertified},
+    envelope::{CertifiedPacket, EnvelopeError, Hash, PacketVerifier, SecurityMode, WireCertified},
     metrics::RelayMetrics,
     schedule::{ReleasePolicy, Tier},
 };
@@ -139,6 +139,12 @@ impl Hub {
     pub fn last(&self) -> Option<(u64, Hash)> {
         self.last
     }
+    /// The most recent certified packet still retained (restores the parent
+    /// of a remote federation after a relay restart).
+    pub fn last_certified(&self) -> Option<CertifiedPacket> {
+        let e = self.history.back()?;
+        CertifiedPacket::try_from(&e.wire).ok()
+    }
 
     /// Open (and replay) an append-only checkpoint log. Each record is
     /// re-verified; any corruption or chain break fails closed.
@@ -201,9 +207,15 @@ impl Hub {
                 };
             }
             if seq != ls + 1 {
-                return Err(HubError::Gap { expected: ls + 1, got: seq });
-            }
-            if c.packet().previous != ld {
+                // A federated certificate may skip uncertified slots, but only
+                // by linking to the last certified digest: nothing certified
+                // can lie between, so the chain stays unforked.
+                let linked_skip = self.verifier.mode() == SecurityMode::Federated && seq > ls + 1 && c.packet().previous == ld;
+                if !linked_skip {
+                    return Err(HubError::Gap { expected: ls + 1, got: seq });
+                }
+                self.metrics.skipped_slots += seq - ls - 1;
+            } else if c.packet().previous != ld {
                 return Err(HubError::Chain(seq));
             }
         }
@@ -415,6 +427,34 @@ pub(crate) mod tests {
         let fc = f.certify(&Packet { policy: p.id().unwrap(), seq: 2, previous: c[0].digest(), mark: Mark::Hold { reason: 1 } }).unwrap();
         assert_eq!(h.publish(fc, b(2)).err(), Some(HubError::Verify(EnvelopeError::ModeMismatch)));
         assert_eq!(h.metrics.equivocations, 1);
+    }
+
+    #[test]
+    fn federated_hub_accepts_only_linked_skips() {
+        use shz_oracle::hft_packets::{Certificate, Signer};
+        let p = policy();
+        let mut ss: Vec<_> = (0..5).map(|i| Signer::new(&p, i, [(i + 1) as u8; 32]).unwrap()).collect();
+        let cert = |ss: &mut Vec<Signer>, seq: u64, previous: Hash| {
+            let pk = Packet { policy: p.id().unwrap(), seq, previous, mark: Mark::Hold { reason: 1 } };
+            let votes = ss.iter_mut().take(4).map(|s| s.vote(&p, &pk).unwrap()).collect();
+            CertifiedPacket::Federated(Certificate { packet: pk, votes })
+        };
+        let mut h = Hub::new(PacketVerifier::federated(p.clone()).unwrap(), ReleasePolicy::default(), 64);
+        let c1 = cert(&mut ss, 1, [0; 32]);
+        h.publish(c1.clone(), b(1)).unwrap();
+        // seq 4 linked to seq 1: accepted, slots 2 and 3 counted as skipped.
+        let c4 = cert(&mut ss, 4, c1.digest());
+        h.publish(c4.clone(), b(4)).unwrap();
+        assert_eq!(h.metrics.skipped_slots, 2);
+        assert_eq!(h.last().unwrap().0, 4);
+        // A skip that does not link to the last certified digest is a gap.
+        let bad = cert(&mut ss, 7, c1.digest());
+        assert_eq!(h.publish(bad, b(7)).err(), Some(HubError::Gap { expected: 5, got: 7 }));
+        // The trusted hub never accepts a skip, linked or not.
+        let mut t = hub();
+        let tc = chain(3);
+        t.publish(tc[0].clone(), b(1)).unwrap();
+        assert!(matches!(t.publish(tc[2].clone(), b(3)).err(), Some(HubError::Gap { .. })));
     }
 
     #[test]

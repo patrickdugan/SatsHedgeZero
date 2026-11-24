@@ -11,17 +11,20 @@ use shz_oracle::collator::{CollatorConfig, RawReport, fixture};
 use tokio::{net::TcpListener, sync::mpsc, task::JoinHandle};
 
 use crate::{
-    authority::{DurableSignLock, LocalFederation, PacketAuthority, TrustedRelaySigner, ensure_key_separation},
+    authority::{DurableSignLock, LocalFederation, TrustedRelaySigner, ensure_key_separation},
     config::{ENV_DEV_FEDERATION, RelayConfig, SourceConfig, h32, relay_signing_key},
-    envelope::{Hash, PacketVerifier, SecurityMode},
+    envelope::{CertifiedPacket, Hash, PacketVerifier, SecurityMode},
     hub::Hub,
+    remote::{RemoteFed, serve_members},
     schedule::MonoClock,
-    server::{PipelineMetrics, Shared, run_delivery, run_producer, serve_http, serve_ws},
+    server::{Authority, PipelineMetrics, Shared, run_delivery, run_producer, serve_http, serve_ws},
 };
 
 pub struct RunningRelay {
     pub ws_addr: SocketAddr,
     pub http_addr: SocketAddr,
+    /// Member vote endpoint, when `member_listen` is configured.
+    pub member_addr: Option<SocketAddr>,
     pub shared: Arc<Shared>,
     pub policy: shz_oracle::hft_packets::Policy,
     pub verifier: PacketVerifier,
@@ -42,6 +45,10 @@ pub struct StartOptions {
     pub relay_key: Option<Hash>,
     /// Collator config override (live mode builds it from the config file).
     pub collator: Option<CollatorConfig>,
+    /// `Some(true)`: run the five fixture signers in-process (development).
+    /// `Some(false)`: use the network member transport. `None`: decided by
+    /// `SHZ_DEV_FEDERATION=1`.
+    pub dev_federation: Option<bool>,
 }
 
 fn relay_id(policy_id: &Hash, relay_key: &Hash) -> Hash {
@@ -92,7 +99,7 @@ pub async fn start(cfg: RelayConfig, opts: StartOptions) -> Result<RunningRelay,
         (None, _) => fixture::config(),
     };
 
-    let (authority, verifier, key_for_id): (Box<dyn PacketAuthority>, PacketVerifier, Hash) = match cfg.mode {
+    let (local, verifier, key_for_id): (Option<Authority>, PacketVerifier, Hash) = match cfg.mode {
         SecurityMode::TrustedRelay => {
             let sk = match opts.relay_key {
                 Some(k) => k,
@@ -104,39 +111,67 @@ pub async fn start(cfg: RelayConfig, opts: StartOptions) -> Result<RunningRelay,
             if let Some(g) = &cfg.frost_maturity_group_key {
                 ensure_key_separation(&h32(g)?, &[pk]).map_err(|e| e.to_string())?;
             }
-            (Box::new(signer), PacketVerifier::trusted(policy.clone(), pk).map_err(|e| e.to_string())?, pk)
+            (Some(Authority::Local(Box::new(signer))), PacketVerifier::trusted(policy.clone(), pk).map_err(|e| e.to_string())?, pk)
         }
         SecurityMode::Federated => {
-            if std::env::var(ENV_DEV_FEDERATION).as_deref() != Ok("1") {
+            let dev = opts.dev_federation.unwrap_or_else(|| std::env::var(ENV_DEV_FEDERATION).as_deref() == Ok("1"));
+            if !dev && cfg.member_listen.is_none() {
                 return Err(format!(
-                    "federated mode: member vote transport is an external gate; set {ENV_DEV_FEDERATION}=1 to run the five fixture signers in-process (development only)"
+                    "federated mode: set member_listen so the five independent member processes can connect and vote (or {ENV_DEV_FEDERATION}=1 to run the five fixture signers in-process, development only)"
                 ));
             }
             if let Some(g) = &cfg.frost_maturity_group_key {
                 ensure_key_separation(&h32(g)?, &policy.members).map_err(|e| e.to_string())?;
             }
-            let fed = LocalFederation::new(&policy, &fixture::FEDERATION_SECRETS, &cfg.state_dir.join("federation")).map_err(|e| e.to_string())?;
-            (Box::new(fed), PacketVerifier::federated(policy.clone()).map_err(|e| e.to_string())?, policy.members[0])
+            let verifier = PacketVerifier::federated(policy.clone()).map_err(|e| e.to_string())?;
+            if dev {
+                let fed = LocalFederation::new(&policy, &fixture::FEDERATION_SECRETS, &cfg.state_dir.join("federation")).map_err(|e| e.to_string())?;
+                (Some(Authority::Local(Box::new(fed))), verifier, policy.members[0])
+            } else {
+                (None, verifier, policy.members[0])
+            }
         }
     };
 
     let mut hub = Hub::new(verifier.clone(), cfg.release, cfg.history);
     hub.attach_log(&cfg.state_dir.join(format!("checkpoints-{}.jsonl", hex::encode(&policy_id[..8])))).map_err(|e| e.to_string())?;
     let (shutdown, _) = tokio::sync::watch::channel(false);
+    let relay_id = relay_id(&policy_id, &key_for_id);
+    let remote: Option<Arc<RemoteFed>> = match (&local, cfg.mode) {
+        (None, SecurityMode::Federated) => {
+            let parent = match hub.last_certified() {
+                Some(CertifiedPacket::Federated(c)) => Some(c),
+                _ => None,
+            };
+            Some(Arc::new(RemoteFed::new(policy.clone(), relay_id, clock, parent)))
+        }
+        _ => None,
+    };
+    let authority = match (local, &remote) {
+        (Some(a), _) => a,
+        (None, Some(f)) => Authority::Remote(f.clone()),
+        (None, None) => return Err("no packet authority".into()),
+    };
     let shared = Arc::new(Shared {
         hub: Mutex::new(hub),
         clock,
         notify: Default::default(),
-        relay_id: relay_id(&policy_id, &key_for_id),
+        relay_id,
         clients: cfg.clients.iter().map(|c| (c.id.clone(), c.clone())).collect::<BTreeMap<_, _>>(),
         connections: Mutex::new(BTreeMap::new()),
         subscriber_queue: cfg.subscriber_queue,
         pipeline: Mutex::new(PipelineMetrics::default()),
         shutdown,
+        fed: remote.clone(),
     });
 
     let ws = TcpListener::bind(&cfg.ws_listen).await.map_err(|e| format!("ws_listen {}: {e}", cfg.ws_listen))?;
     let http = TcpListener::bind(&cfg.http_listen).await.map_err(|e| format!("http_listen {}: {e}", cfg.http_listen))?;
+    let member_listener = match &cfg.member_listen {
+        Some(a) => Some(TcpListener::bind(a).await.map_err(|e| format!("member_listen {a}: {e}"))?),
+        None => None,
+    };
+    let member_addr = member_listener.as_ref().map(|l| l.local_addr()).transpose().map_err(|e| e.to_string())?;
     let ws_addr = ws.local_addr().map_err(|e| e.to_string())?;
     let http_addr = http.local_addr().map_err(|e| e.to_string())?;
 
@@ -174,12 +209,16 @@ pub async fn start(cfg: RelayConfig, opts: StartOptions) -> Result<RunningRelay,
     }
     let until = opts.run_seconds.map(|s| origin + s * 1_000_000).unwrap_or(u64::MAX);
     let producer = tokio::spawn(run_producer(shared.clone(), collator_cfg, policy.clone(), authority, rrx, until));
-    let tasks = vec![
+    let mut tasks = vec![
         tokio::spawn(run_delivery(shared.clone())),
         tokio::spawn(serve_ws(shared.clone(), ws)),
         tokio::spawn(serve_http(shared.clone(), http)),
     ];
-    Ok(RunningRelay { ws_addr, http_addr, shared, policy, verifier, producer, tasks })
+    if let Some(l) = member_listener {
+        // Trusted-relay mode binds a listener that refuses every member.
+        tasks.push(tokio::spawn(serve_members(remote, l, shared.shutdown.subscribe())));
+    }
+    Ok(RunningRelay { ws_addr, http_addr, member_addr, shared, policy, verifier, producer, tasks })
 }
 
 /// Deterministic offline replay (CI): returns the closed slots and stats.

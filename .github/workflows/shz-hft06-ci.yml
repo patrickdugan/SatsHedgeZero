@@ -46,6 +46,8 @@ jobs:
         run: ./target/release/shz-relay bench --clients 4 --seconds 60 --out relay_bench_trusted_linux.json
       - name: Loopback relay benchmark (dev federation, 30 s)
         run: ./target/release/shz-relay bench --clients 4 --seconds 30 --mode federated --out relay_bench_federated_linux.json
+      - name: Loopback relay benchmark (five remote member processes over WebSocket, 30 s)
+        run: ./target/release/shz-relay bench --clients 2 --seconds 30 --mode federated-remote --out relay_bench_federated_remote_linux.json
       - name: Gate on zero loss and verification failures
         run: |
           for f in relay_bench_*_linux.json; do

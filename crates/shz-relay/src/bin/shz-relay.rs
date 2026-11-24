@@ -4,11 +4,14 @@
 //!   shz-relay keygen --out key.hex          (prints only the public key)
 //!   shz-relay dev-config --dir deploy/hft06 [--ws ADDR] [--http ADDR] [--state DIR]
 //!   shz-relay subscribe --url ws://HOST:PORT --client-id ID --key-file F [--count N] [--from-seq S]
+//!   shz-relay member --config member.json [--seconds N]
 //!   shz-relay checkpoint --http HOST:PORT [--seq N]
-//!   shz-relay bench [--clients N] [--seconds S] [--mode trusted_relay|federated] [--intermediate-us D] [--slow-client 1] [--out receipt.json]
+//!   shz-relay bench [--clients N] [--seconds S] [--mode trusted_relay|federated|federated-remote] [--intermediate-us D] [--slow-client 1] [--out receipt.json]
 //!
 //! The relay signing key is read from SHZ_RELAY_SIGNING_KEY or
-//! SHZ_RELAY_SIGNING_KEY_FILE. Nothing prints secret material.
+//! SHZ_RELAY_SIGNING_KEY_FILE; a federation member's key from
+//! SHZ_MEMBER_SIGNING_KEY or SHZ_MEMBER_SIGNING_KEY_FILE. Nothing prints
+//! secret material.
 
 use std::{
     collections::BTreeMap,
@@ -20,7 +23,8 @@ use rand_core::{OsRng, RngCore};
 use shz_relay::{
     bench::{BenchOptions, run},
     client::sign_auth,
-    config::{RelayConfig, h32},
+    config::{RelayConfig, h32, member_signing_key},
+    member::{MemberConfig, MemberOptions, start_member},
     envelope::SecurityMode,
     schedule::ReleasePolicy,
     server::{ClientMsg, ServerMsg},
@@ -49,7 +53,7 @@ async fn main() {
             let path = a.get("config").unwrap_or_else(|| die("--config required"));
             let cfg = RelayConfig::load(std::path::Path::new(path)).unwrap_or_else(|e| die(e));
             let secs = a.get("seconds").and_then(|s| s.parse().ok());
-            let relay = start(cfg, StartOptions { run_seconds: secs, relay_key: None, collator: None }).await.unwrap_or_else(|e| die(e));
+            let relay = start(cfg, StartOptions { run_seconds: secs, relay_key: None, collator: None, dev_federation: None }).await.unwrap_or_else(|e| die(e));
             eprintln!("shz-relay ws={} http={} mode={:?} production_ready=false", relay.ws_addr, relay.http_addr, relay.verifier.mode());
             let shared = relay.shared.clone();
             tokio::select! {
@@ -57,6 +61,17 @@ async fn main() {
                 _ = tokio::signal::ctrl_c() => {}
             }
             let _ = shared.shutdown.send(true);
+        }
+        "member" => {
+            let path = a.get("config").unwrap_or_else(|| die("--config required"));
+            let cfg = MemberConfig::load(std::path::Path::new(path)).unwrap_or_else(|e| die(e));
+            let secret = member_signing_key().unwrap_or_else(|e| die(e));
+            let secs = a.get("seconds").and_then(|s| s.parse().ok());
+            let (idx, url) = (cfg.member, cfg.relay_url.clone());
+            let m = start_member(cfg, secret, MemberOptions { collator: None, run_seconds: secs }).await.unwrap_or_else(|e| die(e));
+            eprintln!("shz-relay member={idx} relay={url} production_ready=false");
+            tokio::signal::ctrl_c().await.ok();
+            m.shutdown().await;
         }
         "dev-config" => {
             // Local development config: fixture federation members (dev-only
@@ -171,9 +186,10 @@ async fn main() {
                 clients_per_tier: a.get("clients").and_then(|s| s.parse().ok()).unwrap_or(4),
                 seconds: a.get("seconds").and_then(|s| s.parse().ok()).unwrap_or(30),
                 mode: match a.get("mode").map(|s| s.as_str()) {
-                    Some("federated") => SecurityMode::Federated,
+                    Some("federated" | "federated-remote") => SecurityMode::Federated,
                     _ => SecurityMode::TrustedRelay,
                 },
+                remote_members: a.get("mode").is_some_and(|m| m == "federated-remote"),
                 release,
                 state_dir: std::env::temp_dir().join(format!("shz-relay-bench-{}", std::process::id())),
                 slow_client: a.get("slow-client").is_some_and(|v| v == "1"),
@@ -185,6 +201,6 @@ async fn main() {
                 None => println!("{json}"),
             }
         }
-        _ => die("usage: shz-relay serve|keygen|subscribe|checkpoint|bench (see source header)"),
+        _ => die("usage: shz-relay serve|member|keygen|subscribe|checkpoint|bench (see source header)"),
     }
 }

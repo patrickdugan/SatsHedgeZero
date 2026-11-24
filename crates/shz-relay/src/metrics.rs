@@ -108,6 +108,8 @@ pub struct RelayMetrics {
     pub rejected: u64,
     pub late_certificates: u64,
     pub hold_packets: u64,
+    /// Sequence numbers jumped by linked federated certificates (slots that never reached quorum).
+    pub skipped_slots: u64,
     pub deliveries: [u64; 3],
     pub lagging_disconnects: u64,
     pub auth_failures: u64,
@@ -134,6 +136,7 @@ impl RelayMetrics {
             ("rejected", self.rejected),
             ("late_certificates", self.late_certificates),
             ("hold_packets", self.hold_packets),
+            ("skipped_slots", self.skipped_slots),
             ("lagging_disconnects", self.lagging_disconnects),
             ("auth_failures", self.auth_failures),
             ("bytes_out", self.bytes_out),

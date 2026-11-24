@@ -37,11 +37,20 @@ use tokio_tungstenite::tungstenite::{
 use crate::{
     authority::PacketAuthority,
     client::{ClientEntry, verify_auth},
-    envelope::Hash,
+    envelope::{CertifiedPacket, Hash},
     hub::{Delivery, Hub},
     metrics::LogHistogram,
+    remote::{CertifyError, RemoteFed},
     schedule::{MonoClock, Tier},
 };
+
+/// How slot packets obtain their certificate.
+pub enum Authority {
+    /// Trusted relay key, or the development in-process federation.
+    Local(Box<dyn PacketAuthority>),
+    /// Production federation: votes from independent member processes.
+    Remote(Arc<RemoteFed>),
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -88,6 +97,7 @@ pub struct Shared {
     pub subscriber_queue: usize,
     pub pipeline: Mutex<PipelineMetrics>,
     pub shutdown: tokio::sync::watch::Sender<bool>,
+    pub fed: Option<Arc<RemoteFed>>,
 }
 
 /// Sleep until `target_us` on the shared monotonic clock. Coarse OS timers
@@ -116,7 +126,7 @@ pub async fn run_producer(
     shared: Arc<Shared>,
     cfg: CollatorConfig,
     policy: shz_oracle::hft_packets::Policy,
-    mut authority: Box<dyn PacketAuthority>,
+    mut authority: Authority,
     mut reports: mpsc::Receiver<RawReport>,
     until_us: u64,
 ) -> Result<(), String> {
@@ -171,19 +181,43 @@ pub async fn run_producer(
         };
         for slot in closed {
             let packet = slot.packet.clone().expect("fresh slot carries packet");
-            let t0 = shared.clock.now_us();
-            let cert = authority.certify(&packet).map_err(|e| e.to_string())?;
-            let certified_us = shared.clock.now_us();
             {
                 let mut pm = shared.pipeline.lock().unwrap();
-                pm.certify_us.record(certified_us - t0);
                 pm.slots += 1;
-                pm.lock_bytes += 80;
                 match slot.hold {
                     None => pm.valid_slots += 1,
                     Some(r) => pm.hold_slots[r as usize - 1] += 1,
                 }
             }
+            let t0 = shared.clock.now_us();
+            let cert = match &mut authority {
+                Authority::Local(a) => {
+                    shared.pipeline.lock().unwrap().lock_bytes += 80;
+                    a.certify(&packet).map_err(|e| e.to_string())?
+                }
+                Authority::Remote(fed) => {
+                    // Already certified (relay restarted from its checkpoint log).
+                    if fed.parent_seq().is_some_and(|s| s >= slot.seq) {
+                        continue;
+                    }
+                    let deadline = slot.boundary_us + shared.hub.lock().unwrap().release_policy().certification_deadline_us;
+                    // Without any certificate only the genesis packet is admissible.
+                    let proposal = if fed.parent_seq().is_none() && slot.seq != 1 {
+                        collator.closed().find(|s| s.seq == 1).and_then(|s| s.packet.clone())
+                    } else {
+                        Some(packet)
+                    };
+                    let Some(proposal) = proposal else { continue };
+                    match fed.certify(proposal, deadline).await {
+                        Ok(c) => CertifiedPacket::Federated(c),
+                        // Timeouts are counted by the federation; the next
+                        // proposal links to the last certified packet.
+                        Err(CertifyError::Timeout { .. } | CertifyError::AlreadyCertified | CertifyError::NoParent) => continue,
+                    }
+                }
+            };
+            let certified_us = shared.clock.now_us();
+            shared.pipeline.lock().unwrap().certify_us.record(certified_us - t0);
             shared.hub.lock().unwrap().publish(cert, certified_us).map_err(|e| e.to_string())?;
             shared.notify.notify_one();
         }
@@ -378,7 +412,7 @@ fn route(shared: &Shared, get: bool, path: &str) -> (&'static str, &'static str,
             let hub = shared.hub.lock().unwrap();
             let last = hub.last().map(|l| l.0);
             let m = &hub.metrics;
-            let body = serde_json::json!({
+            let mut body = serde_json::json!({
                 "status": "ok",
                 "last_seq": last,
                 "published": m.published,
@@ -387,13 +421,21 @@ fn route(shared: &Shared, get: bool, path: &str) -> (&'static str, &'static str,
                 "subscribers": m.active_subscribers,
                 "wall_clock_offset_us": shared.clock.wall_offset_us(),
                 "production_ready": false,
+                "skipped_slots": m.skipped_slots,
             });
+            drop(hub);
+            if let Some(f) = &shared.fed {
+                body["federation"] = f.health_json();
+            }
             ("200 OK", "application/json", body.to_string())
         }
         "/metrics" => {
             let mut s = shared.hub.lock().unwrap().metrics.prometheus();
             let pm = shared.pipeline.lock().unwrap();
             s.push_str(&format!("shz_collator_reports_total {}\nshz_collator_rejected_reports_total {}\nshz_collator_slots_total {}\nshz_collator_valid_slots_total {}\n", pm.reports, pm.rejected_reports, pm.slots, pm.valid_slots));
+            if let Some(f) = &shared.fed {
+                s.push_str(&f.prometheus());
+            }
             ("200 OK", "text/plain; version=0.0.4", s)
         }
         p if p.starts_with("/v1/checkpoint/") => {

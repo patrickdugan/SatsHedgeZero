@@ -15,6 +15,8 @@ pub const ENV_PYTH_TOKEN: &str = "PYTH_LAZER_ACCESS_TOKEN";
 pub const ENV_CHAINLINK_ID: &str = "CHAINLINK_DS_CLIENT_ID";
 pub const ENV_CHAINLINK_SECRET: &str = "CHAINLINK_DS_CLIENT_SECRET";
 pub const ENV_DEV_FEDERATION: &str = "SHZ_DEV_FEDERATION";
+pub const ENV_MEMBER_KEY: &str = "SHZ_MEMBER_SIGNING_KEY";
+pub const ENV_MEMBER_KEY_FILE: &str = "SHZ_MEMBER_SIGNING_KEY_FILE";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyConfig {
@@ -25,6 +27,21 @@ pub struct PolicyConfig {
     #[serde(default)]
     pub origin_us: u64,
     pub members: [String; 5],
+}
+
+impl PolicyConfig {
+    pub fn to_policy(&self, origin_us: u64) -> Result<Policy, String> {
+        let m = |i: usize| h32(&self.members[i]);
+        let p = Policy {
+            network: h32(&self.network)?,
+            market: h32(&self.market)?,
+            epoch: self.epoch,
+            origin_us,
+            members: [m(0)?, m(1)?, m(2)?, m(3)?, m(4)?],
+        };
+        p.id().map_err(|e| format!("packet policy: {e:?}"))?;
+        Ok(p)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +78,11 @@ pub struct RelayConfig {
     pub subscriber_queue: usize,
     pub clients: Vec<ClientEntry>,
     pub source: SourceConfig,
+    /// WebSocket address of the member vote endpoint. Required in federated
+    /// mode without `SHZ_DEV_FEDERATION=1`; in trusted-relay mode a listener
+    /// bound here refuses every member connection.
+    #[serde(default)]
+    pub member_listen: Option<String>,
     /// FROST maturity attestation group key (hex); packet keys must differ.
     #[serde(default)]
     pub frost_maturity_group_key: Option<String>,
@@ -91,22 +113,21 @@ impl RelayConfig {
         Ok(cfg)
     }
     pub fn packet_policy(&self, origin_us: u64) -> Result<Policy, String> {
-        let p = Policy {
-            network: h32(&self.policy.network)?,
-            market: h32(&self.policy.market)?,
-            epoch: self.policy.epoch,
-            origin_us,
-            members: [
-                h32(&self.policy.members[0])?,
-                h32(&self.policy.members[1])?,
-                h32(&self.policy.members[2])?,
-                h32(&self.policy.members[3])?,
-                h32(&self.policy.members[4])?,
-            ],
-        };
-        p.id().map_err(|e| format!("packet policy: {e:?}"))?;
-        Ok(p)
+        self.policy.to_policy(origin_us)
     }
+}
+
+/// Read the member signing key from `SHZ_MEMBER_SIGNING_KEY` (hex) or the
+/// file named by `SHZ_MEMBER_SIGNING_KEY_FILE`. The key is never logged.
+pub fn member_signing_key() -> Result<Hash, String> {
+    if let Ok(v) = std::env::var(ENV_MEMBER_KEY) {
+        return h32(v.trim()).map_err(|_| format!("{ENV_MEMBER_KEY} is not 32-byte hex"));
+    }
+    if let Ok(p) = std::env::var(ENV_MEMBER_KEY_FILE) {
+        let v = std::fs::read_to_string(&p).map_err(|e| format!("{ENV_MEMBER_KEY_FILE}: {e}"))?;
+        return h32(v.trim()).map_err(|_| format!("{ENV_MEMBER_KEY_FILE} does not contain 32-byte hex"));
+    }
+    Err(format!("set {ENV_MEMBER_KEY} or {ENV_MEMBER_KEY_FILE}"))
 }
 
 /// Read the relay signing key from `SHZ_RELAY_SIGNING_KEY` (hex) or the file

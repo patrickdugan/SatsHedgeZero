@@ -12,7 +12,7 @@ use shz_dlc::{Bip340Signature, bip340_sign, bip340_verify, tagged_hash};
 use shz_oracle::hft_packets::{CADENCE_US, MAX_CLOCK_ERROR_US, MAX_SOURCE_AGE_US, Mark, Packet};
 
 use crate::{
-    envelope::{CertifiedPacket, EnvelopeError, Hash, PacketVerifier},
+    envelope::{CertifiedPacket, EnvelopeError, Hash, PacketVerifier, SecurityMode},
     schedule::{ReleasePolicy, Tier},
 };
 
@@ -88,7 +88,10 @@ impl TieredReceiver {
         })?;
         let p = c.packet();
         let first = self.seq == 0 && !self.anchored;
-        if !first && (p.seq != self.seq + 1 || p.previous != self.last) {
+        // Federated certificates may skip slots that never reached quorum, but
+        // only by linking to the last accepted digest.
+        let skip_ok = self.verifier.mode() == SecurityMode::Federated && p.seq > self.seq;
+        if !first && (!(p.seq == self.seq + 1 || skip_ok) || p.previous != self.last) {
             return Err(RxError::Sequence);
         }
         self.seq = p.seq;

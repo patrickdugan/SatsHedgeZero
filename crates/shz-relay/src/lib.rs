@@ -7,6 +7,8 @@
 //! * [`hub`]: continuity, replay/equivocation rules, backpressure, catch-up,
 //!   checkpoints.
 //! * [`client`]: tiered receiver and challenge-response authentication.
+//! * [`remote`] / [`member`]: network vote transport between the relay and five
+//!   independent federation member processes (gate G-FED-1).
 //! * [`server`] / [`service`]: tokio WebSocket + HTTP runtime.
 //! * [`bench`]: loopback end-to-end benchmark receipts.
 //!
@@ -22,7 +24,9 @@ pub mod envelope;
 pub mod hub;
 #[cfg(feature = "live")]
 pub mod live;
+pub mod member;
 pub mod metrics;
+pub mod remote;
 pub mod schedule;
 pub mod server;
 pub mod service;
