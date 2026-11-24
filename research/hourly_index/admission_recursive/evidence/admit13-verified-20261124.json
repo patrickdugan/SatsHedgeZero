@@ -1,0 +1,36 @@
+{
+  "schema": "shz/admit13-verified-result/v1",
+  "commit": "7553bf3815d95fbe3e6184b3d0bb45f04df5f436",
+  "run": 45328156036,
+  "job": 138222630896,
+  "receipt_sha256": "6f5022763d431b43060edcee19f4f2266060abb335f9663a1c4554d78dca0750",
+  "profiles": [
+    {
+      "cap": 3072,
+      "transactions": 2,
+      "prefix_TGas": 221.985855616614,
+      "terminal_TGas": 275.877814303422,
+      "total_TGas": 497.863669920036
+    },
+    {
+      "cap": 3456,
+      "transactions": 2,
+      "prefix_TGas": 249.667144420474,
+      "terminal_TGas": 248.193143636574,
+      "total_TGas": 497.860288057048
+    },
+    {
+      "cap": 3584,
+      "transactions": 2,
+      "prefix_TGas": 258.835229409322,
+      "terminal_TGas": 239.023933117518,
+      "total_TGas": 497.85916252684
+    }
+  ],
+  "near_verified": true,
+  "all_atomic_failure_controls_passed": true,
+  "source_authentication": false,
+  "provider_completeness": false,
+  "production_ready": false,
+  "can_authorize_dlc_settlement": false
+}
