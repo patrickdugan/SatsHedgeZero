@@ -1,0 +1,51 @@
+{
+  "clients": [
+    {
+      "id": "premium-dev",
+      "max_connections": 2,
+      "pubkey": "d5ff0e9d30eac2e1fc05db0f73931ad23da187647bdcda473fbe4afe21293fae",
+      "tier": "premium"
+    },
+    {
+      "id": "intermediate-dev",
+      "max_connections": 2,
+      "pubkey": "97369353447b66a3f5908358ad6988f45e812312de373e46196ec7d0896a74da",
+      "tier": "intermediate"
+    },
+    {
+      "id": "standard-dev",
+      "max_connections": 2,
+      "pubkey": "7c97c4e7108d7479089fcf2c2a1e5c536e0ed7721264980248d713636e53683f",
+      "tier": "standard"
+    }
+  ],
+  "history": 3000,
+  "http_listen": "127.0.0.1:9441",
+  "mode": "trusted_relay",
+  "policy": {
+    "epoch": 1,
+    "market": "0808080808080808080808080808080808080808080808080808080808080808",
+    "members": [
+      "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+      "4d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766",
+      "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "462779ad4aad39514614751a71085f2f10e1c7a593e4e030efb5b8721ce55b0b",
+      "62c0a046dacce86ddd0343c6d3c7c79c2208ba0d9c9cf24a6d046d21d21f90f7"
+    ],
+    "network": "0909090909090909090909090909090909090909090909090909090909090909",
+    "origin_us": 0
+  },
+  "release": {
+    "certification_deadline_us": 200000,
+    "intermediate_delay_us": 100000,
+    "max_clock_uncertainty_us": 2000,
+    "standard_delay_us": 200000
+  },
+  "source": {
+    "kind": "synthetic",
+    "seed": 20261124
+  },
+  "state_dir": "./state",
+  "subscriber_queue": 256,
+  "ws_listen": "127.0.0.1:9440"
+}

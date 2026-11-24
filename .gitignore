@@ -5,3 +5,10 @@ research/**/node_modules/
 .DS_Store
 
 .system_generated/
+
+# HFT-06 local secrets and state
+deploy/hft06/clients/
+deploy/hft06/state/
+deploy/hft06/secrets/
+.env
+/state/
