@@ -5,6 +5,10 @@ use shz_dex::{OrderSide,routing::*};
 use shz_dlc::{Bip340Signature,BtcOutPoint};
 use std::{fs,time::Instant,collections::BTreeMap};
 const NOW:u64=1_000_000;
+const ACCOUNT_CAP_SATS:u64=1_000_000_000_000;
+// Route consecutive maker/taker ID pairs together in crossing mode.
+// Plain id % shards segregates even makers and odd takers at four shards.
+fn shard_for(id:u64,shards:u32)->u32{(((id-1)/2)%u64::from(shards)+1)as u32}
 const ZERO:Bip340Signature=Bip340Signature{r_x:[0;32],s:[0;32]};
 fn sk(n:u8)->[u8;32]{[n;32]}
 fn channel(n:u8)->BtcOutPoint{BtcOutPoint{txid:[n;32],vout:0}}
@@ -24,13 +28,14 @@ fn main(){
  assert!((1..=100_000).contains(&n));
  let policy=Policy{network:[99;32],epoch:1,relay_keys:[public(&sk(241)),public(&sk(242))]};
  let scope=policy.scope();let authority=sk(240);
- let plans=(1..=200u8).map(|i|Allocation::signed(scope,&sk(i),&authority,channel(i),1_000_000_000_000*shards as u64,
- (1..=shards).map(|router|Share{router,sats:1_000_000_000_000}).collect()).unwrap()).collect();
+ let plans=(1..=200u8).map(|i|Allocation::signed(scope,&sk(i),&authority,channel(i),ACCOUNT_CAP_SATS,
+ (1..=shards).map(|router|Share{router,sats:ACCOUNT_CAP_SATS/u64::from(shards)}).collect()).unwrap()).collect();
  let registry=Registry::new(scope,public(&authority),plans).unwrap();
  let mut routers:Vec<_>=(1..=shards).map(|i|Router::new(policy.clone(),&registry,i).unwrap()).collect();
  let ticks=std::array::from_fn(|i|RelayTick{scope,source:i as u8+1,sequence:1,publish_us:NOW,price_e8:10_000_000_000_000,report_hash:[i as u8+1;32],signature:ZERO}.signed(&sk(241+i as u8)).unwrap());
  for r in &mut routers{r.update_mark(ticks.clone(),NOW).unwrap();}
  let mut intents=Vec::with_capacity(n);
+ let mut roles=vec![[0usize;2];shards as usize];
  for (j,line) in lines.iter().enumerate(){
   let f:Vec<_>=line.split('\t').collect();assert_eq!(f.len(),8);
   let id:u64=f[0].parse().unwrap();assert_eq!(id,j as u64+1);
@@ -40,10 +45,13 @@ fn main(){
   let q=decimal(f[7],3);
   let action=if (mode=="deep"&&j<n*8/10)||(mode=="cross"&&id%2==0){Action::Post}else{Action::Take};
   let tier=if id%5==0{Tier::Priority}else{Tier::Free};
-  let router=((id-1)%shards as u64+1)as u32;
+  let router=shard_for(id,shards);
+  roles[(router-1)as usize][if action==Action::Post{0}else{1}]+=1;
   let intent=Intent{scope,router,channel:channel(session),owner:[0;32],sequence:id,expires_us:NOW+2_000_000,action,side,tier,quantity:q,limit_usd:price,leverage_bps:100_000,max_fee_ppm:rate_ppm(tier,action),max_fee_sats:1_000_000,cancel_target:[0;32],signature:ZERO}.signed(&sk(session)).unwrap();
   intents.push(intent);
  }
+ assert!(roles.iter().all(|r|r[0]>0&&r[1]>0),"each shard needs both maker and taker intents");
+ eprintln!("maker/taker inputs by router: {roles:?}");
  let mut admit=Vec::with_capacity(n);let t0=Instant::now();
  for (j,i) in intents.into_iter().enumerate(){
   let a=Instant::now();routers[i.router as usize-1].submit(i,NOW+j as u64).unwrap();admit.push(a.elapsed().as_secs_f64()*1e6);

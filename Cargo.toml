@@ -1,5 +1,7 @@
 [workspace]
 resolver = "2"
+# The pinned upstream benchmark is checked out here by HFT CI.
+exclude = ["_tl_orderbook/rust/tl-orderbook"]
 members = [
     "crates/shz-margin",
     "crates/shz-dlc",
