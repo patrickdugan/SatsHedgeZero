@@ -17,6 +17,7 @@ Branch: `research/price-of-200ms-20261125` (stacked on PR #32 `research/l2-reven
 | G-REV-1 Fee units/scope | Per-trade perps fees / DefiLlama lighter-perps dailyFees median 0.9956 (p10–p90 0.9921–0.9992), 67 days | `results/revenue.json` |
 | G-REV-2 Observed regime fees | top 1% of seconds: 12.8 / 26.2 / 21.0% of fees (BTC/ETH/SOL) on 5.5 / 7.0 / 6.2% of volume | `analysis_*.json` `observed_fee_revenue_by_regime` |
 | G-SHZ-1 Economics | break-even, β*, elasticities, oracle-lead transfer, router competition | `results/shz_economics.json` |
+| G-HO-1 Held-out days 2026-11-22/23 (CI) | Run 45448542688 (commit afb8bc4), all jobs green, 48/48 clean hours per market. Frozen policies: BTC (Oct 11-trained and full-window, $1k and $10k) 0 paid choices; SOL 0; ETH boosting 5 paid choices, +0.00006 bp [−0.00000, 0.00011], threshold 0. Ex-post oracle 0.019–0.023 (BTC), 0.028 (ETH), 0.038 (SOL) bp. Ex-post $1k momentum time share intermediate / premium: BTC 3.69% / 0.197%, ETH 4.91% / 0.257%, SOL 4.99% / 0.377%; volume share 8.4% / 1.5%, 11.7% / 2.3%, 10.7% / 2.7%. | public notices on run 45448542688 jobs; artifacts `heldout-{BTC,ETH,SOL}` (14 days) |
 | G-PAPER-1 Draft v0.1 | RTG paper with tables from `paper_tables.py` | RTG-site `papers/price-of-200ms/` |
 
 ## Failed or rejected hypotheses
@@ -30,7 +31,7 @@ Branch: `research/price-of-200ms-20261125` (stacked on PR #32 `research/l2-reven
 
 | ID | What | Why open | Command / next step |
 |---|---|---|---|
-| G-HO-1 | Frozen policies on 2026-11-22/23 (BTC, ETH, SOL) | CI run in progress at commit time | read `frozen`/`heldout` notices on workflow `shz-price-of-200ms` |
+| G-HO-2 | Further fresh held-out days after any policy change | the held-out job now runs only on dispatch or a `[heldout]` commit | `workflow_dispatch` on `shz-price-of-200ms` with new dates in the matrix |
 | G-ETH-2 | ETH 2026-09-25..10-31 (cached, unused) for a longer ETH development window | compute time | `python run_replay.py --symbol ETH --books <cache>/swing-l2/books --first 2026-09-25 --last 2026-10-31` then `run_study.py` with an extended ETH window |
 | G-XV-1 | Cross-venue divergence feature (Binance/Coinbase) | no local cross-venue tick data; current `xdiv5` is cross-market within Lighter | add a public cross-venue trade source with matching clocks |
 | G-SUB-1 | Sub-second decision grid (250 ms) | one-second grid kept for PR #30 parity | `GRID_MS` in `common.py`; engine supports it, re-run ~4× compute |

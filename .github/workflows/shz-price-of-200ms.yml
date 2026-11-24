@@ -31,6 +31,9 @@ jobs:
         run: python verify_receipts.py
   heldout:
     needs: tests
+    # Bounded public downloads (144 files): on manual dispatch or a commit
+    # message containing [heldout], not on every push.
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[heldout]')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
