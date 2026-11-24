@@ -153,3 +153,95 @@ fn ready(r:&mut Router,t:u64)->Outcome{r.process_one(t).unwrap().unwrap()}
   }
  }
 }
+
+#[test]fn hft03_exact_window_commitments_and_owner_approvals(){
+ use shz_dlc::bip340_sign;
+ let(p,g)=setup(100_000_000);
+ let mut r=Router::new_with_engine(p.clone(),&g,1,Engine::Both).unwrap();
+ r.update_mark(good_marks(&p),NOW).unwrap();
+ // Same maker, two entries, differing leverage and fee. Split first across windows.
+ let mut a=order(&p,1,1,Action::Post,OrderSide::Short,Tier::Priority,100);
+ a.limit_usd=99_000;a.leverage_bps=100_000;
+ let a=a.signed(&sk(1)).unwrap();
+ let mut b=order(&p,1,2,Action::Post,OrderSide::Short,Tier::Priority,100);
+ b.limit_usd=101_000;b.leverage_bps=20_000;
+ let b=b.signed(&sk(1)).unwrap();
+ r.submit(a,NOW).unwrap();r.submit(b,NOW).unwrap();
+ assert!(matches!(ready(&mut r,NOW),Outcome::Posted(_)));
+ assert!(matches!(ready(&mut r,NOW),Outcome::Posted(_)));
+ r.submit(order(&p,2,1,Action::Take,OrderSide::Long,Tier::Priority,60),NOW).unwrap();
+ let Outcome::Filled(first)=ready(&mut r,NOW+100_000)else{panic!()};
+ assert!(r.seal_fill_batch().unwrap().is_none());
+ let mut i=order(&p,2,2,Action::Take,OrderSide::Long,Tier::Priority,80);
+ i.limit_usd=101_000;
+ r.submit(i.signed(&sk(2)).unwrap(),NOW+100_000).unwrap();
+ let Outcome::Filled(second)=ready(&mut r,NOW+200_000)else{panic!()};
+ let before=r.balance(&channel(1)).unwrap();
+ let a=r.seal_fill_batch().unwrap().unwrap();
+ assert_eq!(a.sequence(),1);assert_eq!(a.window(),(NOW+100_000,NOW+200_000));assert_eq!(a.previous(),[0;32]);
+ assert_eq!(a.legs().len(),1);assert_eq!(a.legs()[0].taker_id,first.taker_id);
+ assert!(r.seal_fill_batch().unwrap().is_none());
+ assert_eq!(r.balance(&channel(1)).unwrap(),before);
+ assert_eq!(r.pending_fills(),2);
+ let approvals:Vec<_>=(1..=2).map(|n|{
+  let ch=channel(n);let h=a.approval_message(&ch).unwrap();
+  BatchApproval{channel:ch,signature:bip340_sign(&sk(n),&h).unwrap()}
+ }).collect();
+ assert!(a.verify_approvals(&approvals).is_ok());
+ assert!(a.verify_approvals(&approvals[..1]).is_err());
+ assert!(a.verify_approvals(&[approvals[0].clone(),approvals[0].clone()]).is_err());
+ assert!(a.approval_message(&channel(3)).is_none());
+ assert!(r.process_one(NOW+300_000).unwrap().is_none());
+ let b=r.seal_fill_batch().unwrap().unwrap();
+ assert_eq!(b.sequence(),2);assert_eq!(b.previous(),a.digest());
+ assert_eq!(b.legs()[0].taker_id,second.taker_id);
+ assert!(b.verify_approvals(&approvals).is_err());
+ assert!(r.seal_fill_batch().unwrap().is_none());
+ for px in [0,50_000,99_000,100_000,101_000,150_000]{
+  for batch in [&a,&b]{
+   let p=batch.legs()[0].spec.payout_at_price(px);
+   let actual=batch.payouts_at_price(px).unwrap();
+   assert_eq!(actual[0].payout_sats,p.short_sats);
+   assert_eq!(actual[1].payout_sats,p.long_sats);
+   assert_eq!(actual.iter().map(|x|x.payout_sats as u128).sum::<u128>(),batch.accounts().iter().map(|x|x.margin_sats as u128).sum::<u128>());
+   assert_eq!(batch.accounts().iter().map(|x|x.fee_sats as u128).sum::<u128>(),batch.oracle_due_sats()+batch.router_due_sats());
+  }
+ }
+ for n in 1..=2{
+  let total:u64=[&a,&b].iter().flat_map(|batch|batch.accounts()).filter(|x|x.channel.txid==[n;32]).map(|x|x.margin_sats+x.fee_sats).sum();
+  assert_eq!(r.balance(&channel(n)).unwrap().pending,total);
+ }
+}
+#[test]fn hft03_multileg_payouts_use_each_leg_and_never_merge_at_arithmetic_vwap(){
+ let(p,g)=setup(100_000_000);
+ let mut r=Router::new_with_engine(p.clone(),&g,1,Engine::Both).unwrap();
+ r.update_mark(good_marks(&p),NOW).unwrap();
+ for (seq,price,lev) in [(1,98_000,100_000),(2,102_000,10_000)]{
+  let mut i=order(&p,1,seq,Action::Post,OrderSide::Long,Tier::Priority,1000);
+  i.limit_usd=price;i.leverage_bps=lev;
+  r.submit(i.signed(&sk(1)).unwrap(),NOW).unwrap();
+ }
+ for _ in 0..2{assert!(matches!(ready(&mut r,NOW),Outcome::Posted(_)))}
+ for seq in 1..=2{
+  let mut i=order(&p,2,seq,Action::Take,OrderSide::Short,Tier::Priority,1000);
+  i.limit_usd=98_000;
+  r.submit(i.signed(&sk(2)).unwrap(),NOW).unwrap();
+ }
+ for _ in 0..2{assert!(matches!(ready(&mut r,NOW+100_000),Outcome::Filled(_)))}
+ assert!(r.process_one(NOW+200_000).unwrap().is_none());
+ let b=r.seal_fill_batch().unwrap().unwrap();
+ assert_eq!(b.legs().len(),2);assert_eq!(b.accounts().len(),2);
+ let mut found_difference=false;
+ let merged=shz_margin::InverseContractSpec{usd_notional:2000,entry_price_usd:100_000,
+  long_margin_sats:b.legs().iter().map(|f|f.spec.long_margin_sats).sum(),
+  short_margin_sats:b.legs().iter().map(|f|f.spec.short_margin_sats).sum(),
+  collateral:b.legs()[0].spec.collateral.clone(),fee_policy:shz_margin::ZeroFeePolicy::ZERO};
+ for px in [0,50_000,90_000,98_000,100_000,102_000,110_000,200_000]{
+  let actual=b.payouts_at_price(px).unwrap();
+  let exact:u64=b.legs().iter().map(|f|f.spec.payout_at_price(px).long_sats).sum();
+  assert_eq!(actual[0].payout_sats,exact);
+  found_difference|=exact!=merged.payout_at_price(px).long_sats;
+ }
+ assert!(found_difference);
+ assert!(r.seal_fill_batch().unwrap().is_none());
+}
