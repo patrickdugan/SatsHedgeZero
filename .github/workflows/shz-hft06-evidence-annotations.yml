@@ -1,0 +1,63 @@
+name: shz-hft06-evidence-annotations
+# Republishes aggregate HFT-06 evidence from completed runs as public
+# check-run annotations (artifacts and logs require sign-in to read).
+# Only aggregate JSON is published; no raw market data exists in these artifacts.
+on:
+  push:
+    branches: ["research/shz-hft06-*"]
+    paths: ["evidence/hft06/ci_runs.json", ".github/workflows/shz-hft06-evidence-annotations.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - id: ids
+        run: |
+          echo "calibration=$(jq -r .immediacy_calibration evidence/hft06/ci_runs.json)" >> "$GITHUB_OUTPUT"
+          echo "ci=$(jq -r .oracle_relay_ci evidence/hft06/ci_runs.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          name: immediacy-report
+          path: art/immediacy
+          run-id: ${{ steps.ids.outputs.calibration }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hft06-*-bench
+          path: art/bench
+          merge-multiple: true
+          run-id: ${{ steps.ids.outputs.ci }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Hashes
+        run: |
+          find art -type f -name '*.json*' -print0 | sort -z | xargs -0 sha256sum | while read h f; do echo "::notice title=sha256 $(basename "$f")::$h"; done
+      - name: Immediacy report parts 1-10
+        run: python3 - 0 <<'PY'
+          import json, sys, glob, gzip, base64
+          f = sorted(glob.glob("art/immediacy/**/immediacy_report.json", recursive=True))[0]
+          blob = base64.b64encode(gzip.compress(json.dumps(json.load(open(f)), separators=(",", ":")).encode(), 9)).decode()
+          parts = [blob[i:i + 3800] for i in range(0, len(blob), 3800)]
+          k = int(sys.argv[1])
+          print(f"::notice title=immediacy-report-meta::parts={len(parts)} encoding=gzip+base64")
+          for i in range(k, min(k + 9, len(parts))):
+              print(f"::notice title=immediacy-report {i + 1}/{len(parts)}::{parts[i]}")
+          PY
+      - name: Immediacy report parts 10-18
+        run: python3 - 9 <<'PY'
+          import json, sys, glob, gzip, base64
+          f = sorted(glob.glob("art/immediacy/**/immediacy_report.json", recursive=True))[0]
+          blob = base64.b64encode(gzip.compress(json.dumps(json.load(open(f)), separators=(",", ":")).encode(), 9)).decode()
+          parts = [blob[i:i + 3800] for i in range(0, len(blob), 3800)]
+          for i in range(9, min(18, len(parts))):
+              print(f"::notice title=immediacy-report {i + 1}/{len(parts)}::{parts[i]}")
+          PY
+      - name: Linux bench summaries
+        run: |
+          for f in art/bench/*.json; do
+            echo "::notice title=bench $(basename "$f")::$(jq -c '{mode, slots, valid_slots, hold_slots, ingest_verify_normalize, certify_durable, lead_ps: .realized_lead_premium_vs_standard, lead_pi: .realized_lead_premium_vs_intermediate, tiers: (.tiers // {} | map_values({lost, verify_failures, recv_after_boundary})), deliveries_per_second, bytes_per_delivery, stages, throughput, fee_conservation}' "$f" | cut -c1-3900)"
+          done
