@@ -44,6 +44,9 @@ pub struct ChannelAck{
  /// Digest of the independently verified commitment/monitor persistence
  /// transcript, or irreversible cancellation/fencing evidence for abort.
  pub evidence:Key,
+ /// Unique digest of an externally verified exact fee debit/recipient credit
+ /// receipt for this lane and batch. Zero for fee-free commits and aborts.
+ pub fee_evidence:Key,
  /// Ordered: channel owner, pinned counterparty, pinned commitment monitor.
  pub signatures:[Bip340Signature;3],
 }
@@ -57,7 +60,7 @@ struct Entry{batch:Batch,phase:Phase,ack:Option<AckBundle>}
 struct LaneState{peer:Key,monitor:Key,head:Head}
 struct State{
  router:Router,lanes:BTreeMap<Outpoint,LaneState>,recipients:FeeRecipients,config:Key,
- batches:BTreeMap<u64,Entry>,next_resolution:u64,oracle_paid:u128,router_paid:u128,
+ batches:BTreeMap<u64,Entry>,next_resolution:u64,oracle_paid:u128,router_paid:u128,fee_receipts:BTreeSet<Key>,
 }
 impl State{
  fn new(policy:Policy,registry:&Registry,id:u32,engine:Engine,lanes:Vec<Lane>,recipients:FeeRecipients)->D<Self>{
@@ -82,7 +85,7 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new()})
  }
  fn message(&self,sequence:u64,disposition:Disposition,ack:&ChannelAck)->R<Key>{
   let batch=&self.batches.get(&sequence).ok_or(Reject::UnknownOrder)?.batch;
@@ -90,7 +93,7 @@ impl State{
   let mut b=Vec::new();b.extend(self.config);b.extend(batch.digest());u64b(&mut b,sequence);
   b.push(match disposition{Disposition::Commit=>1,Disposition::FencedAbort=>2});
   put_op(&mut b,&ack.channel);b.extend(a.owner);u64b(&mut b,a.margin_sats);u64b(&mut b,a.fee_sats);
-  put_head(&mut b,&ack.previous);put_head(&mut b,&ack.next);b.extend(ack.evidence);
+  put_head(&mut b,&ack.previous);put_head(&mut b,&ack.next);b.extend(ack.evidence);b.extend(ack.fee_evidence);
   b.extend(self.recipients.oracle);b.extend(self.recipients.router);
   b.extend(batch.oracle_due_sats().to_le_bytes());b.extend(batch.router_due_sats().to_le_bytes());
   Ok(tagged_hash(b"SHZ/HFT/CHANNEL-ACK/V1",&b))
@@ -110,7 +113,7 @@ impl State{
   let batch=&entry.batch;
   if bundle.channels.len()!=batch.accounts().len(){return Err(Reject::Allocation)}
   let next_sequence=self.next_resolution.checked_add(1).ok_or(Reject::Bounds)?;
-  let mut changes=Vec::new();
+  let mut changes=Vec::new();let mut new_receipts=BTreeSet::new();
   // Canonical order must be the exact batch account order; no omission,
   // duplicate, cross-router substitution or partial application.
   for (a,ack) in batch.accounts().iter().zip(&bundle.channels){
@@ -129,6 +132,9 @@ impl State{
      if ack.next.commitment!=lane.head.commitment||ack.next.state!=lane.head.state{return Err(Reject::Replay)}
     }
    }
+   if bundle.disposition==Disposition::Commit&&a.fee_sats>0{
+    if ack.fee_evidence==[0;32]||self.fee_receipts.contains(&ack.fee_evidence)||!new_receipts.insert(ack.fee_evidence){return Err(Reject::FeeLimit)}
+   }else if ack.fee_evidence!=[0;32]{return Err(Reject::FeeLimit)}
    let h=self.message(bundle.sequence,bundle.disposition,ack)?;
    for (k,sig) in [a.owner,lane.peer,lane.monitor].iter().zip(&ack.signatures){verify(k,&h,sig)?;}
    let mut balance=self.router.accounts.get(&key).ok_or(Reject::Allocation)?.balance;
@@ -154,7 +160,7 @@ impl State{
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in changes{self.router.accounts.get_mut(&key).unwrap().balance=balance;self.lanes.get_mut(&key).unwrap().head=head;}
   for id in cancel{self.router.remove(id);}
-  self.oracle_paid=oracle;self.router_paid=router;self.next_resolution=next_sequence;
+  self.oracle_paid=oracle;self.router_paid=router;self.next_resolution=next_sequence;self.fee_receipts.extend(new_receipts);
   let entry=self.batches.get_mut(&bundle.sequence).unwrap();
   entry.phase=match bundle.disposition{Disposition::Commit=>Phase::Committed,Disposition::FencedAbort=>Phase::Aborted};
   entry.ack=Some(bundle);Ok(true)
@@ -269,6 +275,8 @@ impl DurableRouter{
  pub fn balance(&self,channel:&BtcOutPoint)->D<Option<Balance>>{self.ready()?;Ok(self.state.router.balance(channel))}
  pub fn head(&self,channel:&BtcOutPoint)->D<Option<Head>>{self.ready()?;Ok(self.state.lanes.get(&op(channel)).map(|l|l.head))}
  pub fn batch(&self,sequence:u64)->D<Option<(&Batch,Phase)>>{self.ready()?;Ok(self.state.batches.get(&sequence).map(|e|(&e.batch,e.phase)))}
+ pub fn next_resolution(&self)->D<u64>{self.ready()?;Ok(self.state.next_resolution)}
+ pub fn acknowledgement(&self,sequence:u64)->D<Option<&AckBundle>>{self.ready()?;Ok(self.state.batches.get(&sequence).and_then(|e|e.ack.as_ref()))}
  pub fn fee_totals(&self)->D<(u128,u128)>{self.ready()?;Ok((self.state.oracle_paid,self.state.router_paid))}
  pub fn pending_orders(&self)->D<usize>{self.ready()?;Ok(self.state.router.pending_orders())}
  pub fn resting(&self)->D<usize>{self.ready()?;Ok(self.state.router.resting())}

@@ -245,3 +245,167 @@ fn ready(r:&mut Router,t:u64)->Outcome{r.process_one(t).unwrap().unwrap()}
  assert!(found_difference);
  assert!(r.seal_fill_batch().unwrap().is_none());
 }
+
+mod durable_hft05{
+ use super::*;
+ use shz_dex::routing::durable::*;
+ use shz_dlc::{bip340_sign,tagged_hash};
+ use std::{fs,path::{Path,PathBuf},io::Write,sync::atomic::{AtomicU64,Ordering}};
+ static COUNTER:AtomicU64=AtomicU64::new(0);
+ struct Temp(PathBuf);
+ impl Temp{
+  fn new()->Self{
+   let p=std::env::temp_dir().join(format!("shz-hft05-{}-{}",std::process::id(),COUNTER.fetch_add(1,Ordering::Relaxed)));
+   fs::create_dir(&p).unwrap();Self(p)
+  }
+  fn path(&self,n:&str)->PathBuf{self.0.join(n)}
+ }
+ impl Drop for Temp{fn drop(&mut self){let _=fs::remove_dir_all(&self.0);}}
+ fn lanes()->Vec<Lane>{
+  (1..=4u8).map(|n|Lane{channel:channel(n),peer:public(&sk(70+n)),monitor:public(&sk(90+n)),
+   initial:Head{revision:0,commitment:10,state:[110+n;32]}}).collect()
+ }
+ fn recipients()->FeeRecipients{FeeRecipients{oracle:public(&sk(110)),router:public(&sk(111))}}
+ fn create(path:&Path,p:&Policy,g:&Registry)->DurableRouter{DurableRouter::create(path,p.clone(),g,1,Engine::Both,lanes(),recipients()).unwrap()}
+ fn reopen(path:&Path,p:&Policy,g:&Registry,pin:JournalTip)->DurableRouter{
+  DurableRouter::open(path,p.clone(),g,1,Engine::Both,lanes(),recipients(),Some(pin)).unwrap()
+ }
+ fn approvals(b:&Batch)->Vec<BatchApproval>{
+  b.accounts().iter().map(|a|{
+   let n=a.channel.txid[0];let h=b.approval_message(&a.channel).unwrap();
+   BatchApproval{channel:a.channel.clone(),signature:bip340_sign(&sk(n),&h).unwrap()}
+  }).collect()
+ }
+ fn resign(d:&DurableRouter,seq:u64,disp:Disposition,a:&mut ChannelAck){
+  let n=a.channel.txid[0];let h=d.ack_message(seq,disp,a).unwrap();
+  a.signatures=[bip340_sign(&sk(n),&h).unwrap(),bip340_sign(&sk(70+n),&h).unwrap(),bip340_sign(&sk(90+n),&h).unwrap()];
+ }
+ fn ack(d:&DurableRouter,b:&Batch,disp:Disposition)->AckBundle{
+  let mut channels=Vec::new();
+  for a in b.accounts(){
+   let n=a.channel.txid[0];
+   let previous=d.head(&a.channel).unwrap().unwrap();let mut next=previous;next.revision+=1;
+   if disp==Disposition::Commit{next.commitment+=1;next.state=[130+n+b.sequence()as u8;32];}
+   let mut c=ChannelAck{channel:a.channel.clone(),previous,next,evidence:[150+n+b.sequence()as u8;32],
+    fee_evidence:if disp==Disposition::Commit&&a.fee_sats>0{[180+n+b.sequence()as u8;32]}else{[0;32]},signatures:[ZERO;3]};
+   resign(d,b.sequence(),disp,&mut c);channels.push(c);
+  }
+  AckBundle{sequence:b.sequence(),batch:b.digest(),disposition:disp,channels}
+ }
+ fn post_take(d:&mut DurableRouter,p:&Policy,at:u64,seq:u64,post:u64,take:u64){
+  d.submit(order(p,1,seq,Action::Post,OrderSide::Short,Tier::Priority,post),at).unwrap();
+  assert!(matches!(d.process_one(at).unwrap().unwrap(),Outcome::Posted(_)));
+  d.submit(order(p,2,seq,Action::Take,OrderSide::Long,Tier::Priority,take),at).unwrap();
+  assert!(matches!(d.process_one(at+100_000).unwrap().unwrap(),Outcome::Filled(_)));
+ }
+ fn append_crash_cut(path:&Path,tip:JournalTip,bundle:&AckBundle)->JournalTip{
+  // Persist a complete Resolve event exactly as the WAL does, but never apply
+  // it in memory: crash boundary after fsync, before state mutation/reply.
+  let data=serde_json::to_vec(&serde_json::json!({"Resolve":{"bundle":bundle}})).unwrap();
+  let records=tip.records+1;let len=(data.len()as u32).to_le_bytes();
+  let mut h=Vec::new();h.extend(tip.digest);h.extend(records.to_le_bytes());h.extend(len);h.extend(&data);
+  let digest=tagged_hash(b"SHZ/HFT/WAL-FRAME/V1",&h);
+  let mut f=fs::OpenOptions::new().append(true).open(path).unwrap();
+  f.write_all(&len).unwrap();f.write_all(&data).unwrap();f.write_all(&digest).unwrap();f.sync_all().unwrap();
+  JournalTip{records,digest}
+ }
+ #[test]fn hft05_recover_queue_batch_and_commit_exactly_once(){
+  let t=Temp::new();let path=t.path("router.wal");let(p,g)=setup(100_000_000);
+  let mut d=create(&path,&p,&g);
+  assert!(matches!(DurableRouter::open(&path,p.clone(),&g,1,Engine::Both,lanes(),recipients(),None),Err(DurableError::Locked)));
+  d.update_mark(good_marks(&p),NOW).unwrap();
+  d.submit(order(&p,1,1,Action::Post,OrderSide::Short,Tier::Priority,1000),NOW).unwrap();
+  let pin=d.tip().unwrap();drop(d);
+  let mut d=reopen(&path,&p,&g,pin);assert_eq!(d.pending_orders().unwrap(),1);
+  assert!(d.submit(order(&p,1,1,Action::Post,OrderSide::Short,Tier::Priority,1000),NOW+1).is_err());
+  assert_eq!(d.clock().unwrap(),NOW+1);
+  assert!(matches!(d.process_one(NOW+1).unwrap().unwrap(),Outcome::Posted(_)));
+  d.submit(order(&p,2,1,Action::Take,OrderSide::Long,Tier::Priority,1000),NOW+1).unwrap();
+  assert!(matches!(d.process_one(NOW+100_001).unwrap().unwrap(),Outcome::Filled(_)));
+  assert!(d.seal_fill_batch().unwrap().is_none());
+  d.process_one(NOW+200_000).unwrap();let b=d.seal_fill_batch().unwrap().unwrap();
+  let a=ack(&d,&b,Disposition::Commit);
+  let pending=d.balance(&channel(1)).unwrap().unwrap();
+  assert!(d.resolve(a.clone()).is_err()); // unprepared
+  assert!(d.prepare(1,approvals(&b)[..1].to_vec()).is_err());
+  d.prepare(1,approvals(&b)).unwrap();
+  let pin=d.tip().unwrap();drop(d);
+  let mut d=reopen(&path,&p,&g,pin);
+  assert_eq!(d.batch(1).unwrap().unwrap().1,Phase::Prepared);
+  assert_eq!(d.batch(1).unwrap().unwrap().0.digest(),b.digest());
+  assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),pending);
+  let mut bad=a.clone();bad.channels.pop();assert!(d.resolve(bad).is_err());
+  let mut bad=a.clone();bad.channels[0].signatures[2]=ZERO;assert!(d.resolve(bad).is_err());
+  let mut bad=a.clone();bad.channels[0].previous.commitment-=1;
+  resign(&d,1,Disposition::Commit,&mut bad.channels[0]);assert!(d.resolve(bad).is_err());
+  let mut bad=a.clone();bad.channels[0].fee_evidence=[0;32];resign(&d,1,Disposition::Commit,&mut bad.channels[0]);assert!(d.resolve(bad).is_err());
+  assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),pending);
+  assert_eq!(d.fee_totals().unwrap(),(0,0));
+  let before=d.tip().unwrap();drop(d);
+  fs::copy(&path,t.path("old.wal")).unwrap();
+  let committed_tip=append_crash_cut(&path,before,&a);
+  let mut d=reopen(&path,&p,&g,committed_tip);
+  assert_eq!(d.batch(1).unwrap().unwrap().1,Phase::Committed);
+  assert_eq!(d.next_resolution().unwrap(),2);
+  assert_eq!(d.acknowledgement(1).unwrap(),Some(&a));
+  let actual=d.balance(&channel(1)).unwrap().unwrap();
+  assert_eq!(actual.free,pending.free);assert_eq!(actual.pending,0);
+  assert_eq!(actual.committed,1_000_000);assert_eq!(actual.paid_fees,20);assert!(actual.conserved());
+  assert_eq!(d.fee_totals().unwrap(),(154,66));
+  assert!(!d.resolve(a.clone()).unwrap());assert_eq!(d.fee_totals().unwrap(),(154,66));
+  let mut alt=a.clone();alt.disposition=Disposition::FencedAbort;
+  assert!(d.resolve(alt).is_err());assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),actual);
+  assert!(matches!(DurableRouter::open(&t.path("old.wal"),p.clone(),&g,1,Engine::Both,lanes(),recipients(),Some(committed_tip)),Err(DurableError::Rollback)));
+  let pin=d.tip().unwrap();drop(d);
+  let d=reopen(&path,&p,&g,pin);assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),actual);
+ }
+ #[test]fn hft05_fenced_abort_release_and_no_double_charge(){
+  let t=Temp::new();let path=t.path("router.wal");let(p,g)=setup(100_000_000);
+  let mut d=create(&path,&p,&g);d.update_mark(good_marks(&p),NOW).unwrap();
+  post_take(&mut d,&p,NOW,1,1000,1000);
+  d.process_one(NOW+200_000).unwrap();let a=d.seal_fill_batch().unwrap().unwrap();
+  d.prepare(1,approvals(&a)).unwrap();let one=ack(&d,&a,Disposition::Commit);assert!(d.resolve(one.clone()).unwrap());
+  let committed=d.balance(&channel(1)).unwrap().unwrap();
+  post_take(&mut d,&p,NOW+200_000,2,1000,100);
+  d.process_one(NOW+400_000).unwrap();let b=d.seal_fill_batch().unwrap().unwrap();
+  assert_eq!(b.sequence(),2);assert_eq!(d.resting().unwrap(),1);
+  d.prepare(2,approvals(&b)).unwrap();
+  let mut dup=ack(&d,&b,Disposition::Commit);dup.channels[0].fee_evidence=one.channels[0].fee_evidence;
+  resign(&d,2,Disposition::Commit,&mut dup.channels[0]);
+  assert!(d.resolve(dup).is_err());
+  let before=d.balance(&channel(1)).unwrap().unwrap();
+  // Timeouts and partial acknowledgements never free matched collateral.
+  d.process_one(NOW+500_000).unwrap();assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),before);
+  let abort=ack(&d,&b,Disposition::FencedAbort);
+  let mut partial=abort.clone();partial.channels.pop();assert!(d.resolve(partial).is_err());
+  let mut forged=abort.clone();forged.channels[0].next.commitment+=1;
+  resign(&d,2,Disposition::FencedAbort,&mut forged.channels[0]);assert!(d.resolve(forged).is_err());
+  assert!(d.resolve(abort.clone()).unwrap());
+  assert_eq!(d.batch(2).unwrap().unwrap().1,Phase::Aborted);
+  assert_eq!(d.resting().unwrap(),0);
+  assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),committed);
+  assert_eq!(d.head(&channel(1)).unwrap().unwrap(),abort.channels[0].next);
+  assert_eq!(d.head(&channel(1)).unwrap().unwrap().commitment,11);
+  assert_eq!(d.fee_totals().unwrap(),(154,66));assert!(!d.resolve(abort).unwrap());
+  let tip=d.tip().unwrap();drop(d);let d=reopen(&path,&p,&g,tip);
+  assert_eq!(d.batch(2).unwrap().unwrap().1,Phase::Aborted);
+  assert_eq!(d.balance(&channel(1)).unwrap().unwrap(),committed);
+ }
+ #[test]fn hft05_reject_torn_hash_and_config_substitution(){
+  let t=Temp::new();let path=t.path("router.wal");let(p,g)=setup(100_000_000);
+  let mut d=create(&path,&p,&g);let initial=d.tip().unwrap();
+  d.update_mark(good_marks(&p),NOW).unwrap();
+  let tip=d.tip().unwrap();drop(d);
+  let bytes=fs::read(&path).unwrap();
+  for cut in [1usize,32,bytes.len()-1]{
+   let q=t.path(&format!("torn-{cut}"));fs::write(&q,&bytes[..cut]).unwrap();
+   assert!(matches!(DurableRouter::open(&q,p.clone(),&g,1,Engine::Both,lanes(),recipients(),None),Err(DurableError::Corrupt)));
+  }
+  let mut bad=bytes.clone();let last=bad.len()-1;bad[last]^=1;
+  let q=t.path("tampered");fs::write(&q,bad).unwrap();
+  assert!(matches!(DurableRouter::open(&q,p.clone(),&g,1,Engine::Both,lanes(),recipients(),None),Err(DurableError::Corrupt)));
+  let wrong=FeeRecipients{oracle:public(&sk(112)),router:recipients().router};
+  assert!(matches!(DurableRouter::open(&path,p.clone(),&g,1,Engine::Both,lanes(),wrong,Some(tip)),Err(DurableError::Config)));
+  let d=reopen(&path,&p,&g,initial);assert_eq!(d.tip().unwrap(),tip);
+ }
+}
