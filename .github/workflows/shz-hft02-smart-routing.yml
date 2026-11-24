@@ -1,0 +1,61 @@
+name: shz-hft02-smart-routing
+on:
+  push:
+    branches: ["research/shz-smart-routing-*"]
+    paths:
+      - "crates/shz-dex/**"
+      - "scripts/hft_smart_summary.py"
+      - ".github/workflows/shz-hft02-smart-routing.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smart:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native adversarial tests and release build
+        run: |
+          set -euo pipefail
+          cargo test --locked -p shz-dex -p shz-dlc --release
+          cargo build --locked -p shz-dex --release --example hft_smart_route
+      - name: Causal route-selection factorial
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/hft-smart"
+          mkdir -p "$out"
+          bin=target/release/examples/hft_smart_route
+          run() {
+            local key="$1-$2-$3-$4-$5-$6-$7"
+            "$bin" "$@" > "$out/route-$key.csv" 2> "$out/route-$key.state"
+          }
+          for seed in 107 109 113; do
+            for regime in quiet shock; do
+              for adoption in 0 20 100; do
+                run "$seed" "$regime" 1 "$adoption" blind 50000 0
+                run "$seed" "$regime" 4 "$adoption" blind 50000 0
+                run "$seed" "$regime" 4 "$adoption" affinity 50000 0
+                for policy in presence band; do
+                  for cadence in 50000 200000 500000; do
+                    for delivery in 0 100000; do
+                      run "$seed" "$regime" 4 "$adoption" "$policy" "$cadence" "$delivery"
+                    done
+                  done
+                done
+              done
+            done
+          done
+          "$bin" 107 shock 4 20 band 200000 100000 > "$out/repeat.csv" 2> "$out/repeat.state"
+          cmp "$out/repeat.csv" "$out/route-107-shock-4-20-band-200000-100000.csv"
+          cmp "$out/repeat.state" "$out/route-107-shock-4-20-band-200000-100000.state"
+          python3 scripts/hft_smart_summary.py "$out" | tee "$out/report.jsonl"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-hft02-smart-routing
+          path: ${{ runner.temp }}/hft-smart
+          retention-days: 14

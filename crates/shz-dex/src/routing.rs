@@ -23,6 +23,15 @@ fn index_remove(idx:&mut SizeIndex,q:u64,k:BookKey){
  assert!(set.remove(&k));
  if set.is_empty(){idx.remove(&bucket);}
 }
+/// Fixed, public V1 disclosure policy; not a per-order query API.
+pub const HINT_MIN_USD:u64=100;
+pub const HINT_BUCKET_USD:u64=50;
+pub const HINT_MIN_OWNERS:usize=2;
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Default)]
+pub struct LiquidityHint {
+ pub bid_floor:Option<u64>,
+ pub ask_ceiling:Option<u64>,
+}
 const ORDER_CAP:usize=200_000;
 const MAX_NOTIONAL:u64=1_000_000;
 const MAX_PRICE:u64=100_000_000;
@@ -200,6 +209,28 @@ impl Router{
  pub fn balance(&self,channel:&BtcOutPoint)->Option<Balance>{self.accounts.get(&op(channel)).map(|a|a.balance)}
  pub fn resting(&self)->usize{self.locations.len()}
  pub fn pending_orders(&self)->usize{self.queue.len()}
+ /// Local research publisher. Host must enforce a public cadence.
+ /// Suppress sides with fewer than two distinct qualifying maker keys.
+ /// Missing hints are inconclusive; published prices are conservative bounds.
+ pub fn public_liquidity_hint(&self,now:u64)->LiquidityHint{
+  if now<self.clock{return LiquidityHint::default()}
+  let Some(mark)=self.mark.as_ref().filter(|m|m.fresh(now))else{return LiquidityHint::default()};
+  let band=|side:OrderSide| {
+   let mut owners=BTreeSet::new();
+   for q in self.book(side).values(){
+    let p=q.intent.limit_usd;
+    if q.remaining<HINT_MIN_USD||q.intent.expires_us<=now||!mark.allows(p){continue}
+    if owners.insert(q.intent.owner)&&owners.len()==HINT_MIN_OWNERS{
+     return Some(match side{
+      OrderSide::Long=>p/HINT_BUCKET_USD*HINT_BUCKET_USD,
+      OrderSide::Short=>p.div_ceil(HINT_BUCKET_USD)*HINT_BUCKET_USD,
+     })
+    }
+   }
+   None
+  };
+  LiquidityHint{bid_floor:band(OrderSide::Long),ask_ceiling:band(OrderSide::Short)}
+ }
  pub fn pending_fill(&self,taker_id:&Key)->Option<&Fill>{self.fills.get(taker_id)}
  pub fn pending_fills(&self)->usize{self.fills.len()}
  fn clock(&mut self,now:u64)->R<()>{if now<self.clock{return Err(Reject::Clock)}self.clock=now;Ok(())}
