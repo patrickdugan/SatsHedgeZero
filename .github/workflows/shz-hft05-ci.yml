@@ -1,0 +1,19 @@
+name: shz-hft05-durable-commitments
+on:
+  push:
+    branches: ["research/shz-hft05-*"]
+    paths:
+      - "crates/shz-dex/**"
+      - "Cargo.lock"
+      - ".github/workflows/shz-hft05-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  journal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --locked --release -p shz-dex -p shz-dlc -p shz-oracle -p shz-margin -- --nocapture

@@ -12,7 +12,7 @@ pub struct ChannelObligation{
 pub struct ChannelPayout{
  pub channel:BtcOutPoint,pub payout_sats:u64,
 }
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct BatchApproval{
  pub channel:BtcOutPoint,pub signature:Bip340Signature,
 }

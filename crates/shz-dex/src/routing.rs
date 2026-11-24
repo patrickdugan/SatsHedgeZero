@@ -2,6 +2,8 @@
 //! cached dual-relay marks, delayed eligibility and separately accounted priority fees.
 //! One trusted single writer per router; no live LN funding or settlement authority.
 mod coalescer;
+pub mod durable;
+use serde::{Serialize,Deserialize};
 pub use coalescer::{Batch, BatchApproval, ChannelObligation, ChannelPayout, COALESCE_US};
 use crate::OrderSide;
 use shz_dlc::{Bip340Signature,BtcOutPoint,bip340_sign,bip340_verify,bip340_verify_joint,pubkey_x_from_secret,tagged_hash};
@@ -51,7 +53,7 @@ fn op(o:&BtcOutPoint)->Outpoint{(o.txid,o.vout)}
 fn u32b(b:&mut Vec<u8>,n:u32){b.extend(n.to_le_bytes())}
 fn u64b(b:&mut Vec<u8>,n:u64){b.extend(n.to_le_bytes())}
 fn put_op(b:&mut Vec<u8>,o:&BtcOutPoint){b.extend(o.txid);u32b(b,o.vout)}
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub struct Scope{pub network:Key,pub epoch:u64,pub policy:Key}
 impl Scope{
  fn put(&self,b:&mut Vec<u8>){b.extend(self.network);u64b(b,self.epoch);b.extend(self.policy)}
@@ -106,9 +108,9 @@ impl Registry{
   Ok(Self{scope,allocations})
  }
 }
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub enum Tier{Free,Priority}
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub enum Action{Post,Take,Cancel}
 pub fn delay_us(tier:Tier,action:Action)->u64{match(tier,action){
  (Tier::Free,Action::Take)=>300_000,(Tier::Priority,Action::Take)=>100_000,
@@ -120,7 +122,7 @@ pub fn fee_sats(q:u64,price:u64,ppm:u32)->R<u64>{
  if q>MAX_NOTIONAL||price==0||price>MAX_PRICE||ppm>TAKER_PPM{return Err(Reject::Bounds)}
  u64::try_from((q as u128*100_000_000*ppm as u128).div_ceil(price as u128*1_000_000)).map_err(|_|Reject::Bounds)
 }
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Intent{
  pub scope:Scope,pub router:u32,pub channel:BtcOutPoint,pub owner:Key,pub sequence:u64,pub expires_us:u64,
  pub action:Action,pub side:OrderSide,pub tier:Tier,pub quantity:u64,pub limit_usd:u64,pub leverage_bps:u32,
@@ -150,7 +152,7 @@ impl Intent{
   }else{verify(&self.owner,&self.id(),&self.signature)}
  }
 }
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct RelayTick{
  pub scope:Scope,pub source:u8,pub sequence:u64,pub publish_us:u64,pub price_e8:u64,pub report_hash:Key,pub signature:Bip340Signature,
 }
@@ -168,8 +170,8 @@ impl Mark{
  fn allows(&self,p:u64)->bool{let p=p as u128*100_000_000;let m=self.price_e8 as u128;p.abs_diff(m)*10_000<=m*COLLAR_BPS}
 }
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
-pub struct Balance{pub cap:u64,pub free:u64,pub resting:u64,pub pending:u64}
-impl Balance{pub fn conserved(&self)->bool{self.free as u128+self.resting as u128+self.pending as u128==self.cap as u128}}
+pub struct Balance{pub cap:u64,pub free:u64,pub resting:u64,pub pending:u64,pub committed:u64,pub paid_fees:u64}
+impl Balance{pub fn conserved(&self)->bool{self.free as u128+self.resting as u128+self.pending as u128+self.committed as u128+self.paid_fees as u128==self.cap as u128}}
 struct Account{owner:Key,balance:Balance,last_seq:u64}
 #[derive(Debug,Clone)]
 struct Quote{intent:Intent,remaining:u64,hold_per_unit:u64}
@@ -196,7 +198,7 @@ impl Router{
   if id==0||policy.scope()!=registry.scope||policy.relay_keys[0]==policy.relay_keys[1]{return Err(Reject::Scope)}
   let mut accounts=BTreeMap::new();
   for a in &registry.allocations{if let Some(s)=a.shares.iter().find(|s|s.router==id){
-   accounts.insert(op(&a.channel),Account{owner:a.owner,balance:Balance{cap:s.sats,free:s.sats,resting:0,pending:0},last_seq:0});
+   accounts.insert(op(&a.channel),Account{owner:a.owner,balance:Balance{cap:s.sats,free:s.sats,resting:0,pending:0,committed:0,paid_fees:0},last_seq:0});
   }}
   Ok(Self{scope:policy.scope(),policy,id,clock:0,arrival:0,activation:0,accounts,queue:BTreeMap::new(),bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),mark:None,fills:BTreeMap::new(),engine,bid_sizes:BTreeMap::new(),ask_sizes:BTreeMap::new(),fill_log:Vec::new(),batch_cursor:0,batch_sequence:0,last_batch_digest:[0;32]})
  }
