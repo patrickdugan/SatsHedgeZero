@@ -1,0 +1,13 @@
+{
+  "secq_vk_reconstructed_match": true,
+  "secq_proof_verified": true,
+  "secq_tampered_proof_rejected": true,
+  "secq_mutated_state_rejected": true,
+  "secq_verify_seconds": 12.532039323,
+  "unified_vk_reconstructed_match": true,
+  "unified_proof_verified": true,
+  "unified_tampered_proof_rejected": true,
+  "unified_mutated_state_rejected": true,
+  "unified_verify_seconds": 44.167832103,
+  "peak_rss_kib": 2594004
+}

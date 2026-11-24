@@ -1,0 +1,18 @@
+{
+  "relation": "shz/mnr05-secq256k1-bip340-batch-auth/v1",
+  "curve_cycle": "Secq256k1Engine / Secp256k1Engine (Spartan + IPA, zero trusted setup)",
+  "trusted_setup_ceremony": false,
+  "signature_steps": 8,
+  "primary_constraints": 144959,
+  "secondary_constraints": 10787,
+  "auth_accumulator_root_hex": "22c844af430cc87eeb982c177bc626098a9300f57d9d927e6e5b712d34bcafaa",
+  "vk_sha256_hex": "da8001750089b51e77c778b0f65c2de30a6f711ff482431c0cf0a32c966cb126",
+  "proof_bytes": 11980,
+  "proof_sha256_hex": "0e71f5584d13c21790c2d04f59060f083bb52f5ba72bc117d4c22075706b678b",
+  "setup_seconds": 6.407023667,
+  "fold_seconds": 3.343991032,
+  "compress_seconds": 32.574358715,
+  "verify_seconds": 0.626315992,
+  "wrong_accumulator_rejected": true,
+  "nova_authorization_verified": true
+}

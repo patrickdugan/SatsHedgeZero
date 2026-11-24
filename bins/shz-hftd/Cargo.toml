@@ -1,0 +1,36 @@
+[package]
+name = "shz-hftd"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Sub-millisecond SatsHedgeZero HFT WebSocket/REST matching daemon, rolling Testnet4 rollup scheduler, watchtower, and Protocol Explorer telemetry server."
+
+[lib]
+name = "shz_hftd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "shz-hftd"
+path = "src/main.rs"
+
+[[bin]]
+name = "shz-mm-bot"
+path = "src/bin/shz_mm_bot.rs"
+
+[dependencies]
+borsh.workspace = true
+hex.workspace = true
+k256.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+shz-dex.workspace = true
+shz-dlc.workspace = true
+shz-ln-testnet4.workspace = true
+shz-margin.workspace = true
+shz-nova-bitvm.workspace = true
+shz-oracle.workspace = true
+shz-utxoref.workspace = true
+thiserror.workspace = true

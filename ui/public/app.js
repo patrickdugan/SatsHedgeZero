@@ -109,9 +109,16 @@ async function refreshState(instrument) {
   Object.assign(window.SHZ_STATE, data);
 
   if (!ticket.limitPriceTouched && data.market?.markPriceUsd) {
-    ticket.limitPriceUsd = data.market.markPriceUsd;
+    const ob = data.orderbook;
+    const bestExecutable =
+      ticket.side === "Long"
+        ? ob?.bestAskUsd ?? data.market.markPriceUsd
+        : ob?.bestBidUsd ?? data.market.markPriceUsd;
+    ticket.limitPriceUsd = bestExecutable;
     const priceInput = document.getElementById("input-limit-price");
-    if (priceInput) priceInput.value = String(ticket.limitPriceUsd);
+    if (priceInput && document.activeElement !== priceInput) {
+      priceInput.value = String(ticket.limitPriceUsd);
+    }
   }
 
   renderHeader();
@@ -188,6 +195,31 @@ async function submitOrder(payload) {
   return data;
 }
 
+async function closePositionPtlc(positionId) {
+  const res = await fetch("/api/positions/close", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ positionId }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `PTLC close failed (${res.status})`);
+  }
+  if (data.state) {
+    Object.assign(window.SHZ_STATE, data.state);
+  }
+  renderHeader();
+  renderOrderbook();
+  renderFallbackWorkbenchIfNeeded();
+  emitState();
+  const sign = data.realizedPnlSats >= 0 ? "+" : "";
+  showFeedback(
+    `Settled ${data.closedPositionId} via PTLC @ ${fmtUsd(data.exitPriceUsd)} · PnL: ${sign}${fmtSats(data.realizedPnlSats)} sats · Returned ${fmtSats(data.returnedSats)} sats to wallet`,
+    false
+  );
+  return data;
+}
+
 window.SHZ_API = {
   refreshState,
   triggerMnr02Closeout,
@@ -195,6 +227,7 @@ window.SHZ_API = {
   toggleBobStatus,
   requestQuote,
   submitOrder,
+  closePositionPtlc,
 };
 
 // ---------------------------------------------------------------------------
@@ -219,8 +252,16 @@ function renderHeader() {
   setText("stat-mark-price", fmtUsd(market.markPriceUsd));
   setText("stat-tl-vwap", fmtUsd(market.tradelayerVwapUsd));
 
+  const tlEl = document.getElementById("stat-tl-vwap");
+  if (tlEl?.previousElementSibling && market.twoIndexFiatLive) {
+    tlEl.previousElementSibling.textContent = "Chainlink Index (Live)";
+  }
+
   const pythEl = document.getElementById("stat-pyth-relay");
   if (pythEl) {
+    if (pythEl.previousElementSibling && market.twoIndexFiatLive) {
+      pythEl.previousElementSibling.textContent = "Pyth Index (Live)";
+    }
     pythEl.innerHTML = `${fmtUsd(market.pythPriceUsd)} <small class="muted">±${market.pythConfBps}bps</small>`;
   }
 
@@ -504,6 +545,14 @@ function bindEvents() {
   document.querySelectorAll("[data-side]").forEach((btn) => {
     btn.addEventListener("click", () => {
       ticket.side = btn.getAttribute("data-side") === "Long" ? "Long" : "Short";
+      if (!ticket.limitPriceTouched && window.SHZ_STATE.orderbook) {
+        ticket.limitPriceUsd =
+          ticket.side === "Long"
+            ? window.SHZ_STATE.orderbook.bestAskUsd ?? ticket.limitPriceUsd
+            : window.SHZ_STATE.orderbook.bestBidUsd ?? ticket.limitPriceUsd;
+        const priceInput = document.getElementById("input-limit-price");
+        if (priceInput) priceInput.value = String(ticket.limitPriceUsd);
+      }
       syncTicketControls();
       scheduleQuote();
     });
@@ -614,6 +663,36 @@ function bindEvents() {
   });
 }
 
+async function refreshLiveTick() {
+  try {
+    const sym = window.SHZ_STATE.instrument ?? "BTC-INVERSE-PERP";
+    const res = await fetch(`/api/state?instrument=${encodeURIComponent(sym)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const prevMark = window.SHZ_STATE.market?.markPriceUsd;
+    Object.assign(window.SHZ_STATE, data);
+    if (!ticket.limitPriceTouched && data.orderbook) {
+      ticket.limitPriceUsd =
+        ticket.side === "Long"
+          ? data.orderbook.bestAskUsd ?? data.market.markPriceUsd
+          : data.orderbook.bestBidUsd ?? data.market.markPriceUsd;
+      const priceInput = document.getElementById("input-limit-price");
+      if (priceInput && document.activeElement !== priceInput) {
+        priceInput.value = String(ticket.limitPriceUsd);
+      }
+    }
+    renderHeader();
+    renderOrderbook();
+    renderFallbackWorkbenchIfNeeded();
+    emitState();
+    if (prevMark !== data.market?.markPriceUsd) {
+      await requestQuote();
+    }
+  } catch {
+    // ignore transient poll errors
+  }
+}
+
 async function init() {
   bindEvents();
   syncTicketControls();
@@ -622,6 +701,7 @@ async function init() {
   } catch (err) {
     showFeedback(err.message, true);
   }
+  setInterval(refreshLiveTick, 1500);
   setTimeout(checkChartFallback, 400);
 }
 

@@ -1,0 +1,116 @@
+{
+  "scenario": "SHZ-MNR-05: Batched BitVM3 Taproot Assert/Disprove + PTLC Lightning Double-Offline Multilateral LN-DLC Clearing on Bitcoin Core 31.1",
+  "core_version": "Bitcoin Core v310100 (/Satoshi:31.1.0/)",
+  "network_code": "Regtest",
+  "regtest_genesis_hash_hex": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+  "shzidx01_anchor_txid": "e417069ac992f14a37dc0d2697a93e8cc073ec7046e42e1c0fbdc29cc853a952",
+  "shzidx01_anchor_vout": 0,
+  "oracle_checkpoint_root_hex": "412a3b800c88540e009ed3d27a814feacbb702bb274fad7de9f390765aca051d",
+  "funded_vault_outpoints": [
+    "2bfb6584d5fe3e05a6fb6d623abff6a7daa2bcbe6c0ff0187b83f6cfede4d398:0",
+    "ec3a1fb6db3df47e5e2e131238cd4e833ef21a0b2080aacb33814028b2e74ff3:1",
+    "fa193d1248935ff72ccc96611a05478d633fe09fe7dc2d0c96e0697b05498da0:0"
+  ],
+  "double_offline_clearing_txid": "6dc7c59c6e4473ae8b121e5cb9d1e562f7ebf6ec7b9c9d89920065a27aba2530",
+  "double_offline_clearing_wtxid": "7eb3c151692d34130bbd82fad6fdd9fd1568d739c17f548b53ba8811264e9360",
+  "double_offline_clearing_vsize": 599,
+  "double_offline_clearing_stripped_bytes": 348,
+  "cpfp_child_txid": "0d0eacd52e9e00400570ef8aaad60715980905cb6a14ef29d848f0bf1ff4610d",
+  "cleared_outputs_sats": [
+    55000000,
+    35000000,
+    71498500,
+    82498500,
+    330
+  ],
+  "ptlc_lightning_bridge": {
+    "channel_id_hex": "03ef6d8d652afc5bd14e56523f7368e6c8e3f1a28eb422b15ad57a8cee021ac2",
+    "ptlc_point_compressed_hex": "035ef41280b738218ccbc6b20d0637bfda052e6ae701233d9a10799c61c2416cd7",
+    "alice_posted_margin_sats": 60500000,
+    "alice_winner_pnl_sats": 11000000,
+    "alice_fee_share_sats": 1500,
+    "ln_ptlc_settled_to_alice_sats": 71498500,
+    "router_lp_l1_reimbursement_vout2_sats": 71498500,
+    "alice_ln_balance_before_sats": 5000000,
+    "alice_ln_balance_after_sats": 76498500,
+    "router_lp_ln_balance_before_sats": 95000000,
+    "router_lp_ln_balance_after_sats": 23501500,
+    "ptlc_secret_extracted_and_verified": true,
+    "bob_online_at_l1_clearing": false,
+    "alice_online_at_l1_clearing": false,
+    "frost_threshold_quorum": "2-of-3 {signer_1, signer_3}",
+    "frost_attested_price_usd": 60000,
+    "forged_ptlc_claim_rejected": true
+  },
+  "bitvm3_taproot_drills": {
+    "honest_assertion_txid": "b1cfc3f93d8074cb992bd8ffd7825e4457ef84dddb2ee57e6c0cdd79f062dc2f",
+    "honest_assertion_vout": 0,
+    "challenge_csv_blocks": 10,
+    "bond_sats": 1000000,
+    "optimistic_payout_txid": "43f4686456e7cc91a7c788c298e66e52590fb25956e5a1023f55e2a6ff1ebbd7",
+    "optimistic_payout_vsize": 145,
+    "disprove_boundary_bad_assert_txid": "986b11f2f8196b6657186dbe58b0438d3aad9502e225a713a0003e1c1d32f8ba",
+    "disprove_boundary_slash_txid": "fc4d90d270cf307350d9c82be86b8db7c6740b2ca4d36b90c02866f2f1dc7ff7",
+    "disprove_boundary_slash_vsize": 181,
+    "disprove_equivocation_bad_assert_txid": "95ad59a4541112edb8af609ae6c0af2582998851777bb384eae88ee925385d04",
+    "disprove_equivocation_slash_txid": "a4db7cc2a7fe57bb7d8ea0c3b40bc549bd600bc0e68873c704931a5ef4c4a611",
+    "disprove_equivocation_slash_vsize": 189,
+    "honest_operator_unslashable_verified": true,
+    "premature_csv_rejected_verified": true
+  },
+  "unilateral_fallback_ab_txid": "74821f309b7a25edd7e3cc6ec1593cf7a400017e41de2745ddfbdd9d26218cdd",
+  "unilateral_fallback_bc_txid": "d4e4705c1dc0c35818de76be25788743738310fe15e9da2848708ded619843fb",
+  "mempool_adversarial_probes": [
+    {
+      "probe_id": "clearing-premature-before-maturity",
+      "description": "Broadcast double-offline clearing tx at height 148 (< maturity 150)",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    },
+    {
+      "probe_id": "clearing-shave-1sat-offline-bob-vout0",
+      "description": "Shave 1 sat from offline Bob's 0x83 output vout[0] to RouterLP vout[2]",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "clearing-swap-bob-vout0-vout1",
+      "description": "Swap offline Bob's vout[0] and vout[1] across the two 0x83 inputs",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Invalid Schnorr signature)"
+    },
+    {
+      "probe_id": "clearing-premature-unilateral-cltv",
+      "description": "Broadcast unilateral CLTV fallback at height 150 (< 170)",
+      "core_accepted": false,
+      "core_reject_reason": "non-final"
+    },
+    {
+      "probe_id": "bitvm3-premature-optimistic-payout-before-csv",
+      "description": "Operator attempts bond reclaim at 1 confirmation (< CSV 10)",
+      "core_accepted": false,
+      "core_reject_reason": "non-BIP68-final"
+    },
+    {
+      "probe_id": "bitvm3-grief-honest-operator-boundary-leaf",
+      "description": "Malicious Challenger attempts boundary slash against honest Operator",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Script failed an OP_VERIFY operation)"
+    },
+    {
+      "probe_id": "bitvm3-boundary-slash-wrong-preimage",
+      "description": "Challenger submits non-matching boundary preimage on Leaf 1",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)"
+    },
+    {
+      "probe_id": "bitvm3-equivocation-without-second-preimage",
+      "description": "Attempt Leaf 2 equivocation slash with only pre_0 (missing pre_1)",
+      "core_accepted": false,
+      "core_reject_reason": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)"
+    }
+  ],
+  "bitvm3_tapscript_disprove_regtest_verified": true,
+  "full_groth16_garbled_circuit_l1_verified": false,
+  "production_ready": false
+}

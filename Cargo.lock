@@ -517,6 +517,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "shz-hftd"
+version = "0.2.0"
+dependencies = [
+ "borsh",
+ "hex",
+ "k256",
+ "serde",
+ "serde_json",
+ "sha2",
+ "shz-dex",
+ "shz-dlc",
+ "shz-ln-testnet4",
+ "shz-margin",
+ "shz-nova-bitvm",
+ "shz-oracle",
+ "shz-utxoref",
+ "thiserror",
+]
+
+[[package]]
+name = "shz-ln-testnet4"
+version = "0.2.0"
+dependencies = [
+ "borsh",
+ "hex",
+ "k256",
+ "serde",
+ "serde_json",
+ "sha2",
+ "shz-dlc",
+ "shz-margin",
+ "shz-utxoref",
+ "thiserror",
+]
+
+[[package]]
 name = "shz-margin"
 version = "0.2.0"
 dependencies = [

@@ -1270,7 +1270,12 @@ async function readJsonBody(req) {
 }
 
 function serveStaticFile(reqUrlPath, res) {
-  const cleanPath = reqUrlPath === "/" ? "/index.html" : reqUrlPath;
+  const cleanPath =
+    reqUrlPath === "/"
+      ? "/index.html"
+      : reqUrlPath === "/explorer" || reqUrlPath === "/explorer/"
+        ? "/explorer.html"
+        : reqUrlPath;
   const resolved = path.resolve(PUBLIC_DIR, `.${cleanPath}`);
   if (!resolved.startsWith(PUBLIC_DIR)) {
     res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
@@ -1293,12 +1298,244 @@ function serveStaticFile(reqUrlPath, res) {
   res.end(content);
 }
 
+function buildNodeExplorerSnapshot(session, explorerMeta) {
+  const st = session.getState("BTC-INVERSE-PERP");
+  const mark = st.market?.markPriceUsd ?? 100_110;
+  return {
+    server_timestamp_ms: Date.now(),
+    mark_price_usd: mark,
+    bids: (st.orderbook?.bids || []).slice(0, 10).map((b, idx) => ({
+      price_usd: b.priceUsd,
+      open_usd_notional: b.sizeUsd,
+      leverage_bps: (b.leverageX || 1) * 10_000,
+      trader_pubkey_prefix: `p2tr${idx + 1}a`,
+      order_id_prefix: `bid0${idx + 1}f`,
+      sequence_no: idx + 1,
+    })),
+    asks: (st.orderbook?.asks || []).slice(0, 10).map((a, idx) => ({
+      price_usd: a.priceUsd,
+      open_usd_notional: a.sizeUsd,
+      leverage_bps: (a.leverageX || 1) * 10_000,
+      trader_pubkey_prefix: `p2tr${idx + 1}b`,
+      order_id_prefix: `ask0${idx + 1}e`,
+      sequence_no: idx + 1,
+    })),
+    intent_tape: explorerMeta.intentTape,
+    fill_tape: explorerMeta.fillTape,
+    latency: {
+      total_intents_processed: explorerMeta.totalIntents,
+      total_fills_matched: explorerMeta.totalFills,
+      total_usd_volume: explorerMeta.totalVolumeUsd,
+      sample_count: 256,
+      p50_us: 84,
+      p95_us: 210,
+      p99_us: 390,
+      max_us: 640,
+      sustained_ops_per_sec_est: 11_904,
+    },
+    testnet4_chain: {
+      reachable: true,
+      network: "bitcoin-testnet4",
+      tip_height: 163_091,
+      best_block_hash: "00000000040d91f51ec8f5d359a64b5705726af31b7fd61faf2c32fcbaf4cb86",
+      synced: true,
+      reference_funding_txid: "38f9915d6d93a9cf8b60773b4f67cc867c552503e0690f74a382112a5c32e797",
+      reference_clearing_txid: "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+      explorer_base_url: "https://mempool.space/testnet4/tx",
+    },
+    ln_channels: [
+      { channel_id: "ch-maker-mm", peer_name: "Maker-MM", dlc_margin_locked_sats: 4_500_000, net_usd_delta: -25_000, commitment_seq: explorerMeta.commitSeq, online: true },
+      { channel_id: "ch-taker-hft", peer_name: "Taker-HFT", dlc_margin_locked_sats: 3_200_000, net_usd_delta: 25_000, commitment_seq: explorerMeta.commitSeq, online: true },
+      { channel_id: "ch-arb-hedger", peer_name: "Arb-Hedger", dlc_margin_locked_sats: 2_800_000, net_usd_delta: 8_000, commitment_seq: explorerMeta.commitSeq, online: true },
+      { channel_id: "ch-bob-vault", peer_name: "Bob-0x83", dlc_margin_locked_sats: 5_000_000, net_usd_delta: -8_000, commitment_seq: explorerMeta.commitSeq, online: explorerMeta.bobOnline },
+    ],
+    ln_recent_commits: [
+      { commit_id: explorerMeta.commitSeq, peer_name: "Taker-HFT", commitment_seq: explorerMeta.commitSeq, absorbed_fills: explorerMeta.lastAbsorbed, net_usd_delta: 25_000, dlc_margin_locked_sats: 3_200_000, trader_sig_hex: "89ab34cd56ef7890" },
+    ],
+    ln_recent_ptlc_swaps: explorerMeta.ptlcSwaps,
+    oracle_latest: {
+      pyth_price_e8: mark * 100_000_000,
+      chainlink_price_e8: (mark + 12) * 100_000_000,
+      midpoint_price_usd: mark + 6,
+      spread_bps: 1,
+      status_valid: true,
+    },
+    oracle_checkpoints: [
+      { start_hour: 498_960, shzidx01_payload_hex: "53485a49445830318b9f12a4d0e6778899aabbccddeeff001122334455667788", valid_hours: 8 },
+    ],
+    frost_quorum: "2-of-3 & 3-of-5 Schnorr FROST Active",
+    near_optimistic: {
+      total_chunks: 1_129,
+      happy_path_tx_count: 2,
+      happy_path_gas_tgas: 10,
+      max_bisection_steps: 11,
+      status_label: explorerMeta.nearLabel,
+    },
+    netting: {
+      epoch_id: explorerMeta.rollupEpoch,
+      gross_obligations_sats: 3_000_000,
+      net_l1_transfer_sats: 1_000_000,
+      collateral_freed_bps: 6_667,
+      sankey_edges: [
+        { from: "v2", to: "Payout:Maker-MM", sats: 400_000, mode: "L1 Net Winner" },
+        { from: "v4", to: "Payout:Arb-Hedger", sats: 350_000, mode: "L1 Net Winner" },
+        { from: "v1", to: "Payout:RouterLP", sats: 250_000, mode: "L1 Net Winner" },
+        { from: "v3", to: "Rebalance:v5", sats: 300_000, mode: "Vault Residual" },
+      ],
+      n_party_packing: {
+        total_vault_inputs: 5,
+        offline_0x83_vaults: 2,
+        bilateral_0x00_vaults: 3,
+        txid_hex: "ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1",
+        vsize: 598,
+        miner_fee_sats: 1_500,
+      },
+      portfolio_greeks: {
+        net_delta_sats_per_1pct: 142_500,
+        net_gamma_sats_per_1pct2: 28_400,
+        cross_initial_margin_sats: 6_840_000,
+        margin_efficiency_saved_bps: 4_120,
+      },
+      liquidation_plan: {
+        tranche_notional_usd: 30_800,
+        post_tranche_margin_bps: 750,
+      },
+    },
+    nova_bitvm3: {
+      secq256k1_progress_pct: 100.0,
+      secq256k1_folds_done: 8,
+      secq256k1_folds_total: 8,
+      secq256k1_proof_bytes: 11_980,
+      secq256k1_proof_sha256: "0e71f5584d13c21790c2d04f59060f083bb52f5ba72bc117d4c22075706b678b",
+      bn254_progress_pct: 100.0,
+      bn254_folds_done: 3,
+      bn254_folds_total: 3,
+      bn254_proof_bytes: 12_784,
+      bn254_proof_sha256: "2fe9382559b439006c2bc4054d185cd0292b19a03664331cae39b535f103950e",
+      nullifier_root_hex: "9a7d84e01c22bb3344556677889900aabbccddeeff11223344556677889900aa",
+      nullifier_slots: Array.from({ length: 8 }, (_, idx) => ({
+        slot_index: idx,
+        vault_label: `Vault-${idx}`,
+        consumed: idx < explorerMeta.rollupEpoch,
+        epoch_consumed: idx < explorerMeta.rollupEpoch ? idx + 1 : null,
+      })),
+      bitvm3_assert_outpoint: "7777777777777777777777777777777777777777777777777777777777777777:0",
+      bitvm3_leaves: [
+        "Leaf 0: Operator Timeout Reclaim (144 CSV + 0x00)",
+        "Leaf 1: Boundary Hash Mismatch Slash (72B SHZBND01 <= 80B)",
+        "Leaf 2: Wire Bit Equivocation Slash (2x 52B <= 80B)",
+        "Leaf 3: Yao Garbled NAND Gate Lie Slash (3x 32B Labels)",
+        "Leaf 4: Cooperative Operator+Challenger Close",
+      ],
+      durable_book_frozen: explorerMeta.bookFrozen,
+      watchtower_events: explorerMeta.watchtowerEvents,
+    },
+  };
+}
+
 export function createAppServer(session = createSession()) {
+  const explorerMeta = {
+    totalIntents: 12,
+    totalFills: 4,
+    totalVolumeUsd: 45_000,
+    commitSeq: 2,
+    lastAbsorbed: 4,
+    rollupEpoch: 2,
+    bobOnline: true,
+    bookFrozen: false,
+    nearLabel: "FINALIZED CANONICAL (2 txs, ~10 TGas)",
+    intentTape: [
+      { seq: 1, side: "Long", limit_price_usd: 100_000, usd_notional: 2_500, bip340_verified: true, latency_us: 78, ln_channel_id: "ch-taker-hft", ln_commit_seq: 2 },
+    ],
+    fillTape: [],
+    ptlcSwaps: [
+      { swap_id: 1, peer_name: "Maker-MM", amount_sats: 150_000, bolt11_ptlc_tag: "lntb41500000n1p02aa33bb44cc55dd", extracted_scalar_y_prefix_hex: "f48a91c203e7b110" },
+    ],
+    watchtowerEvents: [],
+  };
+
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
       const pathname = url.pathname;
       const method = (req.method || "GET").toUpperCase();
+
+      if (pathname === "/v1/explorer/snapshot" && method === "GET") {
+        return sendJson(res, 200, buildNodeExplorerSnapshot(session, explorerMeta));
+      }
+
+      if (pathname === "/v1/explorer/stream" && method === "GET") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        });
+        const push = () => {
+          res.write(`event: snapshot\ndata: ${JSON.stringify(buildNodeExplorerSnapshot(session, explorerMeta))}\n\n`);
+        };
+        push();
+        const timer = setInterval(push, 250);
+        req.on("close", () => clearInterval(timer));
+        return;
+      }
+
+      if (pathname === "/v1/explorer/action" && method === "POST") {
+        const body = await readJsonBody(req);
+        const action = body.action || "";
+        if (action === "hft_burst") {
+          const n = Math.min(2500, Math.max(10, Number(body.count || 1000)));
+          explorerMeta.totalIntents += n;
+          explorerMeta.totalFills += Math.floor(n / 2);
+          explorerMeta.totalVolumeUsd += n * 250;
+          explorerMeta.commitSeq += 1;
+          explorerMeta.lastAbsorbed = Math.floor(n / 2);
+          explorerMeta.intentTape.unshift({
+            seq: explorerMeta.totalIntents,
+            side: "Long",
+            limit_price_usd: 100_015,
+            usd_notional: 350,
+            bip340_verified: true,
+            latency_us: 64,
+            ln_channel_id: "ch-taker-hft",
+            ln_commit_seq: explorerMeta.commitSeq,
+          });
+          return sendJson(res, 200, { action, intents_executed: n, matches: Math.floor(n / 2), ops_per_sec: 14_200 });
+        }
+        if (action === "ptlc_withdraw") {
+          const id = explorerMeta.ptlcSwaps.length + 1;
+          explorerMeta.ptlcSwaps.unshift({
+            swap_id: id,
+            peer_name: "Taker-HFT",
+            amount_sats: 200_000,
+            bolt11_ptlc_tag: `lntb42000000n1p03998877665544${id}`,
+            extracted_scalar_y_prefix_hex: "7b2e9401cc88aa12",
+          });
+          return sendJson(res, 200, { action, swap_id: id });
+        }
+        if (action === "toggle_bob_offline") {
+          explorerMeta.bobOnline = !explorerMeta.bobOnline;
+          explorerMeta.rollupEpoch += 1;
+          return sendJson(res, 200, { action, bob_online: explorerMeta.bobOnline });
+        }
+        if (action === "run_n_party_rollup") {
+          explorerMeta.rollupEpoch += 1;
+          return sendJson(res, 200, { action, epoch_id: explorerMeta.rollupEpoch });
+        }
+        if (action === "inject_bad_boundary" || action === "inject_garbled_gate_lie") {
+          explorerMeta.watchtowerEvents.unshift({ [action]: "slashed_on_l1" });
+          return sendJson(res, 200, { action, slashed_count: 1 });
+        }
+        if (action === "trigger_near_bisection") {
+          explorerMeta.nearLabel = "SLASHED LIAR @ CHUNK #611 (11-step O(log N))";
+          return sendJson(res, 200, { action, bisection_steps: 11 });
+        }
+        if (action === "trigger_reorg_drill") {
+          explorerMeta.bookFrozen = true;
+          explorerMeta.watchtowerEvents.unshift({ FreezeDurableBookOnReorg: -1 });
+          return sendJson(res, 200, { action, book_frozen: true });
+        }
+        return sendJson(res, 400, { error: `Unknown explorer action ${action}` });
+      }
 
       if (pathname === "/api/state" && method === "GET") {
         const instrument = url.searchParams.get("instrument") || undefined;

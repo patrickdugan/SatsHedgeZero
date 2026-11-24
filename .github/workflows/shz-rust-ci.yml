@@ -32,6 +32,9 @@ jobs:
           cargo run --locked --bin shz -- verify-all
           cargo run --locked --bin shz -- nova-demo > /dev/null
 
+      - name: Run SHZ-HFT-01/02 WebSocket load and 100ms LN coalescer gates
+        run: cargo run --release --locked -p shz-hftd --bin shz-mm-bot -- --intents 6000 --max-p99-us 5000
+
       - name: Run Deribit terminal HTTP API and workbench tests
         run: npm --prefix ui test
 

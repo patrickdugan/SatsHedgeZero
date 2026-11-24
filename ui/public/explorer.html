@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SatsHedgeZero — Back-End Protocol Explorer (HFT • Testnet4 LN/PTLC • UTXORef • Nova • BitVM3)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/explorer.css" />
+  </head>
+  <body>
+    <div class="exp-shell">
+      <!-- Top Telemetry & Navigation Bar -->
+      <header class="exp-topbar">
+        <div class="exp-brand">
+          <svg viewBox="0 0 28 28" width="22" height="22" aria-hidden="true">
+            <rect x="2" y="2" width="24" height="24" rx="4" fill="#10151e" stroke="#00d285" stroke-width="1.6" />
+            <path d="M7 18.5L12.5 9.5L16.2 15L21 8.8" fill="none" stroke="#00d285" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="21" cy="8.8" r="2.1" fill="#38bdf8" />
+          </svg>
+          <div>
+            <span class="exp-brand-title">SatsHedgeZero</span>
+            <span class="exp-brand-sub mono">PROTOCOL EXPLORER</span>
+          </div>
+          <a href="/" class="exp-nav-link mono" id="link-trading-terminal">← TRADING TERMINAL</a>
+        </div>
+
+        <div class="exp-kpi-ribbon mono">
+          <div class="exp-kpi">
+            <span class="exp-kpi-lbl">Mark BTC/USD</span>
+            <strong id="kpi-mark-px" class="is-long">$100,110</strong>
+          </div>
+          <div class="exp-kpi">
+            <span class="exp-kpi-lbl">HFT Latency p50 / p99</span>
+            <strong id="kpi-latency" class="is-cyan">— / — µs</strong>
+          </div>
+          <div class="exp-kpi">
+            <span class="exp-kpi-lbl">Signed Intents / Fills</span>
+            <strong id="kpi-counts">0 / 0</strong>
+          </div>
+          <div class="exp-kpi">
+            <span class="exp-kpi-lbl">Netting Saved</span>
+            <strong id="kpi-netting-saved" class="is-amber">—%</strong>
+          </div>
+          <div class="exp-kpi">
+            <span class="exp-kpi-lbl">Testnet4 Tip</span>
+            <strong id="kpi-t4-height">#163,091</strong>
+          </div>
+        </div>
+
+        <div class="exp-status-badges mono">
+          <span id="badge-stream" class="exp-badge is-live">● SSE 250ms LIVE</span>
+          <span id="badge-ws" class="exp-badge is-cyan">WS /v1/ws READY</span>
+          <span id="badge-honesty" class="exp-badge is-amber" title="Zero trusted setup; mainnet awaits external audit">BETA 100% • MAINNET AUDIT PENDING</span>
+        </div>
+      </header>
+
+      <!-- Interactive HFT & Chaos Drill Control Strip -->
+      <section class="exp-actionbar mono" aria-label="Interactive HFT and Chaos Controls">
+        <span class="exp-action-label">LIVE DRILLS:</span>
+        <button type="button" class="exp-btn exp-btn-green" data-exp-action="hft_burst" data-count="1000" id="btn-hft-burst">
+          ⚡ 1,000-Order HFT Burst
+        </button>
+        <button type="button" class="exp-btn exp-btn-cyan" data-exp-action="ptlc_withdraw" id="btn-ptlc-withdraw">
+          ⚡ PTLC Instant Withdraw (Y=y·G)
+        </button>
+        <button type="button" class="exp-btn" data-exp-action="toggle_bob_offline" id="btn-toggle-bob">
+          🔌 Toggle Bob-0x83 Offline
+        </button>
+        <button type="button" class="exp-btn" data-exp-action="run_n_party_rollup" id="btn-rollup">
+          🔁 Force 5-Party Rollup
+        </button>
+        <button type="button" class="exp-btn exp-btn-amber" data-exp-action="inject_bad_boundary" id="btn-slash-boundary">
+          🛡 Slash Bad Boundary (72B)
+        </button>
+        <button type="button" class="exp-btn exp-btn-amber" data-exp-action="inject_garbled_gate_lie" id="btn-slash-garbled">
+          🧮 Slash Garbled NAND Gate
+        </button>
+        <button type="button" class="exp-btn exp-btn-cyan" data-exp-action="trigger_near_bisection" id="btn-near-bisect">
+          ⚖ NEAR 11-Step Bisection
+        </button>
+        <button type="button" class="exp-btn exp-btn-red" data-exp-action="trigger_reorg_drill" id="btn-reorg-drill">
+          🚨 6-Block Reorg Freeze
+        </button>
+        <span id="action-toast" class="exp-action-toast">Ready — click any drill to inspect real-time protocol flow</span>
+      </section>
+
+      <!-- 5-Pane Real-Time Back-End Grid -->
+      <main class="exp-grid">
+        <!-- PANE 1: Tier-0 HFT Orderbook, SignedOrderIntent Tape & Latency -->
+        <section class="exp-pane" id="pane-hft" aria-label="Pane 1: HFT Orderbook and Signed Intent Tape">
+          <div class="exp-pane-head">
+            <h2>1. Tier-0 HFT Matching &amp; BIP-340 Intent Tape</h2>
+            <span id="hft-ops-pill" class="exp-mini-pill mono">0.00% FEE • TCP_NODELAY</span>
+          </div>
+          <div class="exp-pane-body">
+            <div class="exp-latency-strip mono" id="latency-bars">
+              <div><span>p50</span><strong id="lat-p50">—</strong></div>
+              <div><span>p95</span><strong id="lat-p95">—</strong></div>
+              <div><span>p99 (&lt;1500µs)</span><strong id="lat-p99" class="is-long">—</strong></div>
+              <div><span>Max</span><strong id="lat-max">—</strong></div>
+              <div><span>Est Ops/s</span><strong id="lat-ops" class="is-cyan">—</strong></div>
+            </div>
+
+            <div class="exp-book-split mono">
+              <div>
+                <div class="exp-subhead">Resting Bids (Long)</div>
+                <div id="exp-bids-list" class="exp-ladder"></div>
+              </div>
+              <div>
+                <div class="exp-subhead">Resting Asks (Short / 1x Hedge)</div>
+                <div id="exp-asks-list" class="exp-ladder"></div>
+              </div>
+            </div>
+
+            <div class="exp-subhead">Live BIP-340 SignedOrderIntent &amp; Match Tape</div>
+            <div class="exp-table-wrap">
+              <table class="exp-table mono">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Side</th>
+                    <th>Px</th>
+                    <th>USD</th>
+                    <th>BIP-340</th>
+                    <th>Ack</th>
+                    <th>LN Ch</th>
+                  </tr>
+                </thead>
+                <tbody id="intent-tape-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- PANE 2: Tier-1 Testnet4 Lightning Mesh, 100ms Coalescer & PTLC Swaps -->
+        <section class="exp-pane" id="pane-ln" aria-label="Pane 2: Testnet4 Lightning and PTLC Topology">
+          <div class="exp-pane-head">
+            <h2>2. Tier-1 Testnet4 LN Mesh &amp; 100ms Coalescer</h2>
+            <span class="exp-mini-pill mono is-cyan" id="ln-commit-pill">Seq #1</span>
+          </div>
+          <div class="exp-pane-body">
+            <div class="exp-svg-box">
+              <svg id="svg-ln-topology" viewBox="0 0 460 175" width="100%" height="175" role="img" aria-label="Testnet4 Lightning Subchannel Mesh"></svg>
+            </div>
+
+            <div class="exp-subhead">100ms Coalesced 2-of-2 Schnorr Subchannel Commits</div>
+            <div class="exp-table-wrap exp-short-scroll">
+              <table class="exp-table mono">
+                <thead>
+                  <tr>
+                    <th>Peer</th>
+                    <th>Seq</th>
+                    <th>Fills</th>
+                    <th>Net Δ USD</th>
+                    <th>Locked Sats</th>
+                    <th>2-of-2 Sig</th>
+                  </tr>
+                </thead>
+                <tbody id="ln-commits-tbody"></tbody>
+              </table>
+            </div>
+
+            <div class="exp-subhead">Atomic PTLC Swaps (`adaptor_extract_secret_verified`)</div>
+            <div id="ptlc-swaps-list" class="exp-log-list mono"></div>
+          </div>
+        </section>
+
+        <!-- PANE 3: Tier-3 Edmonds-Karp Multilateral Netting, 5-Party Packer & SPAN Greeks -->
+        <section class="exp-pane" id="pane-netting" aria-label="Pane 3: Edmonds-Karp Multilateral Netting and SPAN Greeks">
+          <div class="exp-pane-head">
+            <h2>3. Edmonds-Karp Netting, 5-Party Packer &amp; SPAN Risk</h2>
+            <span class="exp-mini-pill mono is-amber" id="netting-epoch-pill">Epoch #2</span>
+          </div>
+          <div class="exp-pane-body">
+            <div class="exp-svg-box">
+              <svg id="svg-netting-sankey" viewBox="0 0 460 170" width="100%" height="170" role="img" aria-label="Edmonds-Karp Multilateral Netting Flow"></svg>
+            </div>
+
+            <div class="exp-kv-grid mono" id="nparty-box"></div>
+
+            <div class="exp-subhead">SPAN 33-Scenario Portfolio Cross-Margin Greeks &amp; Partial Liquidation</div>
+            <div class="exp-kv-grid mono" id="greeks-liq-box"></div>
+          </div>
+        </section>
+
+        <!-- PANE 4: Tier-2 Multi-Source 200ms Oracle, SHZIDX01 Anchors & Optimistic NEAR -->
+        <section class="exp-pane" id="pane-oracle" aria-label="Pane 4: Multi-Source Oracle Provenance and NEAR Verifier">
+          <div class="exp-pane-head">
+            <h2>4. 200ms Pyth + Chainlink, SHZIDX01 &amp; NEAR Verifier</h2>
+            <span class="exp-mini-pill mono is-long" id="oracle-spread-pill">Spread ≤ 50 bps</span>
+          </div>
+          <div class="exp-pane-body">
+            <div class="exp-kv-grid mono" id="oracle-live-box"></div>
+
+            <div class="exp-meter-wrap mono">
+              <div class="exp-meter-labels">
+                <span>Pyth / Chainlink Spread Gate</span>
+                <span id="spread-meter-text">1 bps / 50 bps MAX</span>
+              </div>
+              <div class="exp-meter-track">
+                <div id="spread-meter-fill" class="exp-meter-fill" style="width: 4%"></div>
+              </div>
+            </div>
+
+            <div class="exp-subhead">Optimistic NEAR Bisection Session (`O(1)` Happy Path vs `1,129` Chunks)</div>
+            <div id="near-session-box" class="exp-callout mono"></div>
+
+            <div class="exp-subhead">Public Bitcoin Testnet4 TXIDs &amp; 8h `SHZIDX01` Checkpoints</div>
+            <div id="oracle-anchors-list" class="exp-log-list mono"></div>
+          </div>
+        </section>
+
+        <!-- PANE 5: Dual Setup-Free Nova Prover %, Sparse Nullifiers & BitVM3 Watchtower -->
+        <section class="exp-pane exp-pane-wide" id="pane-nova-bitvm3" aria-label="Pane 5: Dual Nova Prover, Nullifiers, and BitVM3 Watchtower">
+          <div class="exp-pane-head">
+            <h2>5. Setup-Free Dual Nova Prover (`0→100%`), Sparse Nullifier Tree &amp; BitVM3 Taproot Watchtower</h2>
+            <span class="exp-mini-pill mono is-long" id="bitvm3-book-pill">Durable Book: READY</span>
+          </div>
+          <div class="exp-pane-body exp-pane5-cols">
+            <!-- Left Col: Dual Nova Progress -->
+            <div>
+              <div class="exp-subhead">Live Recursive Folding &amp; Spartan/IPA Compression</div>
+              <div class="exp-prog-card mono">
+                <div class="exp-prog-row">
+                  <span>Curve 1: <strong>Secq256k1</strong> (8x BIP-340 + In-Circuit TapSighash)</span>
+                  <strong id="secq-pct" class="is-long">100.0% (8/8)</strong>
+                </div>
+                <div class="exp-meter-track">
+                  <div id="secq-bar" class="exp-meter-fill is-green" style="width: 100%"></div>
+                </div>
+                <div class="exp-hash-line" id="secq-meta">11,980 B • sha256: 0e71f558…</div>
+              </div>
+
+              <div class="exp-prog-card mono">
+                <div class="exp-prog-row">
+                  <span>Curve 2: <strong>Bn256EngineIPA</strong> (3-Fold Batch + 256d SMT)</span>
+                  <strong id="bn254-pct" class="is-cyan">100.0% (3/3)</strong>
+                </div>
+                <div class="exp-meter-track">
+                  <div id="bn254-bar" class="exp-meter-fill is-cyan-bg" style="width: 100%"></div>
+                </div>
+                <div class="exp-hash-line" id="bn254-meta">12,784 B • sha256: 2fe93825…</div>
+              </div>
+            </div>
+
+            <!-- Center Col: 8-Slot Sparse Nullifier Grid -->
+            <div>
+              <div class="exp-subhead">8-Slot Vault Nullifier Tree (<span id="nullifier-root-short" class="mono">—</span>)</div>
+              <div id="nullifier-grid" class="exp-nullifier-grid mono"></div>
+            </div>
+
+            <!-- Right Col: BitVM3 5-Leaf Tree + Garbled Gate + Watchtower Log -->
+            <div>
+              <div class="exp-subhead">5-Leaf `BitVm3AssertionTree` (`MAX_STACK_ITEM ≤ 80B`) &amp; Watchtower</div>
+              <ul id="bitvm3-leaves-list" class="exp-leaves-list mono"></ul>
+              <div class="exp-subhead">Challenger Watchtower Event Log</div>
+              <div id="watchtower-events-list" class="exp-log-list mono"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/explorer.js"></script>
+  </body>
+</html>

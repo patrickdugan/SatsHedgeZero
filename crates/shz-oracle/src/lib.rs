@@ -3,6 +3,8 @@
 
 pub mod fraud_proofs;
 pub mod frost;
+pub mod live_relayer;
+pub mod optimistic_near_verifier;
 pub mod pyth_lazer;
 pub mod pyth_near_relay;
 pub mod tradelayer;
@@ -380,5 +382,84 @@ mod tests {
         assert!(vault.is_slashed);
         assert_eq!(verdict.canonical_price_usd, 100_550);
         assert!(verdict.deviation_bps > 1_000);
+    }
+
+    #[test]
+    fn test_optimistic_near_bisection_and_200ms_rolling_relayer() {
+        use super::live_relayer::{OracleTickSourceMode, RollingOracleAggregator};
+        use super::optimistic_near_verifier::{
+            OptimisticCheckpointSession, OptimisticSessionStatus,
+        };
+
+        // 1. Happy-path single-tx finalize + 11-step interactive bisection over 1,129 chunks
+        let mut happy = OptimisticCheckpointSession::propose(
+            498_000,
+            [0xaa; 32],
+            [0xbb; 32],
+            "relayer.near",
+            100,
+            100,
+            1_129,
+            [0xcc; 32],
+            1_000,
+            50,
+        )
+        .unwrap();
+        assert!(happy.finalize_unchallenged(1_049).is_err());
+        happy.finalize_unchallenged(1_050).unwrap();
+        assert_eq!(happy.status, OptimisticSessionStatus::FinalizedCanonical);
+
+        let mut disputed = OptimisticCheckpointSession::propose(
+            498_008,
+            [0x11; 32],
+            [0x22; 32],
+            "bad-proposer.near",
+            100,
+            100,
+            1_129,
+            [0x33; 32],
+            2_000,
+            50,
+        )
+        .unwrap();
+        disputed
+            .open_challenge("watchdog.near", 100, 2_010)
+            .unwrap();
+        let mut rounds = 0usize;
+        loop {
+            let (lo, hi) = disputed.bisect_midpoint(rounds.is_multiple_of(2)).unwrap();
+            rounds += 1;
+            if hi - lo == 1 {
+                break;
+            }
+        }
+        assert!(rounds <= 11);
+        let outcome = disputed
+            .resolve_single_step_chunk(&[0x99; 32], &[0x77; 32])
+            .unwrap();
+        assert!(matches!(
+            outcome,
+            OptimisticSessionStatus::SlashedProposer { .. }
+        ));
+
+        // 2. Rolling 200ms relayer sealing an 8-hour SHZIDX01 checkpoint
+        let mut agg = RollingOracleAggregator::new([0x06; 32], 50);
+        for h in 0..8u64 {
+            let t = agg.ingest_tick(
+                1_795_500_000_000 + h * 200,
+                10_000_050_000_000,
+                9_999_950_000_000,
+                OracleTickSourceMode::DeterministicSignedSim,
+            );
+            assert!(t.status_valid);
+            let ckpt = agg.seal_hour_from_latest(500_000 + h);
+            if h < 7 {
+                assert!(ckpt.is_none());
+            } else {
+                let c = ckpt.unwrap();
+                assert_eq!(c.valid_hours, 8);
+                assert_eq!(c.shzidx01_payload_hex.len(), 80); // 40 bytes = 80 hex chars
+            }
+        }
     }
 }

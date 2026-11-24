@@ -1,0 +1,33 @@
+[package]
+name = "shz-mnr05-bitvm3-ln-dlc"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "SHZ-MNR-05: Batched BitVM3 Taproot assert/disprove settlement, Secq256k1 in-circuit BIP-340 authorization, Sparse Nullifier Nova circuit, and PTLC Lightning clearing on Bitcoin Core 31.1"
+
+[workspace]
+
+[dependencies]
+nova-snark = "=0.76.0"
+ff = "0.13"
+halo2curves = "0.9"
+k256 = { version = "0.13", features = ["arithmetic", "schnorr", "ecdsa", "sha256"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1.3"
+sha2 = "=0.10.9"
+sha3 = "0.10"
+hex = "0.4"
+
+shz-margin = { path = "../../crates/shz-margin" }
+shz-dlc = { path = "../../crates/shz-dlc" }
+shz-oracle = { path = "../../crates/shz-oracle" }
+shz-utxoref = { path = "../../crates/shz-utxoref" }
+shz-dex = { path = "../../crates/shz-dex" }
+shz-nova-bitvm = { path = "../../crates/shz-nova-bitvm" }
+
+[profile.release]
+panic = "unwind"
