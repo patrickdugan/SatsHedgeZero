@@ -871,7 +871,9 @@ dependencies = [
  "shz-dlc",
  "shz-margin",
  "shz-oracle",
+ "shz-relay",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

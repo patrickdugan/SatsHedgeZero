@@ -17,3 +17,7 @@ shz-dlc.workspace = true
 shz-margin.workspace = true
 shz-oracle.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+shz-relay = { path = "../shz-relay" }
+tokio = { version = "1", features = ["sync"] }

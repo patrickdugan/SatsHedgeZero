@@ -613,7 +613,7 @@ mod tests {
         let rec = fixture::recording(ORIGIN, 3, 11);
         let mut c = Collator::new(fixture::config(), fixture::policy(ORIGIN)).unwrap();
         for r in rec.iter().filter(|r| r.arrival_us < ORIGIN) {
-            c.ingest(r);
+            let _ = c.ingest(r);
         }
         let before = c.latest(SourceKind::PythPro).cloned();
         // A late-arriving fresh report at T_1 + 1 must not influence slot 1.
