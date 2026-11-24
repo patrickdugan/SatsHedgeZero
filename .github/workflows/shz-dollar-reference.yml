@@ -1,0 +1,29 @@
+name: SHZ-TL reference dollar statements
+
+on:
+  push:
+    paths:
+      - 'research/dollar_clearing/**'
+      - 'docs/SHZ_TL_DOLLAR_CLEARING_V1.md'
+      - '.github/workflows/shz-dollar-reference.yml'
+  pull_request:
+    paths:
+      - 'research/dollar_clearing/**'
+      - 'docs/SHZ_TL_DOLLAR_CLEARING_V1.md'
+      - '.github/workflows/shz-dollar-reference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-reference-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check signed collateral, liability, spot and hybrid anchor assertions
+        run: node --test research/dollar_clearing/test/*.test.mjs
