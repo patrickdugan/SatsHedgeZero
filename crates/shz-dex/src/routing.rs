@@ -156,16 +156,17 @@ struct Quote{intent:Intent,remaining:u64,hold_per_unit:u64}
 #[derive(Debug,Clone)]
 pub struct Fill{
  pub maker_id:Key,pub taker_id:Key,pub maker_channel:BtcOutPoint,pub taker_channel:BtcOutPoint,
+ pub scope:Scope,pub router:u32,pub execution_us:u64,pub maker_owner:Key,pub taker_owner:Key,
  pub mark_id:Key,pub spec:InverseContractSpec,pub maker_fee_sats:u64,pub taker_fee_sats:u64,
  pub oracle_due_sats:u64,pub router_due_sats:u64,
 }
 #[derive(Debug,Clone)]
 pub enum Outcome{Posted(Key),Cancelled(Key),Filled(Box<Fill>),Rejected(Reject)}
 pub struct Router{
- policy:Policy,id:u32,clock:u64,arrival:u64,accounts:BTreeMap<Outpoint,Account>,
+ policy:Policy,scope:Scope,id:u32,clock:u64,arrival:u64,activation:u64,accounts:BTreeMap<Outpoint,Account>,
  queue:BTreeMap<(u64,u64),Intent>,bids:BTreeMap<BookKey,Quote>,asks:BTreeMap<BookKey,Quote>,
  locations:BTreeMap<Key,(OrderSide,BookKey)>,expirations:BTreeMap<(u64,Key),()>,
- mark:Option<Mark>,
+ mark:Option<Mark>,fills:BTreeMap<Key,Fill>,
 }
 impl Router{
  pub fn new(policy:Policy,registry:&Registry,id:u32)->R<Self>{
@@ -174,16 +175,18 @@ impl Router{
   for a in &registry.allocations{if let Some(s)=a.shares.iter().find(|s|s.router==id){
    accounts.insert(op(&a.channel),Account{owner:a.owner,balance:Balance{cap:s.sats,free:s.sats,resting:0,pending:0},last_seq:0});
   }}
-  Ok(Self{policy,id,clock:0,arrival:0,accounts,queue:BTreeMap::new(),bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),mark:None})
+  Ok(Self{scope:policy.scope(),policy,id,clock:0,arrival:0,activation:0,accounts,queue:BTreeMap::new(),bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),mark:None,fills:BTreeMap::new()})
  }
  pub fn balance(&self,channel:&BtcOutPoint)->Option<Balance>{self.accounts.get(&op(channel)).map(|a|a.balance)}
  pub fn resting(&self)->usize{self.locations.len()}
  pub fn pending_orders(&self)->usize{self.queue.len()}
+ pub fn pending_fill(&self,taker_id:&Key)->Option<&Fill>{self.fills.get(taker_id)}
+ pub fn pending_fills(&self)->usize{self.fills.len()}
  fn clock(&mut self,now:u64)->R<()>{if now<self.clock{return Err(Reject::Clock)}self.clock=now;Ok(())}
  pub fn update_mark(&mut self,ticks:[RelayTick;2],now:u64)->R<Key>{
   self.clock(now)?;
   for(i,t)in ticks.iter().enumerate(){
-   if t.scope!=self.policy.scope()||t.source!=i as u8+1||t.sequence==0||t.publish_us==0||t.price_e8==0||t.price_e8>10_000_000_000_000_000||t.report_hash==[0;32]||!now.checked_sub(t.publish_us).is_some_and(|age|age<=MAX_AGE_US){return Err(Reject::Oracle)}
+   if t.scope!=self.scope||t.source!=i as u8+1||t.sequence==0||t.publish_us==0||t.price_e8==0||t.price_e8>10_000_000_000_000_000||t.report_hash==[0;32]||!now.checked_sub(t.publish_us).is_some_and(|age|age<=MAX_AGE_US){return Err(Reject::Oracle)}
    verify(&self.policy.relay_keys[i],&t.id(),&t.signature)?;
   }
   if ticks[0].publish_us.abs_diff(ticks[1].publish_us)>MAX_SKEW_US||
@@ -199,7 +202,7 @@ impl Router{
  /// Clock comes from the local trusted monotonic scheduler, not the order payload.
  pub fn submit(&mut self,intent:Intent,now:u64)->R<u64>{
   self.clock(now)?;
-  if intent.scope!=self.policy.scope()||intent.router!=self.id{return Err(Reject::Scope)}
+  if intent.scope!=self.scope||intent.router!=self.id{return Err(Reject::Scope)}
   intent.check()?;
   let due=now.checked_add(delay_us(intent.tier,intent.action)).ok_or(Reject::Clock)?;
   if due>=intent.expires_us{return Err(Reject::Expired)}
@@ -231,7 +234,7 @@ impl Router{
   let i=self.queue.remove(&key).unwrap();
   let result=if i.expires_us<=now{Err(Reject::Expired)}else if i.action==Action::Cancel{self.cancel(&i)}else{
    match self.mark.as_ref().filter(|m|m.fresh(now)).cloned(){
-    None=>Err(Reject::Oracle),Some(m)=>match i.action{Action::Post=>self.post(i,key.1,&m),Action::Take=>self.take(&i,&m),Action::Cancel=>unreachable!()}
+    None=>Err(Reject::Oracle),Some(m)=>match i.action{Action::Post=>self.post(i,&m),Action::Take=>self.take(&i,&m),Action::Cancel=>unreachable!()}
    }
   };
   Ok(Some(result.unwrap_or_else(Outcome::Rejected)))
@@ -242,7 +245,7 @@ impl Router{
   if q.intent.owner!=i.owner||q.intent.channel!=i.channel||q.intent.tier!=i.tier{return Err(Reject::Allocation)}
   self.remove(i.cancel_target).ok_or(Reject::UnknownOrder)?;Ok(Outcome::Cancelled(i.cancel_target))
  }
- fn post(&mut self,i:Intent,arrival:u64,m:&Mark)->R<Outcome>{
+ fn post(&mut self,i:Intent,m:&Mark)->R<Outcome>{
   if !m.allows(i.limit_usd){return Err(Reject::Oracle)}
   if self.locations.len()>=ORDER_CAP{return Err(Reject::Capacity)}
   let ppm=rate_ppm(i.tier,Action::Post);
@@ -253,13 +256,15 @@ impl Router{
   let hold=unit.checked_mul(i.quantity).ok_or(Reject::Bounds)?;
   let b=&mut self.accounts.get_mut(&op(&i.channel)).unwrap().balance;
   if b.free<hold{return Err(Reject::Capacity)}
-  b.free-=hold;b.resting+=hold;
+  let activation=self.activation.checked_add(1).ok_or(Reject::Bounds)?;
+  b.free-=hold;b.resting+=hold;self.activation=activation;
   let id=i.id();let side=i.side;
-  let key=(if side==OrderSide::Long{u64::MAX-i.limit_usd}else{i.limit_usd},arrival);
+  let key=(if side==OrderSide::Long{u64::MAX-i.limit_usd}else{i.limit_usd},activation);
   self.locations.insert(id,(side,key));self.expirations.insert((i.expires_us,id),());
   let remaining=i.quantity;self.book_mut(side).insert(key,Quote{intent:i,remaining,hold_per_unit:unit});Ok(Outcome::Posted(id))
  }
  fn take(&mut self,i:&Intent,m:&Mark)->R<Outcome>{
+  if self.fills.len()>=ORDER_CAP{return Err(Reject::Capacity)}
   // V1 FOK within one private maker quote; price then actual local arrival.
   let side=if i.side==OrderSide::Long{OrderSide::Short}else{OrderSide::Long};
   let chosen=self.book(side).iter().find(|(_,q)|{
@@ -292,6 +297,8 @@ impl Router{
   if q.remaining==n{
    self.book_mut(side).remove(&key);self.locations.remove(&maker_id);self.expirations.remove(&(q.intent.expires_us,maker_id));
   }else{self.book_mut(side).get_mut(&key).unwrap().remaining-=n;}
-  Ok(Outcome::Filled(Box::new(Fill{maker_id,taker_id:i.id(),maker_channel:q.intent.channel,taker_channel:i.channel.clone(),mark_id:m.id,spec,maker_fee_sats:mf,taker_fee_sats:tf,oracle_due_sats:oracle,router_due_sats:total-oracle})))
+  let fill=Fill{maker_id,taker_id:i.id(),maker_channel:q.intent.channel,taker_channel:i.channel.clone(),scope:self.scope,router:self.id,execution_us:self.clock,maker_owner:q.intent.owner,taker_owner:i.owner,mark_id:m.id,spec,maker_fee_sats:mf,taker_fee_sats:tf,oracle_due_sats:oracle,router_due_sats:total-oracle};
+  self.fills.insert(fill.taker_id,fill.clone());
+  Ok(Outcome::Filled(Box::new(fill)))
  }
 }

@@ -75,3 +75,29 @@ fn ready(r:&mut Router,t:u64)->Outcome{r.process_one(t).unwrap().unwrap()}
  assert!(matches!(ready(&mut r,NOW+500_000),Outcome::Rejected(Reject::NoLiquidity)));
  let Outcome::Filled(f)=ready(&mut r,NOW+500_000)else{panic!()};assert_eq!(f.maker_fee_sats+f.taker_fee_sats,0);
 }
+
+#[test]fn price_time_is_activation_order_and_pending_receipts_are_retained(){
+ let(p,g)=setup(10_000_000);let mut r=Router::new(p.clone(),&g,1).unwrap();r.update_mark(good_marks(&p),NOW).unwrap();
+ let free=order(&p,1,1,Action::Post,OrderSide::Short,Tier::Free,100);
+ let fast=order(&p,2,1,Action::Post,OrderSide::Short,Tier::Priority,100);let fast_id=fast.id();
+ r.submit(free,NOW).unwrap();r.submit(fast,NOW+1).unwrap();
+ assert!(matches!(ready(&mut r,NOW+1),Outcome::Posted(_)));
+ assert!(matches!(ready(&mut r,NOW+200_000),Outcome::Posted(_)));
+ let taker=order(&p,3,1,Action::Take,OrderSide::Long,Tier::Priority,100);let id=taker.id();
+ r.submit(taker,NOW+200_000).unwrap();
+ let Outcome::Filled(f)=ready(&mut r,NOW+300_000)else{panic!()};
+ assert_eq!(f.maker_id,fast_id);assert_eq!(r.pending_fills(),1);assert_eq!(r.pending_fill(&id).unwrap().maker_id,fast_id);
+}
+#[test]fn cross_router_budget_and_expiry_release_only_resting(){
+ let(p,g)=setup(200_000);let mut r=Router::new(p.clone(),&g,1).unwrap();let mut r2=Router::new(p.clone(),&g,2).unwrap();
+ r.update_mark(good_marks(&p),NOW).unwrap();r2.update_mark(good_marks(&p),NOW).unwrap();
+ let mut maker=order(&p,1,1,Action::Post,OrderSide::Short,Tier::Priority,100);
+ maker.expires_us=NOW+500_000;maker=maker.signed(&sk(1)).unwrap();
+ let mut second=maker.clone();second.router=2;second=second.signed(&sk(1)).unwrap();
+ r.submit(maker,NOW).unwrap();r2.submit(second,NOW).unwrap();
+ assert!(matches!(ready(&mut r,NOW),Outcome::Posted(_)));assert!(matches!(ready(&mut r2,NOW),Outcome::Posted(_)));
+ r.submit(order(&p,2,1,Action::Take,OrderSide::Long,Tier::Priority,50),NOW).unwrap();assert!(matches!(ready(&mut r,NOW+100_000),Outcome::Filled(_)));
+ assert!(r.process_one(NOW+500_000).unwrap().is_none());assert!(r2.process_one(NOW+500_000).unwrap().is_none());
+ let a=r.balance(&channel(1)).unwrap();let b=r2.balance(&channel(1)).unwrap();
+ assert_eq!(a.resting+b.resting,0);assert!(a.pending>0);assert_eq!(b.pending,0);assert!(a.conserved()&&b.conserved());assert_eq!(a.cap+b.cap,400_000);
+}
