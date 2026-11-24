@@ -98,39 +98,54 @@ impl Router{
   let seq=self.batch_sequence.checked_add(1).ok_or(Reject::Bounds)?;
   let mut next=self.batch_cursor;
   let mut legs=Vec::new();
-  let mut sums:BTreeMap<Outpoint,ChannelObligation>=BTreeMap::new();
-  let mut oracle=0u128;let mut router_due=0u128;
   while let Some(id)=self.fill_log.get(next){
    let f=&self.fills[id];
    if f.execution_us>=end{break}
-   if f.execution_us<start||f.scope!=self.scope||f.router!=self.id||f.taker_id!=*id{return Err(Reject::Scope)}
+   if f.taker_id!=*id{return Err(Reject::Scope)}
+   legs.push(f.clone());next+=1;
+  }
+  let accounts=&self.accounts;
+  let batch=Batch::seal_legs(self.scope,self.id,seq,self.last_batch_digest,(start,end),legs,
+   &|k:&Outpoint|accounts.get(k).map(|a|(a.owner,a.balance.pending)))?;
+  // No external effect; the caller must retain the batch. No abort/release path.
+  self.batch_cursor=next;self.batch_sequence=seq;self.last_batch_digest=batch.digest;
+  Ok(Some(batch))
+ }
+}
+impl Batch{
+ /// Single implementation of leg validation, per-channel aggregation and the
+ /// batch digest, shared by the HFT-03 router and the HFT-06 tiered engine.
+ /// `account` maps a channel outpoint to `(owner, pending_sats)`.
+ pub(crate) fn seal_legs(scope:Scope,router:u32,sequence:u64,previous:Key,window:(u64,u64),legs:Vec<Fill>,
+  account:&dyn Fn(&Outpoint)->Option<(Key,u64)>)->R<Batch>{
+  let (start,end)=window;
+  let mut sums:BTreeMap<Outpoint,ChannelObligation>=BTreeMap::new();
+  let mut oracle=0u128;let mut router_due=0u128;
+  for f in &legs{
+   if f.execution_us<start||f.execution_us>=end||f.scope!=scope||f.router!=router{return Err(Reject::Scope)}
    f.spec.validate_v0().map_err(|_|Reject::Bounds)?;
    if f.maker_fee_sats as u128+f.taker_fee_sats as u128!=f.oracle_due_sats as u128+f.router_due_sats as u128{return Err(Reject::FeeLimit)}
    let (mm,tm)=if f.maker_side==OrderSide::Long{(f.spec.long_margin_sats,f.spec.short_margin_sats)}else{(f.spec.short_margin_sats,f.spec.long_margin_sats)};
    for (channel,owner,margin,fee) in [(&f.maker_channel,f.maker_owner,mm,f.maker_fee_sats),(&f.taker_channel,f.taker_owner,tm,f.taker_fee_sats)]{
-    let account=self.accounts.get(&op(channel)).ok_or(Reject::Allocation)?;
-    if account.owner!=owner{return Err(Reject::Allocation)}
+    let (account_owner,pending)=account(&op(channel)).ok_or(Reject::Allocation)?;
+    if account_owner!=owner{return Err(Reject::Allocation)}
     let sum=sums.entry(op(channel)).or_insert_with(||ChannelObligation{channel:channel.clone(),owner,margin_sats:0,fee_sats:0});
     sum.margin_sats=sum.margin_sats.checked_add(margin).ok_or(Reject::Bounds)?;
     sum.fee_sats=sum.fee_sats.checked_add(fee).ok_or(Reject::Bounds)?;
-    if sum.margin_sats.checked_add(sum.fee_sats).ok_or(Reject::Bounds)?>account.balance.pending{return Err(Reject::Capacity)}
+    if sum.margin_sats.checked_add(sum.fee_sats).ok_or(Reject::Bounds)?>pending{return Err(Reject::Capacity)}
    }
    oracle+=f.oracle_due_sats as u128;router_due+=f.router_due_sats as u128;
-   legs.push(f.clone());next+=1;
   }
   let accounts:Vec<_>=sums.into_values().collect();
   if legs.is_empty()||accounts.iter().map(|a|a.fee_sats as u128).sum::<u128>()!=oracle+router_due{return Err(Reject::Bounds)}
-  let mut b=Vec::new();self.scope.put(&mut b);u32b(&mut b,self.id);
-  u64b(&mut b,seq);u64b(&mut b,start);u64b(&mut b,end);b.extend(self.last_batch_digest);
+  let mut b=Vec::new();scope.put(&mut b);u32b(&mut b,router);
+  u64b(&mut b,sequence);u64b(&mut b,start);u64b(&mut b,end);b.extend(previous);
   u64b(&mut b,legs.len() as u64);
   for f in &legs{b.extend(leg_hash(f))}
   u64b(&mut b,accounts.len() as u64);
   for a in &accounts{put_op(&mut b,&a.channel);b.extend(a.owner);u64b(&mut b,a.margin_sats);u64b(&mut b,a.fee_sats);}
   b.extend(oracle.to_le_bytes());b.extend(router_due.to_le_bytes());
   let digest=tagged_hash(b"SHZ/HFT/BATCH/V1",&b);
-  let batch=Batch{scope:self.scope,router:self.id,sequence:seq,window_start:start,window_end:end,previous:self.last_batch_digest,digest,legs,accounts,oracle_due:oracle,router_due};
-  // No external effect; the caller must retain the batch. No abort/release path.
-  self.batch_cursor=next;self.batch_sequence=seq;self.last_batch_digest=digest;
-  Ok(Some(batch))
+  Ok(Batch{scope,router,sequence,window_start:start,window_end:end,previous,digest,legs,accounts,oracle_due:oracle,router_due})
  }
 }

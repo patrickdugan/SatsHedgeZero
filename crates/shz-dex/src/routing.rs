@@ -3,6 +3,8 @@
 //! One trusted single writer per router; no live LN funding or settlement authority.
 mod coalescer;
 pub mod durable;
+pub mod tiered;
+pub mod ln_fees;
 use serde::{Serialize,Deserialize};
 pub use coalescer::{Batch, BatchApproval, ChannelObligation, ChannelPayout, COALESCE_US};
 use crate::OrderSide;
