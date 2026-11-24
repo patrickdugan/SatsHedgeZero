@@ -108,7 +108,10 @@
     "routers_total": 53729949.75673282,
     "system": 84972608.1396117,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7867853795688846,
+    "system_at_optimal_split": 75599810.62474804
    }
   },
   {
@@ -122,7 +125,10 @@
     "routers_total": 161189849.27019846,
     "system": 161189849.27019846,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5515768725361366,
+    "system_at_optimal_split": 107837780.47878774
    }
   },
   {
@@ -136,7 +142,10 @@
     "routers_total": 268649748.7836641,
     "system": 268649748.7836641,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.42463328275164386,
+    "system_at_optimal_split": 140075750.33282745
    }
   },
   {
@@ -150,7 +159,10 @@
     "routers_total": 452908851.2069107,
     "system": 525486054.92499655,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7302577380251853,
+    "system_at_optimal_split": 503712893.8095707
    }
   },
   {
@@ -164,7 +176,10 @@
     "routers_total": 1358726553.6207323,
     "system": 1358726553.6207323,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.4743521137527712,
+    "system_at_optimal_split": 775458204.5337173
    }
   },
   {
@@ -178,7 +193,10 @@
     "routers_total": 2264544256.0345535,
     "system": 2264544256.0345535,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.35125955278799886,
+    "system_at_optimal_split": 1047203515.2578638
    }
   },
   {
@@ -192,7 +210,10 @@
     "routers_total": 4232263799.1633415,
     "system": 4232263799.1633415,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5718750634221581,
+    "system_at_optimal_split": 2965674342.396426
    }
   },
   {
@@ -206,7 +227,10 @@
     "routers_total": 12696791397.490025,
     "system": 12696791397.490025,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.30808086329991363,
+    "system_at_optimal_split": 5505032621.894431
    }
   },
   {
@@ -220,7 +244,10 @@
     "routers_total": 21161318995.816708,
     "system": 21161318995.816708,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.2108295361869917,
+    "system_at_optimal_split": 8044390901.392436
    }
   },
   {
@@ -234,7 +261,10 @@
     "routers_total": 16433997.431401243,
     "system": 25989967.052423257,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7867853795688846,
+    "system_at_optimal_split": 23123176.166116655
    }
   },
   {
@@ -248,7 +278,10 @@
     "routers_total": 49301992.29420373,
     "system": 49301992.29420373,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5515768725361366,
+    "system_at_optimal_split": 32983574.6249574
    }
   },
   {
@@ -262,7 +295,10 @@
     "routers_total": 82169987.15700622,
     "system": 82169987.15700622,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.42463328275164386,
+    "system_at_optimal_split": 42843973.083798155
    }
   },
   {
@@ -276,7 +312,10 @@
     "routers_total": 138528007.7702022,
     "system": 160726680.66830683,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7302577380251853,
+    "system_at_optimal_split": 154067078.79887542
    }
   },
   {
@@ -290,7 +329,10 @@
     "routers_total": 415584023.3106066,
     "system": 415584023.3106066,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.4743521137527712,
+    "system_at_optimal_split": 237183883.46099678
    }
   },
   {
@@ -304,7 +346,10 @@
     "routers_total": 692640038.8510109,
     "system": 692640038.8510109,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.35125955278799886,
+    "system_at_optimal_split": 320300688.12311816
    }
   },
   {
@@ -318,7 +363,10 @@
     "routers_total": 1294492414.7402024,
     "system": 1294492414.7402024,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5718750634221581,
+    "system_at_optimal_split": 907089709.6680827
    }
   },
   {
@@ -332,7 +380,10 @@
     "routers_total": 3883477244.2206073,
     "system": 3883477244.2206073,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.30808086329991363,
+    "system_at_optimal_split": 1683785158.5122042
    }
   },
   {
@@ -346,7 +397,10 @@
     "routers_total": 6472462073.701012,
     "system": 6472462073.701012,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.2108295361869917,
+    "system_at_optimal_split": 2460480607.3563256
    }
   },
   {
@@ -360,7 +414,10 @@
     "routers_total": 19327675.7168967,
     "system": 30566248.849610265,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7867853795688846,
+    "system_at_optimal_split": 27194676.909796197
    }
   },
   {
@@ -374,7 +431,10 @@
     "routers_total": 57983027.15069011,
     "system": 57983027.15069011,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5515768725361366,
+    "system_at_optimal_split": 38791282.339934215
    }
   },
   {
@@ -388,7 +448,10 @@
     "routers_total": 96638378.5844835,
     "system": 96638378.5844835,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.42463328275164386,
+    "system_at_optimal_split": 50387887.770072244
    }
   },
   {
@@ -402,7 +465,10 @@
     "routers_total": 162919850.94109413,
     "system": 189027239.17155746,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7302577380251853,
+    "system_at_optimal_split": 181195022.70241848
    }
   },
   {
@@ -416,7 +482,10 @@
     "routers_total": 488759552.82328236,
     "system": 488759552.82328236,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.4743521137527712,
+    "system_at_optimal_split": 278946933.267075
    }
   },
   {
@@ -430,7 +499,10 @@
     "routers_total": 814599254.7054707,
     "system": 814599254.7054707,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.35125955278799886,
+    "system_at_optimal_split": 376698843.8317315
    }
   },
   {
@@ -444,7 +516,10 @@
     "routers_total": 1522425065.1442323,
     "system": 1522425065.1442323,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5718750634221581,
+    "system_at_optimal_split": 1066808962.8089848
    }
   },
   {
@@ -458,7 +533,10 @@
     "routers_total": 4567275195.432697,
     "system": 4567275195.432697,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.30808086329991363,
+    "system_at_optimal_split": 1980264001.8955243
    }
   },
   {
@@ -472,7 +550,10 @@
     "routers_total": 7612125325.721161,
     "system": 7612125325.721161,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.2108295361869917,
+    "system_at_optimal_split": 2893719040.982064
    }
   },
   {
@@ -486,7 +567,10 @@
     "routers_total": 2826120.2949400307,
     "system": 4469440.478999352,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7867853795688846,
+    "system_at_optimal_split": 3976444.423781556
    }
   },
   {
@@ -500,7 +584,10 @@
     "routers_total": 8478360.884820092,
     "system": 8478360.884820092,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5515768725361366,
+    "system_at_optimal_split": 5672116.600745574
    }
   },
   {
@@ -514,7 +601,10 @@
     "routers_total": 14130601.474700153,
     "system": 14130601.474700153,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.42463328275164386,
+    "system_at_optimal_split": 7367788.777709593
    }
   },
   {
@@ -528,7 +618,10 @@
     "routers_total": 23822372.846969455,
     "system": 27639832.370128177,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7302577380251853,
+    "system_at_optimal_split": 26494594.513180558
    }
   },
   {
@@ -542,7 +635,10 @@
     "routers_total": 71467118.54090837,
     "system": 71467118.54090837,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.4743521137527712,
+    "system_at_optimal_split": 40788018.22136223
    }
   },
   {
@@ -556,7 +652,10 @@
     "routers_total": 119111864.23484728,
     "system": 119111864.23484728,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.35125955278799886,
+    "system_at_optimal_split": 55081441.92954391
    }
   },
   {
@@ -570,7 +669,10 @@
     "routers_total": 222611163.24339604,
     "system": 222611163.24339604,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5718750634221581,
+    "system_at_optimal_split": 155990327.27886027
    }
   },
   {
@@ -584,7 +686,10 @@
     "routers_total": 667833489.7301881,
     "system": 667833489.7301881,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.30808086329991363,
+    "system_at_optimal_split": 289557025.2248979
    }
   },
   {
@@ -598,7 +703,10 @@
     "routers_total": 1113055816.2169802,
     "system": 1113055816.2169802,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.2108295361869917,
+    "system_at_optimal_split": 423123723.1709355
    }
   },
   {
@@ -612,7 +720,10 @@
     "routers_total": 4853769.804196407,
     "system": 7676118.839477961,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7867853795688846,
+    "system_at_optimal_split": 6829414.128893496
    }
   },
   {
@@ -626,7 +737,10 @@
     "routers_total": 14561309.412589222,
     "system": 14561309.412589222,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5515768725361366,
+    "system_at_optimal_split": 9741676.011411339
    }
   },
   {
@@ -640,7 +754,10 @@
     "routers_total": 24268849.020982035,
     "system": 24268849.020982035,
     "fed_cost": 138.0,
-    "router_cost": 37.397260273972606
+    "router_cost": 37.397260273972606,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.42463328275164386,
+    "system_at_optimal_split": 12653937.893929185
    }
   },
   {
@@ -654,7 +771,10 @@
     "routers_total": 40914151.52990942,
     "system": 47470514.25637397,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "federation",
+    "federation_share_minimising_breakeven": 0.7302577380251853,
+    "system_at_optimal_split": 45503605.4384346
    }
   },
   {
@@ -668,7 +788,10 @@
     "routers_total": 122742454.58972825,
     "system": 122742454.58972825,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.4743521137527712,
+    "system_at_optimal_split": 70052096.35638027
    }
   },
   {
@@ -682,7 +805,10 @@
     "routers_total": 204570757.6495471,
     "system": 204570757.6495471,
     "fed_cost": 850.0,
-    "router_cost": 313.972602739726
+    "router_cost": 313.972602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.35125955278799886,
+    "system_at_optimal_split": 94600587.27432592
    }
   },
   {
@@ -696,7 +822,10 @@
     "routers_total": 382327441.6741559,
     "system": 382327441.6741559,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.5718750634221581,
+    "system_at_optimal_split": 267908319.98498252
    }
   },
   {
@@ -710,7 +839,10 @@
     "routers_total": 1146982325.0224676,
     "system": 1146982325.0224676,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.30808086329991363,
+    "system_at_optimal_split": 497304784.989476
    }
   },
   {
@@ -724,7 +856,10 @@
     "routers_total": 1911637208.3707795,
     "system": 1911637208.3707795,
     "fed_cost": 3860.0,
-    "router_cost": 2889.72602739726
+    "router_cost": 2889.72602739726,
+    "binding": "routers",
+    "federation_share_minimising_breakeven": 0.2108295361869917,
+    "system_at_optimal_split": 726701249.9939696
    }
   }
  ],

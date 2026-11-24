@@ -60,8 +60,12 @@ def breakeven(rate_bps, scn, routers):
     v_fed = fed_cost / (SPLIT_FEDERATION * net)
     v_router_each = router_cost / ((1 - SPLIT_FEDERATION) * net)  # volume one router must carry
     v_sys = (fed_cost + routers * router_cost) / net
+    # Split that makes both constraints bind at once (minimises break-even).
+    beta_star = fed_cost / (fed_cost + routers * router_cost)
     return dict(federation=v_fed, per_router=v_router_each, routers_total=v_router_each * routers,
-                system=max(v_fed, v_router_each * routers, v_sys), fed_cost=fed_cost, router_cost=router_cost)
+                system=max(v_fed, v_router_each * routers, v_sys), fed_cost=fed_cost, router_cost=router_cost,
+                binding="routers" if v_router_each * routers > v_fed else "federation",
+                federation_share_minimising_breakeven=beta_star, system_at_optimal_split=v_sys)
 
 
 def adoption_scenarios(analyses, revenue):

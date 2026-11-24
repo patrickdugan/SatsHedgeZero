@@ -119,7 +119,7 @@ def revenue_curve():
         k = int(np.argmax(r))
         ax.plot([x[k]], [r[k]], "o", color=MARKET_COLOR[sym], ms=6, mec=SURFACE, mew=2)
     ax.set_xscale("log")
-    style(ax, "Upper-bound fee yield f·s(f), 100 ms advantage", "fee f (bp)", "bp per unit of momentum volume")
+    style(ax, "Upper-bound fee yield f·s(f), 300→100 ms", "fee f (bp)", "bp per unit of momentum volume")
     ax.legend(fontsize=7, frameon=False)
     f.tight_layout()
     f.savefig(FIG / "fig3_fee_yield_upper_bound.png", facecolor=SURFACE)

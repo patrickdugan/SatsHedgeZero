@@ -65,7 +65,7 @@
   "results/policy_SOL_full_1k.json": "28e806cc6587e83f71925940f2a9d1a9360deb4f0b6162476df4f68ffb94eb98",
   "results/revenue.json": "3ce93329da314d23242a3e50b88e774f530fd0d6730bf17d8a27ffa5b2004440",
   "results/sensitivity_BTC_publication_20261011.json": "cb7c83dd9825e8b72c7ebf893b78f63f3d531b884b2f0b1c3fec6752b0fd90a5",
-  "results/shz_economics.json": "4e672d6a73acaa32251a19769ed31a853774923a4715816e3268c763032ff512"
+  "results/shz_economics.json": "4a14aeec48aca61201b28a126c6251228ddfe764c145cc81e42f56d28ed9e759"
  },
  "figures": [
   "fig1_rare_event_time_vs_volume.png",
