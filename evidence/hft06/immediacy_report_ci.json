@@ -1,0 +1,2317 @@
+{
+ "schema": "shz/public-l2-immediacy-report/v1",
+ "days": [
+  "2026-10-11",
+  "2026-11-23"
+ ],
+ "coverage": [
+  {
+   "day": "2026-10-11",
+   "clean_hours": 24,
+   "missing_hours": [],
+   "dirty_hours": []
+  },
+  {
+   "day": "2026-11-23",
+   "clean_hours": 24,
+   "missing_hours": [],
+   "dirty_hours": []
+  }
+ ],
+ "full_coverage": true,
+ "cross_market_hours": 48,
+ "unavailable_features": [
+  "client_request_congestion"
+ ],
+ "primary_family": "score_imb",
+ "shrinkage_lambda": 100,
+ "min_cell_common": 100,
+ "tiers": [
+  [
+   "free",
+   300,
+   0
+  ],
+  [
+   "mid",
+   200,
+   0.5
+  ],
+  [
+   "prem",
+   100,
+   2
+  ]
+ ],
+ "families": {
+  "score": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.76983984981,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691975,
+     "retrospective_effective_fee_bps": 0.033741416107769026,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.6986084,
+      "mid": 126120336.381262,
+      "prem": 10903986.189326001
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691975,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.9416146,
+     "retrospective_effective_fee_bps": 0.024681200715472366,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446021,
+      "mid": 104874895.311248,
+      "prem": 9608525.1843455
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.9416146,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "imb": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691975,
+     "retrospective_effective_fee_bps": 0.03374141610776902,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.38126199,
+      "prem": 10903986.189326
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691975,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.9416156,
+     "retrospective_effective_fee_bps": 0.02468120071547236,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.4460216,
+      "mid": 104874895.311248,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.9416156,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "imb_acc1": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.76983984981,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691975,
+     "retrospective_effective_fee_bps": 0.033741416107769026,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.381262,
+      "prem": 10903986.189326001
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691975,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.024681200715472362,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446021,
+      "mid": 104874895.311248,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "imb_acc5": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691975,
+     "retrospective_effective_fee_bps": 0.03374141610776902,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.6986094,
+      "mid": 126120336.38126199,
+      "prem": 10903986.189326
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691975,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.814861702048,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.02468120071547236,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446022,
+      "mid": 104874895.31124799,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "depl": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.269197,
+     "retrospective_effective_fee_bps": 0.033741416107769026,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.38126197,
+      "prem": 10903986.189326001
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.269197,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.814861702048,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941614,
+     "retrospective_effective_fee_bps": 0.024681200715472366,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446021,
+      "mid": 104874895.31124797,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941614,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "repl": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691965,
+     "retrospective_effective_fee_bps": 0.033741416107769026,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.6986094,
+      "mid": 126120336.38126197,
+      "prem": 10903986.189326
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691965,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.814861702048,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.9416146,
+     "retrospective_effective_fee_bps": 0.024681200715472362,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446021,
+      "mid": 104874895.31124797,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.9416146,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "spread": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.76983984981,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.269197,
+     "retrospective_effective_fee_bps": 0.03374141610776903,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.381262,
+      "prem": 10903986.189325998
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.269197,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.024681200715472362,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.4460216,
+      "mid": 104874895.31124799,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "micro": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.269197,
+     "retrospective_effective_fee_bps": 0.033741416107769026,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.381262,
+      "prem": 10903986.189325998
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.269197,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.024681200715472362,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.4460216,
+      "mid": 104874895.311248,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "vol1": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691975,
+     "retrospective_effective_fee_bps": 0.03374141610776902,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.381262,
+      "prem": 10903986.189326
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691975,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.024681200715472362,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446021,
+      "mid": 104874895.31124799,
+      "prem": 9608525.1843455
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "vol5": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691975,
+     "retrospective_effective_fee_bps": 0.03374141610776902,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.6986094,
+      "mid": 126120336.381262,
+      "prem": 10903986.189325996
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691975,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.814861702048,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.02468120071547236,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.4460216,
+      "mid": 104874895.311248,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "vol30": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.769839849809,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.269198,
+     "retrospective_effective_fee_bps": 0.03374141610776901,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.38126197,
+      "prem": 10903986.189325998
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.269198,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.814861702048,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.02468120071547236,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.4460216,
+      "mid": 104874895.31124797,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "xmkt": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.76983984981,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.269197,
+     "retrospective_effective_fee_bps": 0.03374141610776903,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.6986084,
+      "mid": 126120336.38126203,
+      "prem": 10903986.189326
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.269197,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.9416146,
+     "retrospective_effective_fee_bps": 0.024681200715472366,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446021,
+      "mid": 104874895.311248,
+      "prem": 9608525.184345499
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.9416146,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0
+  },
+  "score_imb": {
+   "chronological_day1_to_day2": {
+    "held_directional": 83740,
+    "held_common": 83740,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 79709,
+      "mid": 3797,
+      "prem": 234
+     },
+     "fractions_of_common": {
+      "free": 0.9518629090040602,
+      "mid": 0.045342727489849535,
+      "prem": 0.0027943635060902793
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 83740,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 83740,
+       "exact_winner_precision": 0.9518629090040602,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5940.76983984981,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2515251295.2691965,
+     "retrospective_effective_fee_bps": 0.03374141610776904,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2378226972.698609,
+      "mid": 126120336.381262,
+      "prem": 10903986.189326001
+     },
+     "achievable_adoption_weight": {
+      "free": 2515251295.2691965,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "rolling_origin_within_day": {
+    "held_directional": 112153,
+    "held_common": 112153,
+    "retrospective_optimal": {
+     "counts": {
+      "free": 108769,
+      "mid": 3180,
+      "prem": 204
+     },
+     "fractions_of_common": {
+      "free": 0.9698269328506594,
+      "mid": 0.02835412338501868,
+      "prem": 0.0018189437643219531
+     }
+    },
+    "achievable_policy": {
+     "selected_counts": {
+      "free": 112153,
+      "mid": 0,
+      "prem": 0
+     },
+     "selected_fractions_of_common": {
+      "free": 1,
+      "mid": 0,
+      "prem": 0
+     },
+     "paid_selected": 0,
+     "paid_precision_paid_winner": null,
+     "paid_recall": 0,
+     "per_tier": {
+      "free": {
+       "selected": 112153,
+       "exact_winner_precision": 0.9698269328506594,
+       "exact_winner_recall": 1,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "mid": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      },
+      "prem": {
+       "selected": 0,
+       "exact_winner_precision": null,
+       "exact_winner_recall": 0,
+       "mean_net_saving_bps_when_selected": null,
+       "fraction_net_positive": null
+      }
+     },
+     "policy_mean_net_saving_bps": 0,
+     "calibration": []
+    },
+    "oracle_revenue": {
+     "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+     "trade_prints_available": false,
+     "oracle_share": 0.7,
+     "retrospective_optimal_usd": 5015.81486170205,
+     "achievable_policy_usd": 0,
+     "weighted_common_notional_usd": 2903201462.941615,
+     "retrospective_effective_fee_bps": 0.024681200715472362,
+     "achievable_effective_fee_bps": 0,
+     "retrospective_adoption_weight": {
+      "free": 2788718042.446021,
+      "mid": 104874895.31124799,
+      "prem": 9608525.1843455
+     },
+     "achievable_adoption_weight": {
+      "free": 2903201462.941615,
+      "mid": 0,
+      "prem": 0
+     }
+    }
+   },
+   "selected_cells_day1": 0,
+   "strategy_day1_to_day2": {
+    "15": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 83183,
+     "unresolved_exits": 207,
+     "censored_by_hour_end": 350,
+     "unresolved_marked_to_mid_mean_bps": -3.4767560967118203,
+     "unresolved_unmarked": 204,
+     "mean_closed_net_bps": -0.5069652144996529,
+     "se_bps": 0.01853440539983084,
+     "mean_mid_to_mid_bps": 0.168394402322024,
+     "mean_entry_exit_cost_ex_fee_bps": 0.675359616821677,
+     "expected_net_usd_per_day_5": -0.25348260724982646,
+     "expected_net_usd_per_day_10": -0.5069652144996529
+    },
+    "60": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 81627,
+     "unresolved_exits": 705,
+     "censored_by_hour_end": 1408,
+     "unresolved_marked_to_mid_mean_bps": -2.5477335892177146,
+     "unresolved_unmarked": 702,
+     "mean_closed_net_bps": -0.45951887327785995,
+     "se_bps": 0.040297888305381974,
+     "mean_mid_to_mid_bps": 0.2213987977201304,
+     "mean_entry_exit_cost_ex_fee_bps": 0.6809176709979904,
+     "expected_net_usd_per_day_5": -0.22975943663892998,
+     "expected_net_usd_per_day_10": -0.45951887327785995
+    }
+   },
+   "strategy_rolling_origin": {
+    "15": {
+     "entries": 112153,
+     "missed_entry_fills": 0,
+     "filled": 112153,
+     "closed": 111442,
+     "unresolved_exits": 270,
+     "censored_by_hour_end": 441,
+     "unresolved_marked_to_mid_mean_bps": -1.0789835396937117,
+     "unresolved_unmarked": 265,
+     "mean_closed_net_bps": -0.4398065150434691,
+     "se_bps": 0.012981468108278684,
+     "mean_mid_to_mid_bps": 0.12208439940790464,
+     "mean_entry_exit_cost_ex_fee_bps": 0.5618909144513737,
+     "expected_net_usd_per_day_5": -0.21990325752173456,
+     "expected_net_usd_per_day_10": -0.4398065150434691
+    },
+    "60": {
+     "entries": 112153,
+     "missed_entry_fills": 0,
+     "filled": 112153,
+     "closed": 109458,
+     "unresolved_exits": 858,
+     "censored_by_hour_end": 1837,
+     "unresolved_marked_to_mid_mean_bps": -1.5041314956918126,
+     "unresolved_unmarked": 853,
+     "mean_closed_net_bps": -0.41142987585451507,
+     "se_bps": 0.02834149780439824,
+     "mean_mid_to_mid_bps": 0.15132391572209744,
+     "mean_entry_exit_cost_ex_fee_bps": 0.5627537915766125,
+     "expected_net_usd_per_day_5": -0.20571493792725756,
+     "expected_net_usd_per_day_10": -0.4114298758545151
+    }
+   }
+  }
+ },
+ "static_tier_strategies_day2": {
+  "free": {
+   "strategy": {
+    "15": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 83183,
+     "unresolved_exits": 207,
+     "censored_by_hour_end": 350,
+     "unresolved_marked_to_mid_mean_bps": -3.4767560967118203,
+     "unresolved_unmarked": 204,
+     "mean_closed_net_bps": -0.5069652144996533,
+     "se_bps": 0.018534405399830842,
+     "mean_mid_to_mid_bps": 0.16839440232202402,
+     "mean_entry_exit_cost_ex_fee_bps": 0.6753596168216772,
+     "expected_net_usd_per_day_5": -0.25348260724982663,
+     "expected_net_usd_per_day_10": -0.5069652144996533
+    },
+    "60": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 81627,
+     "unresolved_exits": 705,
+     "censored_by_hour_end": 1408,
+     "unresolved_marked_to_mid_mean_bps": -2.547733589217715,
+     "unresolved_unmarked": 702,
+     "mean_closed_net_bps": -0.4595188732778598,
+     "se_bps": 0.04029788830538198,
+     "mean_mid_to_mid_bps": 0.2213987977201305,
+     "mean_entry_exit_cost_ex_fee_bps": 0.6809176709979903,
+     "expected_net_usd_per_day_5": -0.22975943663892992,
+     "expected_net_usd_per_day_10": -0.45951887327785984
+    }
+   },
+   "oracle_revenue": {
+    "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+    "trade_prints_available": false,
+    "oracle_share": 0.7,
+    "retrospective_optimal_usd": 5940.769839849809,
+    "achievable_policy_usd": 0,
+    "weighted_common_notional_usd": 2515251295.2691965,
+    "retrospective_effective_fee_bps": 0.033741416107769026,
+    "achievable_effective_fee_bps": 0,
+    "retrospective_adoption_weight": {
+     "free": 2378226972.6986094,
+     "mid": 126120336.38126197,
+     "prem": 10903986.189326
+    },
+    "achievable_adoption_weight": {
+     "free": 2515251295.2691965,
+     "mid": 0,
+     "prem": 0
+    }
+   }
+  },
+  "mid": {
+   "strategy": {
+    "15": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 83183,
+     "unresolved_exits": 207,
+     "censored_by_hour_end": 350,
+     "unresolved_marked_to_mid_mean_bps": -3.9717249769501186,
+     "unresolved_unmarked": 204,
+     "mean_closed_net_bps": -1.5014324050635397,
+     "se_bps": 0.018540803579219525,
+     "mean_mid_to_mid_bps": 0.16839440232202402,
+     "mean_entry_exit_cost_ex_fee_bps": 0.6698268073855637,
+     "expected_net_usd_per_day_5": -0.7507162025317698,
+     "expected_net_usd_per_day_10": -1.5014324050635397
+    },
+    "60": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 81627,
+     "unresolved_exits": 705,
+     "censored_by_hour_end": 1408,
+     "unresolved_marked_to_mid_mean_bps": -3.6357364981087312,
+     "unresolved_unmarked": 702,
+     "mean_closed_net_bps": -1.451293432170948,
+     "se_bps": 0.040294362954730066,
+     "mean_mid_to_mid_bps": 0.2213987977201305,
+     "mean_entry_exit_cost_ex_fee_bps": 0.6726922298910785,
+     "expected_net_usd_per_day_5": -0.725646716085474,
+     "expected_net_usd_per_day_10": -1.451293432170948
+    }
+   },
+   "oracle_revenue": {
+    "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+    "trade_prints_available": false,
+    "oracle_share": 0.7,
+    "retrospective_optimal_usd": 5940.769839849809,
+    "achievable_policy_usd": 88033.79533442187,
+    "weighted_common_notional_usd": 2515251295.2691965,
+    "retrospective_effective_fee_bps": 0.033741416107769026,
+    "achievable_effective_fee_bps": 0.5,
+    "retrospective_adoption_weight": {
+     "free": 2378226972.6986094,
+     "mid": 126120336.38126197,
+     "prem": 10903986.189326
+    },
+    "achievable_adoption_weight": {
+     "free": 0,
+     "mid": 2515251295.2691965,
+     "prem": 0
+    }
+   }
+  },
+  "prem": {
+   "strategy": {
+    "15": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 83185,
+     "unresolved_exits": 205,
+     "censored_by_hour_end": 350,
+     "unresolved_marked_to_mid_mean_bps": -2.479273441573428,
+     "unresolved_unmarked": 204,
+     "mean_closed_net_bps": -4.490511031670016,
+     "se_bps": 0.018537410142852657,
+     "mean_mid_to_mid_bps": 0.16827170170039876,
+     "mean_entry_exit_cost_ex_fee_bps": 0.6587827333704143,
+     "expected_net_usd_per_day_5": -2.2452555158350083,
+     "expected_net_usd_per_day_10": -4.4905110316700165
+    },
+    "60": {
+     "entries": 83740,
+     "missed_entry_fills": 0,
+     "filled": 83740,
+     "closed": 81629,
+     "unresolved_exits": 703,
+     "censored_by_hour_end": 1408,
+     "unresolved_marked_to_mid_mean_bps": -7.493765347244243,
+     "unresolved_unmarked": 702,
+     "mean_closed_net_bps": -4.437184496162316,
+     "se_bps": 0.04027448251708296,
+     "mean_mid_to_mid_bps": 0.22135836774354117,
+     "mean_entry_exit_cost_ex_fee_bps": 0.6585428639058568,
+     "expected_net_usd_per_day_5": -2.2185922480811584,
+     "expected_net_usd_per_day_10": -4.437184496162317
+    }
+   },
+   "oracle_revenue": {
+    "weight_kind": "depth_reduction_proxy_usd_top5_direction_side",
+    "trade_prints_available": false,
+    "oracle_share": 0.7,
+    "retrospective_optimal_usd": 5940.769839849809,
+    "achievable_policy_usd": 352135.1813376875,
+    "weighted_common_notional_usd": 2515251295.2691965,
+    "retrospective_effective_fee_bps": 0.033741416107769026,
+    "achievable_effective_fee_bps": 2,
+    "retrospective_adoption_weight": {
+     "free": 2378226972.6986094,
+     "mid": 126120336.38126197,
+     "prem": 10903986.189326
+    },
+    "achievable_adoption_weight": {
+     "free": 0,
+     "mid": 0,
+     "prem": 2515251295.2691965
+    }
+   }
+  }
+ },
+ "retrospective_optimal_day2_all": {
+  "counts": {
+   "free": 79709,
+   "mid": 3797,
+   "prem": 234
+  },
+  "fractions_of_common": {
+   "free": 0.9518629090040602,
+   "mid": 0.045342727489849535,
+   "prem": 0.0027943635060902793
+  }
+ },
+ "evidence": "historical observation: public Lighter BTC L2 visible-depth replay, receive clock, $1k probes; no actual executions, no queue position, no client congestion, no trade prints",
+ "production_claim": false,
+ "actual_executions": false,
+ "exploratory": true
+}

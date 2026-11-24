@@ -47,3 +47,12 @@ CI: `.github/workflows/shz-hft06-immediacy-calibration.yml` (push to `research/s
 - Core execution tapes are unavailable here, so the volume weight stays a proxy.
 - Client request congestion is unobservable in public L2.
 - The workflow has not run yet; only the local unit tests and a synthetic aggregation smoke test have.
+
+## Results: 48 public hours (CI run 45422703126)
+
+Historical observation, public Lighter BTC L2, receive clock, $1k probes, visible-depth counterfactual (no actual executions, queue position, trade prints or client congestion). Coverage 48/48 clean hours, ETH cross-market book available for all 48. Aggregate report: `evidence/hft06/immediacy_report_ci.json` (sha256 `03e2d7bfb5def686a9e83a469aa8e683cee2c42661ba1d0f3e7ead15e94cbc9b`, republished as annotations in run 45424124125).
+
+- Retrospective winners on the held-out day (Nov 23, common fills): free 79,709, intermediate 3,797 (4.53%), premium 234 (0.279%). The intermediate and premium counts match the PR #30 run exactly.
+- Achievable policy: no cell in any of the 13 feature families (score, imbalance, 1 s / 5 s imbalance acceleration, depletion, replenishment, spread, microprice, 1/5/30 s volatility, BTC–ETH residual, score × imbalance) met the day-1 selection rule (≥ 100 common fills, shrinkage λ = 100, positive shrunk mean net saving). The policy selects free for all 83,740 held-out decisions (chronological) and all 112,153 rolling-origin decisions. Paid precision and recall are undefined/zero; policy mean net saving 0.
+- Selective strategy (expectation per $1k round trip, Nov 23, both legs pay the tier): 15 s exit, mean closed net −0.51 bps (free), −1.50 (intermediate), −4.49 (premium), SE 0.019; 60 s exit −0.46 / −1.45 / −4.44, SE 0.040. Faster execution lowers spread/slippage cost ex-fee only from 0.675 to 0.659 bps, so neither paid tier recovers its fees. Missed entries 0 (common-fill decisions by construction), unresolved exits 205–207 (15 s) and 703–705 (60 s) kept separate and marked to mid. At 5 or 10 trades per day the expectations are −$0.25 / −$0.51 per day at the free tier and −$2.25 / −$4.49 at premium per $1k clip.
+- Oracle revenue on Nov 23 (70% share, depth-reduction volume proxy, all proxy notional $2.515bn assumed captured): retrospective-optimal adoption $5,940.77 (effective 0.034 bps), achievable causal policy $0.
