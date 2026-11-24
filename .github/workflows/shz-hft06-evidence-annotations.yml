@@ -36,26 +36,12 @@ jobs:
       - name: Hashes
         run: |
           find art -type f -name '*.json*' -print0 | sort -z | xargs -0 sha256sum | while read h f; do echo "::notice title=sha256 $(basename "$f")::$h"; done
-      - name: Immediacy report parts 1-10
-        run: python3 - 0 <<'PY'
-          import json, sys, glob, gzip, base64
-          f = sorted(glob.glob("art/immediacy/**/immediacy_report.json", recursive=True))[0]
-          blob = base64.b64encode(gzip.compress(json.dumps(json.load(open(f)), separators=(",", ":")).encode(), 9)).decode()
-          parts = [blob[i:i + 3800] for i in range(0, len(blob), 3800)]
-          k = int(sys.argv[1])
-          print(f"::notice title=immediacy-report-meta::parts={len(parts)} encoding=gzip+base64")
-          for i in range(k, min(k + 9, len(parts))):
-              print(f"::notice title=immediacy-report {i + 1}/{len(parts)}::{parts[i]}")
-          PY
+      - name: Immediacy report parts 1-9
+        run: python3 .github/scripts/hft06_annotate.py 'art/immediacy/**/immediacy_report.json' 0
       - name: Immediacy report parts 10-18
-        run: python3 - 9 <<'PY'
-          import json, sys, glob, gzip, base64
-          f = sorted(glob.glob("art/immediacy/**/immediacy_report.json", recursive=True))[0]
-          blob = base64.b64encode(gzip.compress(json.dumps(json.load(open(f)), separators=(",", ":")).encode(), 9)).decode()
-          parts = [blob[i:i + 3800] for i in range(0, len(blob), 3800)]
-          for i in range(9, min(18, len(parts))):
-              print(f"::notice title=immediacy-report {i + 1}/{len(parts)}::{parts[i]}")
-          PY
+        run: python3 .github/scripts/hft06_annotate.py 'art/immediacy/**/immediacy_report.json' 9
+      - name: Immediacy report parts 19-27
+        run: python3 .github/scripts/hft06_annotate.py 'art/immediacy/**/immediacy_report.json' 18
       - name: Linux bench summaries
         run: |
           for f in art/bench/*.json; do
