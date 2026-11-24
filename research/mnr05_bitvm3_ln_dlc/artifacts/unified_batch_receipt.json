@@ -1,0 +1,27 @@
+{
+  "relation": "shz/mnr05-unified-bitvm3-batch-clearing/v1",
+  "curve_cycle": "Bn256EngineIPA / GrumpkinEngine (Spartan + IPA, zero trusted setup)",
+  "trusted_setup_ceremony": false,
+  "folds": 3,
+  "primary_constraints": 962221,
+  "secondary_constraints": 10538,
+  "initial_nullifier_root_hex": "357792c40bde114590f705f669b40ebc5a2f7b6f720ec94f55600bada1a3e9a2",
+  "final_nullifier_root_hex": "2f5a7a598a9ad8ccff71c79d978d3084fc8ab98ac5cdc3b2ff3a936f5b9c35b0",
+  "oracle_checkpoint_root_hex": "412a3b800c88540e009ed3d27a814feacbb702bb274fad7de9f390765aca051d",
+  "settlement_txid_hex": "6dc7c59c6e4473ae8b121e5cb9d1e562f7ebf6ec7b9c9d89920065a27aba2530",
+  "auth_accumulator_root_hex": "22c844af430cc87eeb982c177bc626098a9300f57d9d927e6e5b712d34bcafaa",
+  "bitvm3_statement_304b_sha256_hex": "88e8aeed905bb3c5c766e9159b4565938f6a90381d3b31301a09095dc6b62a01",
+  "bitvm3_public_limbs_be_dec": [
+    "181983168258950892611874677116868322707",
+    "190632911977054312384666283156780231169"
+  ],
+  "vk_sha256_hex": "3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6",
+  "proof_bytes": 12784,
+  "proof_sha256_hex": "2fe9382559b439006c2bc4054d185cd0292b19a03664331cae39b535f103950e",
+  "setup_seconds": 23.215323791,
+  "fold_seconds": 3.159660569,
+  "compress_seconds": 123.331325858,
+  "verify_seconds": 4.601543498,
+  "wrong_txid_rejected": true,
+  "wrong_nullifier_root_rejected": true
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "rbzk-nova-progress-v1",
+  "kind": "mnr05",
+  "title": "SHZ-MNR-05 Batched BitVM3 & PTLC Proof",
+  "network": "SatsHedgeZero · Core 31.1 Regtest",
+  "backend": "Nova Spartan/IPA · CPU (0 GPU VRAM)",
+  "pid": 759246,
+  "start_ticks": 16717045,
+  "started_at_unix": 1795492906.0360346,
+  "updated_at_unix": 1795493184.9734507,
+  "stage": "completed",
+  "phase": "All SHZ-MNR-05 BitVM3 + PTLC + Dual Nova proofs independently verified (100%)",
+  "completed_steps": 20,
+  "total_steps": 20,
+  "fold_step": null,
+  "fold_total": null,
+  "progress_pct": 100.0,
+  "recent_lines": [
+    "[ 29.7s |  52.0%] Compressing 8-step Secq256k1 RecursiveSNARK via Spartan/IPA",
+    "[ 63.1s |  60.0%] Secq256k1 8-sig BIP-340 CompressedSNARK proved & verified",
+    "[ 63.2s |  65.0%] Deriving Bn256EngineIPA/Grumpkin public params & Spartan keys",
+    "[ 86.8s |  72.0%] BN254 Unified Batch + Nullifier fold 1 / 3 (U_AB (99M))",
+    "[ 86.9s |  79.0%] BN254 Unified Batch + Nullifier fold 2 / 3 (U_BC (90M))",
+    "[ 87.5s |  86.0%] BN254 Unified Batch + Nullifier fold 3 / 3 (U_CA (55M))",
+    "[ 89.6s |  90.0%] Compressing 3-fold BN254 Unified Batch SNARK via Spartan/IPA",
+    "[222.0s |  95.0%] BN254 3-fold Unified Batch + Nullifier CompressedSNARK proved & verified",
+    "[222.0s |  97.5%] Reconstructing VKs from blank circuits & auditing persisted proofs",
+    "[278.9s | 100.0%] All SHZ-MNR-05 BitVM3 + PTLC + Dual Nova proofs independently verified (100%)"
+  ]
+}
