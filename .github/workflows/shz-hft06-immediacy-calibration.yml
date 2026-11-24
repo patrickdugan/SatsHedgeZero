@@ -1,0 +1,82 @@
+name: shz-hft06-immediacy-calibration
+on:
+  push:
+    branches: ["research/shz-hft06-oracle-relay-20261124"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        day: ["2026-10-11", "2026-11-23"]
+        start: [0, 6, 12, 18]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify fixtures and install decoder
+        run: |
+          python research/public_l2/pilot.py --selftest
+          python -m unittest research/public_l2/test_immediacy.py
+          pip install 'pyarrow>=16,<24'
+      - name: Download and replay six fixed hours
+        env:
+          DAY: ${{ matrix.day }}
+          START: ${{ matrix.start }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/immediacy-results"; mkdir -p "$out"
+          raw="$RUNNER_TEMP/l2-btc.parquet"; eth="$RUNNER_TEMP/l2-eth.parquet"
+          trap 'rm -f "$raw" "$eth"' EXIT
+          base="https://api.cryptohftdata.com/v1/download?file=lighter"
+          get() { curl --fail --silent --show-error --location --retry 2 --retry-delay 3 --max-time 120 --max-filesize 200000000 "$1" -o "$2"; }
+          for i in $(seq "$START" "$((START+5))"); do
+            hour=$(printf '%02d' "$i")
+            rm -f "$raw" "$eth"
+            if get "$base/$DAY/$hour/BTC_orderbook.parquet" "$raw"; then
+              sleep 1.1
+              extra=()
+              if get "$base/$DAY/$hour/ETH_orderbook.parquet" "$eth"; then extra=(--eth-book "$eth"); else printf '%s,%s,eth_unavailable\n' "$DAY" "$hour" >> "$out/failures.csv"; fi
+              if ! python research/public_l2/immediacy.py hour --book "$raw" "${extra[@]}" --hour "${DAY}T${hour}:00:00" --output "$out/$DAY-$hour.immediacy.json" >> "$out/hourly.jsonl"; then
+                printf '%s,%s,replay_failed\n' "$DAY" "$hour" >> "$out/failures.csv"
+              fi
+            else
+              printf '%s,%s,download_failed\n' "$DAY" "$hour" >> "$out/failures.csv"
+            fi
+            rm -f "$raw" "$eth"
+            sleep 1.1
+          done
+          ls -lh "$out"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: immediacy-day-${{ matrix.day }}-${{ matrix.start }}
+          path: ${{ runner.temp }}/immediacy-results
+          retention-days: 14
+  aggregate:
+    needs: replay
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: immediacy-day-*
+          path: hourly
+      - run: python research/public_l2/immediacy.py aggregate --root hourly --output immediacy_report.json | tee immediacy_report.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: immediacy-report
+          path: |
+            immediacy_report.json
+            immediacy_report.jsonl
+          retention-days: 14
