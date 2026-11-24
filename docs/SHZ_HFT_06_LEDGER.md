@@ -31,11 +31,20 @@ Branch `research/shz-hft06-oracle-relay-20261124`, stacked on HFT-05 `research/s
 | G-NET-1 | Measured multi-site delivery, clock uncertainty and realized lead | OPEN: loopback only (premium-vs-standard p50 197.7 ms trusted, 181.7 ms federated) | Deploy relay + 3 subscriber sites; `shz-relay subscribe ... --count 18000` per site with PTP/NTP offset logs |
 | G-LN-1 | Real Lightning commitment updates and fee receipt verification (LDK) | OPEN: `LightningAdapter` trait + `MockAdapter` | See `SHZ_HFT_06_ROUTER_LN.md` LDK notes; regtest loop before Testnet4 |
 | G-LN-2 | Tiered router journal (durable WAL) | OPEN: tiered engine is in-memory; HFT-05 `DurableRouter` path is durable | Port HFT-05 journal framing to `TieredRouter` events |
-| G-CAL-1 | 48 h public immediacy calibration | PENDING CI | Push triggers `shz-hft06-immediacy-calibration`; or `workflow_dispatch` |
+| G-CAL-1 | 48 h public immediacy calibration | DONE: run 45422703126, 48/48 clean hours; achievable causal policy selects free; paid round trips −1.50 / −4.49 bps | Results in `research/public_l2/IMMEDIACY.md`; next: fresh dates after design freeze |
 | G-CAL-2 | TradingMoneyball private L2 caches and Core execution tapes | BLOCKED: not present on this machine | Run `immediacy.py hour --book <cache parquet>` on the cache host with an adapter to `pilot.Book` |
 | G-CAL-3 | Client request congestion | BLOCKED: not observable in public L2 | Requires relay/router request traces |
 | G-SEC-1 | Independent security review (relay auth, envelopes, ledger) | OPEN | External reviewer |
 | G-LEGAL-1 | Market data licensing, derivatives and fee arrangements | OPEN | Counsel review before any paid tier |
+
+## CI evidence
+
+| Run | Workflow | Result |
+| --- | --- | --- |
+| 45422703072 | shz-hft06-oracle-relay (tests, Linux relay and router benches) | success |
+| 45422703126 | shz-hft06-immediacy-calibration | success |
+| 45424124125 | shz-hft06-evidence-annotations (aggregates as public notices) | success |
+| 45422702655 | shz-mnr05-bitvm3-ln-dlc | failure, also failing on the HFT-05 base adc01e1 (runs 45384479068, 45384468149); green on main 9ae87d1 |
 
 ## Reproduce
 
