@@ -32,6 +32,8 @@ from bip340 import G, N, _add, _int, _mul, tagged_hash
 
 DIGIT_TAG = b"SatsHedgeZero/DLC/DigitOutcome/v0"
 ANN_TAG = "SHZ/DLC/ANNOUNCEMENT/V1"
+UNATTESTABLE_TAG = "SHZ/DLC/UNATTESTABLE/V1"
+UNATTESTABLE_GRACE_US = 60_000_000
 NUM_BITS = 20  # integer USD up to 1,048,575
 OUTCOME_WINDOW_US = 30_000_000
 OUTCOME_RULE = "floor(median_e8 / 1e8) of the first VALID FROST relay packet with slot_us >= maturity"
@@ -40,6 +42,15 @@ OUTCOME_RULE = "floor(median_e8 / 1e8) of the first VALID FROST relay packet wit
 def digit_message(event_id: str, idx: int, bit: int) -> bytes:
     e = event_id.encode()
     return tagged_hash(DIGIT_TAG, len(e).to_bytes(4, "little") + e + bytes([idx, bit]))
+
+
+def unattestable_message(event_id: str) -> bytes:
+    return tagged_hash(UNATTESTABLE_TAG, event_id.encode())
+
+
+def nonce_count(num_bits: int) -> int:
+    """Digits, then the announcement nonce, then the unattestable-notice nonce."""
+    return num_bits + 2
 
 
 def decompose(price: int, n: int) -> list[int]:
@@ -119,7 +130,7 @@ class DlcMember:
             if "deal" not in ev:
                 raise ValueError("event already set up")
             return ev["deal"]
-        n_nonces = num_bits + 1
+        n_nonces = nonce_count(num_bits)
         polys = [[frost.rand_scalar() for _ in range(self.t)] for _ in range(n_nonces)]
         commitments = [[frost.ser(_mul(G, a)).hex() for a in p] for p in polys]
         enc = {}
@@ -132,7 +143,7 @@ class DlcMember:
             ]
         own = [(sum(a * pow(self.i, k, N) for k, a in enumerate(p)) % N).to_bytes(32, "big").hex() for p in polys]
         deal = {"dealer": self.i, "commitments": commitments, "enc": enc}
-        self.s["events"][event_id] = {"maturity_unix": maturity_unix, "num_bits": num_bits, "deal": deal, "own": own}
+        self.s["events"][event_id] = {"maturity_unix": maturity_unix, "num_bits": num_bits, "n_nonces": n_nonces, "deal": deal, "own": own}
         _atomic_write(self.path, self.s)
         return deal
 
@@ -143,7 +154,7 @@ class DlcMember:
             return ev["R"]
         if str(self.i) not in deals or len(deals) < self.t:
             raise ValueError("qualified dealer set must include me and have at least t members")
-        n_nonces = ev["num_bits"] + 1
+        n_nonces = ev.get("n_nonces", ev["num_bits"] + 1)
         if deals[str(self.i)]["commitments"] != ev["deal"]["commitments"]:
             raise ValueError("my own commitments were altered")
         shares = [0] * n_nonces
@@ -190,15 +201,35 @@ class DlcMember:
         nb = ev["num_bits"]
         if (core.get("event_id"), core.get("maturity_unix"), core.get("num_bits")) != (event_id, ev["maturity_unix"], nb) \
                 or core.get("oracle_pubkey_x") != self.share["group"]["group_pubkey"] \
-                or core.get("digit_nonces_x") != ev["R"][:nb] or core.get("announcement_nonce_x") != ev["R"][nb]:
+                or core.get("digit_nonces_x") != ev["R"][:nb] or core.get("announcement_nonce_x") != ev["R"][nb] \
+                or core.get("unattestable_nonce_x") != (ev["R"][nb + 1] if len(ev["R"]) > nb + 1 else None):
             raise ValueError("announcement does not match my nonce setup")
         msg = announcement_message(core)
         z = self._partial(ev, nb, msg, signers)
         _atomic_write(self.path, self.s)  # lock is durable before the partial leaves
         return z.to_bytes(32, "big").hex()
 
+    def sign_unattestable(self, event_id: str, now_us: int, signers: list[int]) -> str:
+        """Threshold notice that this event will never be attested. Mutually exclusive
+        with attesting: refused once any digit nonce has signed, and afterwards
+        sign_outcome refuses."""
+        ev = self._ev(event_id)
+        nb = ev["num_bits"]
+        if len(ev["R"]) <= nb + 1:
+            raise ValueError("event was announced without an unattestable nonce")
+        if now_us < ev["maturity_unix"] * 1_000_000 + OUTCOME_WINDOW_US + UNATTESTABLE_GRACE_US:
+            raise ValueError("outcome window plus grace has not passed")
+        if any(int(d) < nb for d in ev["signed"]):
+            raise ValueError("already attested")
+        ev["unattestable"] = True
+        z = self._partial(ev, nb + 1, unattestable_message(event_id), signers)
+        _atomic_write(self.path, self.s)
+        return z.to_bytes(32, "big").hex()
+
     def sign_outcome(self, event_id: str, price_usd: int, signers: list[int]) -> list[str]:
         ev = self._ev(event_id)
+        if ev.get("unattestable"):
+            raise ValueError("event declared unattestable")
         nb = ev["num_bits"]
         bits = decompose(price_usd, nb)
         zs = [self._partial(ev, d, digit_message(event_id, d, bits[d]), signers) for d in range(nb)]

@@ -47,6 +47,11 @@ def main():
                 assert sig[:64] == core["digit_nonces_x"][d], "digit signed with a nonce other than the announced one"
                 assert bip340.verify(dlc.digit_message(core["event_id"], d, bit), gx, bytes.fromhex(sig)), f"bad digit {d}"
             out.update(price_usd=att["price_usd"], digits_ok=len(att["digit_signatures"]), signers=att["signers"], outcome_packet=att["outcome_packet"]["seq"])
+        if ev["status"] == "unattestable":
+            sig = bytes.fromhex(ev["unattestable_signature"])
+            assert sig[:32].hex() == core["unattestable_nonce_x"], "notice not signed with the announced nonce"
+            assert bip340.verify(dlc.unattestable_message(core["event_id"]), gx, sig), "bad unattestable notice"
+            out.update(unattestable_notice_ok=True, signers=ev["unattestable_signers"])
         print(json.dumps(out))
         return
     latest = get(a.base + "/v1/latest")

@@ -60,7 +60,7 @@ class DlcOracle(unittest.TestCase):
             # Announcement: threshold signature with the reserved nonce, all nonces even-Y and distinct.
             self.assertTrue(bip340.verify(dlc.announcement_message(core), gx, bytes.fromhex(ev["announcement_signature"])))
             self.assertEqual(ev["announcement_signature"][:64], core["announcement_nonce_x"])
-            self.assertEqual(len(set(core["digit_nonces_x"] + [core["announcement_nonce_x"]])), dlc.NUM_BITS + 1)
+            self.assertEqual(len(set(core["digit_nonces_x"] + [core["announcement_nonce_x"], core["unattestable_nonce_x"]])), dlc.NUM_BITS + 2)
             self.assertEqual(c.coord.setup(maturity), ev, "setup is idempotent")
 
             # Two VALID relay packets after maturity: the outcome is the first.
@@ -96,6 +96,42 @@ class DlcOracle(unittest.TestCase):
                        "announcement_core": core, "announcement_signature": ev["announcement_signature"],
                        "attestation": ev["shz_dlc_attestation"]}
             (HERE / "fixture_dlc_event.json").write_text(json.dumps(fixture, indent=1))
+        finally:
+            c.close()
+
+    def test_unattestable_notice_is_exclusive_with_attestation(self):
+        c = Confed(nbits=8)
+        try:
+            now_s = pr.now_us() // 1_000_000
+            past = now_s - 600  # maturity long gone, no packet in its window
+            ev = c.coord.setup(past)
+            gx = bytes.fromhex(c.group["group_pubkey"])
+            ev = c.coord.attest(ev)
+            self.assertEqual(ev["status"], "unattestable")
+            sig = bytes.fromhex(ev["unattestable_signature"])
+            self.assertEqual(sig[:32].hex(), ev["core"]["unattestable_nonce_x"])
+            self.assertTrue(bip340.verify(dlc.unattestable_message(ev["core"]["event_id"]), gx, sig))
+            for j in ev["unattestable_signers"]:  # signers can no longer attest this event
+                with self.assertRaises(ValueError):
+                    c.members[j - 1].dlc.sign_outcome(ev["core"]["event_id"], 58_000, ev["unattestable_signers"])
+            # An attested event cannot be declared unattestable, and a member that saw a
+            # VALID packet in the window refuses the notice.
+            fut = now_s - now_s % 60 + 60
+            ev2 = c.coord.setup(fut)
+            p1 = c.relay.publish(fut * 1_000_000, fake(BASE))
+            ev2 = c.coord.attest(ev2)
+            self.assertEqual(ev2["status"], "attested")
+            m = c.members[ev2["attestation"]["signers"][0] - 1]
+            with self.assertRaises(ValueError):
+                m.dlc.sign_unattestable(ev2["core"]["event_id"], (fut + 3_600) * 1_000_000, ev2["attestation"]["signers"])
+            spare = next(x for x in c.members if x.index not in ev2["attestation"]["signers"])
+            spare._observe(p1)
+            with self.assertRaises(ValueError):
+                spare.dlc_unattestable({"event_id": ev2["core"]["event_id"], "signers": [spare.index] + ev2["attestation"]["signers"][:2]})
+            # Too early: before window + grace the notice is refused.
+            ev3 = c.coord.setup(fut + 60)
+            with self.assertRaises(ValueError):
+                spare.dlc.sign_unattestable(ev3["core"]["event_id"], pr.now_us(), [1, 2, 3])
         finally:
             c.close()
 

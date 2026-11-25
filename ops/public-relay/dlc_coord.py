@@ -87,7 +87,7 @@ class DlcCoordinator:
         r_list = rs[qualified[0]]
         if any(r != r_list for r in rs.values()):
             raise RuntimeError("members disagree on group nonces")
-        negate = [bool(dlc.group_nonce(deals, d)[1] & 1) for d in range(self.num_bits + 1)]
+        negate = [bool(dlc.group_nonce(deals, d)[1] & 1) for d in range(dlc.nonce_count(self.num_bits))]
         core = {
             "event_id": event_id,
             "maturity_unix": maturity_unix,
@@ -95,6 +95,8 @@ class DlcCoordinator:
             "oracle_pubkey_x": self.group["group_pubkey"],
             "digit_nonces_x": r_list[: self.num_bits],
             "announcement_nonce_x": r_list[self.num_bits],
+            "unattestable_nonce_x": r_list[self.num_bits + 1],
+            "unattestable_rule": "threshold BIP340 signature over tagged_hash('SHZ/DLC/UNATTESTABLE/V1', event_id) with unattestable_nonce_x when no VALID packet exists in the outcome window; members never sign both this and digits",
             "outcome": dlc.OUTCOME_RULE,
             "digit_message": "shz_dlc::oracle_digit_message(event_id, digit_idx, bit), MSB first (shz_margin::decompose_price_bits)",
             "threshold": f"{self.t}-of-{n}",
@@ -136,10 +138,8 @@ class DlcCoordinator:
         event_id, nb = core["event_id"], core["num_bits"]
         pkt = self.outcome_packet(core["maturity_unix"])
         if pkt is None:
-            if pr.now_us() > core["maturity_unix"] * 1_000_000 + dlc.OUTCOME_WINDOW_US + 10_000_000:
-                ev["status"] = "unattestable_no_valid_packet"
-                self._save(ev)
-                self.stats["unattestable"] += 1
+            if pr.now_us() > core["maturity_unix"] * 1_000_000 + dlc.OUTCOME_WINDOW_US + dlc.UNATTESTABLE_GRACE_US:
+                return self.declare_unattestable(ev)
             return ev
         deals = {k: {"commitments": v} for k, v in ev["nonce_commitments"].items()}
         price = pkt["body"]["median_e8"] // 100_000_000
@@ -164,6 +164,30 @@ class DlcCoordinator:
             )
             self._save(ev)
             self.stats["attested"] += 1
+            return ev
+        self.stats["attest_failures"] += 1
+        return ev
+
+    def declare_unattestable(self, ev: dict) -> dict:
+        core = ev["core"]
+        event_id, nb = core["event_id"], core["num_bits"]
+        if "unattestable_nonce_x" not in core:
+            ev["status"] = "unattestable_no_valid_packet"  # announced before the notice nonce existed
+            self._save(ev)
+            self.stats["unattestable"] += 1
+            return ev
+        deals = {k: {"commitments": v} for k, v in ev["nonce_commitments"].items()}
+        msg = dlc.unattestable_message(event_id)
+        for subset in itertools.combinations(ev["qualified"], self.t):
+            try:
+                parts = {j: int(_post(self.url_by_index[j] + "/dlc/sign-unattestable", {"event_id": event_id, "signers": list(subset)})["z"], 16) for j in subset}
+                sig = dlc.aggregate(self.group, deals, ev["negate"], nb + 1, msg, core["unattestable_nonce_x"], parts)
+            except Exception:  # noqa: BLE001 - refusing or absent member: try another set
+                continue
+            ev.update(status="unattestable", unattestable_signature=sig.hex(), unattestable_digest=msg.hex(),
+                      unattestable_signers=list(subset), unattestable_at_us=pr.now_us())
+            self._save(ev)
+            self.stats["unattestable"] += 1
             return ev
         self.stats["attest_failures"] += 1
         return ev

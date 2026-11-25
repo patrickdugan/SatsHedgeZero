@@ -56,6 +56,15 @@ class Member:
             if len(self.seen_valid) > 2_000:
                 self.seen_valid.pop(min(self.seen_valid))
 
+    def dlc_unattestable(self, req: dict) -> dict:
+        event_id, signers = req["event_id"], [int(x) for x in req["signers"]]
+        with self.dlc_lock:
+            maturity_us = self.dlc._ev(event_id)["maturity_unix"] * 1_000_000
+            if any(maturity_us <= s < maturity_us + dlc_oracle.OUTCOME_WINDOW_US for s in self.seen_valid):
+                raise ValueError("a VALID packet in the outcome window exists")
+            z = self.dlc.sign_unattestable(event_id, pr.now_us(), signers)
+        return {"index": self.index, "z": z}
+
     def dlc_attest(self, req: dict) -> dict:
         """Attest only a group-signed VALID packet in [maturity, maturity + 30 s) and,
         if this member has seen an earlier VALID packet at or after maturity, only that one."""
@@ -143,6 +152,8 @@ def make_handler(m: Member):
                         return self._json(200, {"index": m.index, "z": m.dlc.sign_announcement(req["event_id"], req["core"], [int(x) for x in req["signers"]])})
                 if self.path == "/dlc/sign-outcome":
                     return self._json(200, m.dlc_attest(req))
+                if self.path == "/dlc/sign-unattestable":
+                    return self._json(200, m.dlc_unattestable(req))
                 return self._json(404, {"error": "not found"})
             except Exception as e:  # noqa: BLE001 - every refusal is reported to the coordinator
                 m.refused += 1
