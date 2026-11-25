@@ -35,6 +35,13 @@ impl From<super::durable::DurableError> for TieredDurableError{
 }
 type D<T>=Result<T,TieredDurableError>;
 
+fn lane_ok(l:&Lane,owner:&Key)->bool{
+ l.peer!=[0;32]&&l.monitor!=[0;32]&&l.peer!=l.monitor&&l.peer!=*owner&&l.monitor!=*owner&&
+ l.initial.state!=[0;32]&&l.initial.revision==0
+}
+/// Serializable mirror of `Lane` for the journal.
+#[derive(Debug,Serialize,Deserialize)]
+struct LaneRec{channel:BtcOutPoint,peer:Key,monitor:Key,initial:Head}
 struct Entry{batch:Batch,phase:Phase,ack:Option<AckBundle>}
 struct State{
  router:TieredRouter,lanes:BTreeMap<Outpoint,LaneState>,recipients:FeeRecipients,config:Key,
@@ -47,8 +54,7 @@ impl State{
   let mut map=BTreeMap::new();
   for l in lanes{
    let owner=router.account_owner(&op(&l.channel)).ok_or(TieredDurableError::Config)?;
-   if l.peer==[0;32]||l.monitor==[0;32]||l.peer==l.monitor||l.peer==owner||l.monitor==owner||
-      l.initial.state==[0;32]||l.initial.revision!=0||
+   if !lane_ok(&l,&owner)||
       map.insert(op(&l.channel),LaneState{peer:l.peer,monitor:l.monitor,head:l.initial}).is_some(){return Err(TieredDurableError::Config)}
   }
   if map.len()!=router.account_count(){return Err(TieredDurableError::Config)}
@@ -91,11 +97,21 @@ impl State{
   entry.phase=match bundle.disposition{Disposition::Commit=>Phase::Committed,Disposition::FencedAbort=>Phase::Aborted};
   entry.ack=Some(bundle);Ok(true)
  }
+ fn register(&mut self,allocation:Allocation,rec:LaneRec)->Result<(),TierReject>{
+  let lane=Lane{channel:rec.channel,peer:rec.peer,monitor:rec.monitor,initial:rec.initial};
+  let k=op(&allocation.channel);
+  if lane.channel!=allocation.channel||self.lanes.contains_key(&k)||!lane_ok(&lane,&allocation.owner){return Err(TierReject::Allocation)}
+  let authority=self.router.authority();
+  self.router.register(allocation,&authority)?;
+  self.lanes.insert(k,LaneState{peer:lane.peer,monitor:lane.monitor,head:lane.initial});
+  Ok(())
+ }
  fn apply(&mut self,event:Event)->Result<Reply,TierReject>{
   match event{
    Event::Mark{mark,now}=>{self.router.ingest_mark(mark,now)?;Ok(Reply::Unit)},
    Event::Submit{intent,entitlement,now}=>Ok(Reply::Due(self.router.submit(intent,entitlement.as_ref(),now)?)),
    Event::Process{now}=>Ok(Reply::Outcome(self.router.process_one(now)?)),
+   Event::Register{allocation,lane}=>{self.register(allocation,lane)?;Ok(Reply::Unit)},
    Event::Hold{on}=>{self.router.set_emergency_hold(on);Ok(Reply::Unit)},
    Event::Seal=>{
     let batch=self.router.seal_batch()?;
@@ -117,6 +133,7 @@ enum Event{
  Submit{intent:IntentV6,entitlement:Option<Entitlement>,now:u64},
  Process{now:u64},
  Hold{on:bool},
+ Register{allocation:Allocation,lane:LaneRec},
  Seal,
  Prepare{sequence:u64,approvals:Vec<BatchApproval>},
  Resolve{bundle:AckBundle},
@@ -190,6 +207,11 @@ impl DurableTieredRouter{
   match self.record(Event::Submit{intent,entitlement,now})?{Reply::Due(x)=>Ok(x),_=>unreachable!()}
  }
  pub fn process_one(&mut self,now:u64)->D<Option<TierOutcome>>{match self.record(Event::Process{now})?{Reply::Outcome(x)=>Ok(x),_=>unreachable!()}}
+ /// Add an account and its lane to a live venue. Journaled and fsynced before it is applied.
+ pub fn register(&mut self,allocation:Allocation,lane:Lane)->D<()>{
+  let lane=LaneRec{channel:lane.channel,peer:lane.peer,monitor:lane.monitor,initial:lane.initial};
+  self.record(Event::Register{allocation,lane}).map(|_|())
+ }
  pub fn set_emergency_hold(&mut self,on:bool)->D<()>{self.record(Event::Hold{on}).map(|_|())}
  pub fn seal_batch(&mut self)->D<Option<Batch>>{match self.record(Event::Seal)?{Reply::Batch(x)=>Ok(x),_=>unreachable!()}}
  pub fn prepare(&mut self,sequence:u64,approvals:Vec<BatchApproval>)->D<()>{self.record(Event::Prepare{sequence,approvals}).map(|_|())}

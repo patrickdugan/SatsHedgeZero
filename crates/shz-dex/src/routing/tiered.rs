@@ -255,7 +255,7 @@ struct Queued{intent:IntentV6,ent_until:u64}
 struct Quote{intent:IntentV6,remaining:u64,hold_per_unit:u64}
 
 pub struct TieredRouter{
- cfg:TieredConfig,policy_id:Key,clock:u64,arrival:u64,activation:u64,hold:bool,
+ cfg:TieredConfig,authority:Key,policy_id:Key,clock:u64,arrival:u64,activation:u64,hold:bool,
  accounts:BTreeMap<Outpoint,Account>,
  cancels:BTreeMap<(u64,u64),Queued>,queue:BTreeMap<(u64,u64),Queued>,
  bids:BTreeMap<BookKey,Quote>,asks:BTreeMap<BookKey,Quote>,
@@ -273,15 +273,30 @@ impl TieredRouter{
    accounts.insert(op(&a.channel),Account{owner:a.owner,balance:Balance{cap:s.sats,free:s.sats,resting:0,pending:0,committed:0,paid_fees:0},last_seq:0});
   }}
   let policy_id=cfg.execution.id();
-  Ok(Self{cfg,policy_id,clock:0,arrival:0,activation:0,hold:false,accounts,cancels:BTreeMap::new(),queue:BTreeMap::new(),
+  Ok(Self{cfg,authority:registry.authority,policy_id,clock:0,arrival:0,activation:0,hold:false,accounts,cancels:BTreeMap::new(),queue:BTreeMap::new(),
    bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),marks:Vec::new(),
    fills:BTreeMap::new(),fill_log:Vec::new(),batch_cursor:0,batch_sequence:0,last_batch_digest:[0;32]})
+ }
+ /// Add an account after start. `authority` must be the key this router was created with.
+ /// Same checks as `Registry::new` plus: a share for this router exists and the outpoint is new.
+ pub fn register(&mut self,allocation:Allocation,authority:&Key)->T<()>{
+  if allocation.scope!=self.cfg.scope{return Err(TierReject::Scope)}
+  if *authority!=self.authority{return Err(TierReject::Signature)}
+  let h=allocation.digest()?;
+  verify(&allocation.owner,&h,&allocation.owner_sig)?;verify(authority,&h,&allocation.authority_sig)?;
+  let sats=allocation.shares.iter().find(|s|s.router==self.cfg.router).ok_or(TierReject::Allocation)?.sats;
+  let k=op(&allocation.channel);
+  if self.accounts.contains_key(&k){return Err(TierReject::Allocation)}
+  self.accounts.insert(k,Account{owner:allocation.owner,balance:Balance{cap:sats,free:sats,resting:0,pending:0,committed:0,paid_fees:0},last_seq:0});
+  Ok(())
  }
  pub fn execution_policy_id(&self)->Key{self.policy_id}
  pub fn tariff(&self)->&TariffSchedule{&self.cfg.tariff}
  pub fn execution(&self)->&ExecutionPolicy{&self.cfg.execution}
  pub fn balance(&self,channel:&BtcOutPoint)->Option<Balance>{self.accounts.get(&op(channel)).map(|a|a.balance)}
  pub fn resting(&self)->usize{self.locations.len()}
+ /// Resting quotes in book order (bids best first, then asks best first) with remaining USD.
+ pub fn resting_quotes(&self)->Vec<(&IntentV6,u64)>{self.bids.values().chain(self.asks.values()).map(|q|(&q.intent,q.remaining)).collect()}
  pub fn pending_orders(&self)->usize{self.queue.len()+self.cancels.len()}
  pub fn fill_count(&self)->usize{self.fill_log.len()}
  pub fn fill(&self,taker_id:&Key)->Option<&TieredFill>{self.fills.get(taker_id)}
@@ -486,6 +501,7 @@ impl TieredRouter{
  pub fn marks(&self)->&[MarkView]{&self.marks}
  pub fn clock_us(&self)->u64{self.clock}
  pub fn batch_sequence(&self)->u64{self.batch_sequence}
+ pub(super) fn authority(&self)->Key{self.authority}
  pub(super) fn account_count(&self)->usize{self.accounts.len()}
  pub(super) fn account_owner(&self,k:&Outpoint)->Option<Key>{self.accounts.get(k).map(|a|a.owner)}
  pub(super) fn account_balance(&self,k:&Outpoint)->Option<Balance>{self.accounts.get(k).map(|a|a.balance)}

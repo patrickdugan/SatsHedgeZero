@@ -70,15 +70,16 @@ impl Policy{
   Scope{network:self.network,epoch:self.epoch,policy:tagged_hash(b"SHZ/HFT/POLICY/V1",&b)}
  }
 }
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub struct Share{pub router:u32,pub sats:u64}
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Allocation{
  pub scope:Scope,pub owner:Key,pub channel:BtcOutPoint,pub total_sats:u64,pub shares:Vec<Share>,
  pub owner_sig:Bip340Signature,pub authority_sig:Bip340Signature,
 }
 impl Allocation{
- fn digest(&self)->R<Key>{
+ /// Digest both parties sign; a server hands this to the owner and the authority.
+ pub fn digest(&self)->R<Key>{
   if self.total_sats==0||self.shares.is_empty()||self.shares.len()>64{return Err(Reject::Allocation)}
   let mut sum=0u64;let mut prev=0;
   let mut b=Vec::new();self.scope.put(&mut b);b.extend(self.owner);put_op(&mut b,&self.channel);
@@ -91,6 +92,11 @@ impl Allocation{
   if sum>self.total_sats{return Err(Reject::Allocation)}
   Ok(tagged_hash(b"SHZ/HFT/ALLOCATION/V1",&b))
  }
+ /// Assemble an allocation from independently produced signatures (not verified here).
+ #[allow(clippy::too_many_arguments)]
+ pub fn from_parts(scope:Scope,owner:Key,channel:BtcOutPoint,total_sats:u64,shares:Vec<Share>,owner_sig:Bip340Signature,authority_sig:Bip340Signature)->Self{
+  Self{scope,owner,channel,total_sats,shares,owner_sig,authority_sig}
+ }
  pub fn signed(scope:Scope,owner_sk:&Key,authority_sk:&Key,channel:BtcOutPoint,total_sats:u64,shares:Vec<Share>)->R<Self>{
   let zero=Bip340Signature{r_x:[0;32],s:[0;32]};
   let mut a=Self{scope,owner:public(owner_sk),channel,total_sats,shares,owner_sig:zero,authority_sig:zero};
@@ -100,7 +106,7 @@ impl Allocation{
 /// Canonical allocation snapshot chosen by the channel-state authority.
 /// Duplicate outpoints are forbidden even across owners. Independent processes
 /// must use this same registry and one single writer per allocated router.
-pub struct Registry{scope:Scope,allocations:Vec<Allocation>}
+pub struct Registry{scope:Scope,authority:Key,allocations:Vec<Allocation>}
 impl Registry{
  pub fn new(scope:Scope,authority:Key,allocations:Vec<Allocation>)->R<Self>{
   let mut seen=BTreeSet::new();
@@ -108,8 +114,10 @@ impl Registry{
    if a.scope!=scope||!seen.insert(op(&a.channel)){return Err(Reject::Allocation)}
    let h=a.digest()?;verify(&a.owner,&h,&a.owner_sig)?;verify(&authority,&h,&a.authority_sig)?;
   }
-  Ok(Self{scope,allocations})
+  Ok(Self{scope,authority,allocations})
  }
+ /// The channel-state authority key this snapshot was verified against.
+ pub fn authority(&self)->Key{self.authority}
 }
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub enum Tier{Free,Priority}
