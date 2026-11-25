@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHZ Venue (testnet)</title>
+<link rel="icon" href="vendor/bitcornwisdom/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="venue.css">
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <span class="brand">SatsHedgeZero <span class="tag testnet">TESTNET</span></span>
+    <select id="market" aria-label="Market"><option>SHZ-BTCUSD-INV</option></select>
+    <span><span class="lbl">Oracle mark</span><span id="mark" class="mark">&mdash;</span></span>
+    <a id="frost" class="badge warn" href="explorer.html#/packet">FROST 3-of-5 signed</a>
+    <span><span class="lbl">Mark age</span><span id="markage" class="mono">&mdash;</span></span>
+    <span><span class="lbl">Resting / batch</span><span id="routerinfo" class="mono">&mdash;</span></span>
+    <span class="grow"></span>
+    <span class="seg" id="toptier" role="group" aria-label="Tier"><button data-tier="standard">Standard</button><button data-tier="intermediate">Intermediate</button><button data-tier="premium">Premium</button></span>
+    <span id="conn" class="badge warn">connecting</span>
+    <a href="explorer.html">Explorer</a>
+  </header>
+  <main class="grid">
+    <section class="panel chart"><iframe id="chart" title="SHZ-BTCUSD-INV chart" sandbox="allow-scripts allow-same-origin"></iframe></section>
+    <section class="panel bookcol">
+      <h3>Order book <span class="mono muted">USD</span></h3>
+      <div class="colhead"><span>Price</span><span>Size USD</span><span>Total</span></div>
+      <div class="book"><div class="side asks" id="asks"></div><div class="spread" id="spread"></div><div class="side bids" id="bids"></div></div>
+      <h3>Recent trades</h3>
+      <div class="trades" id="trades"></div>
+    </section>
+    <section class="panel formcol">
+      <div class="tabs" id="otabs"><button data-t="limit" class="on">Limit</button><button data-t="market">Market (FOK)</button></div>
+      <div class="form">
+        <div class="sides" id="sides"><button class="long on" data-s="long">Long</button><button class="short" data-s="short">Short</button></div>
+        <label class="f">Size (USD notional)<input type="number" id="size" min="1" step="1" value="5"></label>
+        <label class="f" id="pricewrap">Limit price (USD)<input type="number" id="price" min="1" step="1"></label>
+        <label class="f">Leverage <span id="levv" class="mono">3x</span><input type="range" id="lev" min="1" max="10" step="1" value="3"></label>
+        <div class="seg" id="ftier" style="border-color:var(--border-strong)"><button data-tier="standard" style="color:var(--text-secondary)">Standard</button><button data-tier="intermediate" style="color:var(--text-secondary)">Intermediate</button><button data-tier="premium" style="color:var(--text-secondary)">Premium</button></div>
+        <div class="est" id="est"></div>
+        <button class="go long" id="go">Place order</button>
+        <div class="msg" id="omsg"></div>
+      </div>
+      <div class="wallet" id="wallet"></div>
+    </section>
+    <section class="panel bottom">
+      <div class="tabs" id="btabs"><button data-t="positions" class="on">Positions</button><button data-t="orders">Open orders</button><button data-t="fills">Fills</button><button data-t="settle">Settlement</button></div>
+      <div class="scroll" id="bpane"></div>
+    </section>
+  </main>
+</div>
+<script type="module" src="venue.js"></script>
+</body>
+</html>
