@@ -1,6 +1,6 @@
 # HFT-06 security review brief
 
-Review target: branch `research/shz-hft06-oracle-relay-20261124` at `20a8edc` (stacked on HFT-05 `adc01e1`). About 9.5k lines in scope; the rest of the branch diff is fixtures, evidence JSON, docs and CI. Deployed instances are live on the witness VPS: 170.75.168.145:8090 (single key) and :8091 (FROST 3-of-5).
+Review target: branch `research/shz-hft06-oracle-relay-20261124` at `dbc42f5` (stacked on HFT-05 `adc01e1`). About 9.5k lines in scope; the rest of the branch diff is fixtures, evidence JSON, docs and CI. Deployed instances are live on the witness VPS: 170.75.168.145:8090 (single key) and :8091 (FROST 3-of-5).
 
 ## In scope, by priority
 
@@ -52,4 +52,4 @@ python3 ops/public-relay/verify_client.py http://170.75.168.145:8091 --pubkey 68
 
 Windows: add `+stable-x86_64-pc-windows-msvc` to cargo. CI: workflow `shz-hft06-oracle-relay` (last green run 45438548161).
 
-Deliverable expected: findings ranked by severity with reproduction (test or command) against `20a8edc`. Fixes land on this branch.
+Deliverable expected: findings ranked by severity with reproduction (test or command) against `dbc42f5`. Fixes land on this branch.
