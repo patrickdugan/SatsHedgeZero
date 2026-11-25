@@ -290,7 +290,8 @@ After the review the FROST confederation on the witness VPS was redeployed from 
 
 - New group key: `403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8` (3-of-5, trusted dealer in tmpfs, dealer files shredded). The first key `68b52a25...d312` is retired.
 - Installed: `dlc_coord.py`, `dlc_oracle.py`, `frost.py`, `frost_relay.py`, `frost_signer.py`. `bip340.py`, `public_relay.py`, `verify_client.py`, the unit files and the single-key relayer on 8090 were not touched.
-- The old shares, member state, relay archive, DLC event files, group file and code are in `/var/lib/shz-frost-archive-20261125T102416Z` (root, 0700). They were moved, not deleted. The old shares can still sign under the retired key until that directory is shredded.
+- The old relay archive, DLC event files, group file and code are in `/var/lib/shz-frost-archive-20261125T102416Z` (root, 0700).
+- The five old members' `share.json`, `dlc.json` and `nonces.json` were overwritten and deleted with `shred -n 3 -z -u` later the same day. `dlc.json` went with the shares because it held the nonce shares of attested events: three of them and one published digit signature give the old group key. A search of the box found no other copy. `shred` overwrites in place and cannot reach a copy the hosting provider may hold in a volume snapshot.
 - The chain restarted at `seq` 1. Events announced under the old key (10:15Z to 11:00Z) will not be attested by it.
 - On the box before the switch: `python3 -m unittest test_frost test_dlc test_review_hft06` on Python 3.14, 20 tests pass with the F-03 expected failure.
 
