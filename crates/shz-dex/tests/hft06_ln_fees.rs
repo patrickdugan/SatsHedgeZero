@@ -141,7 +141,7 @@ fn all_keys()->Vec<Key>{vec![pk(120),pk(121),pk(122),pk(123),pk(124)]}
  let f=fixture();let t=Temp::new();
  let mut l=FeeLedger::create(&t.path("fees.wal"),1,rpolicy(),group()).unwrap();
  let keys=all_keys();
- for i in 0..3{l.observe_batch(&f.b[i]).unwrap();}
+ for b in &f.b[..3]{l.observe_batch(b).unwrap();}
  // Resolutions: out of order delivery is fine, wrong bundle is not.
  let mut forged=f.a[0].clone();forged.channels[0].fee_evidence=[9;32];
  assert!(matches!(l.observe_resolution(&f.d,&forged,NOW+300_000),Err(LedgerError::BadResolution)));
