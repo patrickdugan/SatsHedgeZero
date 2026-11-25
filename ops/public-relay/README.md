@@ -29,8 +29,10 @@ The same packets, signed by a FROST threshold group instead of one key:
 
 ```
 http://170.75.168.145:8091/v1/latest    (same API as 8090)
-group key (BIP340): 68b52a25233d8b87f5c09d44a71fb5e15bfd025c2dde56f9674468e1f1c3d312
+group key (BIP340): 403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8
 ```
+
+The group was re-keyed on 2026-11-25 when the decision-lock code was deployed (`docs/SHZ_HFT_06_SECURITY_REVIEW_FINDINGS.md`, F-01). The first key, `68b52a25233d8b87f5c09d44a71fb5e15bfd025c2dde56f9674468e1f1c3d312`, is retired: nothing it signs after 2026-11-25 10:24 UTC is from this relay. The chain restarted at `seq` 1 under the new key. `fixture_frost_packet.json` and `fixture_dlc_event_live.json` are test vectors signed by the retired key.
 
 - Five members run as separate systemd units (`shz-frost-signer@1..5`), each under its own system user with only its own share (`/var/lib/shz-frost-signer-N/share.json`, 0600) and durable nonce state, listening on 127.0.0.1:9101..9105. The coordinator `shz-frost-relay` assembles the packet, collects nonce commitments, takes the first three members that answer, checks every partial signature against that member's verification share, and publishes the aggregate. The result is one standard BIP340 signature under the group key; `frost_signers` in each packet lists the signing set.
 - Two-round FROST (`frost.py`): binding factors over the full commitment list; even-Y group key fixed at keygen; signers negate nonces when the group commitment has odd Y. Nonces are persisted before commitments are released and erased before a partial is released, so no nonce signs two messages, across restarts too.
@@ -45,7 +47,7 @@ The confederation also acts as a threshold DLC oracle for BTC/USD, compatible wi
 ```
 GET http://170.75.168.145:8091/v1/dlc/events              announced events, status, stats
 GET http://170.75.168.145:8091/v1/dlc/event/<event_id>    announcement (+ attestation)
-python3 verify_client.py http://170.75.168.145:8091 --pubkey 68b52a25...d312 --dlc SHZ-BTCUSD-20261125T0915Z
+python3 verify_client.py http://170.75.168.145:8091 --pubkey 403c4966...fdb8 --dlc SHZ-BTCUSD-20261125T1030Z
 ```
 
 - **Events.** A maturity every 15 min; the next four are kept announced. Event id `SHZ-BTCUSD-YYYYMMDDTHHMMZ`; 20 binary digits (integer USD, MSB first, clamped like `shz_margin::decompose_price_bits`). Outcome: `floor(median_e8 / 1e8)` of the first VALID FROST relay packet with `slot_us` in [maturity, maturity + 30 s); no such packet means the event stays unattested and the contract uses its refund path.

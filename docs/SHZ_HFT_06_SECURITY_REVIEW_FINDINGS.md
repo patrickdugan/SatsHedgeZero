@@ -282,7 +282,25 @@ About a dozen GET requests and one TCP connection attempt in total.
 - `/v1/dlc/event/SHZ-BTCUSD-..%2f..%2frelay` returned 400, `/v1/archive/..%2f..%2frelay.key.jsonl` returned 404, and `/v1/packet/-1` and an oversized sequence returned 404.
 - Port 9101 is not reachable from outside.
 
-The live members run the `20a8edc` code. F-01 needs the coordinator's position, and on this box the coordinator and the members have one operator, so the deployment's exposure is unchanged by this report. The group key should still be treated as demonstration-only until the decision-lock code is deployed and a new key is generated.
+At the time of the review the live members ran the `20a8edc` code. F-01 needs the coordinator's position, and on this box the coordinator and the members have one operator, so the review did not change the deployment's exposure.
+
+## Deployment of the fixes and new group key (2026-11-25 10:24 UTC)
+
+After the review the FROST confederation on the witness VPS was redeployed from commit `46c4379` of this branch and re-keyed.
+
+- New group key: `403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8` (3-of-5, trusted dealer in tmpfs, dealer files shredded). The first key `68b52a25...d312` is retired.
+- Installed: `dlc_coord.py`, `dlc_oracle.py`, `frost.py`, `frost_relay.py`, `frost_signer.py`. `bip340.py`, `public_relay.py`, `verify_client.py`, the unit files and the single-key relayer on 8090 were not touched.
+- The old shares, member state, relay archive, DLC event files, group file and code are in `/var/lib/shz-frost-archive-20261125T102416Z` (root, 0700). They were moved, not deleted. The old shares can still sign under the retired key until that directory is shredded.
+- The chain restarted at `seq` 1. Events announced under the old key (10:15Z to 11:00Z) will not be attested by it.
+- On the box before the switch: `python3 -m unittest test_frost test_dlc test_review_hft06` on Python 3.14, 20 tests pass with the F-03 expected failure.
+
+Checks after the switch, from outside the box:
+
+- `verify_client.py --follow 3` under the new key: signatures and chain links valid from `seq` 7.
+- Event `SHZ-BTCUSD-20261125T1030Z`, the first one announced and attested by the new code: `verify_client.py --dlc` reports the announcement and 20 digit signatures valid, 58,835 USD, outcome packet 68. Its published `decision_locks` verify for all five members against the verification shares in `/v1/pubkey` (quorum 4), none verifies for a different price, and its announcement digest equals the digest of `canonical_core` rebuilt from public fields.
+- All seven `shz-*` units and `rehearsal-bitcoind` active, no relay restarts, relay memory 86 MB of 220 MB.
+
+Still true of the live deployment: F-03 (members sign coordinator-chosen contents), no coordinator authentication on member ports, F-11, trusted-dealer keygen and a single host.
 
 ## What was run
 
