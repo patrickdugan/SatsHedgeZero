@@ -93,7 +93,10 @@ impl ReleasePolicy {
     /// is released simultaneously to all tiers (no differentiated lead).
     pub fn release_at(&self, t: Tier, boundary_us: u64, certified_us: u64) -> (u64, bool) {
         if certified_us > boundary_us.saturating_add(self.certification_deadline_us) {
-            return (certified_us, true);
+            // Simultaneous for all tiers, but never ahead of the Standard release time,
+            // whatever the configured deadline is.
+            let public = boundary_us.saturating_add(self.standard_delay_us).saturating_add(self.max_clock_uncertainty_us);
+            return (certified_us.max(public), true);
         }
         (
             match t {
@@ -161,7 +164,8 @@ mod tests {
         assert_eq!(r(Tier::Standard, 150_000), (t + 202_000, false));
         // Missed deadline: simultaneous release, no tier lead.
         for tier in Tier::ALL {
-            assert_eq!(r(tier, 200_001), (t + 200_001, true));
+            assert_eq!(r(tier, 200_001), (t + 202_000, true));
+            assert_eq!(r(tier, 250_000), (t + 250_000, true));
         }
         for c in (0..=200_000).step_by(1_000) {
             let s = r(Tier::Standard, c).0;

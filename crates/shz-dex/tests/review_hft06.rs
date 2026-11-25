@@ -24,6 +24,7 @@ fn rolled_back_fee_journal_does_not_reissue_settlement_instructions() {
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     let path = dir.join("fees.wal");
+    let pin;
     let first = {
         let mut l = FeeLedger::create(&path, 1, rpolicy(), group()).unwrap();
         l.record(LedgerEvent::Accrue { sequence: 1, digest: [5; 32], oracle_due: 7_000, router_due: 3_000 }).unwrap();
@@ -31,15 +32,17 @@ fn rolled_back_fee_journal_does_not_reissue_settlement_instructions() {
         let before_instruct = fs::metadata(&path).unwrap().len();
         let first = l.poll(1_000).unwrap();
         assert!(!first.is_empty(), "instructions were emitted and journaled");
+        pin = Some(l.tip());
         drop(l);
         // Roll the journal back by exactly one frame (the Instruct record).
         let bytes = fs::read(&path).unwrap();
         fs::write(&path, &bytes[..before_instruct as usize]).unwrap();
         first
     };
-    let reopened = FeeLedger::open(&path, 1, rpolicy(), group());
+    let reopened = FeeLedger::open_pinned(&path, 1, rpolicy(), group(), pin);
     let reissued = match reopened {
-        Err(_) => Vec::new(), // fixed: rollback detected
+        Err(LedgerError::Rollback) => Vec::new(), // rollback below the pinned tip detected
+        Err(e) => panic!("unexpected error {e}"),
         Ok(mut l) => l.poll(2_000).unwrap(),
     };
     let _ = fs::remove_dir_all(&dir);

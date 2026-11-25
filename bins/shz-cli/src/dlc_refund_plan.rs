@@ -78,6 +78,9 @@ pub fn compute_plan(p: &PlanParams) -> Result<RefundPlan, String> {
     let refund_cltv_height = maturity_height
         .checked_add(p.refund_delay_blocks)
         .ok_or("refund height overflow")?;
+    if refund_cltv_height >= 500_000_000 {
+        return Err("refund height must be below 500,000,000 (larger CLTV values are unix times)".into());
+    }
     let unilateral_cltv_height = maturity_height + p.grace_blocks;
 
     let blocks_to_refund = (refund_cltv_height - p.tip_height) as u128;
@@ -101,7 +104,7 @@ pub fn compute_plan(p: &PlanParams) -> Result<RefundPlan, String> {
             p.fast_factor, p.min_gap_secs
         ),
     ];
-    let violates = gap < p.min_gap_secs as i64;
+    let violates = (gap as i128) < p.min_gap_secs as i128;
     if violates {
         let msg = format!(
             "refund height {refund_cltv_height} can arrive only {gap}s after attestation due time at {}x block speed; floor is {}s. Increase --refund-delay-blocks.",

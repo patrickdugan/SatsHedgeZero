@@ -55,12 +55,12 @@ fn member_vote_with_huge_sequence_keeps_equivocation_evidence() {
     let fed = RemoteFed::new(policy(), [7; 32], MonoClock::new(), None);
     let secret = [1u8; 32]; // member 0
     let (a, b, x) = ([0xa1; 32], [0xb2; 32], [0xc3; 32]);
-    fed.on_vote(0, 5, a, bip340_sign(&secret, &a).unwrap());
+    fed.on_vote(0, 1, a, bip340_sign(&secret, &a).unwrap());
     let flush = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         fed.on_vote(0, u64::MAX - 5, x, bip340_sign(&secret, &x).unwrap());
         fed.on_vote(0, u64::MAX - 4, x, bip340_sign(&secret, &x).unwrap());
     }));
     assert!(flush.is_ok(), "a member vote with seq near u64::MAX panicked while holding the federation mutex");
-    fed.on_vote(0, 5, b, bip340_sign(&secret, &b).unwrap());
-    assert_eq!(fed.snapshot().metrics.equivocations, 1, "the equivocation on seq 5 was forgotten");
+    fed.on_vote(0, 1, b, bip340_sign(&secret, &b).unwrap());
+    assert_eq!(fed.snapshot().metrics.equivocations, 1, "the equivocation on seq 1 was forgotten");
 }
