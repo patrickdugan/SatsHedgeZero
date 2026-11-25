@@ -125,7 +125,7 @@ pub struct ChainlinkFullReport {
 
 impl ChainlinkFullReport {
     pub fn decode(full: &[u8]) -> Result<Self, OracleError> {
-        if full.len() < 7 * WORD || full.len() > MAX_FULL_REPORT || full.len() % WORD != 0 {
+        if full.len() < 7 * WORD || full.len() > MAX_FULL_REPORT || !full.len().is_multiple_of(WORD) {
             return Err(bad("invalid Chainlink fullReport length"));
         }
         let abi = Abi { data: full };
@@ -234,7 +234,7 @@ impl PinnedDonRegistry {
                 || c.signers.len() > MAX_SIGNERS
                 || distinct.len() != c.signers.len()
                 || c.signers.len() <= 3 * c.f as usize
-                || c.signers.iter().any(|s| *s == [0; 20])
+                || c.signers.contains(&[0; 20])
                 || c.active_from_s > c.active_until_s
                 || map.insert(c.config_digest, c).is_some()
             {

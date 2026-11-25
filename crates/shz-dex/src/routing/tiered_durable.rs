@@ -110,6 +110,7 @@ impl State{
  }
 }
 
+#[allow(clippy::large_enum_variant)] // journal record, serialized once per command
 #[derive(Debug,Serialize,Deserialize)]
 enum Event{
  Mark{mark:MarkView,now:u64},
@@ -120,6 +121,7 @@ enum Event{
  Prepare{sequence:u64,approvals:Vec<BatchApproval>},
  Resolve{bundle:AckBundle},
 }
+#[allow(clippy::large_enum_variant)]
 enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
 
 /// Full event-sourced tiered router, including rejected calls that may advance time.

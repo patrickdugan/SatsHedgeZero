@@ -219,14 +219,13 @@ impl Hub {
                 return Err(HubError::Chain(seq));
             }
         }
-        if live {
-            if let Some(log) = self.log.as_mut() {
+        if live
+            && let Some(log) = self.log.as_mut() {
                 let rec = LogRecord { seq, boundary_us, certified_us, certified: (&c).into() };
                 let mut line = serde_json::to_string(&rec).map_err(|e| HubError::Io(e.to_string()))?;
                 line.push('\n');
                 log.write_all(line.as_bytes()).and_then(|_| log.sync_data()).map_err(|e| HubError::Io(e.to_string()))?;
             }
-        }
         let release = Tier::ALL.map(|t| self.release.release_at(t, boundary_us, certified_us));
         if release[0].1 {
             self.metrics.late_certificates += 1;
@@ -299,11 +298,10 @@ impl Hub {
         let (tx, rx) = mpsc::channel(capacity.max(1));
         let mut live_from = self.last.map(|l| l.0).unwrap_or(0);
         if let Some(from) = from_seq {
-            if let Some(first) = self.history.front() {
-                if from < first.seq {
+            if let Some(first) = self.history.front()
+                && from < first.seq {
                     return Err(HubError::TooOld(from));
                 }
-            }
             let mut backlog = Vec::new();
             for e in self.history.iter_mut().filter(|e| e.seq >= from) {
                 if e.release[tier.idx()].0 <= now_us && (e.sent[tier.idx()].is_some() || e.release[tier.idx()].0 <= now_us) {
@@ -433,7 +431,7 @@ pub(crate) mod tests {
     fn federated_hub_accepts_only_linked_skips() {
         use shz_oracle::hft_packets::{Certificate, Signer};
         let p = policy();
-        let mut ss: Vec<_> = (0..5).map(|i| Signer::new(&p, i, [(i + 1) as u8; 32]).unwrap()).collect();
+        let mut ss: Vec<_> = (0..5).map(|i| Signer::new(&p, i, [(i + 1); 32]).unwrap()).collect();
         let cert = |ss: &mut Vec<Signer>, seq: u64, previous: Hash| {
             let pk = Packet { policy: p.id().unwrap(), seq, previous, mark: Mark::Hold { reason: 1 } };
             let votes = ss.iter_mut().take(4).map(|s| s.vote(&p, &pk).unwrap()).collect();

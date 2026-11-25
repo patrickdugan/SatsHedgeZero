@@ -298,9 +298,8 @@ impl TieredRouter{
   self.clock(now)?;
   if m.packet_digest==[0;32]||m.seq==0||m.boundary_us>now||m.public_release_us<m.boundary_us{return Err(TierReject::Bounds)}
   if m.price_e8.is_some_and(|p|p==0||p>10_000_000_000_000_000){return Err(TierReject::Bounds)}
-  if let Some(last)=self.marks.last(){
-   if m.seq<=last.seq||m.boundary_us<last.boundary_us{return Err(TierReject::Replay)}
-  }
+  if let Some(last)=self.marks.last()
+   && (m.seq<=last.seq||m.boundary_us<last.boundary_us){return Err(TierReject::Replay)}
   self.marks.push(m);
   if self.marks.len()>MARK_HISTORY{self.marks.remove(0);}
   Ok(())

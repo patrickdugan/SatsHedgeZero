@@ -163,18 +163,18 @@ fn reports_to_relay_to_router_to_fee_ledger() {
         }
     }
     // Two VALID marks at least two slots apart.
-    let (m1, t1) = marks[0].clone();
+    let (m1, t1) = marks[0];
     let (m2, t2) = marks.iter().find(|(m, _)| m.boundary_us >= m1.boundary_us + 400_000).cloned().expect("second VALID mark");
     let limit = |m: &MarkView| m.price_e8.unwrap() / 100_000_000;
 
     // 4. Durable tiered router: a public-only standard maker is protected from a
     //    premium taker acting on the still-privileged m2; an opted-in premium maker fills.
     let mut d = DurableTieredRouter::create(&tmp.0.join("router.wal"), &registry(), cfg(), lanes(), FeeRecipients { oracle: pk(110), router: pk(111) }).unwrap();
-    d.ingest_mark(m1.clone(), t1).unwrap();
+    d.ingest_mark(m1, t1).unwrap();
     let std_post = m1.boundary_us + 200_001;
     d.submit(intent(1, 1, Action::Post, OrderSide::Short, FeedTier::Standard, limit(&m1), None, false), None, std_post).unwrap();
     assert!(matches!(d.process_one(std_post).unwrap().unwrap(), TierOutcome::Posted(_)));
-    d.ingest_mark(m2.clone(), t2).unwrap();
+    d.ingest_mark(m2, t2).unwrap();
     assert!(t2 < m2.public_release_us, "m2 is privileged at t2");
     let taker_ent = grant(2, FeedTier::Premium);
     d.submit(intent(2, 1, Action::Take, OrderSide::Long, FeedTier::Premium, limit(&m1).max(limit(&m2)) + 50, Some(&taker_ent), false), Some(taker_ent.clone()), t2).unwrap();

@@ -516,11 +516,11 @@ mod tests {
     }
     fn core(dir: &Path, member: u8) -> MemberCore {
         let p = policy();
-        MemberCore::new(&p, member, [(member + 1) as u8; 32], DurableSignLock::open(&dir.join(format!("m{member}.lock"))).unwrap()).unwrap()
+        MemberCore::new(&p, member, [(member + 1); 32], DurableSignLock::open(&dir.join(format!("m{member}.lock"))).unwrap()).unwrap()
     }
     /// A real 4-of-5 certificate for `packet`.
     fn cert(p: &Policy, packet: Packet) -> Certificate {
-        let mut ss: Vec<_> = (0..5).map(|i| Signer::new(p, i, [(i + 1) as u8; 32]).unwrap()).collect();
+        let mut ss: Vec<_> = (0..5).map(|i| Signer::new(p, i, [(i + 1); 32]).unwrap()).collect();
         let votes = ss.iter_mut().take(4).map(|s| s.vote(p, &packet).unwrap()).collect();
         Certificate { packet, votes }
     }

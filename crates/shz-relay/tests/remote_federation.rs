@@ -335,10 +335,7 @@ async fn conflicting_votes_are_recorded_as_equivocation_evidence() {
     let sig = sign_member_auth(&secret, &relay_id, &nonce, 4);
     ws.send(Message::text(serde_json::to_string(&MemberToRelay::Auth { member: 4, signature: sig_to_hex(&sig) }).unwrap())).await.unwrap();
     let (seq, digest) = loop {
-        match next_relay_msg(&mut ws).await.expect("proposal") {
-            RelayToMember::Proposal(p) => break (p.seq, Packet::try_from(&p.packet).unwrap().digest()),
-            _ => {}
-        }
+        if let RelayToMember::Proposal(p) = next_relay_msg(&mut ws).await.expect("proposal") { break (p.seq, Packet::try_from(&p.packet).unwrap().digest()) }
     };
     let alt: Hash = shz_dlc::tagged_hash(b"TEST/ALT", &digest);
     for d in [digest, alt] {

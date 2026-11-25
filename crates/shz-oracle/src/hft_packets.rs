@@ -28,7 +28,7 @@ pub struct Policy{
 impl Policy{
  pub fn id(&self)->R<Hash>{
   if self.network==[0;32]||self.market==[0;32]||self.epoch==0||self.origin_us==0||
-     self.members.iter().any(|k|*k==[0;32])||
+     self.members.contains(&[0;32])||
      self.members.iter().collect::<BTreeSet<_>>().len()!=5{return Err(Error::Policy)}
   let mut b=Vec::new();b.extend(self.network);b.extend(self.market);n(&mut b,self.epoch);n(&mut b,self.origin_us);
   for k in self.members{b.extend(k)}
@@ -155,7 +155,7 @@ mod tests{
  const START:u64=10_000_000;
  fn fixture()->(Policy,Vec<Signer>){
   let p=Policy{network:[9;32],market:[8;32],epoch:1,origin_us:START,members:std::array::from_fn(|i|pubkey_x_from_secret(&[(i+1)as u8;32]).unwrap())};
-  let ss=(0..5).map(|i|Signer::new(&p,i,[(i+1)as u8;32]).unwrap()).collect();(p,ss)
+  let ss=(0..5).map(|i|Signer::new(&p,i,[(i+1);32]).unwrap()).collect();(p,ss)
  }
  fn packet(p:&Policy,seq:u64,previous:Hash)->Packet{
   let at=p.fast_at(seq).unwrap();

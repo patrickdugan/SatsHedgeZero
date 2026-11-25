@@ -177,6 +177,12 @@ impl MockAdapter{
  pub fn set_channel(&mut self,c:&BtcOutPoint,s:ChannelStatus){self.channels.insert(op(c),s);}
  pub fn payment_hash(preimage:&Key)->Key{Sha256::digest(preimage).into()}
 }
+
+impl Default for MockAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl LightningAdapter for MockAdapter{
  fn verify_fee_receipt(&self,r:&FeeReceipt)->Result<VerifiedReceipt,AdapterError>{
   if !self.connected{return Err(AdapterError::Disconnected)}
@@ -333,7 +339,7 @@ fn exact(f:&mut File,buf:&mut[u8])->L<()>{
 }
 fn read_frame(f:&mut File,prev:Tip)->L<Option<(Tip,Vec<u8>)>>{
  let mut len=[0u8;4];
- match f.read(&mut len[..1])?{0=>return Ok(None),_=>{}}
+ if f.read(&mut len[..1])? == 0 { return Ok(None) }
  exact(f,&mut len[1..])?;
  let n=u32::from_le_bytes(len)as usize;
  if n==0||n>MAX_FRAME{return Err(LedgerError::Corrupt)}

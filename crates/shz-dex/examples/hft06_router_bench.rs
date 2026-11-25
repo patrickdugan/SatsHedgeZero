@@ -252,7 +252,7 @@ fn fee_fixture(k:u64)->FeeFx{
   if a.disposition!=Disposition::Commit{continue}
   let s=pol.split(u64::try_from(b.oracle_due_sats()).unwrap(),u64::try_from(b.router_due_sats()).unwrap());
   let sh=s.shares();
-  for n in 120u8..=124{if let Some(v)=sh.get(&pk(n)){if *v>0{receipts.push(receipt(n,v*1000,id,vec![(1,b.sequence())]));id+=1;}}}
+  for n in 120u8..=124{if let Some(v)=sh.get(&pk(n))&& *v>0{receipts.push(receipt(n,v*1000,id,vec![(1,b.sequence())]));id+=1;}}
  }
  FeeFx{d,batches,acks,receipts,dir}
 }
@@ -336,7 +336,7 @@ fn main(){
  });
  let s=serde_json::to_string_pretty(&receipt).unwrap();
  if let Some(p)=out{
-  if let Some(par)=std::path::Path::new(&p).parent(){if !par.as_os_str().is_empty(){fs::create_dir_all(par).unwrap()}}
+  if let Some(par)=std::path::Path::new(&p).parent()&& !par.as_os_str().is_empty(){fs::create_dir_all(par).unwrap()}
   fs::write(&p,&s).unwrap();eprintln!("wrote {p}");
  }else{println!("{s}")}
 }

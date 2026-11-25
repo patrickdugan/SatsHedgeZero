@@ -191,7 +191,7 @@ fn snapshot(d:&DurableTieredRouter)->String{
  let rej=d.submit(intent(1,1,Action::Post,OrderSide::Short,FeedTier::Premium,10,Some(&e)),Some(e),T0+500);
  assert!(matches!(rej,Err(TieredDurableError::Rejected(TierReject::Replay))));
  assert_eq!(d.tip().unwrap().records,tip.records+2);
- assert!(matches!(d.router().unwrap().visible_mark(FeedTier::Premium,T0),Some(_)));
+ assert!(d.router().unwrap().visible_mark(FeedTier::Premium,T0).is_some());
  let clock=d.router().unwrap().clock_us();assert_eq!(clock,T0+500);
  let snap=snapshot(&d);drop(d);
  let d=open(&p);assert_eq!(snapshot(&d),snap);assert_eq!(d.router().unwrap().clock_us(),clock);
@@ -246,7 +246,7 @@ fn snapshot(d:&DurableTieredRouter)->String{
  let mut bad=good.clone();bad[7]=b'5';fs::write(&p,&bad).unwrap();
  assert!(matches!(failure(reopen(&p,None)),TieredDurableError::Corrupt));
  // untouched copy still opens
- fs::write(&p,&good).unwrap();let d=open(&p);assert_eq!(d.fee_totals().unwrap().0>0,true);
+ fs::write(&p,&good).unwrap();let d=open(&p);assert!(d.fee_totals().unwrap().0 > 0);
 }
 
 #[test]fn configuration_substitution_fails_closed(){

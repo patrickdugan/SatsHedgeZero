@@ -43,8 +43,8 @@ fn main(){
   let side=match f[3]{"BUY"=>OrderSide::Long,"SELL"=>OrderSide::Short,_=>panic!("action")};
   let cents=decimal(f[6],2);let price=(100_000i64+(cents as i64-250)*5)as u64;
   let q=decimal(f[7],3);
-  let action=if (mode=="deep"&&j<n*8/10)||(mode=="cross"&&id%2==0){Action::Post}else{Action::Take};
-  let tier=if id%5==0{Tier::Priority}else{Tier::Free};
+  let action=if (mode=="deep"&&j<n*8/10)||(mode=="cross"&&id.is_multiple_of(2)){Action::Post}else{Action::Take};
+  let tier=if id.is_multiple_of(5){Tier::Priority}else{Tier::Free};
   let router=shard_for(id,shards);
   roles[(router-1)as usize][if action==Action::Post{0}else{1}]+=1;
   let intent=Intent{scope,router,channel:channel(session),owner:[0;32],sequence:id,expires_us:NOW+2_000_000,action,side,tier,quantity:q,limit_usd:price,leverage_bps:100_000,max_fee_ppm:rate_ppm(tier,action),max_fee_sats:1_000_000,cancel_target:[0;32],signature:ZERO}.signed(&sk(session)).unwrap();

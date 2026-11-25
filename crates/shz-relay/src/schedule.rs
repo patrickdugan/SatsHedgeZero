@@ -173,18 +173,11 @@ mod tests {
 
     #[test]
     fn policy_validation() {
-        let mut p = ReleasePolicy::default();
-        p.intermediate_delay_us = 200_000;
-        assert!(p.validate().is_err());
-        let mut p = ReleasePolicy::default();
-        p.max_clock_uncertainty_us = 10_000;
-        assert!(p.validate().is_err());
-        let mut p = ReleasePolicy::default();
-        p.standard_delay_us = 150_000;
-        assert!(p.validate().is_err());
-        let mut p = ReleasePolicy::default();
-        p.intermediate_delay_us = 50_000;
-        assert!(p.validate().is_ok());
+        let d = ReleasePolicy::default;
+        assert!(ReleasePolicy { intermediate_delay_us: 200_000, ..d() }.validate().is_err());
+        assert!(ReleasePolicy { max_clock_uncertainty_us: 10_000, ..d() }.validate().is_err());
+        assert!(ReleasePolicy { standard_delay_us: 150_000, ..d() }.validate().is_err());
+        assert!(ReleasePolicy { intermediate_delay_us: 50_000, ..d() }.validate().is_ok());
     }
 
     #[test]

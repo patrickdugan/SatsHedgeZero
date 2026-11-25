@@ -30,6 +30,7 @@ fn build(t:&TieredRouter,p:&Policy,n:u8,seq:u64,action:Action,side:OrderSide,tie
   quantity:q,limit_usd:100_000,leverage_bps:10_000,max_fee_ppm:tariff.rate_ppm(tier,action),max_fee_sats:100_000,
   max_mark_age_us:1_000_000,early_window_opt_in:opt_in,cancel_target:[0;32],signature:ZERO_SIG}
 }
+#[allow(clippy::too_many_arguments)]
 fn premium(t:&TieredRouter,p:&Policy,n:u8,seq:u64,action:Action,side:OrderSide,q:u64,opt_in:bool)->(IntentV6,Entitlement){
  let e=grant(n,FeedTier::Premium);
  (build(t,p,n,seq,action,side,FeedTier::Premium,q,opt_in,Some(&e)).signed(&sk(n)).unwrap(),e)

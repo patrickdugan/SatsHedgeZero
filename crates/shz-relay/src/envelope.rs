@@ -342,7 +342,7 @@ mod tests {
     #[test]
     fn federated_round_trip_and_tamper() {
         let p = policy();
-        let mut ss: Vec<_> = (0..5).map(|i| Signer::new(&p, i, [(i + 1) as u8; 32]).unwrap()).collect();
+        let mut ss: Vec<_> = (0..5).map(|i| Signer::new(&p, i, [(i + 1); 32]).unwrap()).collect();
         let pk = hold(&p, 1, [0; 32]);
         let votes = ss.iter_mut().take(4).map(|s| s.vote(&p, &pk).unwrap()).collect();
         let c = CertifiedPacket::Federated(Certificate { packet: pk, votes });

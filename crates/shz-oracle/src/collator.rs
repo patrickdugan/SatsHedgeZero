@@ -509,7 +509,7 @@ pub mod fixture {
                 out.push(RawReport { source: SourceKind::PythPro, arrival_us: arrival, bytes: bad });
             }
             out.push(RawReport { source: SourceKind::PythPro, arrival_us: arrival, bytes: raw });
-            if t % 400_000 == 0 && !(10_000_000..11_500_000).contains(&in_cycle) {
+            if t.is_multiple_of(400_000) && !(10_000_000..11_500_000).contains(&in_cycle) {
                 let obs_s = (t / 1_000_000) as u32;
                 let dispersion = if (20_000_000..20_400_000).contains(&in_cycle) { 60 } else { 1 };
                 let p = (price as i128 + price as i128 * (dispersion - 1) / 10_000) * 10_000_000_000;

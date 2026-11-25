@@ -211,6 +211,7 @@ enum Event{
  Prepare{sequence:u64,approvals:Vec<BatchApproval>},
  Resolve{bundle:AckBundle},
 }
+#[allow(clippy::large_enum_variant)] // transient reply value; boxing adds nothing
 enum Reply{Mark(Key),Due(u64),Outcome(Option<Outcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
 
 pub(crate) fn frame_hash(previous:JournalTip,payload:&[u8])->D<JournalTip>{
@@ -261,6 +262,7 @@ impl DurableRouter{
  }
  /// A caller-supplied independently stored minimum tip detects valid-prefix
  /// rollback. Without it, recovery assumes storage has not been rolled back.
+ #[allow(clippy::too_many_arguments)]
  pub fn open(path:&Path,policy:Policy,registry:&Registry,id:u32,engine:Engine,lanes:Vec<Lane>,recipients:FeeRecipients,minimum:Option<JournalTip>)->D<Self>{
   let mut state=State::new(policy,registry,id,engine,lanes,recipients)?;
   let mut file=OpenOptions::new().read(true).write(true).open(path)?;
