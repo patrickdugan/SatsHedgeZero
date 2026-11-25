@@ -326,7 +326,6 @@ class F02_NoticeAndAttestationWithOneFaultyMember(unittest.TestCase):
 
 
 class F03_MembersSignUncheckedContent(unittest.TestCase):
-    @unittest.expectedFailure  # open on the patch branch: needs member-side source checks (see the findings report)
     def test_group_does_not_sign_a_median_no_member_checked(self):
         """The coordinator alone fixes every field of the body, including median_e8."""
         c = Confed(nbits=dlc.NUM_BITS)
@@ -334,9 +333,12 @@ class F03_MembersSignUncheckedContent(unittest.TestCase):
             now_s = pr.now_us() // 1_000_000
             maturity = now_s - now_s % 5
             ev = c.coord.setup(maturity)
-            invented = {k: 3 * v for k, v in BASE.items()}  # 300,000 USD while the market trades near 59,000
+            if hasattr(c, "view"):
+                c.view.set_from_results(fake(BASE), maturity * 1_000_000)  # what every member observes
+            invented = {k: 3 * v for k, v in BASE.items()}  # three times the market
+            publish = getattr(c, "raw_publish", c.relay.publish)
             try:
-                pkt = c.relay.publish(maturity * 1_000_000, fake(invented))
+                pkt = publish(maturity * 1_000_000, fake(invented))
             except RuntimeError:
                 return  # members refused the body
             ev = c.coord.attest(ev)
@@ -344,6 +346,72 @@ class F03_MembersSignUncheckedContent(unittest.TestCase):
                              f"group signed and attested {ev.get('attestation', {}).get('price_usd')} USD supplied by the coordinator")
         finally:
             c.close()
+
+
+class F03_Patched(unittest.TestCase):
+    """Rules of the member-side price check (skipped on code without it)."""
+
+    def setUp(self):
+        import frost_signer
+        if not hasattr(frost_signer, "StaticView"):
+            self.skipTest("member price check not implemented")
+
+    def test_member_price_check_rules(self):
+        c = Confed(nbits=4)
+        try:
+            slot = pr.now_us() // 5_000_000 * 5_000_000 - 30_000_000
+            market = fake(BASE)
+            scaled = lambda num: fake({k: v * num // 10_000 for k, v in BASE.items()})
+            high_water = lambda: [m.state.s["last_seq"] for m in c.members]
+
+            c.view.set_from_results(market, slot)
+            p1 = c.raw_publish(slot, scaled(10_030))  # 30 bps from the members' reading: signed
+            self.assertEqual(p1["body"]["status"], "VALID")
+
+            before = high_water()
+            with self.assertRaises(RuntimeError):  # 70 bps away: every member asked refuses
+                c.raw_publish(slot + 5_000_000, scaled(10_070))
+            self.assertEqual(high_water(), before, "a refused body spends no sequence and no nonce")
+            self.assertGreaterEqual(sum(m.content_refusals for m in c.members), 3)
+
+            c.view.set(c.view.median_e8, at_us=pr.now_us() - 60_000_000)  # the reading is a minute old
+            with self.assertRaises(RuntimeError):
+                c.raw_publish(slot + 10_000_000, market)
+
+            c.view.set(None)  # members have no usable reading
+            with self.assertRaises(RuntimeError):
+                c.raw_publish(slot + 15_000_000, market)
+            hold = c.raw_publish(slot + 20_000_000, fake(BASE, errors={"coinbase": "fetch: URLError", "kraken": "fetch: URLError"}))
+            self.assertEqual(hold["body"]["status"], "HOLD", "a HOLD body asserts no price and is signed without a reading")
+            self.assertTrue(pr.verify_packet(hold, c.group["group_pubkey"]))
+        finally:
+            c.close()
+
+    def test_member_without_a_view_refuses_valid_bodies(self):
+        import frost_signer
+        group, shares = frost.keygen(3, 5)
+        m = frost_signer.Member(shares[0], Path(tempfile.mkdtemp()))  # no view given
+        body, _ = pr.assemble(1, "00" * 32, pr.now_us(), 5000, fake(BASE))
+        with self.assertRaisesRegex(ValueError, "no usable independent price reading"):
+            m._check_content(body)
+        with self.assertRaises(ValueError):
+            m._check_content(dict(body, median_e8=float(body["median_e8"])))
+        with self.assertRaises(ValueError):
+            m._check_content(dict(body, market="ETH/USD"))
+        m._check_content(dict(body, status="HOLD"))
+
+    def test_source_view_applies_the_relay_rules(self):
+        import frost_signer
+        ok = {sid: (role, lambda sid=sid: b"x", lambda raw, sid=sid: (BASE[sid], None)) for sid, (role, _, _) in pr.SOURCES.items() if role == "fast"}
+        v = frost_signer.SourceView(sources=ok)
+        self.assertEqual(sorted(v.sources), ["bitstamp", "coinbase", "gemini", "kraken"])
+        r = v.refresh()
+        self.assertEqual((r["status"], r["fast_sources_used"], r["median_e8"]), ("VALID", 4, (BASE["coinbase"] + BASE["gemini"]) // 2))
+        def boom():
+            raise OSError("down")
+        two_down = dict(ok, coinbase=("fast", boom, None), kraken=("fast", boom, None))
+        r = frost_signer.SourceView(sources=two_down).refresh()
+        self.assertEqual((r["status"], r["median_e8"]), ("HOLD", None), "fewer than three fresh sources is not a usable reading")
 
 
 if __name__ == "__main__":

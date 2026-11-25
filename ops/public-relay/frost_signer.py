@@ -10,7 +10,11 @@ GET  /healthz
 
 Before signing, the member recomputes the packet message from the body
 itself, requires a recent slot, a strictly increasing sequence, and (when it
-signed seq-1) that the body extends the chain it signed. It never sees or
+signed seq-1) that the body extends the chain it signed. It also keeps its own
+reading of the public fast sources (`SourceView`, refreshed in the background)
+and signs a VALID body only when the body's median is within
+`max_deviation_bps` of that reading; the coordinator assembles the packet but
+cannot choose its price. It never sees or
 needs the other shares. Continuity is checked against `parent`, the latest
 packet the group signed: the body must link to its digest with a larger
 sequence, so a slot that was signed but never published (coordinator crash)
@@ -19,6 +23,7 @@ cannot wedge the chain; each sequence is still signed at most once.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures as cf
 import json
 import os
 import sys
@@ -35,12 +40,83 @@ import public_relay as pr  # noqa: E402
 MAX_SLOT_SKEW_US = 60_000_000
 MAX_SEQ = 1 << 53  # JSON-safe integer, well inside u64
 MAX_SEQ_JUMP = 1 << 20  # failed signing attempts tolerated between two published packets (60 days of 5 s slots)
+MAX_DEVIATION_BPS = 50  # a VALID body's median may differ this much from the member's own reading
+VIEW_REFRESH_S = 15.0
+VIEW_MAX_AGE_S = 35.0
+NO_PRICE_CHECK = object()  # explicit opt-out for offline protocol tests; never the default
+
+
+class SourceView:
+    """This member's own reading of the public fast sources.
+
+    A background thread fetches the fast sources every `refresh_s` seconds and
+    applies the relay's own freshness and dispersion rules (`pr.assemble`). The
+    reading is usable only when those rules give VALID. Members stagger their
+    fetches by `offset_s` so five members do not hit a source at once.
+    """
+
+    def __init__(self, refresh_s: float = VIEW_REFRESH_S, offset_s: float = 0.0, sources: dict | None = None):
+        self.sources = sources if sources is not None else {k: v for k, v in pr.SOURCES.items() if v[0] == "fast"}
+        self.refresh_s, self.offset_s = refresh_s, offset_s
+        self.lock = threading.Lock()
+        self.reading: dict | None = None
+        self.failures = 0
+        self.pool = cf.ThreadPoolExecutor(max_workers=max(1, len(self.sources)))
+
+    def refresh(self) -> dict:
+        results = pr.fetch_all(self.sources, pool=self.pool)
+        now = pr.now_us()
+        body, _ = pr.assemble(0, "00" * 32, now, 0, results)
+        reading = {"at_us": now, "status": body["status"], "fast_sources_used": body["fast_sources_used"],
+                   "median_e8": body["median_e8"] if body["status"] == "VALID" else None}
+        with self.lock:
+            self.reading = reading
+        return reading
+
+    def get(self) -> dict | None:
+        with self.lock:
+            return self.reading
+
+    def run(self, stop: threading.Event):
+        stop.wait(self.offset_s)
+        while not stop.is_set():
+            try:
+                self.refresh()
+            except Exception:  # noqa: BLE001 - a failed refresh leaves the old reading to age out
+                self.failures += 1
+            stop.wait(self.refresh_s)
+
+
+class StaticView:
+    """A reading set by the caller (tests, drills). Always reports the current time unless `at_us` is given."""
+
+    def __init__(self, median_e8: int | None = None):
+        self.median_e8, self.at_us = median_e8, None
+
+    def set(self, median_e8: int | None, at_us: int | None = None):
+        self.median_e8, self.at_us = median_e8, at_us
+
+    def set_from_results(self, results: dict, slot_us: int):
+        fast = {k: v for k, v in results.items() if v[0] == "fast"}
+        body, _ = pr.assemble(0, "00" * 32, slot_us, 0, fast)
+        self.set(body["median_e8"] if body["status"] == "VALID" else None)
+
+    def get(self) -> dict | None:
+        return {"at_us": self.at_us if self.at_us is not None else pr.now_us(), "status": "VALID" if self.median_e8 else "HOLD",
+                "fast_sources_used": 4 if self.median_e8 else 0, "median_e8": self.median_e8}
 
 
 class Member:
-    def __init__(self, share: dict, state_dir: Path):
+    def __init__(self, share: dict, state_dir: Path, view=None, max_deviation_bps: int = MAX_DEVIATION_BPS,
+                 view_max_age_s: float = VIEW_MAX_AGE_S):
+        """`view` is the member's own price reading (`SourceView`, `StaticView`). With no view
+        the member refuses every VALID body; `NO_PRICE_CHECK` disables the check explicitly."""
         self.share = share
         self.index = share["index"]
+        self.view = view
+        self.max_deviation_bps = max_deviation_bps
+        self.view_max_age_us = int(view_max_age_s * 1_000_000)
+        self.content_refusals = 0
         state_dir.mkdir(parents=True, exist_ok=True)
         self.state = frost.SignerState(state_dir / "nonces.json")
         self.lock = threading.Lock()
@@ -112,6 +188,45 @@ class Member:
             zs = self.dlc.sign_outcome(event_id, price, signers, req.get("locks"))
         return {"index": self.index, "price_usd": price, "z": zs}
 
+    def _check_content(self, body: dict):
+        """Refuse a body whose price this member cannot confirm from its own reading.
+
+        HOLD bodies assert no usable price and are signed without a reading. A VALID
+        body needs a positive integer median within `max_deviation_bps` of a reading
+        that is itself VALID and no older than `view_max_age_us`."""
+        status = body.get("status")
+        if body.get("market") != "BTC/USD" or status not in ("VALID", "HOLD"):
+            raise ValueError("unknown market or status")
+        if status != "VALID":
+            return
+        median = body.get("median_e8")
+        if type(median) is not int or median <= 0:
+            raise ValueError("VALID body has no positive integer median")
+        if self.view is NO_PRICE_CHECK:
+            return
+        reading = self.view.get() if self.view is not None else None
+        try:
+            if reading is None or reading.get("median_e8") is None:
+                raise ValueError("no usable independent price reading")
+            if pr.now_us() - reading["at_us"] > self.view_max_age_us:
+                raise ValueError("independent price reading is stale")
+            dev = abs(median - reading["median_e8"]) * 10_000 // reading["median_e8"]
+            if dev > self.max_deviation_bps:
+                raise ValueError(f"median is {dev} bps from this member's own reading (limit {self.max_deviation_bps})")
+        except ValueError:
+            self.content_refusals += 1
+            raise
+
+    def view_status(self) -> dict:
+        if self.view is NO_PRICE_CHECK:
+            return {"check": "disabled"}
+        reading = self.view.get() if self.view is not None else None
+        if reading is None:
+            return {"check": "enabled", "reading": None}
+        return {"check": "enabled", "status": reading["status"], "fast_sources_used": reading["fast_sources_used"],
+                "median_e8": reading["median_e8"], "age_s": round((pr.now_us() - reading["at_us"]) / 1e6, 3),
+                "max_deviation_bps": self.max_deviation_bps, "content_refusals": self.content_refusals}
+
     def commit(self, seq: int) -> dict:
         if type(seq) is not int or not 0 < seq < MAX_SEQ:
             raise ValueError("sequence out of range")
@@ -146,6 +261,7 @@ class Member:
         # parent by more than a bounded number of failed slots, and it stays a u64.
         if not seq < MAX_SEQ or seq - parent_seq > MAX_SEQ_JUMP:
             raise ValueError("sequence jumps too far past the parent packet")
+        self._check_content(body)  # before take(): a refusal spends neither the nonce nor the sequence
         msg = pr.packet_message(body)
         with self.lock:
             # One packet per slot per member: with 2t > n two packets for the same slot
@@ -174,7 +290,7 @@ def make_handler(m: Member):
         def do_GET(self):
             if self.path == "/healthz":
                 return self._json(200, {"index": m.index, "last_seq": m.state.s["last_seq"], "signed": m.signed, "refused": m.refused,
-                                        "group_pubkey": m.share["group"]["group_pubkey"]})
+                                        "group_pubkey": m.share["group"]["group_pubkey"], "price_view": m.view_status()})
             self._json(404, {"error": "not found"})
 
         def do_POST(self):
@@ -238,9 +354,20 @@ def main():
     ap.add_argument("--share", required=True)
     ap.add_argument("--state", required=True)
     ap.add_argument("--listen", default="127.0.0.1:9101")
+    ap.add_argument("--max-deviation-bps", type=int, default=MAX_DEVIATION_BPS, help="largest accepted distance of a VALID median from this member's own reading")
+    ap.add_argument("--view-refresh-s", type=float, default=VIEW_REFRESH_S, help="how often this member reads the public fast sources")
+    ap.add_argument("--view-max-age-s", type=float, default=VIEW_MAX_AGE_S, help="oldest own reading a VALID body may be checked against")
+    ap.add_argument("--no-price-check", action="store_true", help="sign VALID bodies without an independent reading (offline drills only)")
     a = ap.parse_args()
-    m = Member(json.loads(Path(a.share).read_text()), Path(a.state))
-    print(f"frost member {m.index} group={m.share['group']['group_pubkey']} listen={a.listen}", flush=True)
+    share = json.loads(Path(a.share).read_text())
+    if a.no_price_check:
+        view = NO_PRICE_CHECK
+    else:
+        n = share["group"]["signers"]
+        view = SourceView(a.view_refresh_s, offset_s=(share["index"] - 1) * a.view_refresh_s / n)
+        threading.Thread(target=view.run, args=(threading.Event(),), daemon=True).start()
+    m = Member(share, Path(a.state), view=view, max_deviation_bps=a.max_deviation_bps, view_max_age_s=a.view_max_age_s)
+    print(f"frost member {m.index} group={m.share['group']['group_pubkey']} listen={a.listen} price_check={'off' if a.no_price_check else 'on'}", flush=True)
     serve(m, a.listen).serve_forever()
 
 
