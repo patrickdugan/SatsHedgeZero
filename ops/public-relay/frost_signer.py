@@ -33,6 +33,8 @@ import frost  # noqa: E402
 import public_relay as pr  # noqa: E402
 
 MAX_SLOT_SKEW_US = 60_000_000
+MAX_SEQ = 1 << 53  # JSON-safe integer, well inside u64
+MAX_SEQ_JUMP = 1 << 20  # failed signing attempts tolerated between two published packets (60 days of 5 s slots)
 
 
 class Member:
@@ -56,35 +58,63 @@ class Member:
             if len(self.seen_valid) > 2_000:
                 self.seen_valid.pop(min(self.seen_valid))
 
-    def dlc_unattestable(self, req: dict) -> dict:
-        event_id, signers = req["event_id"], [int(x) for x in req["signers"]]
+    def _window_clear(self, event_id: str):
         with self.dlc_lock:
             maturity_us = self.dlc._ev(event_id)["maturity_unix"] * 1_000_000
-            if any(maturity_us <= s < maturity_us + dlc_oracle.OUTCOME_WINDOW_US for s in self.seen_valid):
-                raise ValueError("a VALID packet in the outcome window exists")
-            z = self.dlc.sign_unattestable(event_id, pr.now_us(), signers)
+        if any(maturity_us <= s < maturity_us + dlc_oracle.OUTCOME_WINDOW_US for s in self.seen_valid):
+            raise ValueError("a VALID packet in the outcome window exists")
+
+    def dlc_lock_unattestable(self, req: dict) -> dict:
+        event_id = req["event_id"]
+        self._window_clear(event_id)
+        with self.dlc_lock:
+            lock = self.dlc.lock_decision(event_id, dlc_oracle.UNATTESTABLE, pr.now_us())
+        return {"index": self.index, "lock": lock}
+
+    def dlc_unattestable(self, req: dict) -> dict:
+        event_id, signers = req["event_id"], [int(x) for x in req["signers"]]
+        self._window_clear(event_id)
+        with self.dlc_lock:
+            z = self.dlc.sign_unattestable(event_id, pr.now_us(), signers, req.get("locks"))
         return {"index": self.index, "z": z}
 
-    def dlc_attest(self, req: dict) -> dict:
-        """Attest only a group-signed VALID packet in [maturity, maturity + 30 s) and,
-        if this member has seen an earlier VALID packet at or after maturity, only that one."""
-        event_id, pkt, signers = req["event_id"], req["packet"], [int(x) for x in req["signers"]]
+    def _outcome_price(self, event_id: str, pkt: dict) -> int:
+        """Price of a group-signed VALID packet in [maturity, maturity + 30 s) that is not
+        preceded by a VALID packet this member has seen at or after maturity."""
         if not pr.verify_packet(pkt, self.share["group"]["group_pubkey"]):
             raise ValueError("outcome packet is not group-signed")
         b = pkt["body"]
         with self.dlc_lock:
             maturity_us = self.dlc._ev(event_id)["maturity_unix"] * 1_000_000
-        if b.get("status") != "VALID" or not maturity_us <= b["slot_us"] < maturity_us + dlc_oracle.OUTCOME_WINDOW_US:
+        slot, median = b.get("slot_us"), b.get("median_e8")
+        if b.get("status") != "VALID" or type(slot) is not int or not maturity_us <= slot < maturity_us + dlc_oracle.OUTCOME_WINDOW_US:
             raise ValueError("outcome packet is not a VALID packet in the maturity window")
-        earlier = [s for s in self.seen_valid if maturity_us <= s < b["slot_us"]]
-        if earlier:
+        if type(median) is not int or median <= 0:
+            raise ValueError("outcome packet has no positive integer median")
+        if any(maturity_us <= s < slot for s in self.seen_valid):
             raise ValueError("an earlier VALID packet at or after maturity exists")
-        price = b["median_e8"] // 100_000_000
+        self._observe(pkt)
+        return median // 100_000_000
+
+    def dlc_lock_outcome(self, req: dict) -> dict:
+        """Phase 1: durably lock this event to the packet's price and sign the lock."""
+        event_id = req["event_id"]
+        price = self._outcome_price(event_id, req["packet"])
         with self.dlc_lock:
-            zs = self.dlc.sign_outcome(event_id, price, signers)
+            lock = self.dlc.lock_decision(event_id, dlc_oracle.price_decision(price))
+        return {"index": self.index, "price_usd": price, "lock": lock}
+
+    def dlc_attest(self, req: dict) -> dict:
+        """Phase 2: release digit partials once a quorum of members locked the same price."""
+        event_id, signers = req["event_id"], [int(x) for x in req["signers"]]
+        price = self._outcome_price(event_id, req["packet"])
+        with self.dlc_lock:
+            zs = self.dlc.sign_outcome(event_id, price, signers, req.get("locks"))
         return {"index": self.index, "price_usd": price, "z": zs}
 
     def commit(self, seq: int) -> dict:
+        if type(seq) is not int or not 0 < seq < MAX_SEQ:
+            raise ValueError("sequence out of range")
         with self.lock:
             d, e = self.state.commit(seq)
         return {"index": self.index, "D": frost.ser(frost._mul(frost.G, d)).hex(), "E": frost.ser(frost._mul(frost.G, e)).hex()}
@@ -93,23 +123,36 @@ class Member:
         body, seq, commits = req["body"], int(req["seq"]), req["commitments"]
         if body.get("schema") != pr.SCHEMA or body.get("seq") != seq:
             raise ValueError("body does not match the requested sequence")
-        if abs(pr.now_us() - int(body["slot_us"])) > MAX_SLOT_SKEW_US:
+        slot = body.get("slot_us")
+        if type(slot) is not int or abs(pr.now_us() - slot) > MAX_SLOT_SKEW_US:
             raise ValueError("slot time not recent")
         parent = req.get("parent")
         if parent is None:
             # Genesis only for a member that has never signed.
             if body.get("previous") != "00" * 32 or self.state.s["last_seq"] != 0:
                 raise ValueError("missing parent packet")
+            parent_seq = 0
         else:
             # Continuity: the body must extend a packet the group already signed.
             if not pr.verify_packet(parent, self.share["group"]["group_pubkey"]):
                 raise ValueError("parent packet is not group-signed")
-            if parent["body"]["seq"] >= seq or body.get("previous") != parent["digest"]:
+            parent_seq = parent["body"]["seq"]
+            if parent_seq >= seq or body.get("previous") != parent["digest"]:
                 raise ValueError("body does not extend the parent packet")
+            if parent["body"]["slot_us"] >= slot:
+                raise ValueError("slot does not advance past the parent packet")
             self._observe(parent)
+        # A sequence is a counter of signing attempts: it cannot outrun the group-signed
+        # parent by more than a bounded number of failed slots, and it stays a u64.
+        if not seq < MAX_SEQ or seq - parent_seq > MAX_SEQ_JUMP:
+            raise ValueError("sequence jumps too far past the parent packet")
         msg = pr.packet_message(body)
         with self.lock:
-            d, e = self.state.take(seq, msg)
+            # One packet per slot per member: with 2t > n two packets for the same slot
+            # would need a member to sign both.
+            if slot <= self.state.s.get("last_slot", 0):
+                raise ValueError("slot already signed or older")
+            d, e = self.state.take(seq, msg, slot)
             z = frost.partial_sign(self.share, d, e, msg, commits)
             self.signed += 1
         return {"index": self.index, "z": z.to_bytes(32, "big").hex()}
@@ -136,7 +179,7 @@ def make_handler(m: Member):
 
         def do_POST(self):
             try:
-                req = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length", 0)), 1_000_000)))
+                req = json.loads(self.rfile.read(max(0, min(int(self.headers.get("Content-Length", 0)), 1_000_000))))
                 if self.path == "/commit":
                     return self._json(200, m.commit(int(req["seq"])))
                 if self.path == "/sign":
@@ -150,6 +193,10 @@ def make_handler(m: Member):
                 if self.path == "/dlc/sign-announcement":
                     with m.dlc_lock:
                         return self._json(200, {"index": m.index, "z": m.dlc.sign_announcement(req["event_id"], req["core"], [int(x) for x in req["signers"]])})
+                if self.path == "/dlc/lock-outcome":
+                    return self._json(200, m.dlc_lock_outcome(req))
+                if self.path == "/dlc/lock-unattestable":
+                    return self._json(200, m.dlc_lock_unattestable(req))
                 if self.path == "/dlc/sign-outcome":
                     return self._json(200, m.dlc_attest(req))
                 if self.path == "/dlc/sign-unattestable":

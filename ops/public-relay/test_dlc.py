@@ -78,9 +78,13 @@ class DlcOracle(unittest.TestCase):
             # Equivocation refused: a member that attested will not sign a different price.
             signer = c.members[att["signers"][0] - 1]
             with self.assertRaises(ValueError):
-                signer.dlc.sign_outcome(core["event_id"], price + 1, att["signers"])
+                signer.dlc.sign_outcome(core["event_id"], price + 1, att["signers"], att["decision_locks"])
             # The same outcome again is harmless (same message per nonce).
-            signer.dlc.sign_outcome(core["event_id"], price, att["signers"])
+            signer.dlc.sign_outcome(core["event_id"], price, att["signers"], att["decision_locks"])
+            # No partial leaves a member without a quorum of decision locks.
+            self.assertGreaterEqual(len(att["decision_locks"]), dlc.decision_quorum(3, 5))
+            with self.assertRaises(ValueError):
+                signer.dlc.sign_outcome(core["event_id"], price, att["signers"], dict(list(att["decision_locks"].items())[:3]))
             # Members refuse a later packet once they have seen an earlier VALID one (no outcome shopping).
             spare = next(m for m in c.members if m.index not in att["signers"])
             spare._observe(p1)
@@ -165,11 +169,14 @@ class DlcOracle(unittest.TestCase):
             dlc.aggregate(group, deals, [bool(dlc.group_nonce(deals, d)[1] & 1) for d in range(5)], 0, core_msg, rs[1][0], parts)
         self.assertEqual(cm.exception.indices, [3])
         # Nonce locks survive restart: a reloaded member still refuses a second message on nonce 0.
-        ms[1].sign_outcome("E1", 9, [2, 3, 4])  # 1001: digit 0 matches the bit it already signed
+        locks = {str(m.i): m.lock_decision("E1", "price:9") for m in ms[:4]}  # 1001: digit 0 matches the bit already signed
+        ms[1].sign_outcome("E1", 9, [2, 3, 4], locks)
         again = dlc.DlcMember(shares[1], tmp / "d2.json")
         with self.assertRaises(ValueError):
-            again.sign_outcome("E1", 10, [2, 3, 4])
-        again.sign_outcome("E1", 9, [2, 3, 4])  # same outcome again is allowed
+            again.lock_decision("E1", "price:10")
+        with self.assertRaises(ValueError):
+            again.sign_outcome("E1", 10, [2, 3, 4], locks)
+        again.sign_outcome("E1", 9, [2, 3, 4], locks)  # same outcome again is allowed
 
     def test_digit_message_and_decomposition_match_shz(self):
         self.assertEqual(dlc.decompose(5, 4), [0, 1, 0, 1])

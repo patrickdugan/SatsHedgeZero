@@ -41,6 +41,7 @@ class DlcCoordinator:
         self.relay = relay
         self.group = relay.group
         self.t = self.group["threshold"]
+        self.q = dlc.decision_quorum(self.t, self.group["signers"])
         self.dir = state_dir / "dlc"
         self.dir.mkdir(parents=True, exist_ok=True)
         self.every = every_min * 60
@@ -77,8 +78,8 @@ class DlcCoordinator:
                 continue
             deals[str(d["dealer"])] = d
             self.url_by_index[d["dealer"]] = url
-        if len(deals) < self.t:
-            raise RuntimeError(f"only {len(deals)} dealers")
+        if len(deals) < self.q:
+            raise RuntimeError(f"only {len(deals)} dealers; the decision quorum is {self.q}")
         qualified = sorted(int(k) for k in deals)
         rs = {}
         for j in qualified:
@@ -88,19 +89,7 @@ class DlcCoordinator:
         if any(r != r_list for r in rs.values()):
             raise RuntimeError("members disagree on group nonces")
         negate = [bool(dlc.group_nonce(deals, d)[1] & 1) for d in range(dlc.nonce_count(self.num_bits))]
-        core = {
-            "event_id": event_id,
-            "maturity_unix": maturity_unix,
-            "num_bits": self.num_bits,
-            "oracle_pubkey_x": self.group["group_pubkey"],
-            "digit_nonces_x": r_list[: self.num_bits],
-            "announcement_nonce_x": r_list[self.num_bits],
-            "unattestable_nonce_x": r_list[self.num_bits + 1],
-            "unattestable_rule": "threshold BIP340 signature over tagged_hash('SHZ/DLC/UNATTESTABLE/V1', event_id) with unattestable_nonce_x when no VALID packet exists in the outcome window; members never sign both this and digits",
-            "outcome": dlc.OUTCOME_RULE,
-            "digit_message": "shz_dlc::oracle_digit_message(event_id, digit_idx, bit), MSB first (shz_margin::decompose_price_bits)",
-            "threshold": f"{self.t}-of-{n}",
-        }
+        core = dlc.canonical_core(self.group, event_id, maturity_unix, self.num_bits, r_list)
         msg = dlc.announcement_message(core)
         sig = None
         for subset in itertools.combinations(qualified, self.t):
@@ -145,9 +134,14 @@ class DlcCoordinator:
         price = pkt["body"]["median_e8"] // 100_000_000
         bits = dlc.decompose(price, nb)
         msgs = [dlc.digit_message(event_id, d, bits[d]) for d in range(nb)]
-        for subset in itertools.combinations(ev["qualified"], self.t):
+        # Phase 1: every reachable member durably locks the event to this price. Digit
+        # partials are requested only once a quorum holds the same lock.
+        locks = self._collect_locks(ev, "/dlc/lock-outcome", {"event_id": event_id, "packet": pkt}, dlc.price_decision(price))
+        if locks is None:
+            return ev
+        for subset in itertools.combinations(sorted(int(k) for k in locks), self.t):
             try:
-                res = {j: _post(self.url_by_index[j] + "/dlc/sign-outcome", {"event_id": event_id, "packet": pkt, "signers": list(subset)}) for j in subset}
+                res = {j: _post(self.url_by_index[j] + "/dlc/sign-outcome", {"event_id": event_id, "packet": pkt, "signers": list(subset), "locks": locks}) for j in subset}
                 if any(r["price_usd"] != price for r in res.values()):
                     continue
                 sigs = [dlc.aggregate(self.group, deals, ev["negate"], d, msgs[d], core["digit_nonces_x"][d],
@@ -159,6 +153,7 @@ class DlcCoordinator:
             ev.update(
                 status="attested",
                 attestation={"price_usd": price, "digit_bits": bits, "digit_signatures": [s.hex() for s in sigs], "signers": list(subset),
+                             "decision_locks": locks,
                              "outcome_packet": {"seq": pkt["body"]["seq"], "slot_us": pkt["body"]["slot_us"], "digest": pkt["digest"]}},
                 shz_dlc_attestation=dlc.shz_dlc_attestation(event_id, pkt["body"]["slot_us"] // 1_000_000, price, bits, sigs),
             )
@@ -167,6 +162,21 @@ class DlcCoordinator:
             return ev
         self.stats["attest_failures"] += 1
         return ev
+
+    def _collect_locks(self, ev: dict, path: str, req: dict, decision: str) -> dict | None:
+        """Ask every qualified member to lock `decision`; return {index: lock signature}
+        once the quorum is verified, else None (counted as an attestation failure)."""
+        raw = {}
+        for j in ev["qualified"]:
+            try:
+                raw[str(j)] = _post(self.url_by_index[j] + path, req)["lock"]
+            except Exception:  # noqa: BLE001 - a refusing or absent member contributes no lock
+                continue
+        ok = dlc.verified_lockers(self.group, ev["core"]["event_id"], decision, raw)
+        if len(ok) < self.q:
+            self.stats["attest_failures"] += 1
+            return None
+        return {str(j): raw[str(j)] for j in sorted(ok)}
 
     def declare_unattestable(self, ev: dict) -> dict:
         core = ev["core"]
@@ -178,14 +188,17 @@ class DlcCoordinator:
             return ev
         deals = {k: {"commitments": v} for k, v in ev["nonce_commitments"].items()}
         msg = dlc.unattestable_message(event_id)
-        for subset in itertools.combinations(ev["qualified"], self.t):
+        locks = self._collect_locks(ev, "/dlc/lock-unattestable", {"event_id": event_id}, dlc.UNATTESTABLE)
+        if locks is None:
+            return ev
+        for subset in itertools.combinations(sorted(int(k) for k in locks), self.t):
             try:
-                parts = {j: int(_post(self.url_by_index[j] + "/dlc/sign-unattestable", {"event_id": event_id, "signers": list(subset)})["z"], 16) for j in subset}
+                parts = {j: int(_post(self.url_by_index[j] + "/dlc/sign-unattestable", {"event_id": event_id, "signers": list(subset), "locks": locks})["z"], 16) for j in subset}
                 sig = dlc.aggregate(self.group, deals, ev["negate"], nb + 1, msg, core["unattestable_nonce_x"], parts)
             except Exception:  # noqa: BLE001 - refusing or absent member: try another set
                 continue
             ev.update(status="unattestable", unattestable_signature=sig.hex(), unattestable_digest=msg.hex(),
-                      unattestable_signers=list(subset), unattestable_at_us=pr.now_us())
+                      unattestable_signers=list(subset), unattestable_at_us=pr.now_us(), decision_locks=locks)
             self._save(ev)
             self.stats["unattestable"] += 1
             return ev

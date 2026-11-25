@@ -37,6 +37,69 @@ UNATTESTABLE_GRACE_US = 60_000_000
 NUM_BITS = 20  # integer USD up to 1,048,575
 OUTCOME_WINDOW_US = 30_000_000
 OUTCOME_RULE = "floor(median_e8 / 1e8) of the first VALID FROST relay packet with slot_us >= maturity"
+UNATTESTABLE_RULE = ("threshold BIP340 signature over tagged_hash('SHZ/DLC/UNATTESTABLE/V1', event_id) with unattestable_nonce_x "
+                     "when no VALID packet exists in the outcome window; members never sign both this and digits")
+DIGIT_MESSAGE_RULE = "shz_dlc::oracle_digit_message(event_id, digit_idx, bit), MSB first (shz_margin::decompose_price_bits)"
+LOCK_TAG = "SHZ/DLC/DECISION-LOCK/V1"
+UNATTESTABLE = "unattestable"
+
+
+def decision_quorum(t: int, n: int) -> int:
+    """Smallest q with 2q - n >= t.
+
+    The per-event nonces are plain Shamir shares of one pre-committed nonce, so
+    the group key is exposed as soon as honest members sign two different
+    messages with shares of the same nonce (t partials on one message fix
+    k_j + c s_j for every j; one partial on another message then isolates s_j).
+    A member therefore signs only a decision that q members have locked. Two
+    quorums share at least t members, so with at most t - 1 faulty members an
+    honest member is in both and only one decision per event reaches quorum.
+    """
+    return (n + t + 1) // 2
+
+
+def price_decision(price_usd: int) -> str:
+    if isinstance(price_usd, bool) or not isinstance(price_usd, int) or price_usd < 0:
+        raise ValueError("price must be a non-negative integer")
+    return f"price:{price_usd}"
+
+
+def lock_message(event_id: str, decision: str) -> bytes:
+    e = event_id.encode()
+    return tagged_hash(LOCK_TAG, len(e).to_bytes(4, "little") + e + decision.encode())
+
+
+def verified_lockers(group: dict, event_id: str, decision: str, locks: dict) -> set[int]:
+    """Members whose BIP340 lock signature (under their verification share) covers this decision."""
+    msg, ok = lock_message(event_id, decision), set()
+    for j, sig in locks.items():
+        y = group["verification_shares"].get(str(int(j)))
+        try:
+            if y is not None and bip340.verify(msg, bytes.fromhex(y)[1:], bytes.fromhex(sig)):
+                ok.add(int(j))
+        except (TypeError, ValueError):
+            continue
+    return ok
+
+
+def canonical_core(group: dict, event_id: str, maturity_unix: int, num_bits: int, r_list: list[str]) -> dict:
+    """The only announcement body for an event: every field is derived from the DKG result
+    and fixed constants, so the announcement nonce has exactly one message."""
+    if len(r_list) != nonce_count(num_bits):
+        raise ValueError("nonce list does not match num_bits")
+    return {
+        "event_id": event_id,
+        "maturity_unix": maturity_unix,
+        "num_bits": num_bits,
+        "oracle_pubkey_x": group["group_pubkey"],
+        "digit_nonces_x": r_list[:num_bits],
+        "announcement_nonce_x": r_list[num_bits],
+        "unattestable_nonce_x": r_list[num_bits + 1],
+        "unattestable_rule": UNATTESTABLE_RULE,
+        "outcome": OUTCOME_RULE,
+        "digit_message": DIGIT_MESSAGE_RULE,
+        "threshold": f"{group['threshold']}-of-{group['signers']}",
+    }
 
 
 def digit_message(event_id: str, idx: int, bit: int) -> bytes:
@@ -199,20 +262,59 @@ class DlcMember:
     def sign_announcement(self, event_id: str, core: dict, signers: list[int]) -> str:
         ev = self._ev(event_id)
         nb = ev["num_bits"]
-        if (core.get("event_id"), core.get("maturity_unix"), core.get("num_bits")) != (event_id, ev["maturity_unix"], nb) \
-                or core.get("oracle_pubkey_x") != self.share["group"]["group_pubkey"] \
-                or core.get("digit_nonces_x") != ev["R"][:nb] or core.get("announcement_nonce_x") != ev["R"][nb] \
-                or core.get("unattestable_nonce_x") != (ev["R"][nb + 1] if len(ev["R"]) > nb + 1 else None):
-            raise ValueError("announcement does not match my nonce setup")
-        msg = announcement_message(core)
+        # The member signs its own canonical core, never coordinator-supplied text: a core
+        # that differs in any byte (extra key, other rule text, 20.0 for 20) is refused, so
+        # two members cannot be handed different messages for the announcement nonce.
+        msg = announcement_message(canonical_core(self.share["group"], event_id, ev["maturity_unix"], nb, ev["R"]))
+        if not isinstance(core, dict) or announcement_message(core) != msg:
+            raise ValueError("announcement is not the canonical core of my nonce setup")
         z = self._partial(ev, nb, msg, signers)
         _atomic_write(self.path, self.s)  # lock is durable before the partial leaves
         return z.to_bytes(32, "big").hex()
 
-    def sign_unattestable(self, event_id: str, now_us: int, signers: list[int]) -> str:
-        """Threshold notice that this event will never be attested. Mutually exclusive
-        with attesting: refused once any digit nonce has signed, and afterwards
-        sign_outcome refuses."""
+    def lock_decision(self, event_id: str, decision: str, now_us: int | None = None) -> str:
+        """Durably bind this event to ONE decision (`price:<usd>` or `unattestable`) and
+        return this member's lock signature. No digit or notice partial is released
+        until `decision_quorum` members have locked the same decision."""
+        ev = self._ev(event_id)
+        if "nonce_shares" not in ev:
+            raise ValueError("event nonce setup is not complete")
+        nb = ev["num_bits"]
+        prev = ev.get("decision")
+        if prev is not None and prev != decision:
+            raise ValueError(f"event is already locked to {prev}")
+        if decision == UNATTESTABLE:
+            if len(ev["R"]) <= nb + 1:
+                raise ValueError("event was announced without an unattestable nonce")
+            if now_us is None or now_us < ev["maturity_unix"] * 1_000_000 + OUTCOME_WINDOW_US + UNATTESTABLE_GRACE_US:
+                raise ValueError("outcome window plus grace has not passed")
+            if any(int(d) < nb for d in ev["signed"]):
+                raise ValueError("already attested")
+        else:
+            if not decision.startswith("price:") or price_decision(int(decision[6:])) != decision:
+                raise ValueError("unknown decision")
+            if ev.get("unattestable") or str(nb + 1) in ev["signed"]:
+                raise ValueError("event declared unattestable")
+            bits = decompose(int(decision[6:]), nb)
+            if any(int(d) < nb and m != digit_message(event_id, int(d), bits[int(d)]).hex() for d, m in ev["signed"].items()):
+                raise ValueError("a digit nonce already signed a different outcome")
+        ev["decision"] = decision
+        _atomic_write(self.path, self.s)  # the lock is durable before its signature leaves
+        return bip340.sign(lock_message(event_id, decision), bytes.fromhex(self.share["secret_share"]), os.urandom(32)).hex()
+
+    def _require_quorum(self, ev: dict, event_id: str, decision: str, locks: dict):
+        g = self.share["group"]
+        if ev.get("decision") != decision:
+            raise ValueError("this member has not locked that decision")
+        q = decision_quorum(g["threshold"], g["signers"])
+        got = verified_lockers(g, event_id, decision, locks or {})
+        if len(got) < q:
+            raise ValueError(f"decision is locked by {len(got)} members, quorum is {q}")
+
+    def sign_unattestable(self, event_id: str, now_us: int, signers: list[int], locks: dict | None = None) -> str:
+        """Threshold notice that this event will never be attested. Released only once a
+        quorum of members has locked `unattestable`; a member locks one decision per
+        event, so the notice and an attestation cannot both reach quorum."""
         ev = self._ev(event_id)
         nb = ev["num_bits"]
         if len(ev["R"]) <= nb + 1:
@@ -221,16 +323,17 @@ class DlcMember:
             raise ValueError("outcome window plus grace has not passed")
         if any(int(d) < nb for d in ev["signed"]):
             raise ValueError("already attested")
-        ev["unattestable"] = True
+        self._require_quorum(ev, event_id, UNATTESTABLE, locks)
         z = self._partial(ev, nb + 1, unattestable_message(event_id), signers)
         _atomic_write(self.path, self.s)
         return z.to_bytes(32, "big").hex()
 
-    def sign_outcome(self, event_id: str, price_usd: int, signers: list[int]) -> list[str]:
+    def sign_outcome(self, event_id: str, price_usd: int, signers: list[int], locks: dict | None = None) -> list[str]:
         ev = self._ev(event_id)
-        if ev.get("unattestable"):
-            raise ValueError("event declared unattestable")
         nb = ev["num_bits"]
+        if ev.get("unattestable") or str(nb + 1) in ev["signed"]:
+            raise ValueError("event declared unattestable")
+        self._require_quorum(ev, event_id, price_decision(price_usd), locks)
         bits = decompose(price_usd, nb)
         zs = [self._partial(ev, d, digit_message(event_id, d, bits[d]), signers) for d in range(nb)]
         _atomic_write(self.path, self.s)
