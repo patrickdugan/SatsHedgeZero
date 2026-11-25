@@ -51,6 +51,8 @@ Branch `research/shz-hft06-oracle-relay-20261124`, stacked on HFT-05 `research/s
 | 45424124125 | shz-hft06-evidence-annotations (aggregates as public notices) | success |
 | 45422702655 | shz-mnr05-bitvm3-ln-dlc | failure, also failing on the HFT-05 base adc01e1 (runs 45384479068, 45384468149); green on main 9ae87d1 |
 
+Commit 9b6e023 (2026-11-25): shz-hft06-oracle-relay, shz-hft06-immediacy-calibration and shz-rust-and-core-regtest (strict clippy, verify-all, MNR-02/03 Core regtest drills; first green run on this branch, #174) pass; shz-hft06-dlc-refund-regtest passed on 20a8edc. shz-mnr05-bitvm3-ln-dlc still fails as on the HFT-05 base.
+
 ## Reproduce
 
 ```
