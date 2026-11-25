@@ -23,6 +23,21 @@ Relay key (BIP340, x-only), pin it rather than fetching it:
 
 Plain HTTP; integrity comes from the signature and chain, not the transport.
 
+## FROST 3-of-5 confederation (port 8091)
+
+The same packets, signed by a FROST threshold group instead of one key:
+
+```
+http://170.75.168.145:8091/v1/latest    (same API as 8090)
+group key (BIP340): 68b52a25233d8b87f5c09d44a71fb5e15bfd025c2dde56f9674468e1f1c3d312
+```
+
+- Five members run as separate systemd units (`shz-frost-signer@1..5`), each under its own system user with only its own share (`/var/lib/shz-frost-signer-N/share.json`, 0600) and durable nonce state, listening on 127.0.0.1:9101..9105. The coordinator `shz-frost-relay` assembles the packet, collects nonce commitments, takes the first three members that answer, checks every partial signature against that member's verification share, and publishes the aggregate. The result is one standard BIP340 signature under the group key; `frost_signers` in each packet lists the signing set.
+- Two-round FROST (`frost.py`): binding factors over the full commitment list; even-Y group key fixed at keygen; signers negate nonces when the group commitment has odd Y. Nonces are persisted before commitments are released and erased before a partial is released, so no nonce signs two messages, across restarts too.
+- Members sign a sequence at most once and only a body that links to a group-signed parent packet sent with the request. The coordinator reserves each sequence durably before signing, so a crash after members signed but before publication costs one sequence number rather than wedging the chain: `seq` may jump, `previous` always links to the last published packet. A member caught sending a bad partial is named in `/healthz` (`stats.frost.cheaters`) and left out of later signing sets.
+- Fault drill on the deployment (2026-11-25): members 1 and 3 stopped, packets kept flowing signed by {2, 4, 5}; a third member stopped, publication paused (skipped slots counted, no packet); all restarted, signing resumed with {1, 2, 3}.
+- Keygen was a trusted dealer on the box; the dealer files were shredded after distribution, and all five members share one host and one operator. This demonstrates the protocol and its failure handling; it adds no security over the single-key relayer until members run on independent machines with a DKG.
+
 ## Packet
 
 `body` fields: `schema` (`shz-public-relay/v1`), `market`, `data_class` (`public_delayed`), `seq`, `previous` (digest of packet `seq-1`), `interval_ms`, `slot_us`, `assembled_us`, `status` (`VALID` or `HOLD` with `hold_reason`), `median_e8`, `dispersion_bps`, `audit_deviation_bps`, `fast_sources_used`, and per-source `{id, role, ok, fetched_us, source_ts_us, ts_from_fetch, age_us, response_sha256, error}`.
@@ -43,10 +58,10 @@ VALID needs at least 3 fresh fast sources, fast-source dispersion of at most 50 
 ## Operation
 
 ```
-python3 -m unittest test_public_relay            # offline: BIP340 vector, rules, chain, restart, tamper
+python3 -m unittest test_public_relay test_frost # offline: BIP340 vector, rules, chain, restart, tamper, FROST sets/parity/cheater/nonces/jump
 python3 public_relay.py --state ./state --once   # one live packet
 python3 verify_client.py http://170.75.168.145:8090 --pubkey 9d0d3aa9...a4b1 --follow 10
-cargo test -p shz-relay --test public_relay_signature   # Rust verifies a Python-signed packet
+cargo test -p shz-relay --test public_relay_signature   # Rust verifies single-key and FROST-aggregate packets
 ```
 
 Deploy (as on the VPS): system user `shzrelay`, code in `/opt/shz-public-relay`, `shz-public-relay.service` (MemoryMax 150M, CPUQuota 30%, ProtectSystem=strict). The signing key is generated on first start in `/var/lib/shz-public-relay/relay.key` (0600) and never leaves the box. Each packet is fsync'd to the archive before it is served; on restart the relay verifies the archive tail and continues the chain at `seq + 1`, refusing to start if the tail does not verify. Missed slots (fetch stall, suspend) show up as gaps in `slot_us` with consecutive `seq`.

@@ -10,6 +10,7 @@ that each links to the previous one by digest with seq + 1.
 import argparse
 import json
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -37,9 +38,12 @@ def main():
     if not ok:
         sys.exit(1)
     if b["seq"] > 1:
-        prev = get(f"{a.base}/v1/packet/{b['seq'] - 1}")
-        assert pr.verify_packet(prev, pk) and b["previous"] == prev["digest"], "chain link broken"
-        print("chain link to seq", b["seq"] - 1, "ok")
+        try:
+            prev = get(f"{a.base}/v1/packet/{b['seq'] - 1}")
+            assert pr.verify_packet(prev, pk) and b["previous"] == prev["digest"], "chain link broken"
+            print("chain link to seq", b["seq"] - 1, "ok")
+        except urllib.error.HTTPError:
+            print("seq", b["seq"] - 1, "not published (skipped slot); link checked on the stream")
     if a.follow:
         last = latest
         with urllib.request.urlopen(a.base + "/v1/stream", timeout=30) as r:
@@ -49,8 +53,8 @@ def main():
                     continue
                 p = json.loads(line[6:])
                 assert pr.verify_packet(p, pk), "bad signature"
-                if p["body"]["seq"] == last["body"]["seq"] + 1:
-                    assert p["body"]["previous"] == last["digest"], "chain link broken"
+                assert p["body"]["seq"] > last["body"]["seq"], "sequence went backwards"
+                assert p["body"]["previous"] == last["digest"], "chain link broken"
                 last = p
                 n += 1
                 print(json.dumps({"seq": p["body"]["seq"], "status": p["body"]["status"], "median_usd": p["body"].get("median_e8", 0) / 1e8}))

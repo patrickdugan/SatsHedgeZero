@@ -1,0 +1,79 @@
+{
+ "pubkey": "68b52a25233d8b87f5c09d44a71fb5e15bfd025c2dde56f9674468e1f1c3d312",
+ "packet": {
+  "body": {
+   "schema": "shz-public-relay/v1",
+   "market": "BTC/USD",
+   "data_class": "public_delayed",
+   "seq": 31,
+   "previous": "e766493f104ac382a6abb773c4e26437082ffb07be2fa302228bb83eeb0e9e8c",
+   "interval_ms": 5000,
+   "slot_us": 1795577965000000,
+   "assembled_us": 1795577965372244,
+   "sources": [
+    {
+     "id": "bitstamp",
+     "role": "fast",
+     "fetched_us": 1795577965370430,
+     "response_sha256": "4f199c6d70b55583df7465cd031f50a643978fe8f48ea23231f30ac170cbe679",
+     "ok": true,
+     "source_ts_us": 1795577965000000,
+     "ts_from_fetch": false,
+     "age_us": 0
+    },
+    {
+     "id": "chainlink_eth",
+     "role": "audit",
+     "fetched_us": 1795577965198951,
+     "response_sha256": "dad148138beecc1fca96c73040280907cdbbba26199488309e0b559498e596a1",
+     "ok": true,
+     "source_ts_us": 1795576403000000,
+     "ts_from_fetch": false,
+     "age_us": 1562000000
+    },
+    {
+     "id": "coinbase",
+     "role": "fast",
+     "fetched_us": 1795577965133191,
+     "response_sha256": "3f1a6d6632ad6657ac0592aa3640fa51ec257dfbd10c4c3f3ea3b5cec90ef8ec",
+     "ok": true,
+     "source_ts_us": 1795577963686385,
+     "ts_from_fetch": false,
+     "age_us": 1313615
+    },
+    {
+     "id": "gemini",
+     "role": "fast",
+     "fetched_us": 1795577965185529,
+     "response_sha256": "a0e1db6fe5aa9f1f08a3e6f266b8e60c7d3670157343a9d9687ec0fb5317348e",
+     "ok": true,
+     "source_ts_us": 1795577965185529,
+     "ts_from_fetch": true,
+     "age_us": 0
+    },
+    {
+     "id": "kraken",
+     "role": "fast",
+     "fetched_us": 1795577965133956,
+     "response_sha256": "382c1b407f68981deaae9e5402ff50a952c90f834f1b41d73bb163368b44db89",
+     "ok": true,
+     "source_ts_us": 1795577965133956,
+     "ts_from_fetch": true,
+     "age_us": 0
+    }
+   ],
+   "fast_sources_used": 4,
+   "median_e8": 5942770000000,
+   "dispersion_bps": 1,
+   "audit_deviation_bps": 1,
+   "status": "VALID"
+  },
+  "digest": "ac56c2648682b94ebc95c98ccdb9ecf8da10e6720a27380cd0fd0f374d01f458",
+  "signature": "d2547e4e8bb6c0d7da1e40edf9092c3079d40345c9ce4db2d1d15ae191842c5dbaf3fd718283d0bc5f3fd07b02ea6bfc679416105f886e0f603ab2509821dfd9",
+  "frost_signers": [
+   1,
+   2,
+   3
+  ]
+ }
+}

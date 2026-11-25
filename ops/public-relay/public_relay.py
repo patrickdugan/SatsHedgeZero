@@ -240,14 +240,22 @@ class Relay:
         self.interval_ms = interval_ms
         (self.dir / "archive").mkdir(parents=True, exist_ok=True)
         (self.dir / "raw").mkdir(parents=True, exist_ok=True)
-        self.seckey = self._key()
-        self.pubkey = bip340.pubkey(self.seckey).hex()
+        self.key_info: dict = {}
+        self._init_keys()
         self.ring: deque[dict] = deque(maxlen=retain)
         self.by_seq: dict[int, dict] = {}
         self.lock = threading.Lock()
         self.subscribers: set[queue.Queue] = set()
         self.seq, self.previous = self._restore()
         self.stats = {"published": 0, "valid": 0, "hold": 0, "started_us": now_us()}
+
+    def _init_keys(self):
+        self.seckey = self._key()
+        self.pubkey = bip340.pubkey(self.seckey).hex()
+        self.key_info = {"scheme": "single trusted relay key"}
+
+    def sign(self, body: dict) -> dict:
+        return sign_packet(body, self.seckey)
 
     def _key(self) -> bytes:
         kp = self.dir / "relay.key"
@@ -279,9 +287,9 @@ class Relay:
                 return last["body"]["seq"], last["digest"]
         return 0, "00" * 32
 
-    def publish(self, slot_us: int, results: dict) -> dict:
-        body, private = assemble(self.seq + 1, self.previous, slot_us, self.interval_ms, results)
-        pkt = sign_packet(body, self.seckey)
+    def publish(self, slot_us: int, results: dict, seq: int | None = None) -> dict:
+        body, private = assemble(self.seq + 1 if seq is None else seq, self.previous, slot_us, self.interval_ms, results)
+        pkt = self.sign(body)
         day = datetime.fromtimestamp(slot_us / 1e6, timezone.utc).strftime("%Y-%m-%d")
         with open(self.dir / "archive" / f"{day}.jsonl", "a") as f:
             f.write(json.dumps(pkt, separators=(",", ":")) + "\n")
@@ -361,10 +369,10 @@ def make_handler(relay: Relay):
                 age = (now_us() - latest["body"]["slot_us"]) / 1e6 if latest else None
                 return self._json(200 if latest and age < 30 else 503, {
                     "status": "ok" if latest and age < 30 else "stale", "last_seq": relay.seq, "last_slot_age_s": age,
-                    "stats": relay.stats, "trust_model": "single trusted relayer; public delayed sources; provider signatures not verified",
+                    "stats": relay.stats, "trust_model": relay.key_info.get("trust_model", "single trusted relayer; public delayed sources; provider signatures not verified"),
                     "production_ready": False})
             if path == "/v1/pubkey":
-                return self._json(200, {"pubkey_bip340": relay.pubkey, "signing_tag": SIGNING_TAG, "schema": SCHEMA,
+                return self._json(200, {"pubkey_bip340": relay.pubkey, "signing_tag": SIGNING_TAG, "schema": SCHEMA, "key": relay.key_info,
                                         "message": "tagged_hash(signing_tag, canonical_json(body)), canonical = sort_keys, no spaces"})
             if path == "/v1/latest":
                 return self._json(200, latest) if latest else self._json(404, {"error": "no packet yet"})

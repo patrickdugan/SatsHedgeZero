@@ -33,13 +33,52 @@ def _add(p1, p2):
     return (x3, (lam * (p1[0] - x3) - p1[1]) % P)
 
 
+def _jdouble(x, y, z):
+    if y == 0:
+        return (0, 1, 0)
+    ysq = y * y % P
+    s = 4 * x * ysq % P
+    m = 3 * x * x % P
+    nx = (m * m - 2 * s) % P
+    return (nx, (m * (s - nx) - 8 * ysq * ysq) % P, 2 * y * z % P)
+
+
+def _jadd(x1, y1, z1, x2, y2, z2):
+    if z1 == 0:
+        return (x2, y2, z2)
+    if z2 == 0:
+        return (x1, y1, z1)
+    z1s, z2s = z1 * z1 % P, z2 * z2 % P
+    u1, u2 = x1 * z2s % P, x2 * z1s % P
+    s1, s2 = y1 * z2s * z2 % P, y2 * z1s * z1 % P
+    if u1 == u2:
+        return _jdouble(x1, y1, z1) if s1 == s2 else (0, 1, 0)
+    h, r = (u2 - u1) % P, (s2 - s1) % P
+    h2 = h * h % P
+    h3 = h * h2 % P
+    u1h2 = u1 * h2 % P
+    nx = (r * r - h3 - 2 * u1h2) % P
+    return (nx, (r * (u1h2 - nx) - s1 * h3) % P, h * z1 * z2 % P)
+
+
 def _mul(pt, k: int):
-    r = None
-    for i in range(256):
-        if (k >> i) & 1:
-            r = _add(r, pt)
-        pt = _add(pt, pt)
-    return r
+    """Scalar multiplication in Jacobian coordinates (one inversion)."""
+    if pt is None or k % N == 0:
+        return None
+    k %= N
+    acc = (0, 1, 0)
+    base = (pt[0], pt[1], 1)
+    while k:
+        if k & 1:
+            acc = _jadd(*acc, *base)
+        base = _jdouble(*base)
+        k >>= 1
+    x, y, z = acc
+    if z == 0:
+        return None
+    zi = pow(z, P - 2, P)
+    zi2 = zi * zi % P
+    return (x * zi2 % P, y * zi2 * zi % P)
 
 
 def _bytes(x: int) -> bytes:

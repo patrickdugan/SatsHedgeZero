@@ -1,0 +1,25 @@
+[Unit]
+Description=SHZ FROST 3-of-5 confederation relay (delayed public BTC/USD)
+After=network-online.target shz-frost-signer@1.service shz-frost-signer@2.service shz-frost-signer@3.service shz-frost-signer@4.service shz-frost-signer@5.service
+Wants=network-online.target
+
+[Service]
+User=shzrelay
+Group=shzrelay
+StateDirectory=shz-frost-relay
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3 /opt/shz-public-relay/frost_relay.py --group /etc/shz-frost/group.json --signers http://127.0.0.1:9101,http://127.0.0.1:9102,http://127.0.0.1:9103,http://127.0.0.1:9104,http://127.0.0.1:9105 --state /var/lib/shz-frost-relay --listen 0.0.0.0:8091 --interval-ms 5000
+Restart=always
+RestartSec=3
+MemoryMax=150M
+CPUQuota=40%
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ReadWritePaths=/var/lib/shz-frost-relay
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

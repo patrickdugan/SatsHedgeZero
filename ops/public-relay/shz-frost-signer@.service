@@ -1,0 +1,24 @@
+[Unit]
+Description=SHZ FROST confederation member %i (one secret share, durable nonces)
+After=network.target
+
+[Service]
+User=shzfrost%i
+Group=shzfrost%i
+StateDirectory=shz-frost-signer-%i
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3 /opt/shz-public-relay/frost_signer.py --share /var/lib/shz-frost-signer-%i/share.json --state /var/lib/shz-frost-signer-%i --listen 127.0.0.1:910%i
+Restart=always
+RestartSec=3
+MemoryMax=80M
+CPUQuota=20%
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ReadWritePaths=/var/lib/shz-frost-signer-%i
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
