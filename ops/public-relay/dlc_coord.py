@@ -17,6 +17,7 @@ import itertools
 import json
 import threading
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,11 @@ from pathlib import Path
 import dlc_oracle as dlc
 import frost
 import public_relay as pr
+
+
+class SetupWedged(RuntimeError):
+    """A member already consumed its dealing for this event (an earlier setup was
+    interrupted after `receive`), so the event can never reach a full DKG again."""
 
 
 def _post(url: str, obj: dict, timeout: float = 30.0) -> dict:
@@ -71,13 +77,20 @@ class DlcCoordinator:
         n = self.group["signers"]
         req = {"event_id": event_id, "maturity_unix": maturity_unix, "num_bits": self.num_bits, "members": list(range(1, n + 1))}
         deals = {}
+        consumed = []
         for url in self.relay.signers:
             try:
                 d = _post(url + "/dlc/deal", req)
+            except urllib.error.HTTPError as e:
+                if b"event already set up" in e.read():
+                    consumed.append(url)
+                continue
             except Exception:  # noqa: BLE001 - absent member is simply not a dealer
                 continue
             deals[str(d["dealer"])] = d
             self.url_by_index[d["dealer"]] = url
+        if consumed and len(deals) < self.q:
+            raise SetupWedged(f"{len(consumed)} member(s) already consumed their dealing; {len(deals)} dealers < quorum {self.q}")
         if len(deals) < self.q:
             raise RuntimeError(f"only {len(deals)} dealers; the decision quorum is {self.q}")
         qualified = sorted(int(k) for k in deals)
@@ -206,6 +219,15 @@ class DlcCoordinator:
         return ev
 
     # -------------------------------------------------------------- loop ----
+    def abandon(self, maturity_unix: int, reason: str):
+        """Record a never-announced event as abandoned so it is not retried. No
+        announcement was published, so no contract can depend on it."""
+        event_id = event_id_for(maturity_unix)
+        self._save({"core": {"event_id": event_id, "maturity_unix": maturity_unix}, "status": "setup_abandoned",
+                    "reason": reason, "abandoned_at_us": pr.now_us()})
+        self.stats["setup_abandoned"] = self.stats.get("setup_abandoned", 0) + 1
+        print(f"dlc setup {event_id} abandoned: {reason}", flush=True)
+
     def tick(self):
         now = int(time.time())
         nxt = (now // self.every + 1) * self.every
@@ -213,6 +235,8 @@ class DlcCoordinator:
             if self.load(event_id_for(m)) is None:
                 try:
                     self.setup(m)
+                except SetupWedged as e:
+                    self.abandon(m, str(e))
                 except Exception as e:  # noqa: BLE001
                     self.stats["setup_failures"] += 1
                     print(f"dlc setup {event_id_for(m)} failed: {e!r}", flush=True)

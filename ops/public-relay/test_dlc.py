@@ -29,14 +29,24 @@ class Confed:
         self.tmp = Path(tempfile.mkdtemp())
         self.group, shares = frost.keygen(3, 5)
         self.members, self.servers, urls = [], [], []
+        self.view = frost_signer.StaticView()  # every member's own reading of the market
         for s in shares:
-            m = frost_signer.Member(s, self.tmp / f"m{s['index']}")
+            m = frost_signer.Member(s, self.tmp / f"m{s['index']}", view=self.view)
             srv = frost_signer.serve(m, "127.0.0.1:0")
             threading.Thread(target=srv.serve_forever, daemon=True).start()
             self.members.append(m)
             self.servers.append(srv)
             urls.append(f"http://127.0.0.1:{srv.server_address[1]}")
         self.relay = frost_relay.FrostRelay(self.tmp / "relay", 5000, self.group, urls)
+        # An honest coordinator publishes what the market shows, so by default the members'
+        # reading follows the results a test hands to publish(). `raw_publish` skips that:
+        # the coordinator then publishes something the members did not observe.
+        self.raw_publish = self.relay.publish
+
+        def publish(slot_us, results, seq=None):
+            self.view.set_from_results(results, slot_us)
+            return self.raw_publish(slot_us, results, seq)
+        self.relay.publish = publish
         self.coord = dlc_coord.DlcCoordinator(self.relay, self.tmp / "relay", num_bits=nbits)
 
     def close(self):
@@ -136,6 +146,35 @@ class DlcOracle(unittest.TestCase):
             ev3 = c.coord.setup(fut + 60)
             with self.assertRaises(ValueError):
                 spare.dlc.sign_unattestable(ev3["core"]["event_id"], pr.now_us(), [1, 2, 3])
+        finally:
+            c.close()
+
+    def test_interrupted_setup_is_abandoned_not_retried(self):
+        """Members that completed `receive` in an interrupted setup refuse to deal again;
+        the coordinator abandons that event instead of retrying it every tick."""
+        c = Confed(nbits=4)
+        try:
+            c.coord.every, c.coord.ahead = 3_600, 1
+            now_s = pr.now_us() // 1_000_000
+            m = (now_s // 3_600 + 1) * 3_600  # the single maturity tick() sets up
+            eid = dlc_coord.event_id_for(m)
+            # Interrupted earlier attempt: members 1 and 2 dealt and received, nothing was announced.
+            deals = {str(x.index): x.dlc.deal(eid, m, 4, [1, 2, 3, 4, 5]) for x in c.members}
+            for x in c.members[:2]:
+                x.dlc.receive(eid, deals)
+            with self.assertRaises(dlc_coord.SetupWedged):
+                c.coord.setup(m)
+            c.coord.tick()  # wedged: abandoned, not counted as a retryable failure
+            self.assertEqual(c.coord.load(eid)["status"], "setup_abandoned")
+            self.assertEqual((c.coord.stats["setup_abandoned"], c.coord.stats["setup_failures"]), (1, 0))
+            calls = []
+            real = c.coord.setup
+            c.coord.setup = lambda mat: calls.append(mat) or real(mat)
+            c.coord.tick()
+            c.coord.tick()
+            self.assertEqual(calls, [], "an abandoned event is never set up again")
+            status, body = c.coord.extra_get("/v1/dlc/events")
+            self.assertIn("setup_abandoned", [e["status"] for e in body["events"]])
         finally:
             c.close()
 

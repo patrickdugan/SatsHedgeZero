@@ -14,7 +14,7 @@ Two more findings break stated properties of the oracle with one faulty member o
 | --- | --- | --- | --- | --- |
 | F-01 | Critical | confirmed | DLC oracle: coordinator splits one group nonce across two messages and extracts the group key | yes |
 | F-02 | High | confirmed | An event carries both a notice and an attestation with one faulty member | yes |
-| F-03 | High | confirmed | Members sign packet contents chosen by the coordinator, including the median that becomes the DLC outcome | no |
+| F-03 | High | confirmed | Members sign packet contents chosen by the coordinator, including the median that becomes the DLC outcome | yes |
 | F-04 | Medium | confirmed | One member that commits but never signs stops publication | yes |
 | F-05 | Medium | confirmed | Member `/sign`: two VALID packets for one slot, unbounded sequence, no caller authentication | partly |
 | F-06 | Low | confirmed | `RemoteFed::on_vote` overflows on a member-chosen sequence | yes |
@@ -25,6 +25,7 @@ Two more findings break stated properties of the oracle with one faulty member o
 | F-11 | Low | suspected | Public HTTP surface: unbounded threads, subscribers and event-file work | no |
 | F-12 | Low | suspected | Rust member: certified-parent ratchet is in memory only | no |
 | F-13 | Low | suspected | Router accepts a `public_release_us` earlier than the Standard feed delay | no |
+| F-14 | Low | confirmed (live) | An interrupted DLC setup wedges its event: the coordinator retries it every 5 s forever | yes |
 
 ## How to run the reproductions
 
@@ -93,7 +94,7 @@ python3 -m unittest -v test_review_hft06.F01_DlcSplitSigningLeaksKey
 
 **Fix (implemented).** The decision lock of F-01 covers `unattestable` as a decision, so both outcomes need 4 of 5 locks and cannot both reach quorum with fewer than 3 equivocating members (`test_notice_and_attestation_cannot_both_reach_quorum`).
 
-## F-03 High (confirmed, open): members sign contents the coordinator chooses
+## F-03 High (confirmed, fixed): members sign contents the coordinator chooses
 
 **Where.** `ops/public-relay/frost_signer.py:92-115`. The member checks `schema`, `seq`, slot recency and the parent link. It checks no price field.
 
@@ -101,11 +102,23 @@ python3 -m unittest -v test_review_hft06.F01_DlcSplitSigningLeaksKey
 
 **Scenario.** A compromised coordinator publishes a VALID packet with an invented median at a maturity slot. The group signs it and then attests it.
 
-**Reproduction.** `python3 -m unittest -v test_review_hft06.F03_MembersSignUncheckedContent`. The test is marked `expectedFailure` on this branch because the fix is not implemented. Remove the decorator to see: `group signed and attested 300000 USD supplied by the coordinator`.
+**Reproduction.** `python3 -m unittest -v test_review_hft06.F03_MembersSignUncheckedContent`. Against the `20a8edc` member it fails with `group signed and attested 300000 USD supplied by the coordinator`; against the patched member it passes (no expected-failure marker remains), and `F03_Patched` checks the refusals.
 
 **Impact.** The FROST group protects the key from the coordinator (after F-01 is fixed) but not the data. For price integrity the Python confederation is a single trusted relayer whatever the key ceremony. The Rust relay does not have this problem: `MemberCore::on_proposal` votes only on a digest rebuilt from the member's own collator (`crates/shz-relay/src/member.rs:165-172`).
 
-**Fix (recommended).** Each member fetches the sources itself, or the coordinator forwards the raw responses and each member recomputes `assemble` and compares, with a tolerance for fetch time. A member signs only a body within tolerance of its own. Until then, state in the README and the brief that the coordinator is trusted for content.
+**Fix (implemented, deployed).** Each member runs its own `SourceView` (`ops/public-relay/frost_signer.py`): a background read of the four fast sources every 15 s, staggered by member index, judged with the same `public_relay.assemble` rules. Before any nonce is taken, `Member._check_content` refuses a VALID body unless the member holds its own VALID reading no older than 35 s and the body's median lies within 50 bps of it. A HOLD body is signed without a reading. No reading means refusal. `NO_PRICE_CHECK` is an explicit opt-out for offline protocol tests, never the default. Flags: `--max-deviation-bps`, `--view-refresh-s`, `--view-max-age-s`, `--no-price-check`; `/healthz` reports `price_view` and `content_refusals`.
+
+**Live check (2026-11-25 13:33 UTC).** Member 5 on the witness VPS was asked, exactly as a coordinator would, to sign a body whose median was three times the market (175,540 vs 58,513 USD). It answered HTTP 409 `median is 20000 bps from this member's own reading (limit 50)`; its `last_seq` (952) and `signed` (0) did not change, `content_refusals` became 1. The refusal precedes `take()`, so the probed sequence's nonce stays unused. The last 200 packets of both relays used all four fast sources with no source errors after the members started polling (seven processes polling each exchange from one IP).
+
+**Residual.** The coordinator can still move a VALID median by up to 50 bps, pick among the VALID packets in the 30 s outcome window, and withhold or force HOLD to push contracts to the refund path. The sources are unauthenticated public tickers and all members share one host and network path, so they share one view of the sources: a source or network that lies to the host lies to every member.
+
+## F-14 Low (confirmed on the live host, fixed): an interrupted DLC setup wedges its event
+
+**Where.** `ops/public-relay/dlc_coord.py`, `setup` and `tick`.
+
+**Observed.** After the F-03 member rollout (members restarted one at a time) the coordinator logged `dlc setup SHZ-BTCUSD-20261125T1415Z failed: only 3 dealers; the decision quorum is 4` every 5 s, 140 times, and announced nothing new. Members 1 and 2 answered `/dlc/deal` with `event already set up`: an earlier attempt had run `receive` on them (which consumes their dealing) and was then interrupted by a member restart. Their state is durable, so the event could never reach four dealers again.
+
+**Fix (implemented, deployed 13:31 UTC).** A dealing refused with `event already set up` while dealers are below quorum raises `SetupWedged`; `tick` then records the event as `setup_abandoned` (with the reason) and never retries it. No announcement was ever published for such an event, so no contract can depend on it. Other failures still retry. Live result: 14:15Z abandoned with `2 member(s) already consumed their dealing; 3 dealers < quorum 4`, and 14:30Z was set up and announced immediately after. Test: `test_dlc.DlcOracle.test_interrupted_setup_is_abandoned_not_retried`.
 
 ## F-04 Medium (confirmed): one silent member stops publication
 
@@ -227,7 +240,7 @@ Not exercised on the live host, as instructed. To reproduce locally: start `fros
 ## Mitigations in the brief that I think are insufficient
 
 - **Gap 7** (bounded choice among outcome packets): see F-03. The choice is unbounded, because members do not check contents.
-- **Gap 1** (the confederation "adds no security until members run on independent machines with a DKG"): F-01 and F-03 would survive both changes. F-01 is fixed here; F-03 is open.
+- **Gap 1** (the confederation "adds no security until members run on independent machines with a DKG"): F-01 and F-03 would survive both changes. Both are fixed here; F-03 keeps a 50 bps residual and a shared view of the sources while members share one host.
 - **Gap 8** (a coordinator can publish a withheld aggregate; clients reject it by `previous`): at `20a8edc` the coordinator can also have the group sign a second packet for the same slot (F-05). Fixed here by the durable `last_slot`.
 
 ## Examined and found sound
@@ -301,7 +314,9 @@ Checks after the switch, from outside the box:
 - Event `SHZ-BTCUSD-20261125T1030Z`, the first one announced and attested by the new code: `verify_client.py --dlc` reports the announcement and 20 digit signatures valid, 58,835 USD, outcome packet 68. Its published `decision_locks` verify for all five members against the verification shares in `/v1/pubkey` (quorum 4), none verifies for a different price, and its announcement digest equals the digest of `canonical_core` rebuilt from public fields.
 - All seven `shz-*` units and `rehearsal-bitcoind` active, no relay restarts, relay memory 86 MB of 220 MB.
 
-Still true of the live deployment: F-03 (members sign coordinator-chosen contents), no coordinator authentication on member ports, F-11, trusted-dealer keygen and a single host.
+F-03 member price check deployed 2026-11-25 (member `frost_signer.py` sha256 prefix `92b2b5a01cc48e4f`, members restarted 5 to 1; previous file kept in the archive directory as `code/frost_signer.46c4379.py`). F-14 fix deployed at 13:31 UTC (`dlc_coord.py` sha256 prefix `4572098f53377951`; previous file `code/dlc_coord.pre-wedge.py`). After both: event `SHZ-BTCUSD-20261125T1330Z` verifies from outside the box under the new key (announcement and 20 digit signatures, 58,766 USD, signers 1/2/3, outcome packet 2214).
+
+Still true of the live deployment: the F-03 residual (50 bps band, outcome-window choice, withholding), no coordinator authentication on member ports (F-05 part 3), F-11, F-12, F-13, trusted-dealer keygen and a single host. The FROST coordinator was OOM-killed once at 13:15 UTC (anon RSS 216 MB of 220 MB) while retrying the wedged event. After the F-14 fix (13:31 to 13:36 UTC, three samples) its anonymous memory was 67, 48 and 45 MB, the single-key relay 65 to 74 MB, both of 220 MB, with no restarts.
 
 ## What was run
 
@@ -311,7 +326,7 @@ Still true of the live deployment: F-03 (members sign coordinator-chosen content
 | `python3 -m unittest test_public_relay test_frost test_dlc` | `20a8edc` | 14 pass |
 | `test_review_hft06` (Python) | `20a8edc` code | 7 fail, 3 skipped, 1 expected failure |
 | `--test review_hft06` (Rust, 3 crates) | `96eb1db` | 7 fail |
-| All of the above plus `-p shz-utxoref` | branch head | Rust 137 pass; Python 25 pass with 1 expected failure |
+| All of the above plus `-p shz-utxoref` | branch head | Rust 137 pass; Python 29 pass, no expected failure (F-03 fixed, F-14 test added) |
 | `shz dlc-oracle-regtest` (debug build, Core 31.1) | branch head | exit 0 |
 
 Windows, toolchain `1.99.0-x86_64-pc-windows-msvc`. The regtest drill was run as a debug build because of disk space; the brief's command uses `--release`.
