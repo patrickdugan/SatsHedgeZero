@@ -1,6 +1,6 @@
 # HFT-06 security review brief
 
-Review target: branch `research/shz-hft06-oracle-relay-20261124` at `a6f0c46` (stacked on HFT-05 `adc01e1`). About 9.5k lines in scope; the rest of the branch diff is fixtures, evidence JSON, docs and CI. Deployed instances are live on the witness VPS: 170.75.168.145:8090 (single key) and :8091 (FROST 3-of-5).
+Review target: branch `research/shz-hft06-oracle-relay-20261124` at `20a8edc` (stacked on HFT-05 `adc01e1`). About 9.5k lines in scope; the rest of the branch diff is fixtures, evidence JSON, docs and CI. Deployed instances are live on the witness VPS: 170.75.168.145:8090 (single key) and :8091 (FROST 3-of-5).
 
 ## In scope, by priority
 
@@ -16,6 +16,7 @@ Review target: branch `research/shz-hft06-oracle-relay-20261124` at `a6f0c46` (s
 | 8 | Fee ledger | `crates/shz-dex/src/routing/ln_fees.rs` | Accrued vs committed vs collected vs outstanding never conflated; duplicate/overpaying receipts; reversal on fenced abort; WAL replay |
 | 9 | Deployed Python relayers | `ops/public-relay/{bip340,public_relay,frost,frost_signer,frost_relay}.py` | BIP340 correctness (Jacobian rewrite); FROST binding factors, parity handling, nonce single use across restarts, partial verification; HTTP handler path handling; archive restore refusing a bad tail |
 | 10 | Threshold DLC oracle | `ops/public-relay/{dlc_oracle,dlc_coord}.py`, DLC paths in `frost_signer.py`; `crates/shz-dlc/tests/frost_oracle_settlement.rs` | Nonce DKG: shares checked against commitments, ECDH pads keep nonces from the coordinator, parity handling; a nonce never signs two messages (locks durable before partials leave, across restarts); members attest only the first VALID group-signed packet in the maturity window; announcement binds the nonces; attestations interoperate with `shz_dlc` CET adaptor settlement |
+| 11 | Unattestable notice and refund tooling | `dlc_oracle.py` (`sign_unattestable`), `dlc_coord.py` (`declare_unattestable`), `bins/shz-cli/src/{dlc_refund_plan,dlc_oracle_regtest}.rs`, `crates/shz-utxoref/src/mnr02.rs` refund leaf | An event never carries both an attestation and an unattestable notice; the notice uses its own announced nonce; refund heights cannot arrive before the attestation deadline under faster blocks; the pre-signed CLTV refund is non-final before its height and spends only to the agreed outputs |
 
 ## Threat model
 
@@ -44,9 +45,11 @@ cargo test --locked -p shz-oracle -p shz-relay -p shz-dex -p shz-dlc -p shz-marg
 cargo test --locked -p shz-dex --test hft06_e2e_relay
 cd ops/public-relay && python3 -m unittest test_public_relay test_frost test_dlc
 cargo test --locked -p shz-dlc --test frost_oracle_settlement
+cargo test --locked -p shz-cli
+cargo run --release --bin shz -- dlc-oracle-regtest <path-to-bitcoind-31.1>
 python3 ops/public-relay/verify_client.py http://170.75.168.145:8091 --pubkey 68b52a25233d8b87f5c09d44a71fb5e15bfd025c2dde56f9674468e1f1c3d312 --follow 10
 ```
 
 Windows: add `+stable-x86_64-pc-windows-msvc` to cargo. CI: workflow `shz-hft06-oracle-relay` (last green run 45438548161).
 
-Deliverable expected: findings ranked by severity with reproduction (test or command) against `a6f0c46`. Fixes land on this branch.
+Deliverable expected: findings ranked by severity with reproduction (test or command) against `20a8edc`. Fixes land on this branch.
