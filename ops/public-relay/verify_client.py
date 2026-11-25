@@ -28,8 +28,27 @@ def main():
     ap.add_argument("base")
     ap.add_argument("--pubkey")
     ap.add_argument("--follow", type=int, default=0)
+    ap.add_argument("--dlc", help="verify a DLC event's announcement and attestation (FROST relay)")
     a = ap.parse_args()
     pk = a.pubkey or get(a.base + "/v1/pubkey")["pubkey_bip340"]
+    if a.dlc:
+        import bip340
+        import dlc_oracle as dlc
+        ev = get(f"{a.base}/v1/dlc/event/{a.dlc}")
+        core = ev["core"]
+        gx = bytes.fromhex(pk)
+        assert core["oracle_pubkey_x"] == pk, "event not announced by the pinned key"
+        assert bip340.verify(dlc.announcement_message(core), gx, bytes.fromhex(ev["announcement_signature"])), "bad announcement signature"
+        out = {"event_id": core["event_id"], "maturity_unix": core["maturity_unix"], "announcement_ok": True, "status": ev["status"]}
+        if ev["status"] == "attested":
+            att = ev["attestation"]
+            assert att["digit_bits"] == dlc.decompose(att["price_usd"], core["num_bits"]), "bits do not match price"
+            for d, (bit, sig) in enumerate(zip(att["digit_bits"], att["digit_signatures"])):
+                assert sig[:64] == core["digit_nonces_x"][d], "digit signed with a nonce other than the announced one"
+                assert bip340.verify(dlc.digit_message(core["event_id"], d, bit), gx, bytes.fromhex(sig)), f"bad digit {d}"
+            out.update(price_usd=att["price_usd"], digits_ok=len(att["digit_signatures"]), signers=att["signers"], outcome_packet=att["outcome_packet"]["seq"])
+        print(json.dumps(out))
+        return
     latest = get(a.base + "/v1/latest")
     ok = pr.verify_packet(latest, pk)
     b = latest["body"]

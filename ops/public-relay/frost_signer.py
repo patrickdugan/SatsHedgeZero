@@ -28,6 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import dlc_oracle  # noqa: E402
 import frost  # noqa: E402
 import public_relay as pr  # noqa: E402
 
@@ -43,6 +44,36 @@ class Member:
         self.lock = threading.Lock()
         self.signed = 0
         self.refused = 0
+        self.dlc = dlc_oracle.DlcMember(share, state_dir / "dlc.json")
+        self.dlc_lock = threading.Lock()
+        # Earliest VALID group-signed packet seen per slot, for outcome selection.
+        self.seen_valid: dict[int, dict] = {}
+
+    def _observe(self, pkt: dict):
+        """Remember group-signed VALID packets (verified by the caller)."""
+        if pkt["body"].get("status") == "VALID":
+            self.seen_valid[pkt["body"]["slot_us"]] = pkt
+            if len(self.seen_valid) > 2_000:
+                self.seen_valid.pop(min(self.seen_valid))
+
+    def dlc_attest(self, req: dict) -> dict:
+        """Attest only a group-signed VALID packet in [maturity, maturity + 30 s) and,
+        if this member has seen an earlier VALID packet at or after maturity, only that one."""
+        event_id, pkt, signers = req["event_id"], req["packet"], [int(x) for x in req["signers"]]
+        if not pr.verify_packet(pkt, self.share["group"]["group_pubkey"]):
+            raise ValueError("outcome packet is not group-signed")
+        b = pkt["body"]
+        with self.dlc_lock:
+            maturity_us = self.dlc._ev(event_id)["maturity_unix"] * 1_000_000
+        if b.get("status") != "VALID" or not maturity_us <= b["slot_us"] < maturity_us + dlc_oracle.OUTCOME_WINDOW_US:
+            raise ValueError("outcome packet is not a VALID packet in the maturity window")
+        earlier = [s for s in self.seen_valid if maturity_us <= s < b["slot_us"]]
+        if earlier:
+            raise ValueError("an earlier VALID packet at or after maturity exists")
+        price = b["median_e8"] // 100_000_000
+        with self.dlc_lock:
+            zs = self.dlc.sign_outcome(event_id, price, signers)
+        return {"index": self.index, "price_usd": price, "z": zs}
 
     def commit(self, seq: int) -> dict:
         with self.lock:
@@ -66,6 +97,7 @@ class Member:
                 raise ValueError("parent packet is not group-signed")
             if parent["body"]["seq"] >= seq or body.get("previous") != parent["digest"]:
                 raise ValueError("body does not extend the parent packet")
+            self._observe(parent)
         msg = pr.packet_message(body)
         with self.lock:
             d, e = self.state.take(seq, msg)
@@ -95,11 +127,22 @@ def make_handler(m: Member):
 
         def do_POST(self):
             try:
-                req = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length", 0)), 200_000)))
+                req = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length", 0)), 1_000_000)))
                 if self.path == "/commit":
                     return self._json(200, m.commit(int(req["seq"])))
                 if self.path == "/sign":
                     return self._json(200, m.sign(req))
+                if self.path == "/dlc/deal":
+                    with m.dlc_lock:
+                        return self._json(200, m.dlc.deal(req["event_id"], int(req["maturity_unix"]), int(req["num_bits"]), [int(x) for x in req["members"]]))
+                if self.path == "/dlc/receive":
+                    with m.dlc_lock:
+                        return self._json(200, {"index": m.index, "R": m.dlc.receive(req["event_id"], req["deals"])})
+                if self.path == "/dlc/sign-announcement":
+                    with m.dlc_lock:
+                        return self._json(200, {"index": m.index, "z": m.dlc.sign_announcement(req["event_id"], req["core"], [int(x) for x in req["signers"]])})
+                if self.path == "/dlc/sign-outcome":
+                    return self._json(200, m.dlc_attest(req))
                 return self._json(404, {"error": "not found"})
             except Exception as e:  # noqa: BLE001 - every refusal is reported to the coordinator
                 m.refused += 1

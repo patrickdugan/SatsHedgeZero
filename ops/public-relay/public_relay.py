@@ -235,7 +235,7 @@ def verify_packet(pkt: dict, pk_hex: str) -> bool:
 # ----------------------------------------------------------------- state ----
 
 class Relay:
-    def __init__(self, state_dir: Path, interval_ms: int, retain: int = 17_280):
+    def __init__(self, state_dir: Path, interval_ms: int, retain: int = 1_440):
         self.dir = state_dir
         self.interval_ms = interval_ms
         (self.dir / "archive").mkdir(parents=True, exist_ok=True)
@@ -365,6 +365,11 @@ def make_handler(relay: Relay):
             path = self.path.split("?")[0]
             with relay.lock:
                 latest = relay.ring[-1] if relay.ring else None
+            extra = getattr(relay, "extra_get", None)
+            if extra is not None:
+                hit = extra(path)
+                if hit is not None:
+                    return self._json(*hit)
             if path == "/healthz":
                 age = (now_us() - latest["body"]["slot_us"]) / 1e6 if latest else None
                 return self._json(200 if latest and age < 30 else 503, {
@@ -383,7 +388,7 @@ def make_handler(relay: Relay):
                     return self._json(400, {"error": "bad seq"})
                 with relay.lock:
                     p = relay.by_seq.get(seq)
-                return self._json(200, p) if p else self._json(404, {"error": "not retained"})
+                return self._json(200, p) if p else self._json(404, {"error": "not retained in memory (last 2 h); use /v1/archive/<YYYY-MM-DD>.jsonl"})
             if path.startswith("/v1/archive/") and path.endswith(".jsonl"):
                 name = path.rsplit("/", 1)[1]
                 f = relay.dir / "archive" / name

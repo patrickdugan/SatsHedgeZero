@@ -38,6 +38,22 @@ group key (BIP340): 68b52a25233d8b87f5c09d44a71fb5e15bfd025c2dde56f9674468e1f1c3
 - Fault drill on the deployment (2026-11-25): members 1 and 3 stopped, packets kept flowing signed by {2, 4, 5}; a third member stopped, publication paused (skipped slots counted, no packet); all restarted, signing resumed with {1, 2, 3}.
 - Keygen was a trusted dealer on the box; the dealer files were shredded after distribution, and all five members share one host and one operator. This demonstrates the protocol and its failure handling; it adds no security over the single-key relayer until members run on independent machines with a DKG.
 
+## DLC oracle on the FROST group (port 8091)
+
+The confederation also acts as a threshold DLC oracle for BTC/USD, compatible with `shz_dlc::OracleAnnouncement` / `OracleAttestation` and the existing CET adaptor-signature code.
+
+```
+GET http://170.75.168.145:8091/v1/dlc/events              announced events, status, stats
+GET http://170.75.168.145:8091/v1/dlc/event/<event_id>    announcement (+ attestation)
+python3 verify_client.py http://170.75.168.145:8091 --pubkey 68b52a25...d312 --dlc SHZ-BTCUSD-20261125T0915Z
+```
+
+- **Events.** A maturity every 15 min; the next four are kept announced. Event id `SHZ-BTCUSD-YYYYMMDDTHHMMZ`; 20 binary digits (integer USD, MSB first, clamped like `shz_margin::decompose_price_bits`). Outcome: `floor(median_e8 / 1e8)` of the first VALID FROST relay packet with `slot_us` in [maturity, maturity + 30 s); no such packet means the event stays unattested and the contract uses its refund path.
+- **Pre-committed nonces without a dealer.** Per event, members run a Feldman-VSS DKG of 21 nonces (20 digits plus one that signs the announcement). Each member checks every received share against the dealer's public commitments. Shares travel through the coordinator encrypted under pads derived from pairwise ECDH of the members' verification shares, so the coordinator never learns a nonce. A group nonce with odd Y is negated in every share.
+- **Announcement.** `core` (event id, maturity, digit nonces, announcement nonce, rule) is threshold-signed with the reserved nonce under `tagged_hash("SHZ/DLC/ANNOUNCEMENT/V1", canonical_json(core))`. Members sign only a core whose nonces equal their own DKG result.
+- **Attestation.** Members verify the outcome packet themselves: group-signed, VALID, inside the maturity window, and no earlier VALID packet at or after maturity among those they have seen. Each nonce is durably locked to one digit message before a partial leaves the member, so a nonce never signs two messages: signing both bits of a digit would expose the group key. The coordinator checks every partial against the member's nonce-share and key-share commitments (identifiable abort) and publishes the aggregate digit signatures.
+- **Settlement.** `cargo test -p shz-dlc --test frost_oracle_settlement` deserializes a threshold announcement and attestation, checks them with `OracleAttestation::verify_against`, builds the compressed CETs of a 1,000 USD inverse contract, and shows the attestation completes the adaptor signature of exactly the CET covering the attested price; a CET for another range cannot be completed.
+
 ## Packet
 
 `body` fields: `schema` (`shz-public-relay/v1`), `market`, `data_class` (`public_delayed`), `seq`, `previous` (digest of packet `seq-1`), `interval_ms`, `slot_us`, `assembled_us`, `status` (`VALID` or `HOLD` with `hold_reason`), `median_e8`, `dispersion_bps`, `audit_deviation_bps`, `fast_sources_used`, and per-source `{id, role, ok, fetched_us, source_ts_us, ts_from_fetch, age_us, response_sha256, error}`.
@@ -58,12 +74,13 @@ VALID needs at least 3 fresh fast sources, fast-source dispersion of at most 50 
 ## Operation
 
 ```
-python3 -m unittest test_public_relay test_frost # offline: BIP340 vector, rules, chain, restart, tamper, FROST sets/parity/cheater/nonces/jump
+python3 -m unittest test_public_relay test_frost test_dlc  # offline: BIP340 vector, relay rules, FROST signing, DLC DKG/announce/attest/refusals
 python3 public_relay.py --state ./state --once   # one live packet
 python3 verify_client.py http://170.75.168.145:8090 --pubkey 9d0d3aa9...a4b1 --follow 10
 cargo test -p shz-relay --test public_relay_signature   # Rust verifies single-key and FROST-aggregate packets
+cargo test -p shz-dlc --test frost_oracle_settlement    # CET adaptor settlement against a threshold attestation
 ```
 
-Deploy (as on the VPS): system user `shzrelay`, code in `/opt/shz-public-relay`, `shz-public-relay.service` (MemoryMax 150M, CPUQuota 30%, ProtectSystem=strict). The signing key is generated on first start in `/var/lib/shz-public-relay/relay.key` (0600) and never leaves the box. Each packet is fsync'd to the archive before it is served; on restart the relay verifies the archive tail and continues the chain at `seq + 1`, refusing to start if the tail does not verify. Missed slots (fetch stall, suspend) show up as gaps in `slot_us` with consecutive `seq`.
+Deploy (as on the VPS): system user `shzrelay`, code in `/opt/shz-public-relay`, `shz-public-relay.service` (MemoryMax 150M, CPUQuota 30%, ProtectSystem=strict). Memory holds the last 2 h of packets (older ones: `/v1/archive/<day>.jsonl`). The signing key is generated on first start in `/var/lib/shz-public-relay/relay.key` (0600) and never leaves the box. Each packet is fsync'd to the archive before it is served; on restart the relay verifies the archive tail and continues the chain at `seq + 1`, refusing to start if the tail does not verify. Missed slots (fetch stall, suspend) show up as gaps in `slot_us` with consecutive `seq`.
 
 Not provided: provider authentication, sub-second latency, redundancy, TLS, independent signers. Exchange market-data terms apply to any commercial redistribution of the median.

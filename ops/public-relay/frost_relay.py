@@ -140,15 +140,25 @@ def main():
     ap.add_argument("--state", required=True)
     ap.add_argument("--listen", default="0.0.0.0:8091")
     ap.add_argument("--interval-ms", type=int, default=5_000)
+    ap.add_argument("--dlc-every-min", type=int, default=15, help="DLC maturity spacing in minutes (0 disables)")
+    ap.add_argument("--dlc-ahead", type=int, default=4, help="number of future maturities kept announced")
     a = ap.parse_args()
     relay = FrostRelay(Path(a.state), a.interval_ms, json.loads(Path(a.group).read_text()), a.signers.split(","))
     relay.stats["frost"] = relay.fstats
+    coord = None
+    if a.dlc_every_min > 0:
+        import dlc_coord
+        coord = dlc_coord.DlcCoordinator(relay, Path(a.state), every_min=a.dlc_every_min, ahead=a.dlc_ahead)
+        relay.extra_get = coord.extra_get
+        relay.stats["dlc"] = coord.stats
     print(f"frost relay group={relay.pubkey} t={relay.group['threshold']}/{relay.group['signers']} resume_seq={relay.seq}", flush=True)
     host, port = a.listen.rsplit(":", 1)
     srv = pr.ThreadingHTTPServer((host, int(port)), pr.make_handler(relay))
     srv.daemon_threads = True
     stop = threading.Event()
     threading.Thread(target=relay.run, args=(stop,), daemon=True).start()
+    if coord is not None:
+        threading.Thread(target=coord.run, args=(stop,), daemon=True).start()
     try:
         srv.serve_forever()
     finally:
