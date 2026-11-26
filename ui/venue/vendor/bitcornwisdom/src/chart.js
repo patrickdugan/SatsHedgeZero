@@ -849,6 +849,10 @@ export class CandleChart {
       const vTop = volumeBottom - vheight;
       ctx.fillStyle = bull ? COLORS.volUp : COLORS.volDown;
       ctx.fillRect(bodyLeft, vTop, candleWidth, vheight);
+      if (COLORS.volHollow && bull && candleWidth >= 3) {
+        ctx.strokeStyle = COLORS.up;
+        ctx.strokeRect(bodyLeft + .5, (Math.round(vTop) | 0) + .5, Math.max(1, candleWidth - 1), Math.max(1, Math.round(vheight) - 1));
+      }
       if (isLast && tickState && tickState.volumePulse > 0) {
         ctx.save();
         ctx.globalAlpha = Math.min(1, 0.35 + 0.65 * tickState.volumePulse);

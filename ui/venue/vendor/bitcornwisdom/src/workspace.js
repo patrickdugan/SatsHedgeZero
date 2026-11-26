@@ -102,6 +102,18 @@ export const CHART_COLORS = Object.freeze({
     lastText: '#0b0d10', drawing: '#ff9900',
     hoverBg: '#191d24', hoverText: '#e8edf4', guide: '#ff9900'
   },
+  classic: {
+    bg: '#000000', axis: '#000000', grid: '#141414',
+    labels: '#c8c8c8', cross: '#ffffff', up: '#44dd44', down: '#cc2222',
+    upWick: '#44dd44', downWick: '#cc2222',
+    upBody: 'rgba(0,0,0,0)', downBody: '#cc2222',
+    volUp: 'rgba(0,0,0,0)', volDown: '#cc2222', volHollow: true,
+    ma7: '#ff9900', ma25: '#cc66ff', ma99: '#4ea1ff',
+    ema: '#ff9900', sma: '#cc66ff', bb: '#4ea1ff', rsi: '#ff9900',
+    last: '#ff9900', lastUp: '#44dd44', lastDown: '#cc2222', lastFlat: '#ff9900',
+    lastText: '#000000', drawing: '#ff9900',
+    hoverBg: '#111111', hoverText: '#eeeeee', guide: '#ffffff'
+  },
   noir: {
     bg: '#090f19', axis: '#101927', grid: '#24303e',
     labels: '#8194ad', cross: '#798da4', up: '#32d8ac', down: '#f47f94',

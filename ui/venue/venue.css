@@ -129,5 +129,36 @@ td { padding: 3px 10px; text-align: right; border-bottom: 1px solid var(--border
 /* footer lockup */
 .foot { display: flex; justify-content: flex-end; align-items: center; padding: 4px 12px; border-top: 1px solid var(--border); background: var(--bg-panel); }
 .foot img { height: 28px; width: auto; display: block; }
+#sbody { padding: 14px; display: grid; gap: 10px; }
 .mhead .mk { height: 26px; width: auto; margin-right: 10px; }
 .mhead .ttl { display: flex; align-items: center; }
+
+/* BitcoinWisdom Classic: flat black, monospace, thin grey rules, blue links, hollow green / solid red (set in Settings). */
+html[data-ui="classic"] {
+  --ink-canvas: #000; --ink-panel: #000; --ink-elevated: #0b0b0b; --ink-border: #2a2a2a;
+  --bg-canvas: #000; --bg-panel: #000; --bg-elevated: #0b0b0b; --bg-hover: #151515; --bg-input: #000;
+  --border: #2a2a2a; --border-strong: #444;
+  --text-primary: #e6e6e6; --text-secondary: #b8b8b8; --text-muted: #7a7a7a;
+  --long: #44dd44; --long-text: #44dd44; --long-bar: rgba(68, 221, 68, .18);
+  --short: #cc2222; --short-text: #e04040; --short-bar: rgba(204, 34, 34, .22);
+  --chart-bg: #000;
+  --accent: #35a7e8; --accent-text: #35a7e8; --accent-dim: rgba(53, 167, 232, .16);
+  --amber: #ffb43c; --amber-text: #ffb43c; --amber-dim: rgba(255, 180, 60, .14);
+  --font-sans: Consolas, "Lucida Console", "Courier New", monospace;
+}
+html[data-ui="classic"] body, html[data-ui="classic"] button, html[data-ui="classic"] select, html[data-ui="classic"] input { font-family: var(--font-mono); }
+html[data-ui="classic"] .top { background: #000; border-image: none; border-bottom: 1px solid #333; }
+html[data-ui="classic"] .top .brand, html[data-ui="classic"] .top .mark { color: #ffb43c; }
+html[data-ui="classic"] .top select, html[data-ui="classic"] .btn { background: #000; border-color: #444; border-radius: 0; }
+html[data-ui="classic"] .btn:hover { background: #151515; border-color: var(--accent); }
+html[data-ui="classic"] .wbtn { background: #000; color: #fff; border: 1px solid #666; border-radius: 0; }
+html[data-ui="classic"] .seg, html[data-ui="classic"] .tag, html[data-ui="classic"] .badge, html[data-ui="classic"] .go, html[data-ui="classic"] .sides button, html[data-ui="classic"] label.f input, html[data-ui="classic"] .est, html[data-ui="classic"] .mbox { border-radius: 0; }
+html[data-ui="classic"] .seg button.on { background: transparent; color: var(--accent-text); box-shadow: inset 0 -2px 0 var(--accent); }
+html[data-ui="classic"] .panel > h3, html[data-ui="classic"] .card > h3, html[data-ui="classic"] .mhead, html[data-ui="classic"] th, html[data-ui="classic"] .spread { background: #000; }
+html[data-ui="classic"] .grid { background: #333; }
+html[data-ui="classic"] .row .bar { display: none; }
+html[data-ui="classic"] .book .row span.long, html[data-ui="classic"] .book .row span.short { color: #e6e6e6; }
+html[data-ui="classic"] .spread { font-size: 13px; font-weight: 700; }
+html[data-ui="classic"] .go.long { background: var(--long); color: #000; } html[data-ui="classic"] .go.short { background: var(--short); color: #fff; }
+html[data-ui="classic"] .sides button.long.on { color: #000; }
+html[data-ui="classic"] .foot { background: #000; }

@@ -81,6 +81,25 @@ function updateIntervals(config) {
   instruments.value = config.instrument;
 }
 
+let depthTimer = null;
+// Classic theme: poll the relay's /api/book and feed the L2 depth rail (the chart's own depth profile).
+function syncDepth() {
+  if (depthTimer !== null) clearInterval(depthTimer);
+  depthTimer = null;
+  const relay = active?.relays?.[0];
+  if (active?.theme !== 'classic' || !relay) { chart.clearDepthBook(); return; }
+  const pull = async () => {
+    try {
+      const res = await fetch(new URL('/api/book?depth=40', relay));
+      if (!res.ok) return;
+      const b = await res.json();
+      chart.setDepth(b.bids, b.asks, 'LIVE L2');
+    } catch { /* keep the last book */ }
+  };
+  pull();
+  depthTimer = setInterval(pull, 2000);
+}
+
 function stopCurrent() {
   ++epoch;
   router?.stop();
@@ -104,7 +123,8 @@ function startConfig(next) {
   active = { ...next };
   parentOrigin = next.parentOrigin || parentOrigin;
   document.documentElement.dataset.theme = active.theme;
-  chart.setOptions({ theme: active.theme, depthProfileEnabled: false });
+  chart.setOptions({ theme: active.theme, depthProfileEnabled: active.theme === 'classic' });
+  syncDepth();
   updateIntervals(active);
   const session = epoch;
   if (active.demo) {

@@ -6,6 +6,7 @@
 <title>Lightninger</title>
 <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#000000">
+<script>try{if(localStorage.getItem("lightninger.ui")==="classic")document.documentElement.dataset.ui="classic"}catch(e){}</script>
 <link rel="stylesheet" href="venue.css">
 </head>
 <body>
@@ -21,6 +22,7 @@
     <span class="seg" id="toptier" role="group" aria-label="Tier"><button data-tier="standard">Standard</button><button data-tier="intermediate">Intermediate</button><button data-tier="premium">Premium</button></span>
     <span id="conn" class="badge warn">connecting</span>
     <button id="wbtn" class="wbtn" type="button">Connect wallet</button>
+    <button id="sbtn" class="btn sm" type="button" aria-label="Settings">&#9881; Settings</button>
     <a href="explorer.html">Explorer</a>
   </header>
   <main class="grid">
@@ -54,6 +56,7 @@
   <footer class="foot"><img src="brand/lightninger-powered-by.svg" alt="Powered by Lightninger"></footer>
 </div>
 <div id="wmodal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="wmtitle"><div class="mbox"><div class="mhead"><span class="ttl"><img class="mk" src="brand/lightninger-mark-speed.svg" alt=""><h2 id="wmtitle">Connect wallet</h2></span><button id="wmclose" class="btn sm" type="button" aria-label="Close">&times;</button></div><div id="wmbody"></div></div></div>
+<div id="smodal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="smtitle"><div class="mbox"><div class="mhead"><h2 id="smtitle">Settings</h2><button id="smclose" class="btn sm" type="button" aria-label="Close">&times;</button></div><div id="sbody"></div></div></div>
 <script type="module" src="venue.js"></script>
 </body>
 </html>

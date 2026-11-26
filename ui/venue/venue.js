@@ -3,6 +3,7 @@ import { hex, unhex, pubkey, p2trAddress, bip340Sign, signIntent, randomKey } fr
 import { planTakes, describe as riskText } from './liquidate.js';
 import { connectNostr, lnurlStart, lnurlFinish, nostrAvailable, weblnInfo } from './wallet.js';
 import { qrSvg } from './qr.js';
+import { applyUiMode, chartSrc, renderSettings } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -376,7 +377,7 @@ $('market').onchange = () => {};
 async function init() {
   const saved = store.get('shz.venue.tier'); if (TIERS.includes(saved)) st.tier = saved;
   const origin = location.origin;
-  $('chart').src = `vendor/bitcornwisdom/embed.html?instrument=${MARKET}&theme=og-wisdom&interval=1m&preferred=relay:1&relay=${encodeURIComponent(origin)}`;
+  $('chart').src = chartSrc(MARKET, origin);
   try { st.template = await api('/api/template'); } catch (e) { setConn('no server', 'bad'); }
   const k = store.get(KEY_STORE);
   if (k && /^[0-9a-f]{64}$/.test(k)) {
@@ -389,5 +390,11 @@ async function init() {
   setInterval(() => { if (!st.wsOk) pollAll(); else api('/api/status').then((s) => { setMark(s.mark); st.router = s.router; renderTop(); }).catch(() => {}); }, 1500);
   setInterval(refreshBatches, 5000);
 }
+applyUiMode();
+const openSettings = () => { $('smodal').hidden = false; renderSettings($('sbody'), () => { $('chart').src = chartSrc(MARKET, location.origin); }); };
+$('sbtn').onclick = openSettings;
+$('smclose').onclick = () => { $('smodal').hidden = true; };
+$('smodal').onclick = (e) => { if (e.target === $('smodal')) $('smodal').hidden = true; };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('smodal').hidden = true; });
 init();
 window.__shz = st; // debugging handle
