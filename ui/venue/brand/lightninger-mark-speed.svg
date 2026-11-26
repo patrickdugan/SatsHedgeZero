@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 65 565 490" role="img" aria-label="Lightninger">
+  <defs><linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="590" y1="205" x2="325" y2="540"><stop offset="0" stop-color="#FFD23F"/><stop offset="0.55" stop-color="#F5B301"/><stop offset="1" stop-color="#E09B00"/></linearGradient></defs>
+  <g fill="url(#gold)">
+    <polygon points="166,307 318,283 316,301"/>
+    <polygon points="62,355 300,333 296,356"/>
+    <polygon points="166,392 282,386 280,400"/>
+  </g>
+  <polygon fill="#fff" points="540,77 385,182 348,208 247,500"/>
+  <polygon fill="url(#gold)" points="593,207 420,308 355,393 430,362 324,541"/>
+  <polygon fill="#fff" points="603,343 487,382 409,491"/>
+</svg>

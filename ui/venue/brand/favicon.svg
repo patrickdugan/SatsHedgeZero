@@ -1,15 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254">
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFD23F"/>
-      <stop offset="0.55" stop-color="#F5B301"/>
-      <stop offset="1" stop-color="#E09B00"/>
-    </linearGradient>
-  </defs>
-  <circle cx="620" cy="622" r="525" fill="#000" stroke="#fff" stroke-width="40"/>
-  <path fill="url(#gold)" d="M755 210 C400 160 155 420 163 610 C165 660 170 700 178 722 C182 520 430 222 755 210 Z"/>
-  <path fill="url(#gold)" d="M1062 542 C1100 800 880 1060 483 1022 C830 1040 1070 800 1062 542 Z"/>
-  <polygon fill="#fff" points="870,187 483,408 267,950 610,565"/>
-  <polygon fill="url(#gold)" points="957,407 625,568 498,729 653,662 405,1045 848,543"/>
-  <polygon fill="#fff" points="953,645 750,690 537,950"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="590" y1="205" x2="325" y2="540"><stop offset="0" stop-color="#FFD23F"/><stop offset="0.55" stop-color="#F5B301"/><stop offset="1" stop-color="#E09B00"/></linearGradient></defs>
+  <rect width="64" height="64" rx="14" fill="#000"/>
+  <g transform="translate(13.6 8) scale(0.1034) translate(-247 -77)">
+  <polygon fill="#fff" points="540,77 385,182 348,208 247,500"/>
+  <polygon fill="url(#gold)" points="593,207 420,308 355,393 430,362 324,541"/>
+  <polygon fill="#fff" points="603,343 487,382 409,491"/>
+  </g>
 </svg>

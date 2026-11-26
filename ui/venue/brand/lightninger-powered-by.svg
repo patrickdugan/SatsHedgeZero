@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 124" role="img" aria-label="Powered by Lightninger">
+  <defs><linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="590" y1="205" x2="325" y2="540"><stop offset="0" stop-color="#FFD23F"/><stop offset="0.55" stop-color="#F5B301"/><stop offset="1" stop-color="#E09B00"/></linearGradient></defs>
+  <text x="2" y="82" fill="#fff" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="46" font-style="italic" font-weight="600" textLength="236" lengthAdjust="spacingAndGlyphs">Powered by</text>
+  <polygon points="276,16 284,16 262,110 254,110" fill="#F5B301"/>
+  <g transform="translate(296 1) scale(0.26) translate(-247 -77)">
+  <polygon fill="#fff" points="540,77 385,182 348,208 247,500"/>
+  <polygon fill="url(#gold)" points="593,207 420,308 355,393 430,362 324,541"/>
+  <polygon fill="#fff" points="603,343 487,382 409,491"/>
+  </g>
+</svg>
