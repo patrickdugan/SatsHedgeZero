@@ -414,5 +414,95 @@ class F03_Patched(unittest.TestCase):
         self.assertEqual((r["status"], r["median_e8"]), ("HOLD", None), "fewer than three fresh sources is not a usable reading")
 
 
+
+class F05_CoordinatorAuthentication(unittest.TestCase):
+    """F-05 part 3: a member accepts POSTs only from the holder of its coordinator key."""
+
+    def setUp(self):
+        import threading
+        import coord_auth
+        import frost_signer
+        self.ca, self.fs = coord_auth, frost_signer
+        self.group, shares = frost.keygen(3, 5)
+        self.pk = self.group["group_pubkey"]
+        self.master = bytes(range(32))
+        self.m = frost_signer.Member(shares[0], Path(tempfile.mkdtemp()), view=frost_signer.NO_PRICE_CHECK)
+        self.v = coord_auth.Verifier(coord_auth.member_key(self.master, self.pk, 1), self.pk, 1)
+        self.srv = frost_signer.serve(self.m, "127.0.0.1:0", self.v)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.srv.server_address[1]}"
+
+    def tearDown(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+    def _raw(self, path, body: bytes, auth=None):
+        import urllib.error
+        import urllib.request
+        h = {"Content-Type": "application/json"}
+        if auth is not None:
+            h[self.ca.HEADER] = auth
+        try:
+            with urllib.request.urlopen(urllib.request.Request(self.url + path, data=body, headers=h), timeout=5) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def _hdr(self, path, body, key=None, index=1, now_us=None):
+        k = key or self.ca.member_key(self.master, self.pk, index)
+        return self.ca.header(k, self.pk, index, path, body, now_us)
+
+    def test_unauthenticated_local_caller_is_refused_and_changes_nothing(self):
+        # The F-05 item 2 attack from any local process: a huge seq would move the member's high-water mark.
+        before = self.m.state.s["last_seq"]
+        for path, obj in (("/commit", {"seq": 7}), ("/sign", {"seq": 2**70}), ("/dlc/deal", {"event_id": "SHZ-BTCUSD-X"})):
+            code, r = self._raw(path, json.dumps(obj).encode())
+            self.assertEqual(code, 401, (path, r))
+        self.assertEqual(self.m.state.s["last_seq"], before)
+        self.assertEqual(self.m.state.s.get("nonces", {}), {}, "no nonce is stored for an unauthenticated /commit")
+        with __import__("urllib.request").request.urlopen(self.url + "/healthz", timeout=5) as r:
+            h = json.loads(r.read())
+        self.assertEqual((h["coord_auth"], h["auth_refused"]), (True, 3))
+
+    def test_authenticated_coordinator_is_served(self):
+        c = self.ca.Client(self.master, self.pk)
+        r = c.post(self.url, "/commit", {"seq": 1}, 5)
+        self.assertEqual(r["index"], 1)
+
+    def test_replay_stale_tamper_path_and_other_member_key_are_refused(self):
+        body = json.dumps({"seq": 3}).encode()
+        h = self._hdr("/commit", body)
+        self.assertEqual(self._raw("/commit", body, h)[0], 200)
+        self.assertEqual(self._raw("/commit", body, h)[0], 401, "replay of an accepted request")
+        old = self._hdr("/commit", body, now_us=pr.now_us() - 31_000_000)
+        self.assertEqual(self._raw("/commit", body, old)[0], 401, "timestamp outside the window")
+        h2 = self._hdr("/commit", body)
+        self.assertEqual(self._raw("/commit", json.dumps({"seq": 4}).encode(), h2)[0], 401, "body changed")
+        h3 = self._hdr("/commit", body)
+        self.assertEqual(self._raw("/sign", body, h3)[0], 401, "path changed")
+        other = self.ca.header(self.ca.member_key(self.master, self.pk, 2), self.pk, 2, "/commit", body)
+        self.assertEqual(self._raw("/commit", body, other)[0], 401, "member 2's request replayed to member 1")
+        forged = self._hdr("/commit", body, key=self.ca.member_key(bytes(32), self.pk, 1))
+        self.assertEqual(self._raw("/commit", body, forged)[0], 401, "key not derived from the coordinator master")
+        for bad in ("", "v1", "v2 1 00 00", "v1 x y z", "v1 1 " + "00" * 15 + " " + "00" * 32):
+            self.assertEqual(self._raw("/commit", body, bad or None)[0], 401, bad)
+
+    def test_member_refuses_a_verifier_for_another_index_or_group(self):
+        with self.assertRaises(ValueError):
+            self.fs.serve(self.m, "127.0.0.1:0", self.ca.Verifier(bytes(32), self.pk, 2))
+        with self.assertRaises(ValueError):
+            self.fs.serve(self.m, "127.0.0.1:0", self.ca.Verifier(bytes(32), "02" * 32, 1))
+
+    def test_member_cli_requires_an_explicit_auth_choice(self):
+        import subprocess
+        here = Path(__file__).resolve().parent
+        r = subprocess.run([sys.executable, str(here / "frost_signer.py"), "--share", "x", "--state", "y"], capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--coord-auth-key", r.stderr)
+        r = subprocess.run([sys.executable, str(here / "frost_relay.py"), "--group", "x", "--signers", "y", "--state", "z"], capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--coord-auth-master", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

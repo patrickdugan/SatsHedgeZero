@@ -13,6 +13,7 @@ import bip340  # noqa: E402
 import frost  # noqa: E402
 import frost_relay  # noqa: E402
 import frost_signer  # noqa: E402
+import coord_auth  # noqa: E402
 import public_relay as pr  # noqa: E402
 from test_public_relay import BASE, fake  # noqa: E402
 
@@ -76,6 +77,14 @@ class NonceSafety(unittest.TestCase):
             frost.SignerState(d / "s.json").take(9, MSG)
 
 
+MASTER = bytes(range(32))
+
+
+def verifier_for(group, m):
+    pk = group["group_pubkey"]
+    return coord_auth.Verifier(coord_auth.member_key(MASTER, pk, m.index), pk, m.index)
+
+
 class Confederation(unittest.TestCase):
     def test_live_members_two_down_then_quorum_loss_and_cheater(self):
         tmp = Path(tempfile.mkdtemp())
@@ -83,12 +92,12 @@ class Confederation(unittest.TestCase):
         members, servers, urls = [], [], []
         for s in shares:
             m = frost_signer.Member(s, tmp / f"m{s['index']}", view=frost_signer.NO_PRICE_CHECK)
-            srv = frost_signer.serve(m, "127.0.0.1:0")
+            srv = frost_signer.serve(m, "127.0.0.1:0", verifier_for(group, m))
             threading.Thread(target=srv.serve_forever, daemon=True).start()
             members.append(m)
             servers.append(srv)
             urls.append(f"http://127.0.0.1:{srv.server_address[1]}")
-        relay = frost_relay.FrostRelay(tmp / "relay", 5000, group, urls)
+        relay = frost_relay.FrostRelay(tmp / "relay", 5000, group, urls, auth_master=MASTER)
         pk = group["group_pubkey"]
         now = pr.now_us()
         p1 = relay.publish(now, fake(BASE))
@@ -117,11 +126,11 @@ class Confederation(unittest.TestCase):
         # Restart the coordinator: reserved sequences are never reused, members 1 and 3
         # return, and the next packet jumps seq but still links to the last published one.
         for i in (0, 2):
-            srv = frost_signer.serve(members[i], "127.0.0.1:0")
+            srv = frost_signer.serve(members[i], "127.0.0.1:0", verifier_for(group, members[i]))
             threading.Thread(target=srv.serve_forever, daemon=True).start()
             servers[i] = srv
             urls[i] = f"http://127.0.0.1:{srv.server_address[1]}"
-        relay2 = frost_relay.FrostRelay(tmp / "relay", 5000, group, urls)
+        relay2 = frost_relay.FrostRelay(tmp / "relay", 5000, group, urls, auth_master=MASTER)
         self.assertEqual((relay2.seq, relay2.reserved), (2, 4))
         p5 = relay2.publish(now + 20_000_000, fake(BASE))
         self.assertTrue(pr.verify_packet(p5, pk))

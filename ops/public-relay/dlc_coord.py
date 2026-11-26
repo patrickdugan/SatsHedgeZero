@@ -38,12 +38,6 @@ class SetupWedged(RuntimeError):
     interrupted after `receive`), so the event can never reach a full DKG again."""
 
 
-def _post(url: str, obj: dict, timeout: float = 30.0) -> dict:
-    req = urllib.request.Request(url, data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read())
-
-
 def event_id_for(maturity_unix: int) -> str:
     return "SHZ-BTCUSD-" + datetime.fromtimestamp(maturity_unix, timezone.utc).strftime("%Y%m%dT%H%MZ")
 
@@ -86,7 +80,7 @@ class DlcCoordinator:
         consumed = []
         for url in self.relay.signers:
             try:
-                d = _post(url + "/dlc/deal", req)
+                d = self.relay.auth.post(url, "/dlc/deal", req, 30.0)
             except urllib.error.HTTPError as e:
                 if b"event already set up" in e.read():
                     consumed.append(url)
@@ -103,7 +97,7 @@ class DlcCoordinator:
         rs = {}
         for j in qualified:
             view = {k: {"commitments": v["commitments"], "enc": {str(j): v["enc"][str(j)]} if str(j) in v["enc"] else {}} for k, v in deals.items()}
-            rs[j] = _post(self.url_by_index[j] + "/dlc/receive", {"event_id": event_id, "deals": view})["R"]
+            rs[j] = self.relay.auth.post(self.url_by_index[j], "/dlc/receive", {"event_id": event_id, "deals": view}, 30.0)["R"]
         r_list = rs[qualified[0]]
         if any(r != r_list for r in rs.values()):
             raise RuntimeError("members disagree on group nonces")
@@ -113,7 +107,7 @@ class DlcCoordinator:
         sig = None
         for subset in itertools.combinations(qualified, self.t):
             try:
-                parts = {j: int(_post(self.url_by_index[j] + "/dlc/sign-announcement", {"event_id": event_id, "core": core, "signers": list(subset)})["z"], 16) for j in subset}
+                parts = {j: int(self.relay.auth.post(self.url_by_index[j], "/dlc/sign-announcement", {"event_id": event_id, "core": core, "signers": list(subset)}, 30.0)["z"], 16) for j in subset}
                 sig = dlc.aggregate(self.group, deals, negate, self.num_bits, msg, r_list[self.num_bits], parts)
                 break
             except Exception:  # noqa: BLE001 - try another set
@@ -160,7 +154,7 @@ class DlcCoordinator:
             return ev
         for subset in itertools.combinations(sorted(int(k) for k in locks), self.t):
             try:
-                res = {j: _post(self.url_by_index[j] + "/dlc/sign-outcome", {"event_id": event_id, "packet": pkt, "signers": list(subset), "locks": locks}) for j in subset}
+                res = {j: self.relay.auth.post(self.url_by_index[j], "/dlc/sign-outcome", {"event_id": event_id, "packet": pkt, "signers": list(subset), "locks": locks}, 30.0) for j in subset}
                 if any(r["price_usd"] != price for r in res.values()):
                     continue
                 sigs = [dlc.aggregate(self.group, deals, ev["negate"], d, msgs[d], core["digit_nonces_x"][d],
@@ -188,7 +182,7 @@ class DlcCoordinator:
         raw = {}
         for j in ev["qualified"]:
             try:
-                raw[str(j)] = _post(self.url_by_index[j] + path, req)["lock"]
+                raw[str(j)] = self.relay.auth.post(self.url_by_index[j], path, req, 30.0)["lock"]
             except Exception:  # noqa: BLE001 - a refusing or absent member contributes no lock
                 continue
         ok = dlc.verified_lockers(self.group, ev["core"]["event_id"], decision, raw)
@@ -212,7 +206,7 @@ class DlcCoordinator:
             return ev
         for subset in itertools.combinations(sorted(int(k) for k in locks), self.t):
             try:
-                parts = {j: int(_post(self.url_by_index[j] + "/dlc/sign-unattestable", {"event_id": event_id, "signers": list(subset), "locks": locks})["z"], 16) for j in subset}
+                parts = {j: int(self.relay.auth.post(self.url_by_index[j], "/dlc/sign-unattestable", {"event_id": event_id, "signers": list(subset), "locks": locks}, 30.0)["z"], 16) for j in subset}
                 sig = dlc.aggregate(self.group, deals, ev["negate"], nb + 1, msg, core["unattestable_nonce_x"], parts)
             except Exception:  # noqa: BLE001 - refusing or absent member: try another set
                 continue
@@ -280,7 +274,9 @@ class DlcCoordinator:
                 for url in self.relay.signers:
                     try:
                         with urllib.request.urlopen(url + "/healthz", timeout=2) as r:
-                            self.url_by_index[json.loads(r.read())["index"]] = url
+                            i = json.loads(r.read())["index"]
+                            self.url_by_index[i] = url
+                            self.relay.auth.index_of.setdefault(url, i)
                     except Exception:  # noqa: BLE001
                         pass
             with self.lock:

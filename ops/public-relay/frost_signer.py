@@ -33,6 +33,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coord_auth  # noqa: E402
 import dlc_oracle  # noqa: E402
 import frost  # noqa: E402
 import public_relay as pr  # noqa: E402
@@ -122,6 +123,8 @@ class Member:
         self.lock = threading.Lock()
         self.signed = 0
         self.refused = 0
+        self.auth_refused = 0
+        self.coord_auth = False
         self.dlc = dlc_oracle.DlcMember(share, state_dir / "dlc.json")
         self.dlc_lock = threading.Lock()
         # Earliest VALID group-signed packet seen per slot, for outcome selection.
@@ -274,7 +277,7 @@ class Member:
         return {"index": self.index, "z": z.to_bytes(32, "big").hex()}
 
 
-def make_handler(m: Member):
+def make_handler(m: Member, verifier):
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
@@ -290,12 +293,20 @@ def make_handler(m: Member):
         def do_GET(self):
             if self.path == "/healthz":
                 return self._json(200, {"index": m.index, "last_seq": m.state.s["last_seq"], "signed": m.signed, "refused": m.refused,
-                                        "group_pubkey": m.share["group"]["group_pubkey"], "price_view": m.view_status()})
+                                        "group_pubkey": m.share["group"]["group_pubkey"], "price_view": m.view_status(),
+                                        "coord_auth": m.coord_auth, "auth_refused": m.auth_refused})
             self._json(404, {"error": "not found"})
 
         def do_POST(self):
             try:
-                req = json.loads(self.rfile.read(max(0, min(int(self.headers.get("Content-Length", 0)), 1_000_000))))
+                raw = self.rfile.read(max(0, min(int(self.headers.get("Content-Length", 0)), 1_000_000)))
+                if verifier is not coord_auth.UNAUTHENTICATED:
+                    verifier.check(self.path, raw, self.headers.get(coord_auth.HEADER))
+            except (coord_auth.AuthError, ValueError) as e:
+                m.auth_refused += 1
+                return self._json(401, {"error": f"unauthorized: {e}"})
+            try:
+                req = json.loads(raw)
                 if self.path == "/commit":
                     return self._json(200, m.commit(int(req["seq"])))
                 if self.path == "/sign":
@@ -325,9 +336,15 @@ def make_handler(m: Member):
     return H
 
 
-def serve(m: Member, listen: str) -> ThreadingHTTPServer:
+def serve(m: Member, listen: str, verifier) -> ThreadingHTTPServer:
+    """`verifier` is a `coord_auth.Verifier` for this member, or `coord_auth.UNAUTHENTICATED`
+    to accept any local caller (offline drills only)."""
+    if verifier is not coord_auth.UNAUTHENTICATED:
+        if not isinstance(verifier, coord_auth.Verifier) or verifier.index != m.index                 or verifier.group_pubkey != m.share["group"]["group_pubkey"]:
+            raise ValueError("coordinator verifier does not match this member")
+    m.coord_auth = verifier is not coord_auth.UNAUTHENTICATED
     host, port = listen.rsplit(":", 1)
-    srv = ThreadingHTTPServer((host, int(port)), make_handler(m))
+    srv = ThreadingHTTPServer((host, int(port)), make_handler(m, verifier))
     srv.daemon_threads = True
     return srv
 
@@ -358,7 +375,11 @@ def main():
     ap.add_argument("--view-refresh-s", type=float, default=VIEW_REFRESH_S, help="how often this member reads the public fast sources")
     ap.add_argument("--view-max-age-s", type=float, default=VIEW_MAX_AGE_S, help="oldest own reading a VALID body may be checked against")
     ap.add_argument("--no-price-check", action="store_true", help="sign VALID bodies without an independent reading (offline drills only)")
+    ap.add_argument("--coord-auth-key", help="this member's coordinator authentication key (hex file, coord_auth.py derive)")
+    ap.add_argument("--no-coord-auth", action="store_true", help="accept requests from any local caller (offline drills only)")
     a = ap.parse_args()
+    if bool(a.coord_auth_key) == a.no_coord_auth:
+        ap.error("give exactly one of --coord-auth-key or --no-coord-auth")
     share = json.loads(Path(a.share).read_text())
     if a.no_price_check:
         view = NO_PRICE_CHECK
@@ -367,8 +388,11 @@ def main():
         view = SourceView(a.view_refresh_s, offset_s=(share["index"] - 1) * a.view_refresh_s / n)
         threading.Thread(target=view.run, args=(threading.Event(),), daemon=True).start()
     m = Member(share, Path(a.state), view=view, max_deviation_bps=a.max_deviation_bps, view_max_age_s=a.view_max_age_s)
-    print(f"frost member {m.index} group={m.share['group']['group_pubkey']} listen={a.listen} price_check={'off' if a.no_price_check else 'on'}", flush=True)
-    serve(m, a.listen).serve_forever()
+    verifier = coord_auth.UNAUTHENTICATED if a.no_coord_auth else         coord_auth.Verifier(coord_auth.read_key(a.coord_auth_key), share["group"]["group_pubkey"], share["index"])
+    srv = serve(m, a.listen, verifier)
+    print(f"frost member {m.index} group={m.share['group']['group_pubkey']} listen={a.listen} price_check={'off' if a.no_price_check else 'on'} "
+          f"coord_auth={'on' if m.coord_auth else 'OFF'}", flush=True)
+    srv.serve_forever()
 
 
 if __name__ == "__main__":

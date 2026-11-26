@@ -27,21 +27,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import frost  # noqa: E402
+import coord_auth  # noqa: E402
 import public_relay as pr  # noqa: E402
 
 
 SUSPECT_SLOTS = 60  # slots a member stays at the back of the signing order after failing /sign
 
 
-def post(url: str, obj: dict, timeout: float = 2.0) -> dict:
-    req = urllib.request.Request(url, data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read())
-
-
 class FrostRelay(pr.Relay):
-    def __init__(self, state_dir: Path, interval_ms: int, group: dict, signers: list[str]):
+    def __init__(self, state_dir: Path, interval_ms: int, group: dict, signers: list[str], auth_master: bytes | None = None):
+        """`auth_master` authenticates every member request (coord_auth); without it members that
+        require authentication refuse the coordinator."""
         self.group = group
+        self.auth = coord_auth.Client(auth_master, group["group_pubkey"])
         self.signers = signers
         self.pool = cf.ThreadPoolExecutor(max_workers=len(signers))
         self.fstats = {"signed_slots": 0, "skipped_slots": 0, "cheaters": {}, "participation": {}, "refusals": {}}
@@ -101,7 +99,7 @@ class FrostRelay(pr.Relay):
         msg = pr.packet_message(body)
         t = self.group["threshold"]
         commits = {}
-        for url, c in zip(self.signers, self.pool.map(lambda u: self._try(lambda x: post(x + "/commit", {"seq": seq}), u), self.signers)):
+        for url, c in zip(self.signers, self.pool.map(lambda u: self._try(lambda x: self.auth.post(x, "/commit", {"seq": seq}, 2.0), u), self.signers)):
             if c is not None:
                 commits[c["index"]] = (url, c)
         if len(commits) < t:
@@ -125,7 +123,7 @@ class FrostRelay(pr.Relay):
             with self.lock:
                 parent = self.ring[-1] if self.ring else None
             req = {"seq": seq, "body": body, "parent": parent, "commitments": cl}
-            res = list(self.pool.map(lambda i: self._try(lambda u: post(u + "/sign", req), commits[i][0]), subset))
+            res = list(self.pool.map(lambda i: self._try(lambda u: self.auth.post(u, "/sign", req, 2.0), commits[i][0]), subset))
             spent |= set(subset)
             if any(r is None for r in res):
                 with self.flock:
@@ -161,8 +159,13 @@ def main():
     ap.add_argument("--interval-ms", type=int, default=5_000)
     ap.add_argument("--dlc-every-min", type=int, default=15, help="DLC maturity spacing in minutes (0 disables)")
     ap.add_argument("--dlc-ahead", type=int, default=4, help="number of future maturities kept announced")
+    ap.add_argument("--coord-auth-master", help="master key for member request authentication (hex file, coord_auth.py master)")
+    ap.add_argument("--no-coord-auth", action="store_true", help="send unauthenticated member requests (offline drills only)")
     a = ap.parse_args()
-    relay = FrostRelay(Path(a.state), a.interval_ms, json.loads(Path(a.group).read_text()), a.signers.split(","))
+    if bool(a.coord_auth_master) == a.no_coord_auth:
+        ap.error("give exactly one of --coord-auth-master or --no-coord-auth")
+    master = None if a.no_coord_auth else coord_auth.read_key(a.coord_auth_master)
+    relay = FrostRelay(Path(a.state), a.interval_ms, json.loads(Path(a.group).read_text()), a.signers.split(","), auth_master=master)
     relay.stats["frost"] = relay.fstats
     coord = None
     if a.dlc_every_min > 0:
@@ -170,7 +173,7 @@ def main():
         coord = dlc_coord.DlcCoordinator(relay, Path(a.state), every_min=a.dlc_every_min, ahead=a.dlc_ahead)
         relay.extra_get = coord.extra_get
         relay.stats["dlc"] = coord.stats
-    print(f"frost relay group={relay.pubkey} t={relay.group['threshold']}/{relay.group['signers']} resume_seq={relay.seq}", flush=True)
+    print(f"frost relay group={relay.pubkey} t={relay.group['threshold']}/{relay.group['signers']} resume_seq={relay.seq} coord_auth={'on' if master else 'OFF'}", flush=True)
     host, port = a.listen.rsplit(":", 1)
     srv = pr.ThreadingHTTPServer((host, int(port)), pr.make_handler(relay))
     srv.daemon_threads = True

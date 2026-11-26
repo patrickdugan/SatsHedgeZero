@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bip340  # noqa: E402
+import coord_auth  # noqa: E402
 import dlc_coord  # noqa: E402
 import dlc_oracle as dlc  # noqa: E402
 import frost  # noqa: E402
@@ -28,16 +29,18 @@ class Confed:
     def __init__(self, nbits=dlc.NUM_BITS):
         self.tmp = Path(tempfile.mkdtemp())
         self.group, shares = frost.keygen(3, 5)
+        self.master = bytes(range(32))
         self.members, self.servers, urls = [], [], []
         self.view = frost_signer.StaticView()  # every member's own reading of the market
         for s in shares:
             m = frost_signer.Member(s, self.tmp / f"m{s['index']}", view=self.view)
-            srv = frost_signer.serve(m, "127.0.0.1:0")
+            pk = self.group["group_pubkey"]
+            srv = frost_signer.serve(m, "127.0.0.1:0", coord_auth.Verifier(coord_auth.member_key(self.master, pk, m.index), pk, m.index))
             threading.Thread(target=srv.serve_forever, daemon=True).start()
             self.members.append(m)
             self.servers.append(srv)
             urls.append(f"http://127.0.0.1:{srv.server_address[1]}")
-        self.relay = frost_relay.FrostRelay(self.tmp / "relay", 5000, self.group, urls)
+        self.relay = frost_relay.FrostRelay(self.tmp / "relay", 5000, self.group, urls, auth_master=self.master)
         # An honest coordinator publishes what the market shows, so by default the members'
         # reading follows the results a test hands to publish(). `raw_publish` skips that:
         # the coordinator then publishes something the members did not observe.
