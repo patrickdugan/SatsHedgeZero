@@ -17,7 +17,7 @@ mv -f /opt/shz-venue/bin/shz-venue.new /opt/shz-venue/bin/shz-venue
 # UI: the page, explorer and vendored chart only (no mock server, no tests).
 rm -rf /opt/shz-venue/ui.new
 install -d -m 0755 /opt/shz-venue/ui.new
-cp ui/venue/index.html ui/venue/explorer.html ui/venue/*.js ui/venue/venue.css /opt/shz-venue/ui.new/
+cp ui/venue/index.html ui/venue/explorer.html ui/venue/*.js ui/venue/*.wasm ui/venue/venue.css /opt/shz-venue/ui.new/
 rm -f /opt/shz-venue/ui.new/mock_server.mjs
 cp -r ui/venue/vendor ui/venue/brand /opt/shz-venue/ui.new/
 chmod -R a+rX /opt/shz-venue/ui.new

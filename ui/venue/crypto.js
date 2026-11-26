@@ -1,6 +1,12 @@
 // SHZ venue client crypto: SHA-256, BIP340 (Schnorr), BIP341 key-path tweak,
-// bech32m, and IntentV6 id encoding. Zero dependencies; ES module for browser and node.
-// TESTNET ONLY. Not constant-time (BigInt); do not use for mainnet funds.
+// bech32m, and IntentV6 id encoding. ES module for browser and node; no JS dependencies.
+// Secret-key operations run in WebAssembly (sign.wasm, built from crates/shz-wasm-sign
+// over the k256 crate, constant-time scalar arithmetic): pubkey, bip340Sign's signing
+// step, taprootTweakSecret, randomKey (browser entropy reduced to a scalar in WASM).
+// The module instantiates sign.wasm with top-level await, so importers see sync
+// pubkey/randomKey as before. Verification, hashing, taproot output keys, bech32m and
+// IntentV6 stay in JS BigInt (public data only; not constant-time). TESTNET ONLY: the
+// page still holds the secret key in JS memory and localStorage.
 
 const P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2Fn;
 const N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n;
@@ -145,30 +151,60 @@ export function liftX(x) {
   return [x, y % 2n === 0n ? y : P - y];
 }
 
+// ---------- WASM signer (crates/shz-wasm-sign) ----------
+// One static 256-byte I/O buffer; layouts are documented in crates/shz-wasm-sign/src/lib.rs.
+async function loadSigner() {
+  const url = new URL('./sign.wasm', import.meta.url);
+  let bytes;
+  if (url.protocol === 'file:') {
+    const { readFile } = await import('node:fs/promises');
+    bytes = await readFile(url);
+  } else {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('sign.wasm: HTTP ' + res.status);
+    bytes = await res.arrayBuffer();
+  }
+  const { instance } = await WebAssembly.instantiate(bytes, {});
+  return instance.exports;
+}
+const W = await loadSigner();
+
+function wasmOp(op, inputs, outOff, outLen) {
+  const io = () => new Uint8Array(W.memory.buffer, W.shz_buf(), 256);
+  try {
+    for (const [off, b] of inputs) io().set(b, off);
+    const rc = W[op]();
+    return rc === 0 ? io().slice(outOff, outOff + outLen) : null;
+  } finally {
+    W.shz_wipe();
+  }
+}
+const secret32 = (sk) => {
+  if (!(sk instanceof Uint8Array) || sk.length !== 32) throw new Error('invalid secret key');
+  return sk;
+};
+
 // ---------- BIP340 ----------
 export function pubkey(seckey) {
-  const d = bytesToInt(seckey);
-  if (d < 1n || d >= N) throw new Error('invalid secret key');
-  return intToBytes(mul(G, d)[0]);
+  const out = wasmOp('shz_pubkey', [[0, secret32(seckey)]], 32, 32);
+  if (!out) throw new Error('invalid secret key');
+  return out;
 }
 export async function bip340Sign(msg, seckey, aux = new Uint8Array(32)) {
   if (msg.length !== 32 || aux.length !== 32) throw new Error('msg and aux must be 32 bytes');
-  const d0 = bytesToInt(seckey);
-  if (d0 < 1n || d0 >= N) throw new Error('invalid secret key');
-  const pt = mul(G, d0);
-  const d = pt[1] % 2n === 0n ? d0 : N - d0;
-  const ah = await taggedHash('BIP0340/aux', aux);
-  const t = intToBytes(d).map((b, i) => b ^ ah[i]);
-  const px = intToBytes(pt[0]);
-  const k0 = bytesToInt(await taggedHash('BIP0340/nonce', t, px, msg)) % N;
-  if (k0 === 0n) throw new Error('nonce is zero');
-  const r = mul(G, k0);
-  const k = r[1] % 2n === 0n ? k0 : N - k0;
-  const rx = intToBytes(r[0]);
-  const e = bytesToInt(await taggedHash('BIP0340/challenge', rx, px, msg)) % N;
-  const sig = concat(rx, intToBytes((k + e * d) % N));
-  if (!(await bip340Verify(msg, px, sig))) throw new Error('signature self-check failed');
+  const sig = wasmOp('shz_sign', [[0, secret32(seckey)], [32, msg], [64, aux]], 96, 64);
+  if (!sig) throw new Error('invalid secret key');
+  if (!(await bip340Verify(msg, pubkey(seckey), sig))) throw new Error('signature self-check failed');
   return sig;
+}
+// BIP341 tweak of a secret key (key-path spend): returns d' with d'·G = taproot output key.
+export function taprootTweakSecret(seckey, merkleRoot = null) {
+  if (merkleRoot && merkleRoot.length !== 32) throw new Error('merkle root must be 32 bytes');
+  const inputs = [[0, secret32(seckey)]];
+  if (merkleRoot) inputs.push([32, merkleRoot], [64, Uint8Array.of(1)]);
+  const out = wasmOp('shz_tweak_secret', inputs, 96, 32);
+  if (!out) throw new Error('invalid secret key or tweak');
+  return out;
 }
 export async function bip340Verify(msg, pk, sig) {
   if (msg.length !== 32 || pk.length !== 32 || sig.length !== 64) return false;
@@ -272,10 +308,12 @@ export async function signIntent(intent, template, seckey, entitlementDigest) {
   return { id: hex(id), intent: out };
 }
 
+// 64 bytes of browser entropy, reduced to a nonzero scalar inside WASM.
 export function randomKey() {
   for (;;) {
-    const k = crypto.getRandomValues(new Uint8Array(32));
-    const d = bytesToInt(k);
-    if (d >= 1n && d < N) return k;
+    const e = crypto.getRandomValues(new Uint8Array(64));
+    const k = wasmOp('shz_keygen', [[0, e]], 64, 32);
+    e.fill(0);
+    if (k) return k;
   }
 }
