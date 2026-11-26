@@ -9,6 +9,8 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n, d = 0) => (n === null || n === undefined || Number.isNaN(n) ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
 const short = (h) => (h ? h.slice(0, 8) + '…' + h.slice(-4) : '');
+const settling = (e) => e && e.status === 409 && /still settling/i.test(e.message || '');
+const SETTLING_NOTE = 'Your previous fill is still settling. Try again in a moment.';
 const KEY_STORE = 'shz.venue.key';
 const WALLET_STORE = 'shz.venue.wallet'; // {kind, wallet, expires_us}: which wallet authorized the stored trading key
 const TRADE_KEY_PREFIX = 'shz.venue.trade.'; // per-wallet trading key, kept across disconnects
@@ -177,7 +179,8 @@ function renderBottom() {
     const banner = rt ? `<div class="risk-box ${rt.level}">${esc(rt.text)}${r.reduce_only ? `<label class="autoliq"><input type="checkbox" id="autoliq" ${auto ? 'checked' : ''}> Auto-liquidate with this browser's key</label>` : ''}${st.liqLog ? `<div class="mono">${esc(st.liqLog)}</div>` : ''}</div>` : '';
     const ratio = r.margin_bps != null ? (r.margin_bps / 100).toFixed(2) + '%' : '-';
     p.innerHTML = banner + bottomTable(['Market', 'Net USD', 'Avg entry', 'Mark', 'Margin', 'Liq. price', 'Risk', 'Unrealized (sats)', 'Realized (sats)', 'Cap', 'Free', 'Resting', 'Committed', 'Fees paid'],
-      [`<tr><td>${MARKET}</td><td class="${pos.net_usd > 0 ? 'long' : pos.net_usd < 0 ? 'short' : ''}">${fmt(pos.net_usd)}${unset ? ` <span class="muted" title="fills whose batch has not committed">(${unset > 0 ? '+' : ''}${fmt(unset)} unsettled)</span>` : ''}</td><td>${fmt(pos.avg_entry_usd, 2)}</td><td>${fmt(mark)}</td><td>${ratio}</td><td title="bankruptcy ${fmt(r.bankruptcy_price_usd)}">${fmt(r.liquidation_price_usd)}</td><td><span class="risk ${esc(r.state || 'flat')}">${esc(r.state || 'flat')}</span></td><td class="${un >= 0 ? 'long' : 'short'}">${fmt(un)}</td><td class="${rz >= 0 ? 'long' : 'short'}">${fmt(rz)}</td><td>${fmt(b.cap)}</td><td>${fmt(b.free)}</td><td>${fmt(b.resting)}</td><td>${fmt(b.committed)}</td><td>${fmt(b.paid_fees)}</td></tr>`]);
+      [`<tr><td>${MARKET}</td><td class="${pos.net_usd > 0 ? 'long' : pos.net_usd < 0 ? 'short' : ''}">${fmt(pos.net_usd)}${unset ? ` <span class="muted" title="fills whose batch has not committed">(${unset > 0 ? '+' : ''}${fmt(unset)} unsettled)</span>` : ''}</td><td>${fmt(pos.avg_entry_usd, 2)}</td><td>${fmt(mark)}</td><td>${ratio}</td><td title="bankruptcy ${fmt(r.bankruptcy_price_usd)}">${fmt(r.liquidation_price_usd)}</td><td><span class="risk ${esc(r.state || 'flat')}">${esc(r.state || 'flat')}</span></td><td class="${un >= 0 ? 'long' : 'short'}">${fmt(un)}</td><td class="${rz >= 0 ? 'long' : 'short'}">${fmt(rz)}</td><td>${fmt(b.cap)}</td><td>${fmt(b.free)}</td><td>${fmt(b.resting)}</td><td>${fmt(b.committed)}</td><td>${fmt(b.paid_fees)}</td></tr>`])
+      + (pos.deferred_claim_sats > 0 ? `<div class="warn-box" style="margin:6px 10px">Deferred claim: ${fmt(pos.deferred_claim_sats)} sats. The clearing pool could not pay this account's last settlement in full; the amount stays owed and is paid as the pool refills (batch pages show the waterfall).</div>` : '');
   } else if (st.btab === 'orders') {
     p.innerHTML = bottomTable(['Order', 'Side', 'Tier', 'Size USD', 'Limit', 'Lev', ''], (a.open_orders || []).map((o) =>
       `<tr><td title="${esc(o.id)}">${esc(short(o.id))}</td><td class="${o.side === 'long' ? 'long' : 'short'}">${esc(o.side)}</td><td>${esc(o.tier)}</td><td>${fmt(o.quantity)}</td><td>${fmt(o.limit_usd)}</td><td>${(o.leverage_bps || 0) / 1e4}x</td><td><button class="btn sm" data-cancel="${esc(o.id)}">Cancel</button></td></tr>`));
@@ -322,7 +325,7 @@ async function maybeLiquidate() {
         max_fee_ppm: ppm, max_fee_sats: Math.ceil(sats * ppm / 1e6 * 1.2) + 1 }));
     }
     st.liqLog = `${new Date().toLocaleTimeString('en-GB')}: submitted ${takes.length} reduce-only take(s), ${takes.reduce((s, x) => s + x.quantity, 0)} USD`;
-  } catch (e) { st.liqLog = 'liquidation take refused: ' + e.message; }
+  } catch (e) { st.liqLog = settling(e) ? 'previous fill still settling; the next liquidation take follows once it commits' : 'liquidation take refused: ' + e.message; }
   finally { liqBusy = false; renderBottom(); }
 }
 async function entitlementDigest(tier) {
@@ -354,12 +357,12 @@ async function placeOrder() {
     const r = await submit(intent);
     msg.className = 'msg ok'; msg.textContent = (st.otype === 'market' ? 'Taken' : 'Posted') + ' ' + short(r.id);
     refreshAccount().then(renderBottom);
-  } catch (err) { msg.className = 'msg err'; msg.textContent = err.message; }
+  } catch (err) { if (settling(err)) { msg.className = 'msg note'; msg.textContent = SETTLING_NOTE; } else { msg.className = 'msg err'; msg.textContent = err.message; } }
 }
 async function cancelOrder(id) {
   const o = (st.account.open_orders || []).find((x) => x.id === id); if (!o) return;
   try { await submit(baseIntent({ action: 'cancel', side: o.side, tier: o.tier, quantity: o.quantity, limit_usd: o.limit_usd, leverage_bps: o.leverage_bps, cancel_target: id })); await refreshAccount(); renderBottom(); }
-  catch (err) { $('omsg').className = 'msg err'; $('omsg').textContent = 'Cancel: ' + err.message; }
+  catch (err) { const calm = settling(err); $('omsg').className = calm ? 'msg note' : 'msg err'; $('omsg').textContent = calm ? SETTLING_NOTE : 'Cancel: ' + err.message; }
 }
 
 // ---------- wiring ----------

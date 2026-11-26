@@ -162,3 +162,4 @@ html[data-ui="classic"] .spread { font-size: 13px; font-weight: 700; }
 html[data-ui="classic"] .go.long { background: var(--long); color: #000; } html[data-ui="classic"] .go.short { background: var(--short); color: #fff; }
 html[data-ui="classic"] .sides button.long.on { color: #000; }
 html[data-ui="classic"] .foot { background: #000; }
+.msg.note { color: var(--text-secondary); }

@@ -15,7 +15,18 @@ const table = (cols, rows) => rows.length ? `<table><thead><tr>${cols.map((c) =>
 const phase = (p) => `<span class="phase ${esc(p)}">${esc(p)}</span>`;
 const acctLink = (o) => `<a class="mono" href="#/accounts" title="${esc(o)}">${esc(short(o))}</a>`;
 
-const NAV = [['packets', 'Oracle packets'], ['batches', 'Batches'], ['accounts', 'Accounts'], ['journal', 'Journal'], ['dlc', 'DLC events']];
+const NAV = [['packets', 'Oracle packets'], ['batches', 'Batches'], ['pool', 'Clearing pool'], ['accounts', 'Accounts'], ['journal', 'Journal'], ['dlc', 'DLC events']];
+
+const LAYERS = { None: 'no shortfall', Margin: 'covered by the loser margin', OwnClaim: "covered by the winner's own claim", Fund: 'covered by the insurance fund', Haircut: 'winners haircut pro rata', Carried: 'carried to the next batch' };
+const layerBadge = (l) => `<span class="badge ${l === 'Haircut' ? 'bad' : l === 'None' || l === 'Margin' ? 'ok' : 'warn'}">${esc(l ?? 'None')}</span> <span class="muted">${esc(LAYERS[l] || '')}</span>`;
+function clearingCard(b) {
+  const c = b && b.clearing; if (!c) return '';
+  const owners = (b.accounts || []).map((a) => a.owner);
+  const rows = (c.rows || []).map((r, i) => `<tr><td>${owners[i] ? acctLink(owners[i]) : '#' + i}</td><td>${fmt(r.pnl)}</td><td>${fmt(r.released)}</td><td>${fmt(r.collected)}</td><td>${fmt(r.own_claim_used)}</td><td>${fmt(r.shortfall)}</td><td>${fmt(r.haircut)}</td><td>${fmt(r.claim_before)} → ${fmt(r.claim_after)}</td><td>${fmt(r.paid)}</td><td>${fmt(r.net)}</td></tr>`);
+  return card('Clearing waterfall', kv([['layer reached', layerBadge(c.layer)], ['shortfall sats', fmt(c.shortfall)], ['fund absorbed', fmt(c.fund_absorbed)], ['haircut sats', fmt(c.haircut)],
+    ['cash', `${fmt(c.cash_before)} → ${fmt(c.cash_after)}`], ['fund', fmt(c.fund)], ['carry', fmt(c.carry)], ['claims outstanding', fmt(c.claims)]])) +
+    card('Clearing by account (sats)', table(['Owner', 'PnL', 'Released', 'Collected', 'Own claim used', 'Shortfall', 'Haircut', 'Claim before → after', 'Paid', 'Net'], rows));
+}
 
 const routes = {
   async packets() {
@@ -61,8 +72,15 @@ const routes = {
     const rows = list(await get('/api/explorer/batches?limit=100'), ['batches']);
     return card('Batches (100 ms)', table(['Seq', 'Phase', 'Fills', 'Participants', 'Digest', 'Window start', 'Fee ledger'], rows.map((b) => `<tr><td><a href="#/batch/${b.seq}">#${b.seq}</a></td><td>${phase(b.phase)}</td><td>${fmt((b.legs || []).length)}</td><td>${fmt((b.accounts || []).length)}</td><td>${esc(short(b.digest))}</td><td>${time((b.window_us || [])[0])}</td><td>${esc(b.ledger_state || '')}</td></tr>`)));
   },
-  async batch(seq) {
-    const r = await get('/api/explorer/batch/' + encodeURIComponent(seq)); const b = r.batch || r; const fills = Array.isArray(r.fills) ? r.fills : [];
+  async batch(seq) { const html = await routes._batch(seq); return html + clearingCard(routes._last); },
+  async pool() {
+    const s = await get('/api/status'), c = s.clearing || {}, loans = list(s.closing_loans || [], ['loans']);
+    const ident = Number(c.identity) === 0 ? '<span class="badge ok">0 (balanced)</span>' : `<span class="badge bad">${esc(c.identity)} (should be 0)</span>`;
+    return card('Clearing pool', kv([['identity', ident], ['book', fmt(c.book)], ['carry', fmt(c.carry)], ['cash', fmt(c.cash)], ['claims outstanding', fmt(c.claims)], ['insurance fund', `${fmt(c.fund)} of ${fmt(c.fund0)}`], ['legacy mode', esc(String(c.legacy ?? false))]])) +
+      card('Closing loans (' + loans.length + ')', table(['Loan'], loans.map((l) => `<tr><td class="mono">${esc(typeof l === 'object' ? JSON.stringify(l) : l)}</td></tr>`))) + card('Raw', raw({ clearing: c, closing_loans: s.closing_loans }));
+  },
+  async _batch(seq) {
+    const r = await get('/api/explorer/batch/' + encodeURIComponent(seq)); const b = r.batch || r; routes._last = b; const fills = Array.isArray(r.fills) ? r.fills : [];
     return card('Batch #' + b.seq, kv([['phase', phase(b.phase)], ['digest', esc(b.digest)], ['window', `${time((b.window_us || [])[0])} → ${time((b.window_us || [])[1])}`], ['clearing', b.committed_us ? `sealed → prepared ${fmt(Math.round((b.prepared_us - b.created_us) / 1000))} ms → committed ${fmt(Math.round((b.committed_us - b.prepared_us) / 1000))} ms (window end → committed ${fmt(Math.round((b.committed_us - (b.window_us || [])[1]) / 1000))} ms)` : '<span class="muted">not timed in this process</span>'], ['fee ledger', `${esc(b.ledger_state || 'not observed')} · oracle ${fmt(b.oracle_due_sats)} / router ${fmt(b.router_due_sats)} sats`]])) +
       card('Fills', table(['Fill', 'Taker', 'Price', 'Size USD', 'Packet'], fills.map((f) => `<tr><td><a href="#/fill/${esc(f.id)}">${esc(short(f.id))}</a></td><td>${esc(f.taker_side)}</td><td>${fmt(f.price_usd)}</td><td>${fmt(f.qty_usd)}</td><td>${f.packet_seq != null ? `<a href="#/packet/${f.packet_seq}">#${f.packet_seq}</a>` : '—'}</td></tr>`))) +
       card('Approvals', table(['Owner', 'Channel', 'Margin sats', 'Signed'], (b.accounts || []).map((a) => `<tr><td>${acctLink(a.owner)}</td><td class="mono">${esc(short(a.channel?.txid))}:${esc(a.channel?.vout)}</td><td>${fmt(a.margin_sats)}</td><td>${a.approved ? '✓' : 'pending'}</td></tr>`))) +

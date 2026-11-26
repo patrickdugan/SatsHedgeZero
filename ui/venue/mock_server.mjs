@@ -116,7 +116,7 @@ function accountView(owner) {
   const un = a.net_usd && a.avg ? Math.round(a.net_usd * (1 / a.avg - 1 / S.mark) * 1e8) : 0;
   return { owner, label: a.label, outpoint: a.outpoint,
     balance: { cap: a.cap, free: Math.max(0, a.cap - resting - a.committed - a.paid_fees), resting, pending: 0, committed: a.committed, paid_fees: a.paid_fees },
-    position: { net_usd: a.net_usd, avg_entry_usd: a.avg || 0, unrealized_sats: un },
+    position: { net_usd: a.net_usd, avg_entry_usd: a.avg || 0, unrealized_sats: un, deferred_claim_sats: Math.abs(a.net_usd) >= 20 ? 1500 : 0 },
     open_orders: mine.map((o) => ({ id: o.id, side: o.side, tier: o.tier, quantity: o.qty, limit_usd: o.limit, leverage_bps: o.lev, ts_us: o.ts_us })),
     fills: a.fills.slice(0, 100), pending_signatures: pend.map(({ id, kind, message, context }) => ({ id, kind, message, context })) };
 }
@@ -199,6 +199,7 @@ function handleIntent(it) {
 }
 async function postIntent(body) {
   const it = body.intent; const err = handleIntent(it); if (err) return err;
+  if (it.quantity === 13) return [409, { error: 'a previous fill of this account is still settling' }];
   const ent = it.tier === 'standard' ? undefined : S.entitlements.get(it.owner + it.tier).digest;
   if (it.sequence <= (acct(it.owner).lastSeq || 0)) return [409, { error: 'SequenceNotIncreasing' }];
   let id;
@@ -282,7 +283,8 @@ async function api(req, res, u) {
   const p = u.pathname, GET = req.method === 'GET';
   if (GET && p === '/api/template') return json(res, 200, template);
   if (GET && p === '/api/status') return json(res, 200, { market: MARKET, mark: markView(), group_key: sha('group').slice(0, 64),
-    router: { clock_us: nowUs(), resting: S.resting.length, batch_sequence: S.batchSeq }, accounts: S.accounts.size - 1, journal: { records: S.journalRecords, digest: S.journalDigest } });
+    router: { clock_us: nowUs(), resting: S.resting.length, batch_sequence: S.batchSeq }, accounts: S.accounts.size - 1, journal: { records: S.journalRecords, digest: S.journalDigest },
+    clearing: { book: 0, carry: 0, cash: 4_200_000, claims: 1500, fund: 250_000, fund0: 250_000, identity: 0, legacy: false }, closing_loans: [] });
   if (GET && p === '/api/book') return json(res, 200, bookView(Number(u.searchParams.get('depth')) || 25));
   if (GET && p === '/api/trades') return json(res, 200, S.trades.slice(0, lim(u, 100)));
   if (GET && p.startsWith('/api/account/')) { const v = accountView(p.slice(13)); return v ? json(res, 200, v) : json(res, 404, { error: 'UnknownAccount' }); }
@@ -293,7 +295,7 @@ async function api(req, res, u) {
   }
   if (GET && p === '/api/explorer/packets') return json(res, 200, S.packets.slice(0, lim(u, 50)));
   if (GET && p === '/api/explorer/batches') return json(res, 200, [...S.batches.values()].sort((a, b) => b.seq - a.seq).slice(0, lim(u, 50)).map((b) => ({ ...batchSummary(b), participants: b.participants.length })));
-  if (GET && p.startsWith('/api/explorer/batch/')) { const b = S.batches.get(Number(p.slice(20))); return b ? json(res, 200, b) : json(res, 404, { error: 'not found' }); }
+  if (GET && p.startsWith('/api/explorer/batch/')) { const b = S.batches.get(Number(p.slice(20))); return b ? json(res, 200, { ...b, clearing: clearingView(b) }) : json(res, 404, { error: 'not found' }); }
   if (GET && p.startsWith('/api/explorer/fill/')) { const f = S.fills.get(p.slice(19)); if (!f) return json(res, 404, { error: 'not found' }); const b = S.batches.get(f.batch_seq); return json(res, 200, { ...f, batch: { seq: b.seq, digest: b.digest, phase: b.phase }, approvals: b.approvals, acks: b.acks, fee_ledger: b.fee_ledger }); }
   if (GET && p === '/api/explorer/accounts') return json(res, 200, [...S.accounts.entries()].filter(([, a]) => !a.bot).map(([o, a]) => ({ owner: o, outpoint: a.outpoint, kind: a.kind, cap: a.cap, label: a.label, mempool: a.kind === 'utxo' ? `https://mempool.space/testnet4/tx/${a.outpoint.txid}` : null })));
   if (GET && p === '/api/explorer/journal') return json(res, 200, { records: S.journalRecords, digest: S.journalDigest, config_hash: sha('config') });
@@ -357,3 +359,11 @@ server.on('upgrade', (req, socket) => {
   if (kind === 'api') socket.write(frame(JSON.stringify({ type: 'mark', mark: markView() })));
 });
 server.listen(PORT, '127.0.0.1', () => console.log(`mock shz-venue on http://127.0.0.1:${PORT}/  (explorer: /explorer.html)`));
+function clearingView(b) {
+  const rows = Array.from({ length: Math.max(2, (b.participants || []).length) }, (_, i) => {
+    const pnl = i % 2 ? 2400 : -1800, released = 5000, collected = pnl < 0 ? -pnl : 0;
+    const shortfall = i % 2 ? 0 : 300, haircut = 0, own = 0, paid = i % 2 ? pnl + released : 0;
+    return { pnl, released, collected, own_claim_used: own, shortfall, haircut, claim_before: 0, claim_after: shortfall, paid, net: paid - collected };
+  });
+  return { rows, shortfall: rows.reduce((s, r) => s + r.shortfall, 0), fund_absorbed: 300, haircut: 0, layer: 'Fund', cash_before: 4_200_000, cash_after: 4_199_700, fund: 249_700, carry: 0, claims: 300 };
+}

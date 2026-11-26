@@ -34,7 +34,7 @@ export function describe(risk) {
   const p = risk.params || {};
   switch (risk.state) {
     case 'warning': return { level: 'warn', text: `Margin ${pct(risk.margin_bps)} is close to maintenance ${pct(p.maintenance_bps)}. Liquidation price ${risk.liquidation_price_usd ?? '-'} USD.` };
-    case 'maintenance': return { level: 'danger', text: `Below maintenance (${pct(risk.margin_bps)} < ${pct(p.maintenance_bps)}). The venue accepts only position-reducing orders. Partial liquidation: close ${risk.liquidation?.tranche_usd ?? '?'} USD at ${risk.liquidation?.limit_usd ?? '?'} or better (auction discount ${risk.liquidation?.auction_discount_bps ?? 0} bps).` };
+    case 'maintenance': return { level: 'danger', text: `Below maintenance (${pct(risk.margin_bps)} < ${pct(p.maintenance_bps)}). The venue accepts only position-reducing orders. The position is closed in full by auction: close ${risk.liquidation?.tranche_usd ?? '?'} USD at ${risk.liquidation?.limit_usd ?? '?'} or better (auction discount ${risk.liquidation?.auction_discount_bps ?? 0} bps).` };
     case 'bankrupt': return { level: 'danger', text: `A lot is past its bankruptcy price: it pays this account nothing (the DLC caps the loss at its margin). Only position-reducing orders are accepted.` };
     default: return null;
   }
