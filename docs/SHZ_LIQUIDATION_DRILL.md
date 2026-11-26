@@ -350,3 +350,17 @@ needs an account that has just released margin, which is exactly an account that
 | `ops/venue-bench/results/liq-drill-quick-overshoot.jsonl` | F3 repro |
 
 JSONL kinds: `mark_set`, `risk_transition`, `auction_plan`, `liq_take` / `liq_result` / `liq_idle`, `gate_probe`, `batch` (full clearing rows), `shortfall_batch`, `solvency`, `assert`, `summary`.
+
+## 6. Fixes after the drill (venue, 2026-11-27)
+
+- **F1:** the venue refuses a position-reducing take while the account has any fill not yet committed
+  (`core.rs` `submit`, `unsettled_of`), so at most one closing loan is in flight per account; the page
+  sends one liquidation take per round. The router's balance check (`plan_resolution`, which compares
+  `committed` against `margin_after` without the account's other outstanding loans) is unchanged; the
+  venue guard removes the only way to reach it with two loans. Rerun: `--quick split150` and
+  `--quick overshoot` now get the second take refused (409) instead of wedging; `--serialize false`
+  completes with no wedge (28/29, the miss is the control step getting `NoLiquidity` in burst order).
+- **F2:** the liquidation plan closes the whole position (`tranche_usd` = notional), priced by the
+  Dutch auction. Full run: A liquidated in 2 takes (was 11 halving rounds), C in 1.
+- **F3:** the reduce-only gate sizes against the net position including unsettled fills.
+- Full run with fund 1,000,000: 29/29.
