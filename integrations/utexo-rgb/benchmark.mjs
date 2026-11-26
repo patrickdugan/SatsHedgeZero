@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { checkDecoded } from './adapter.mjs';
+import { qualifyNativePair } from './native-peer.mjs';
 
 const pin='608937d849412a4c25e9b9a66a7571b561396ae0';
 const rootArg=process.env.UTEXO_WDK_CHECKOUT;
@@ -111,6 +112,14 @@ try{
           return o.status==='Succeeded'&&p.status==='Succeeded';
         });
         assert.equal((await b.call('getInvoiceStatus',[inv.invoice])).status,'Succeeded');
+        if(asset){
+          row.nativeObservation=await qualifyNativePair({
+            payerCall:(method,...args)=>a.call(method,args),
+            receiverCall:(method,...args)=>b.call(method,args),
+            payerNode:a.pubkey,payee:b.pubkey,invoice:inv.invoice,paymentHash:d.payment_hash,
+            assetId:asset,assetUnits:String(amount),carrierMsat:'3000000'
+          });
+        }
         row.paymentHash=d.payment_hash;row.routingFeeMsat=null;
       }
       row.status='observed-success';row.elapsedMs=performance.now()-t;save();
