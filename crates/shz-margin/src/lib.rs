@@ -24,6 +24,8 @@ pub enum MarginError {
     },
     #[error("TAP collateral ({asset_id_hex}) is reserved for v1; v0 settles strictly in vanilla BTC UTXOs")]
     TapAssetDisabledInV0 { asset_id_hex: String },
+    #[error("RGB collateral ({contract_id_hex}) is reserved for v1; v0 settles strictly in vanilla BTC UTXOs")]
+    RgbAssetDisabledInV0 { contract_id_hex: String },
     #[error("invalid contract parameter: {0}")]
     InvalidParameter(&'static str),
     #[error("price bit-width {0} must be in 4..=30")]
@@ -46,6 +48,9 @@ pub enum CollateralAsset {
         group_key: Option<[u8; 32]>,
         script_version: u8,
     },
+    /// RGB contract (e.g. Tether's RGB USDT) hook, client-side validated. Like TAP it is
+    /// not accepted for v0 funding; the options desk models RGB USD collateral off-chain.
+    Rgb { contract_id: [u8; 32] },
 }
 
 impl CollateralAsset {
@@ -59,6 +64,9 @@ impl CollateralAsset {
             Self::TaprootAsset { asset_id, .. } => Err(MarginError::TapAssetDisabledInV0 {
                 asset_id_hex: hex::encode(asset_id),
             }),
+            Self::Rgb { contract_id } => Err(MarginError::RgbAssetDisabledInV0 {
+                contract_id_hex: hex::encode(contract_id),
+            }),
         }
     }
 
@@ -66,7 +74,8 @@ impl CollateralAsset {
     /// inclusion in P2TR funding taptrees (`None` for vanilla key-spend/DLC BTC).
     pub fn tap_commitment_leaf_hash(&self, amount_units: u64) -> Option<[u8; 32]> {
         match self {
-            Self::VanillaBtc => None,
+            // RGB commits through its own tapret/opret anchor, not a TAP leaf.
+            Self::VanillaBtc | Self::Rgb { .. } => None,
             Self::TaprootAsset {
                 asset_id,
                 group_key,

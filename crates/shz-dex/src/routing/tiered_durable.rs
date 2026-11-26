@@ -11,6 +11,7 @@ use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
 use super::options::{IntentV7,OptionBatch,OptionOutcome,OptionsDesk,Series};
 use shz_dlc::{OracleAnnouncement,OracleAttestation};
+use shz_margin::CollateralAsset;
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
 
@@ -201,6 +202,11 @@ impl State{
     if self.clearing.is_none()||self.options.is_some(){return Err(TierReject::Replay)}
     self.options=Some(OptionsDesk::new(oracle_key,num_bits)?);Ok(Reply::Unit)
    },
+   Event::EnableUsdCollateral=>{let d=self.desk()?;if d.usd{return Err(TierReject::Replay)}d.usd=true;Ok(Reply::Unit)},
+   Event::UsdTransfer{channel,rail,micro_usd,deposit}=>{
+    let k=op(&channel);if self.router.account_owner(&k).is_none(){return Err(TierReject::Allocation)}
+    self.desk()?.usd_transfer(k,rail,micro_usd,deposit)?;Ok(Reply::Unit)
+   },
    Event::EnableCombos=>{let d=self.desk()?;if d.combos{return Err(TierReject::Replay)}d.combos=true;Ok(Reply::Unit)},
    Event::ListSeries{series,announcement}=>Ok(Reply::Key(self.desk()?.list(series,announcement)?)),
    Event::FundOptions{channel,sats,to_options}=>{
@@ -245,6 +251,10 @@ enum Event{
  /// announcements of `num_bits` digits.
  EnableOptions{oracle_key:Key,num_bits:u8},
  ListSeries{series:Series,announcement:OracleAnnouncement},
+ /// Accept `Asset::Usd` series and USD collateral on TAP or RGB rails (simulated transfers).
+ EnableUsdCollateral,
+ /// Credit (`deposit`, on `rail`) or debit free USD collateral, micro-USD.
+ UsdTransfer{channel:BtcOutPoint,rail:Option<CollateralAsset>,micro_usd:u64,deposit:bool},
  /// Accept Take intents of up to `options::MAX_LEGS` legs (all-or-none, one batch).
  EnableCombos,
  /// Move sats between the perpetual allocation and the options sub-account.
@@ -373,6 +383,21 @@ impl DurableTieredRouter{
  pub fn enable_combos(&mut self)->D<bool>{
   self.ready()?;if self.state.options.as_ref().is_some_and(|d|d.combos){return Ok(false)}
   self.record(Event::EnableCombos)?;Ok(true)
+ }
+ /// Accept USD-settled series and USD collateral (journaled `EnableUsdCollateral`, once;
+ /// options must be on). Returns `false` if already on.
+ pub fn enable_usd_collateral(&mut self)->D<bool>{
+  self.ready()?;if self.state.options.as_ref().is_some_and(|d|d.usd){return Ok(false)}
+  self.record(Event::EnableUsdCollateral)?;Ok(true)
+ }
+ /// Credit `micro_usd` of USD collateral arriving on `rail` (`TaprootAsset` or `Rgb`). The
+ /// on-chain TAP/RGB transfer is not verified here: the event records the operator's credit.
+ pub fn deposit_usd(&mut self,channel:BtcOutPoint,rail:CollateralAsset,micro_usd:u64)->D<()>{
+  self.record(Event::UsdTransfer{channel,rail:Some(rail),micro_usd,deposit:true}).map(|_|())
+ }
+ /// Debit `micro_usd` of free USD collateral (a withdrawal on the account's rail).
+ pub fn withdraw_usd(&mut self,channel:BtcOutPoint,micro_usd:u64)->D<()>{
+  self.record(Event::UsdTransfer{channel,rail:None,micro_usd,deposit:false}).map(|_|())
  }
  /// List an option series; returns its id (`Series::id`).
  pub fn list_series(&mut self,series:Series,announcement:OracleAnnouncement)->D<Key>{

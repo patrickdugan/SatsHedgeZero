@@ -12,13 +12,14 @@
 //!   and payoff in micro-USD).
 //! * Margin is one rule: each account's option collateral per asset is exactly the
 //!   portfolio's worst-case loss over the oracle's price domain (`payoff::max_loss`),
-//!   recomputed on every fill. Premium moves in cash at fill time and is not part of the
+//!   recomputed on every fill. Legs offset only within one expiry (one oracle event, one
+//!   price): the requirement is the sum over expiries of each expiry's worst case. Premium moves in cash at fill time and is not part of the
 //!   margined payoff. Assets never net against each other. Every option portfolio is
 //!   therefore `fully_funded` and needs no liquidation.
 //! * Cash moves (premium at a fill, payoff at expiry) go through the multilateral
 //!   clearing ledger: each option batch has a `BatchClearing` with one row per account,
 //!   losers' cash collected into the pool and winners paid from it. Premium nets to zero
-//!   exactly; expiry rounds each long down and each short up and the dust goes to the
+//!   exactly; expiry rounds each net winner down and each net loser up and the dust goes to the
 //!   clearing fund, so the clearing identity holds.
 //! * BTC collateral is moved from the account's perpetual allocation (`fund`/`defund`):
 //!   `Balance::cap` and `free` drop by the amount, the options sub-account gains it.
@@ -124,8 +125,9 @@ pub struct OptionFill{pub series:Key,pub long:BtcOutPoint,pub short:BtcOutPoint,
 pub enum OptionBatchKind{
  /// One taker intent (single leg or combo), all of its fills.
  Trade{taker:Key},
- /// Expiry of `series` at the attested `price_usd` (clamped to the domain).
- Expiry{series:Key,price_usd:u64},
+ /// Expiry of every `series` of one asset on oracle event `event_id` at the attested
+ /// `price_usd` (clamped to the domain).
+ Expiry{event_id:String,series:Vec<Key>,price_usd:u64},
 }
 /// Atomic unit of option settlement: every fill and cash move of one take or expiry.
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
@@ -174,13 +176,27 @@ impl OptionsDesk{
  pub fn legs(&self,k:&Outpoint)->Vec<Leg>{
   self.accounts.get(k).map(|a|a.legs.iter().filter(|(_,n)|**n!=0).filter_map(|(s,n)|self.series.get(s).map(|l|l.series.leg(*n))).collect()).unwrap_or_default()
  }
- /// Worst-case loss of the account's option portfolio in `asset`.
- pub fn required(&self,k:&Outpoint,asset:Asset)->u128{payoff::max_loss(&self.legs(k),asset,self.domain)}
- /// The account's posted option collateral covers its worst-case loss in every asset.
+ /// The account's legs grouped by expiry (oracle event): legs offset only within a group,
+ /// since different events settle at different prices.
+ pub fn legs_by_event(&self,k:&Outpoint)->BTreeMap<String,Vec<Leg>>{
+  let mut out:BTreeMap<String,Vec<Leg>>=BTreeMap::new();
+  if let Some(a)=self.accounts.get(k){
+   for (s,&n) in &a.legs{
+    if let (true,Some(l))=(n!=0,self.series.get(s)){out.entry(l.series.event_id.clone()).or_default().push(l.series.leg(n));}
+   }
+  }
+  out
+ }
+ /// Collateral the account's option portfolio needs in `asset`: the sum over expiries of
+ /// each expiry's worst-case loss.
+ pub fn required(&self,k:&Outpoint,asset:Asset)->u128{
+  self.legs_by_event(k).values().map(|g|payoff::max_loss(g,asset,self.domain)).sum()
+ }
+ /// The account's posted option collateral covers every expiry's worst-case loss in every
+ /// asset (`payoff::fully_funded` per expiry, collateral split across expiries).
  pub fn fully_funded(&self,k:&Outpoint)->bool{
   let Some(a)=self.accounts.get(k)else{return true};
-  let posted=BTreeMap::from([(Asset::Btc,a.btc_locked as u128),(Asset::Usd,a.usd_locked as u128)]);
-  payoff::fully_funded(&self.legs(k),&posted,self.domain)
+  a.btc_locked as u128>=self.required(k,Asset::Btc)&&a.usd_locked as u128>=self.required(k,Asset::Usd)
  }
 
  /// List a series on an oracle announcement of the desk's oracle and domain.
@@ -190,6 +206,8 @@ impl OptionsDesk{
      PriceDomain::from_bits(announcement.num_bits().clamp(1,40))!=self.domain||announcement.num_bits()==0||
      !(self.domain.p_min..=self.domain.p_max).contains(&series.strike_usd){return Err(Reject::Bounds)}
   if series.asset==Asset::Usd&&!self.usd{return Err(Reject::Scope)}
+  // Every series of one event settles on one announcement.
+  if self.series.values().any(|l|l.series.event_id==series.event_id&&l.announcement!=announcement){return Err(Reject::Bounds)}
   self.series.insert(id,Listed{series,announcement,settled:None});Ok(id)
  }
  /// Move `sats` between the account's perpetual allocation and its options sub-account.
@@ -346,35 +364,39 @@ impl OptionsDesk{
   Ok(Ok((OptionBatch{sequence:seq,kind:OptionBatchKind::Trade{taker:i.id()},asset,fills,clearing:report},next)))
  }
 
- /// Expire `series` at the oracle's attested price: every open position pays out, shorts
- /// from their locked collateral, and the collateral the series no longer needs is freed.
+ /// Expire, at the oracle's attested price, every open series in the asset of `id` on the
+ /// same oracle event as `id`: each account's positions in them pay out as one amount,
+ /// shorts from their locked collateral, and the collateral they no longer need is freed.
  pub fn expire(&mut self,id:&Key,attestation:&OracleAttestation,clearing:&mut ClearingState)->R<OptionBatch>{
   let l=self.open_series(id)?;
   attestation.verify_against(&l.announcement).map_err(|_|Reject::Oracle)?;
-  let (series,price)=(l.series.clone(),attestation.price_usd.clamp(self.domain.p_min,self.domain.p_max));
-  let asset=series.asset;
-  // Resting quotes of an expired series are cancelled.
-  for long in [true,false]{
-   if let Some(b)=self.books.remove(&(*id,long)){for q in b.values(){self.locations.remove(&q.intent.id());}}
+  let (event,asset,price)=(l.series.event_id.clone(),l.series.asset,attestation.price_usd.clamp(self.domain.p_min,self.domain.p_max));
+  let ids:Vec<Key>=self.series.iter().filter(|(_,l)|l.settled.is_none()&&l.series.event_id==event&&l.series.asset==asset).map(|(k,_)|*k).collect();
+  // Resting quotes of expired series are cancelled.
+  for s in &ids{
+   for long in [true,false]{
+    if let Some(b)=self.books.remove(&(*s,long)){for q in b.values(){self.locations.remove(&q.intent.id());}}
+   }
   }
   let mut rows=Vec::new();let (mut gains,mut losses)=(0u64,0u64);
-  let holders:Vec<Outpoint>=self.accounts.iter().filter(|(_,a)|a.legs.get(id).is_some_and(|&n|n!=0)).map(|(k,_)|*k).collect();
+  let holders:Vec<Outpoint>=self.accounts.iter().filter(|(_,a)|ids.iter().any(|s|a.legs.get(s).is_some_and(|&n|n!=0))).map(|(k,_)|*k).collect();
   let mut moves=Vec::new();
   for k in holders{
-   let n=self.accounts[&k].legs[id];
-   let v=payoff::pnl(&[series.leg(n)],asset,price);
-   // Longs are paid the floor of their payoff, shorts pay its ceiling: `pnl` floors.
+   let a=&self.accounts[&k];
+   let legs:Vec<Leg>=ids.iter().filter_map(|s|a.legs.get(s).filter(|&&n|n!=0).map(|&n|self.series[s].series.leg(n))).collect();
+   let v=payoff::pnl(&legs,asset,price);
+   // `pnl` floors: a net winner is paid the floor, a net loser pays the ceiling.
    let (paid,collected)=if v>=0{(u64::try_from(v).map_err(|_|Reject::Bounds)?,0)}else{(0,u64::try_from(-v).map_err(|_|Reject::Bounds)?)};
    gains=gains.checked_add(paid).ok_or(Reject::Bounds)?;losses=losses.checked_add(collected).ok_or(Reject::Bounds)?;
    moves.push((k,paid,collected));
   }
   if gains>losses{return Err(Reject::Bounds)}
   for (k,paid,collected) in moves{
-   let a=self.accounts.get_mut(&k).unwrap();a.legs.remove(id);
+   let a=self.accounts.get_mut(&k).unwrap();for s in &ids{a.legs.remove(s);}
    let req=u64::try_from(self.required(&k,asset)).map_err(|_|Reject::Bounds)?;
    let a=&self.accounts[&k];
    let total=a.free(asset) as i128+a.locked(asset) as i128+paid as i128-collected as i128-req as i128;
-   // Locked collateral always covers the worst case, so this cannot go negative.
+   // Locked collateral covers each expiry's worst case on its own, so this cannot go negative.
    if total<0{return Err(Reject::Bounds)}
    let realized=a.realized(asset).checked_add(s64(paid)?-s64(collected)?).ok_or(Reject::Bounds)?;
    self.accounts.get_mut(&k).unwrap().set(asset,total as u64,req,realized);
@@ -383,8 +405,8 @@ impl OptionsDesk{
   }
   let seq=self.batches.len()as u64+1;
   let (report,next)=settle(clearing,asset,rows,losses-gains)?;
-  let batch=OptionBatch{sequence:seq,kind:OptionBatchKind::Expiry{series:*id,price_usd:price},asset,fills:Vec::new(),clearing:report};
-  self.series.get_mut(id).unwrap().settled=Some(price);
+  let batch=OptionBatch{sequence:seq,kind:OptionBatchKind::Expiry{event_id:event,series:ids.clone(),price_usd:price},asset,fills:Vec::new(),clearing:report};
+  for s in &ids{self.series.get_mut(s).unwrap().settled=Some(price);}
   self.batches.push(batch.clone());*clearing=next;
   Ok(batch)
  }
