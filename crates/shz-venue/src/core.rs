@@ -30,6 +30,10 @@ pub type Key = [u8; 32];
 pub const ROUTER_ID: u32 = 1;
 pub const MARKET: &str = "SHZ-BTCUSD-INV";
 pub const DEMO_CAP_SATS: u64 = 200_000;
+/// Clearing fund for multilateral clearing (V3): the venue's own sats on its clearing ledger that
+/// pay winners before their losers close and absorb shortfalls before any haircut. On testnet this
+/// is a ledger amount; the settlement adapter is simulated, so no on-chain output backs it.
+pub const CLEARING_FUND_SATS: u64 = 1_000_000;
 const MAX_TRADES: usize = 2_000;
 const MAX_PACKETS: usize = 600;
 
@@ -249,6 +253,9 @@ impl Venue {
         // Margin release: journaled once. On a journal that predates it, positions are rebuilt
         // from every committed batch and the offset margin is released before anything else runs.
         router.enable_margin_release().map_err(|e| format!("margin release: {e}"))?;
+        // Multilateral clearing (docs/SHZ_VENUE_CLEARING.md): journaled once; an existing journal is
+        // folded in and acks switch to the V3 tag.
+        router.enable_clearing(CLEARING_FUND_SATS).map_err(|e| format!("clearing: {e}"))?;
         let rp = RecipientPolicy {
             version: 1,
             oracle_operators: (1..=5).map(|i| (public(&keys.named(&format!("oracle-op-{i}"))), 1)).collect(),
@@ -458,6 +465,10 @@ impl Venue {
     }
 
     // ------------------------------------------------------------- risk ----
+    fn clearing_on(&self) -> bool {
+        self.router.clearing_active().unwrap_or(false)
+    }
+
     fn mark_usd(&self) -> Option<u64> {
         self.mark.as_ref().and_then(|m| m.median_e8).map(|m| (m + 50_000_000) / 100_000_000)
     }
@@ -473,10 +484,11 @@ impl Venue {
     /// start the liquidation-auction clock when an account first goes below maintenance.
     fn update_risk(&mut self, now: u64) {
         let Some(mark) = self.mark_usd() else { return };
+        let clearing = self.clearing_on();
         let owners: Vec<Key> = self.accounts.keys().copied().collect();
         for owner in owners {
             let lots = self.lots_of(&owner);
-            let st = crate::risk::state(&lots, mark);
+            let st = crate::risk::state(&lots, mark, clearing);
             let prev = self.risk_state.get(&owner).copied();
             if st == crate::risk::State::Flat && prev.is_none() {
                 continue;
@@ -487,7 +499,7 @@ impl Venue {
                 (false, _) => None,
             };
             if prev.map(|p| p.0) != Some(st) {
-                let ratio = crate::risk::margin_bps(&lots, mark);
+                let ratio = crate::risk::margin_bps(&lots, mark, clearing);
                 self.emit(json!({"type": "risk", "owner": h(&owner), "state": st.name(), "margin_bps": ratio, "mark_usd": mark}));
             }
             if st == crate::risk::State::Flat {
@@ -502,7 +514,7 @@ impl Venue {
         let lots = self.lots_of(owner);
         let since = self.risk_state.get(owner).and_then(|r| r.1);
         let elapsed = since.map(|t| now_us().saturating_sub(t) / 1_000);
-        crate::risk::view(&lots, self.mark_usd(), elapsed)
+        crate::risk::view(&lots, self.mark_usd(), elapsed, self.clearing_on())
     }
 
     // ---------------------------------------------------- registration ----
@@ -625,7 +637,7 @@ impl Venue {
     pub fn submit(&mut self, i: IntentV6) -> Result<Value, String> {
         self.wallet_check(&i.owner)?;
         if i.action != Action::Cancel {
-            crate::risk::gate(&self.lots_of(&i.owner), self.mark_usd(), i.side, i.quantity)?;
+            crate::risk::gate(&self.lots_of(&i.owner), self.mark_usd(), i.side, i.quantity, self.clearing_on())?;
         }
         let id = i.id();
         let ent = (i.tier != FeedTier::Standard).then(|| self.entitlements.get(&i.entitlement_digest).cloned()).flatten();
@@ -1024,7 +1036,8 @@ impl Venue {
         let realized = self.balance(owner).map(|b| b.realized_pnl).unwrap_or(0);
         json!({"net_usd": pos.net_usd() + unsettled, "committed_net_usd": pos.net_usd(), "unsettled_usd": unsettled,
                "avg_entry_usd": pos.avg_entry_usd(), "unrealized_sats": unreal, "margin_sats": margin, "lots": lots,
-               "realized_pnl_sats": realized, "gross_traded_usd": gross, "risk": self.risk_view(owner)})
+               "realized_pnl_sats": realized, "gross_traded_usd": gross, "risk": self.risk_view(owner),
+               "deferred_claim_sats": self.router.clearing_state().ok().flatten().map(|c| c.claim(&a.outpoint))})
     }
 
     pub fn account_view(&self, owner: &Key) -> Value {
@@ -1057,6 +1070,7 @@ impl Venue {
             "accounts": self.accounts.len(),
             "journal": tip.map(|t| json!({"records": t.records, "digest": h(&t.digest)})),
             "margin_release": self.router.margin_release_active().unwrap_or(false),
+            "clearing": self.router.clearing_summary().ok().flatten(),
             "production_ready": false,
             "network": "testnet4",
         })
@@ -1125,6 +1139,7 @@ impl Venue {
                 "released_margin_sats": s.released_margin, "payout_sats": s.payout, "realized_pnl_sats": s.realized_pnl(),
                 "closed_usd": s.closed_usd, "net_before_usd": s.net_before, "net_after_usd": s.net_after, "margin_after_sats": s.margin_after,
             })).collect::<Vec<_>>()).unwrap_or_default(),
+            "clearing": self.router.clearing(b.seq).ok().flatten(),
         })
     }
 }
