@@ -47,3 +47,5 @@ See DESIGN.md for accounting and qualification gates.
 Follow-up: [SHZ-RGB-01A benchmark and recovery](BENCHMARK.md).
 
 Follow-up: [SHZ-RGB-01B signed settlement journal](JOURNAL.md).
+
+Follow-up: [SHZ-RGB-01C evidence and checkpoint coordination](OBSERVERS.md).
