@@ -3,6 +3,7 @@
 //! One journal and writer per immutable router allocation generation.
 use super::*;
 use super::positions::{self,Position,Settlement};
+use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use std::{fs::{File,OpenOptions},io::{self,Read,Write},path::Path};
 use thiserror::Error;
 
@@ -57,13 +58,15 @@ pub struct AckBundle{
 }
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
 pub enum Phase{Sealed,Prepared,Committed,Aborted}
-struct Entry{batch:Batch,phase:Phase,ack:Option<AckBundle>,settlements:Vec<(BtcOutPoint,Settlement)>}
+struct Entry{batch:Batch,phase:Phase,ack:Option<AckBundle>,settlements:Vec<(BtcOutPoint,Settlement)>,clearing:Option<BatchClearing>}
 pub(crate) struct LaneState{pub(crate) peer:Key,pub(crate) monitor:Key,pub(crate) head:Head}
 struct State{
  router:Router,lanes:BTreeMap<Outpoint,LaneState>,recipients:FeeRecipients,config:Key,
  batches:BTreeMap<u64,Entry>,next_resolution:u64,oracle_paid:u128,router_paid:u128,fee_receipts:BTreeSet<Key>,
  /// Margin release (`positions`) switched on by a journaled `EnableMarginRelease`.
  netting:bool,
+ /// Multilateral clearing (`clearing`) switched on by a journaled `EnableClearing`.
+ clearing:Option<ClearingState>,
 }
 impl State{
  fn new(policy:Policy,registry:&Registry,id:u32,engine:Engine,lanes:Vec<Lane>,recipients:FeeRecipients)->D<Self>{
@@ -88,16 +91,31 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None})
  }
- fn tag(&self)->&'static [u8]{if self.netting{HFT05_ACK_TAG_V2}else{HFT05_ACK_TAG}}
+ fn tag(&self)->&'static [u8]{if self.clearing.is_some(){HFT05_ACK_TAG_V3}else if self.netting{HFT05_ACK_TAG_V2}else{HFT05_ACK_TAG}}
+ fn plan_clearing(&self,batch:&Batch,disposition:Disposition)->R<Option<ClearPlan>>{
+  let accounts=&self.router.accounts;
+  match (&self.clearing,disposition){
+   (Some(c),Disposition::Commit)=>Ok(Some(clearing::clear(c,batch,&|k:&Outpoint|accounts.get(k).map(|a|a.position.clone()))?)),
+   _=>Ok(None),
+  }
+ }
  fn message(&self,sequence:u64,disposition:Disposition,ack:&ChannelAck)->R<Key>{
   let batch=&self.batches.get(&sequence).ok_or(Reject::UnknownOrder)?.batch;
   let accounts=&self.router.accounts;
+  if let Some(plan)=self.plan_clearing(batch,disposition)?{
+   let i=batch.accounts().iter().position(|a|op(&a.channel)==op(&ack.channel)).ok_or(Reject::Allocation)?;
+   return ack_message(self.tag(),&self.config,&self.recipients,sequence,batch,disposition,ack,Some(&plan.lanes[i].1),Some(&plan.report));
+  }
   let settled=if self.netting&&disposition==Disposition::Commit{
    Some(lane_settlement(batch,&ack.channel,&|k:&Outpoint|accounts.get(k).map(|a|a.position.clone()))?.1)
   }else{None};
-  ack_message(self.tag(),&self.config,&self.recipients,sequence,batch,disposition,ack,settled.as_ref())
+  ack_message(self.tag(),&self.config,&self.recipients,sequence,batch,disposition,ack,settled.as_ref(),None)
+ }
+ fn enable_clearing(&mut self,fund:u64)->R<()>{
+  if !self.netting||self.clearing.is_some(){return Err(Reject::Replay)}
+  self.clearing=Some(ClearingState::open(fund,self.router.accounts.values().map(|a|(&a.position,&a.balance)))?);Ok(())
  }
  fn enable_netting(&mut self)->R<()>{
   if self.netting{return Err(Reject::Replay)}
@@ -123,8 +141,9 @@ impl State{
   let next_sequence=self.next_resolution.checked_add(1).ok_or(Reject::Bounds)?;
   let accounts=&self.router.accounts;
   let position_of=|k:&Outpoint|accounts.get(k).map(|a|a.position.clone());
+  let cleared=self.plan_clearing(&entry.batch,bundle.disposition)?;
   let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|accounts.get(k).map(|a|a.balance),self.netting.then_some(&position_of as PositionOf),
+   &|k:&Outpoint|accounts.get(k).map(|a|a.balance),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),
    &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,false)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.accounts.get_mut(&key).unwrap().balance=balance;self.lanes.get_mut(&key).unwrap().head=head;}
@@ -134,7 +153,9 @@ impl State{
   self.oracle_paid=plan.oracle;self.router_paid=plan.router;self.next_resolution=next_sequence;self.fee_receipts.extend(plan.receipts);
   let entry=self.batches.get_mut(&bundle.sequence).unwrap();
   entry.phase=match bundle.disposition{Disposition::Commit=>Phase::Committed,Disposition::FencedAbort=>Phase::Aborted};
-  entry.ack=Some(bundle);entry.settlements=settlements;Ok(true)
+  entry.ack=Some(bundle);entry.settlements=settlements;
+  if let Some(c)=cleared{entry.clearing=Some(c.report);self.clearing=Some(c.next);}
+  Ok(true)
  }
  fn apply(&mut self,event:Event)->R<Reply>{
   match event{
@@ -144,26 +165,33 @@ impl State{
    Event::Seal=>{
     let batch=self.router.seal_fill_batch()?;
     if let Some(ref b)=batch{
-     assert!(self.batches.insert(b.sequence(),Entry{batch:b.clone(),phase:Phase::Sealed,ack:None,settlements:Vec::new()}).is_none());
+     assert!(self.batches.insert(b.sequence(),Entry{batch:b.clone(),phase:Phase::Sealed,ack:None,settlements:Vec::new(),clearing:None}).is_none());
     }
     Ok(Reply::Batch(batch))
    },
    Event::Prepare{sequence,approvals}=>{self.prepare(sequence,&approvals)?;Ok(Reply::Unit)},
    Event::Resolve{bundle}=>Ok(Reply::Resolved(self.resolve(bundle)?)),
    Event::EnableMarginRelease=>{self.enable_netting()?;Ok(Reply::Unit)},
+   Event::EnableClearing{fund_sats}=>{self.enable_clearing(fund_sats)?;Ok(Reply::Unit)},
   }
  }
 }
 pub(crate) const HFT05_ACK_TAG:&[u8]=b"SHZ/HFT/CHANNEL-ACK/V1";
 /// Acknowledgements once margin release is active: they also bind the lane's `Settlement`.
 pub(crate) const HFT05_ACK_TAG_V2:&[u8]=b"SHZ/HFT/CHANNEL-ACK/V2";
+/// Acknowledgements once multilateral clearing is active: they also bind the lane's
+/// clearing row and the digest of the batch's whole net settlement vector.
+pub(crate) const HFT05_ACK_TAG_V3:&[u8]=b"SHZ/HFT/CHANNEL-ACK/V3";
 /// Domain-separated digest every channel party signs. The router configuration hash
 /// and `tag` keep acknowledgements from crossing routers or router generations.
 /// With margin release active the caller passes the V2 tag and, for a Commit, the
 /// lane's `Settlement`: the signatures then also cover the released margin, the
-/// payout of closed lots and the position before and after.
+/// payout of closed lots and the position before and after. With clearing active (V3)
+/// the caller also passes the batch's clearing: the message then binds the lane's
+/// clearing row and the digest of every row, so each lane signs the whole net vector.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn ack_message(tag:&[u8],config:&Key,recipients:&FeeRecipients,sequence:u64,batch:&Batch,disposition:Disposition,ack:&ChannelAck,settlement:Option<&Settlement>)->R<Key>{
+pub(crate) fn ack_message(tag:&[u8],config:&Key,recipients:&FeeRecipients,sequence:u64,batch:&Batch,disposition:Disposition,ack:&ChannelAck,settlement:Option<&Settlement>,
+ clearing:Option<&BatchClearing>)->R<Key>{
  let a=batch.accounts().iter().find(|a|op(&a.channel)==op(&ack.channel)).ok_or(Reject::Allocation)?;
  let mut b=Vec::new();b.extend(config);b.extend(batch.digest());u64b(&mut b,sequence);
  b.push(match disposition{Disposition::Commit=>1,Disposition::FencedAbort=>2});
@@ -172,6 +200,7 @@ pub(crate) fn ack_message(tag:&[u8],config:&Key,recipients:&FeeRecipients,sequen
  b.extend(recipients.oracle);b.extend(recipients.router);
  b.extend(batch.oracle_due_sats().to_le_bytes());b.extend(batch.router_due_sats().to_le_bytes());
  if let Some(s)=settlement{b.push(1);s.put(&mut b);}
+ if let Some(c)=clearing{b.push(2);c.put_row(&ack.channel,&mut b)?;}
  Ok(tagged_hash(tag,&b))
 }
 /// Fully validated effect of one resolution; applying it cannot fail.
@@ -190,10 +219,12 @@ pub(crate) fn lane_settlement(batch:&Batch,channel:&BtcOutPoint,position_of:Posi
 /// Verifies every channel acknowledgement of `bundle` against `batch` (heads, evidence,
 /// fee receipts, three BIP340 signatures, balance conservation) without mutating state.
 /// With `netting` (margin release active) a Commit nets each lane's legs against its
-/// open lots and the settlement is part of the signed acknowledgement message.
+/// open lots and the settlement is part of the signed acknowledgement message. With
+/// `cleared` (multilateral clearing active, Commit only) the settlements come from the
+/// batch's clearing plan and the acknowledgement also binds the clearing.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,lanes:&BTreeMap<Outpoint,LaneState>,
- balance_of:&dyn Fn(&Outpoint)->Option<Balance>,netting:Option<PositionOf>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
+ balance_of:&dyn Fn(&Outpoint)->Option<Balance>,netting:Option<PositionOf>,cleared:Option<&ClearPlan>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
  owner_optional:bool)->R<ResolutionPlan>{
  // `owner_optional` is the deadline-abort path only: a fenced abort moves no channel
  // state and refunds every debit, so it may proceed without a silent owner's ack.
@@ -202,7 +233,7 @@ pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,la
  let mut changes=Vec::new();let mut new_receipts=BTreeSet::new();let mut positions=Vec::new();
  // Canonical order must be the exact batch account order; no omission,
  // duplicate, cross-router substitution or partial application.
- for (a,ack) in batch.accounts().iter().zip(&bundle.channels){
+ for (i,(a,ack)) in batch.accounts().iter().zip(&bundle.channels).enumerate(){
   if op(&a.channel)!=op(&ack.channel){return Err(Reject::Allocation)}
   let key=op(&a.channel);
   let lane=lanes.get(&key).ok_or(Reject::Allocation)?;
@@ -221,11 +252,13 @@ pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,la
   if bundle.disposition==Disposition::Commit&&a.fee_sats>0{
    if ack.fee_evidence==[0;32]||spent_receipts.contains(&ack.fee_evidence)||!new_receipts.insert(ack.fee_evidence){return Err(Reject::FeeLimit)}
   }else if ack.fee_evidence!=[0;32]{return Err(Reject::FeeLimit)}
-  let settled=match (netting,bundle.disposition){
-   (Some(position_of),Disposition::Commit)=>Some(lane_settlement(batch,&a.channel,position_of)?),
+  let cleared=cleared.filter(|_|bundle.disposition==Disposition::Commit);
+  let settled=match (cleared,netting,bundle.disposition){
+   (Some(c),_,_)=>Some(c.lanes.get(i).cloned().ok_or(Reject::Allocation)?),
+   (None,Some(position_of),Disposition::Commit)=>Some(lane_settlement(batch,&a.channel,position_of)?),
    _=>None,
   };
-  let h=ack_message(tag,config,recipients,bundle.sequence,batch,bundle.disposition,ack,settled.as_ref().map(|x|&x.1))?;
+  let h=ack_message(tag,config,recipients,bundle.sequence,batch,bundle.disposition,ack,settled.as_ref().map(|x|&x.1),cleared.map(|c|&c.report))?;
   for (i,(k,sig)) in [a.owner,lane.peer,lane.monitor].iter().zip(&ack.signatures).enumerate(){
    if i==0&&owner_optional&&sig.r_x==[0;32]&&sig.s==[0;32]{continue}
    verify(k,&h,sig)?;
@@ -270,6 +303,7 @@ enum Event{
  Prepare{sequence:u64,approvals:Vec<BatchApproval>},
  Resolve{bundle:AckBundle},
  EnableMarginRelease,
+ EnableClearing{fund_sats:u64},
 }
 #[allow(clippy::large_enum_variant)] // transient reply value; boxing adds nothing
 enum Reply{Mark(Key),Due(u64),Outcome(Option<Outcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
@@ -375,6 +409,21 @@ impl DurableRouter{
   self.record(Event::EnableMarginRelease)?;Ok(true)
  }
  pub fn margin_release_active(&self)->D<bool>{self.ready()?;Ok(self.state.netting)}
+ /// Switch on multilateral clearing with a clearing fund of `fund_sats` (journaled once;
+ /// margin release must be active). Later Commit acks use the V3 tag. `false` if already on.
+ pub fn enable_clearing(&mut self,fund_sats:u64)->D<bool>{
+  self.ready()?;if self.state.clearing.is_some(){return Ok(false)}
+  self.record(Event::EnableClearing{fund_sats})?;Ok(true)
+ }
+ pub fn clearing_state(&self)->D<Option<&ClearingState>>{self.ready()?;Ok(self.state.clearing.as_ref())}
+ /// Clearing ledger totals and the clearing identity against the open book.
+ pub fn clearing_summary(&self)->D<Option<clearing::Summary>>{
+  self.ready()?;
+  let book=self.state.router.accounts.values().map(|a|a.position.book_value()).sum();
+  Ok(self.state.clearing.as_ref().map(|c|c.summary(book)))
+ }
+ /// Multilateral clearing of batch `sequence` (committed with clearing active).
+ pub fn clearing(&self,sequence:u64)->D<Option<&BatchClearing>>{self.ready()?;Ok(self.state.batches.get(&sequence).and_then(|e|e.clearing.as_ref()))}
  pub fn position(&self,channel:&BtcOutPoint)->D<Option<Position>>{self.ready()?;Ok(self.state.router.accounts.get(&op(channel)).map(|a|a.position.clone()))}
  /// Per-lane settlements applied when batch `sequence` committed (empty without margin release).
  pub fn settlements(&self,sequence:u64)->D<&[(BtcOutPoint,Settlement)]>{

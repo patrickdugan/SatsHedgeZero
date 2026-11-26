@@ -22,6 +22,11 @@
 //! resolution and the legs of the batch being resolved. It is computed only when a
 //! Commit bundle is resolved and is bound into every lane's acknowledgement message,
 //! so the owner, peer and monitor signatures cover the released margin and PnL.
+//!
+//! The per-lot clamp does not add up across novated lots (docs/SHZ_VENUE_CLEARING.md).
+//! With multilateral clearing active (`clearing`), closes settle on `Settlement::pnl`,
+//! the exact unclamped PnL against each lot's entry value, and the cash payout comes
+//! from the clearing ledger.
 use super::*;
 use shz_margin::CollateralAsset;
 use std::collections::VecDeque;
@@ -31,9 +36,12 @@ use std::collections::VecDeque;
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
 pub struct Lot{pub side:OrderSide,pub qty:u64,pub price:u64,pub margin:u64,pub opp_margin:u64}
 
-/// Open lots of one account, oldest first, all on one side.
+/// Open lots of one account, oldest first, all on one side. `values` runs parallel to
+/// `lots`: each lot's exact entry value in sats (`value(qty, price)` of the opening leg,
+/// split with remainders kept), used by multilateral clearing so that every fill's value
+/// enters the long and the short side identically and realized PnL sums to zero exactly.
 #[derive(Debug,Clone,Default,PartialEq,Eq)]
-pub struct Position{lots:VecDeque<Lot>}
+pub struct Position{lots:VecDeque<Lot>,values:VecDeque<u64>}
 impl Position{
  pub fn lots(&self)->impl Iterator<Item=&Lot>{self.lots.iter()}
  pub fn side(&self)->Option<OrderSide>{self.lots.front().map(|l|l.side)}
@@ -53,6 +61,26 @@ impl Position{
   let inv:f64=self.lots.iter().map(|l|l.qty as f64/l.price as f64).sum();
   Some(q as f64/inv)
  }
+ /// Signed entry value of the open lots, sats: long lots count `+`, short lots `-`.
+ /// Summed over every account it is the open book term of the clearing identity.
+ pub fn book_value(&self)->i128{
+  let v:u128=self.values.iter().map(|&v|v as u128).sum();
+  if self.side()==Some(OrderSide::Short){-(v as i128)}else{v as i128}
+ }
+ /// Exact unclamped PnL of the open lots at `price` under multilateral clearing:
+ /// entry value minus value at `price` for a long, the reverse for a short.
+ pub fn pnl_at(&self,price:u64)->Option<i128>{
+  let q:u64=self.lots.iter().map(|l|l.qty).sum();
+  let now=value(q,price).ok()? as i128;
+  let b=self.book_value();
+  Some(if self.side()==Some(OrderSide::Short){now+b}else{b-now})
+ }
+}
+
+/// Exact sats value of `usd` at `price`: `floor(usd * 1e8 / price)`.
+pub fn value(usd:u64,price:u64)->R<u64>{
+ if price==0{return Err(Reject::Bounds)}
+ u64::try_from(usd as u128*100_000_000/price as u128).map_err(|_|Reject::Bounds)
 }
 
 /// Effect of one committed batch on one account.
@@ -71,6 +99,9 @@ pub struct Settlement{
  pub net_before:i64,pub net_after:i64,
  /// Position margin after the batch; equals `committed` once margin release is active.
  pub margin_after:u64,
+ /// Exact unclamped PnL of the closed slices (entry value against closing value). Not
+ /// part of the V2 acknowledgement; multilateral clearing settles on it.
+ pub pnl:i64,
 }
 impl Settlement{
  pub fn realized_pnl(&self)->i64{self.payout as i64-self.released_margin as i64}
@@ -80,7 +111,7 @@ impl Settlement{
  }
 }
 
-fn part(total:u64,x:u64,of:u64)->u64{(total as u128*x as u128/of as u128)as u64}
+pub(crate) fn part(total:u64,x:u64,of:u64)->u64{(total as u128*x as u128/of as u128)as u64}
 
 /// Payout to the lot's side for `x` USD of the lot, backed by `m` own and `o`
 /// counterparty sats, settled at `price`: the inverse contract spec's clamped payout.
@@ -113,15 +144,21 @@ pub fn settle(position:&Position,channel:&Outpoint,legs:&[Fill])->R<(Position,Se
  for (side,qty,price,margin,opp) in account_legs(channel,legs){
   if qty==0||price==0{return Err(Reject::Bounds)}
   let mut left=qty;
+  let leg_value=value(qty,price)?;
   while left>0&&p.side().is_some_and(|ps|ps!=side){
-   let lot=p.lots.front_mut().unwrap();
+   let lot=p.lots.front_mut().unwrap();let entry=p.values.front_mut().unwrap();
    let x=left.min(lot.qty);
-   let (m,o)=if x==lot.qty{(lot.margin,lot.opp_margin)}else{(part(lot.margin,x,lot.qty),part(lot.opp_margin,x,lot.qty))};
+   let (m,o,e)=if x==lot.qty{(lot.margin,lot.opp_margin,*entry)}else{(part(lot.margin,x,lot.qty),part(lot.opp_margin,x,lot.qty),part(*entry,x,lot.qty))};
    let pay=lot_payout(lot,x,m,o,price);
+   // Closing value of this slice: telescoping split of the leg value, exact in sum.
+   let done=qty-left;
+   let exit=part(leg_value,done+x,qty)-part(leg_value,done,qty);
+   let pnl=if lot.side==OrderSide::Long{e as i128-exit as i128}else{exit as i128-e as i128};
+   s.pnl=i64::try_from(s.pnl as i128+pnl).map_err(|_|Reject::Bounds)?;
    s.released_margin=s.released_margin.checked_add(m).ok_or(Reject::Bounds)?;
    s.payout=s.payout.checked_add(pay).ok_or(Reject::Bounds)?;
-   lot.qty-=x;lot.margin-=m;lot.opp_margin-=o;left-=x;
-   if lot.qty==0{p.lots.pop_front();}
+   lot.qty-=x;lot.margin-=m;lot.opp_margin-=o;*entry-=e;left-=x;
+   if lot.qty==0{p.lots.pop_front();p.values.pop_front();}
   }
   let closed=qty-left;
   let closed_margin=if left==0{margin}else{part(margin,closed,qty)};
@@ -131,6 +168,7 @@ pub fn settle(position:&Position,channel:&Outpoint,legs:&[Fill])->R<(Position,Se
    let opp_open=if closed==0{opp}else{opp-part(opp,closed,qty)};
    s.opened_margin=s.opened_margin.checked_add(margin-closed_margin).ok_or(Reject::Bounds)?;
    p.lots.push_back(Lot{side,qty:left,price,margin:margin-closed_margin,opp_margin:opp_open});
+   p.values.push_back(leg_value-part(leg_value,closed,qty));
   }
  }
  s.net_after=p.net_usd();s.margin_after=p.margin();

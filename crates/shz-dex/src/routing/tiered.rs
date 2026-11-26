@@ -503,6 +503,8 @@ impl TieredRouter{
  pub fn batch_sequence(&self)->u64{self.batch_sequence}
  pub(super) fn authority(&self)->Key{self.authority}
  pub(super) fn account_count(&self)->usize{self.accounts.len()}
+ /// Every account's position and balance, in key order (clearing summary).
+ pub(super) fn account_books(&self)->impl Iterator<Item=(&Outpoint,&positions::Position,&Balance)>{self.accounts.iter().map(|(k,a)|(k,&a.position,&a.balance))}
  pub(super) fn account_owner(&self,k:&Outpoint)->Option<Key>{self.accounts.get(k).map(|a|a.owner)}
  pub(super) fn account_balance(&self,k:&Outpoint)->Option<Balance>{self.accounts.get(k).map(|a|a.balance)}
  pub(super) fn set_account_balance(&mut self,k:&Outpoint,b:Balance){if let Some(a)=self.accounts.get_mut(k){a.balance=b}}
