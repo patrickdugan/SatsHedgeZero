@@ -376,7 +376,7 @@ $('market').onchange = () => {};
 async function init() {
   const saved = store.get('shz.venue.tier'); if (TIERS.includes(saved)) st.tier = saved;
   const origin = location.origin;
-  $('chart').src = `vendor/bitcornwisdom/embed.html?instrument=${MARKET}&interval=1m&preferred=relay:1&relay=${encodeURIComponent(origin)}`;
+  $('chart').src = `vendor/bitcornwisdom/embed.html?instrument=${MARKET}&theme=og-wisdom&interval=1m&preferred=relay:1&relay=${encodeURIComponent(origin)}`;
   try { st.template = await api('/api/template'); } catch (e) { setConn('no server', 'bad'); }
   const k = store.get(KEY_STORE);
   if (k && /^[0-9a-f]{64}$/.test(k)) {

@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SHZ Explorer (testnet)</title>
+<title>Lightninger Explorer</title>
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="venue.css">
 <style>
   body { height: auto; } .wrap { max-width: 1180px; margin: 0 auto; padding: 14px; display: grid; gap: 14px; }
-  nav.top a { color: #8bd3f7; margin-right: 4px; } nav.top a.on { color: #fff; border-bottom: 2px solid var(--cyan); }
+  nav.top { background: none; border: 0; padding: 0; overflow: visible; }
+  nav.top a { color: var(--text-secondary); margin-right: 4px; } nav.top a.on { color: var(--accent-text); border-bottom: 2px solid var(--accent); }
   .card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px; overflow: auto; }
   .card > h3 { margin: 0; padding: 7px 12px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); background: linear-gradient(180deg, var(--bg-elevated), var(--bg-panel)); border-bottom: 1px solid var(--border); }
   .kv { display: grid; grid-template-columns: 190px 1fr; gap: 3px 12px; padding: 10px 12px; font: 11px var(--font-mono); } .kv dt { color: var(--text-muted); } .kv dd { margin: 0; word-break: break-all; }
   .chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; padding: 12px; }
-  .node { flex: 1 1 200px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 8px 10px; background: var(--bg-elevated); font: 11px var(--font-mono); border-top: 3px solid var(--cyan); }
+  .node { flex: 1 1 200px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 8px 10px; background: var(--bg-elevated); font: 11px var(--font-mono); border-top: 3px solid var(--accent); }
   .node b { display: block; font: 700 11px var(--font-sans); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; } .node.ok { border-top-color: var(--long); } .node.wait { border-top-color: var(--amber); }
   .arrow { align-self: center; color: var(--text-muted); font-size: 18px; }
   pre { margin: 0; padding: 10px 12px; font: 11px var(--font-mono); overflow: auto; max-height: 280px; }
@@ -22,7 +25,7 @@
 </head>
 <body>
 <header class="top">
-  <span class="brand">SatsHedgeZero explorer <span class="tag testnet">TESTNET</span></span>
+  <a class="brand" href="index.html" aria-label="Lightninger"><img class="mk" src="brand/lightninger-mark.svg" alt=""><img class="wm" src="brand/lightninger-wordmark.svg" alt="Lightninger"><span class="sub">Explorer</span><span class="tag testnet">TESTNET</span></a>
   <nav class="top" id="nav"></nav><span class="grow"></span>
   <a href="index.html">&larr; Trading</a>
 </header>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-80 -6 880 144" role="img" aria-label="Lightninger">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFD23F"/>
+      <stop offset="0.55" stop-color="#F5B301"/>
+      <stop offset="1" stop-color="#E09B00"/>
+    </linearGradient>
+  </defs>
+  <!-- swoosh blades: left under the L, right under "er" -->
+  <polygon fill="#fff" points="-76,128 52,105 52,113"/>
+  <polygon fill="#fff" points="620,129 790,98 790,106"/>
+  <!-- letters: monoline strokes, mitered corners, sheared 12 degrees -->
+  <g transform="matrix(1 0 -0.21 1 21 0)" fill="none" stroke-width="14" stroke-linejoin="miter" stroke-miterlimit="8" stroke-linecap="butt">
+    <g stroke="#fff">
+      <!-- L -->
+      <path d="M6 0 V94 H60"/>
+      <!-- i -->
+      <g transform="translate(76 0)"><path d="M6 40 V100"/><rect x="0" y="8" width="12" height="14" fill="#fff" stroke="none"/></g>
+      <!-- g -->
+      <g transform="translate(98 0)"><path d="M48 44 H10 V88 H48 M48 38 V126 H12"/></g>
+      <!-- h -->
+      <g transform="translate(174 0)"><path d="M6 0 V100 M6 46 H46 V100"/></g>
+      <!-- t -->
+      <g transform="translate(246 0)"><path d="M22 14 V94 H48 M6 44 H46"/></g>
+      <!-- n -->
+      <g transform="translate(310 0)"><path d="M6 40 V100 M6 46 H46 V100"/></g>
+      <!-- i -->
+      <g transform="translate(382 0)"><path d="M6 40 V100"/><rect x="0" y="8" width="12" height="14" fill="#fff" stroke="none"/></g>
+      <!-- n -->
+      <g transform="translate(414 0)"><path d="M6 40 V100 M6 46 H46 V100"/></g>
+      <!-- g -->
+      <g transform="translate(486 0)"><path d="M48 44 H10 V88 H48 M48 38 V126 H12"/></g>
+    </g>
+    <g stroke="#F5B301">
+      <!-- e -->
+      <g transform="translate(562 0)"><path d="M10 66 H48 V44 H10 V94 H52"/></g>
+      <!-- r -->
+      <g transform="translate(636 0)"><path d="M6 40 V100 M6 64 L24 44 H48"/></g>
+    </g>
+  </g>
+</svg>

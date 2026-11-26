@@ -19,7 +19,7 @@ rm -rf /opt/shz-venue/ui.new
 install -d -m 0755 /opt/shz-venue/ui.new
 cp ui/venue/index.html ui/venue/explorer.html ui/venue/*.js ui/venue/venue.css /opt/shz-venue/ui.new/
 rm -f /opt/shz-venue/ui.new/mock_server.mjs
-cp -r ui/venue/vendor /opt/shz-venue/ui.new/
+cp -r ui/venue/vendor ui/venue/brand /opt/shz-venue/ui.new/
 chmod -R a+rX /opt/shz-venue/ui.new
 rm -rf /opt/shz-venue/ui && mv /opt/shz-venue/ui.new /opt/shz-venue/ui
 
