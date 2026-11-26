@@ -110,7 +110,10 @@ impl State{
  }
  fn enable_clearing(&mut self,fund:u64)->R<()>{
   if !self.netting||self.clearing.is_some(){return Err(Reject::Replay)}
-  self.clearing=Some(ClearingState::open(fund,self.router.account_books().map(|(_,p,b)|(p,b)))?);
+  self.clearing=Some(ClearingState::open(fund,self.router.account_books().map(|(_,p,b)|(p,b)))?);Ok(())
+ }
+ fn enable_closing_loans(&mut self)->R<()>{
+  if !self.netting||self.router.close_from_lots(){return Err(Reject::Replay)}
   self.router.set_close_from_lots(true);Ok(())
  }
  fn enable_netting(&mut self)->R<()>{
@@ -185,6 +188,7 @@ impl State{
    Event::Expire{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,true)?)),
    Event::EnableMarginRelease=>{self.enable_netting()?;Ok(Reply::Unit)},
    Event::EnableClearing{fund_sats}=>{self.enable_clearing(fund_sats)?;Ok(Reply::Unit)},
+   Event::EnableClosingLoans=>{self.enable_closing_loans()?;Ok(Reply::Unit)},
   }
  }
 }
@@ -205,6 +209,9 @@ enum Event{
  EnableMarginRelease,
  /// Switch on multilateral clearing with this clearing fund (V3 acknowledgements).
  EnableClearing{fund_sats:u64},
+ /// Closing taker legs borrow their margin from the lots they close (`closing_loan`).
+ /// Its own switch, so journals that already enabled clearing replay unchanged.
+ EnableClosingLoans,
 }
 #[allow(clippy::large_enum_variant)]
 enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
@@ -306,6 +313,14 @@ impl DurableTieredRouter{
   self.record(Event::EnableClearing{fund_sats})?;Ok(true)
  }
  pub fn clearing_active(&self)->D<bool>{self.ready()?;Ok(self.state.clearing.is_some())}
+ /// Switch on closing loans (journaled once; margin release must be active): a taker leg
+ /// that reduces the account's position borrows its leg margin from the lots it closes,
+ /// so only a flip excess and the taker fee need free margin. Returns `false` if already on.
+ pub fn enable_closing_loans(&mut self)->D<bool>{
+  self.ready()?;if self.state.router.close_from_lots(){return Ok(false)}
+  self.record(Event::EnableClosingLoans)?;Ok(true)
+ }
+ pub fn closing_loans_active(&self)->D<bool>{self.ready()?;Ok(self.state.router.close_from_lots())}
  /// The clearing ledger: pool cash, fund, carried deficit, deferred claims.
  pub fn clearing_state(&self)->D<Option<&ClearingState>>{self.ready()?;Ok(self.state.clearing.as_ref())}
  /// Ledger totals and the clearing identity (`identity == 0`) against the open book.

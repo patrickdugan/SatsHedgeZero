@@ -539,8 +539,9 @@ impl TieredRouter{
  pub(super) fn set_account_position(&mut self,k:&Outpoint,p:positions::Position){if let Some(a)=self.accounts.get_mut(k){a.position=p}}
  /// Pull a resting maker quote (used when a fenced abort cancels a batch's makers).
  pub(super) fn cancel_resting(&mut self,id:Key){self.remove(id);}
- /// Fund closing taker legs from the lots they close (switched on with clearing).
+ /// Fund closing taker legs from the lots they close (journaled `EnableClosingLoans`).
  pub(super) fn set_close_from_lots(&mut self,on:bool){self.close_from_lots=on}
+ pub(super) fn close_from_lots(&self)->bool{self.close_from_lots}
  /// Lot margin lent to each account's closing legs in `batch`.
  pub(super) fn batch_loans(&self,batch:&Batch)->BTreeMap<Outpoint,u64>{
   let mut out=BTreeMap::new();

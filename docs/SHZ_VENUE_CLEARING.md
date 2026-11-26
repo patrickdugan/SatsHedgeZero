@@ -153,16 +153,19 @@ bankruptcy price shows up as a row `shortfall` and the batch `layer` (`Fund`, `H
 
 ### Closing legs need no free margin
 
-With clearing active, a taker leg that reduces the account's position borrows its leg margin
-from the lots it closes (`TieredRouter::closing_loan`): only the flip excess and the taker fee
+Once `enable_closing_loans()` is journaled (`EnableClosingLoans`, margin release required; a
+separate switch from clearing so that journals which already enabled clearing replay with the
+capacity rule they ran under), a taker leg that reduces the account's position borrows its leg
+margin from the lots it closes (`TieredRouter::closing_loan`): only the flip excess and the taker fee
 (zero on the Standard tier) come from `free`. The closable quantity is the opposite lots minus
 every unresolved leg of the account on the leg's side, a lower bound on what the leg closes
 whatever earlier batches do, so two closes in flight never borrow the same lot margin twice.
 Between match and resolution the loan sits in `pending` and `committed` is lower by it; a
 Commit repays it from the closing leg's margin that settlement credits back, a fenced abort
 from the refund, so `committed == position margin` holds again after every resolution.
-Maker quotes still hold their full margin from `free` when posted. Without clearing (old
-journals) the check is unchanged. Tests: `p1_a_reducing_leg_needs_no_free_margin` (0-free
+Maker quotes still hold their full margin from `free` when posted. Without the switch the check
+is unchanged (`p4_closing_loans_switch_on_a_live_journal_and_replay`: a close refused before the
+switch fills after it, and the journal replays to the same state). Tests: `p1_a_reducing_leg_needs_no_free_margin` (0-free
 long closes and ends flat with its payout; a 0-free loser with a 100x and a 1x lot closes
 both), `p2_a_flip_needs_margin_for_the_excess_only` (exact excess margin passes, one sat less
 is refused), `p3_aborted_or_repeated_closes_do_not_double_borrow`. The perp-only rule here is
@@ -171,9 +174,12 @@ once that lands.
 
 ## 4. Deploying
 
-Not deployed. Deploying needs the venue to call `enable_clearing(fund_sats)` after
-`enable_margin_release()` in `Venue::open` (the change is the venue session's; `crates/shz-venue`
-is not touched here). Effects on the live venue:
+Clearing deployed 2026-11-26 12:50Z (venue `60174a0`, fund 1,000,000 sats): the venue calls
+`enable_clearing(fund_sats)` after `enable_margin_release()` in `Venue::open`. A dry run on a
+copy of live state opened the ledger with `legacy` 1 and identity 0; live batches 297 (layer
+None) and 298 (layer Margin) committed under V3 acknowledgements with identity 0. Closing loans
+are not deployed; they need `enable_closing_loans()` after `enable_clearing` in `Venue::open`.
+Effects of switching clearing on:
 
 * one journaled `EnableClearing` record; the existing journal is folded in (`legacy` reports what
   V2 left behind);

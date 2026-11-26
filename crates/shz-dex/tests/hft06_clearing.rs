@@ -120,6 +120,7 @@ impl Venue{
    if self.flat(){assert_eq!((s.carry,s.cash as i128),(0,(s.claims+s.fund) as i128),"flat book: pool holds every claim plus the fund: {s:?}");}
   }
  }
+ fn loans(&mut self){assert!(self.d.enable_closing_loans().unwrap());assert!(!self.d.enable_closing_loans().unwrap());assert!(self.d.closing_loans_active().unwrap());}
  /// Close every open position at `price` by trading longs against shorts.
  fn flatten(&mut self,price:u64){
   while let (Some(l),Some(s))=((1..=N).find(|&n|self.net(n)>0),(1..=N).find(|&n|self.net(n)<0)){
@@ -479,7 +480,11 @@ fn p1_a_reducing_leg_needs_no_free_margin(){
  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
  assert_eq!(v.bal(1).free,0);
  assert!(matches!(v.attempt(3,1,OrderSide::Short,1000,101_000,(X1,X1)),TierOutcome::Rejected(TierReject::Capacity)));
+ // Clearing alone (the journal the live venue has) refuses it too: loans are their own switch.
  let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),m);
+ v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
+ assert!(matches!(v.attempt(3,1,OrderSide::Short,1000,101_000,(X1,X1)),TierOutcome::Rejected(TierReject::Capacity)));
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),m);v.loans();
  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
  assert_eq!((v.bal(1).free,v.bal(1).committed),(0,m));
  let b=v.seal(3,1,OrderSide::Short,1000,101_000,(X1,X1));
@@ -492,7 +497,7 @@ fn p1_a_reducing_leg_needs_no_free_margin(){
  // A loser with no free margin closes too: two lots (100x and 1x) closed in one take at
  // a price below the 100x lot's bankruptcy; the 1x lot's released margin covers both.
  let thin=margin(1000,100_000,X100);
- let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(0),m+thin);
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(0),m+thin);v.loans();
  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X100));
  v.trade(3,1,OrderSide::Long,1000,100_000,(20_000,X1));
  assert_eq!(v.bal(1).free,0);
@@ -507,7 +512,7 @@ fn p1_a_reducing_leg_needs_no_free_margin(){
 fn p2_a_flip_needs_margin_for_the_excess_only(){
  let excess=margin(500,100_000,X1);
  for (cap,ok) in [(margin(1000,100_000,X1)+excess,true),(margin(1000,100_000,X1)+excess-1,false)]{
-  let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(0),cap);
+  let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(0),cap);v.loans();
   v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
   assert_eq!(v.bal(1).free,cap-margin(1000,100_000,X1));
   if ok{
@@ -525,7 +530,7 @@ fn p2_a_flip_needs_margin_for_the_excess_only(){
 #[test]
 fn p3_aborted_or_repeated_closes_do_not_double_borrow(){
  let m=margin(1000,100_000,X1);
- let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),2*m);
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),2*m);v.loans();
  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
  let b=v.seal(3,1,OrderSide::Short,1000,100_500,(X1,X1));
  let leg=margin(1000,100_500,X1);
@@ -546,4 +551,29 @@ fn p3_aborted_or_repeated_closes_do_not_double_borrow(){
  assert!(v.d.resolve(ack(&v.d,&b2)).unwrap());
  assert_eq!((v.net(1),v.bal(1).committed),(0,0));
  v.check();
+}
+
+/// P4. A journal that refused a zero-free close before closing loans were switched on
+/// replays to the same state after the switch is journaled; the retried close fills.
+#[test]
+fn p4_closing_loans_switch_on_a_live_journal_and_replay(){
+ let m=margin(1000,100_000,X1);
+ let t=Temp::new();let path=t.path();
+ let mut v=Venue::with_cap(&path,Some(1_000_000),m);
+ v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
+ assert!(matches!(v.attempt(3,1,OrderSide::Short,1000,101_000,(X1,X1)),TierOutcome::Rejected(TierReject::Capacity)));
+ v.loans();
+ // 3's resting quote from the refused attempt is still on the book.
+ let now=T0+v.round*1_000_000+300_000;
+ v.d.submit(v.intent(1,Action::Take,OrderSide::Short,1000,101_000,X1,now),None,now).unwrap();
+ assert!(matches!(v.d.process_one(now).unwrap().unwrap(),TierOutcome::Filled(_)));
+ v.d.process_one(T0+v.round*1_000_000+500_000).unwrap();
+ let b=v.d.seal_batch().unwrap().unwrap();v.d.prepare(b.sequence(),approvals(&b)).unwrap();
+ assert!(v.d.resolve(ack(&v.d,&b)).unwrap());
+ assert_eq!((v.net(1),v.bal(1).committed),(0,0));v.check();
+ let snap=|d:&DurableTieredRouter|format!("{:?}|{:?}",(1..=N).map(|n|(d.balance(&channel(n)).unwrap(),d.position(&channel(n)).unwrap())).collect::<Vec<_>>(),d.clearing_state().unwrap());
+ let before=snap(&v.d);let tip=v.d.tip().unwrap();drop(v);
+ let d=DurableTieredRouter::open(&path,&registry(m),cfg(),lanes(),recipients(),Some(tip)).unwrap();
+ assert!(d.closing_loans_active().unwrap());
+ assert_eq!(snap(&d),before);
 }
