@@ -262,8 +262,16 @@ pub struct TieredRouter{
  locations:BTreeMap<Key,(OrderSide,BookKey)>,expirations:BTreeMap<(u64,Key),()>,
  marks:Vec<MarkView>,
  fills:BTreeMap<Key,TieredFill>,fill_log:Vec<Key>,batch_cursor:usize,batch_sequence:u64,last_batch_digest:Key,
+ /// Closing legs are funded from the lots they close (`set_close_from_lots`).
+ close_from_lots:bool,
+ /// Quantity of every account's legs in fills not yet resolved, `[long, short]`.
+ unresolved:BTreeMap<Outpoint,[u64;2]>,
+ /// Lot margin lent from `committed` to a taker's closing leg, by taker id, until its
+ /// batch resolves.
+ loans:BTreeMap<Key,(Outpoint,u64)>,
 }
 const MARK_HISTORY:usize=1024;
+fn side_index(s:OrderSide)->usize{if s==OrderSide::Long{0}else{1}}
 impl TieredRouter{
  pub fn new(registry:&Registry,cfg:TieredConfig)->T<Self>{
   if cfg.router==0||cfg.scope!=registry.scope||cfg.entitlement_key==[0;32]||cfg.revenue.oracle_share_bps>10_000{return Err(TierReject::Scope)}
@@ -275,7 +283,8 @@ impl TieredRouter{
   let policy_id=cfg.execution.id();
   Ok(Self{cfg,authority:registry.authority,policy_id,clock:0,arrival:0,activation:0,hold:false,accounts,cancels:BTreeMap::new(),queue:BTreeMap::new(),
    bids:BTreeMap::new(),asks:BTreeMap::new(),locations:BTreeMap::new(),expirations:BTreeMap::new(),marks:Vec::new(),
-   fills:BTreeMap::new(),fill_log:Vec::new(),batch_cursor:0,batch_sequence:0,last_batch_digest:[0;32]})
+   fills:BTreeMap::new(),fill_log:Vec::new(),batch_cursor:0,batch_sequence:0,last_batch_digest:[0;32],
+   close_from_lots:false,unresolved:BTreeMap::new(),loans:BTreeMap::new()})
  }
  /// Add an account after start. `authority` must be the key this router was created with.
  /// Same checks as `Registry::new` plus: a share for this router exists and the outpoint is new.
@@ -446,14 +455,17 @@ impl TieredRouter{
   let maker_debit=mm.checked_add(mf).ok_or(TierReject::Bounds)?;
   let taker_debit=tm.checked_add(tf).ok_or(TierReject::Bounds)?;
   let released=n*q.hold_per_unit;
-  if maker_debit>released||self.accounts[&op(&i.channel)].balance.free<taker_debit{return Err(TierReject::Capacity)}
+  let loan=self.closing_loan(&i.channel,i.side,n,tm);
+  if maker_debit>released||self.accounts[&op(&i.channel)].balance.free<taker_debit-loan{return Err(TierReject::Capacity)}
   let total=mf.checked_add(tf).ok_or(TierReject::Bounds)?;
   let (oracle,router)=self.cfg.revenue.split(total);
   // Every fallible step is above; the mutation below is atomic.
   let b=&mut self.accounts.get_mut(&op(&q.intent.channel)).unwrap().balance;
   b.resting-=released;b.pending+=maker_debit;b.free+=released-maker_debit;
   let b=&mut self.accounts.get_mut(&op(&i.channel)).unwrap().balance;
-  b.free-=taker_debit;b.pending+=taker_debit;
+  b.free-=taker_debit-loan;b.committed-=loan;b.pending+=taker_debit;
+  if loan>0{self.loans.insert(i.id(),(op(&i.channel),loan));}
+  for (c,s) in [(op(&q.intent.channel),q.intent.side),(op(&i.channel),i.side)]{self.unresolved.entry(c).or_default()[side_index(s)]+=n;}
   let maker_id=q.intent.id();
   if q.remaining==n{
    self.book_mut(side).remove(&key);self.locations.remove(&maker_id);self.expirations.remove(&(q.intent.expires_us,maker_id));
@@ -470,6 +482,21 @@ impl TieredRouter{
   self.fill_log.push(tf.fill.taker_id);self.fills.insert(tf.fill.taker_id,tf.clone());
   Ok(TierOutcome::Filled(Box::new(tf)))
  }
+ /// Lot margin a taker leg of `n` USD on `side` (leg margin `tm`) borrows from the lots it
+/// closes. A position-reducing quantity needs no free margin: its leg margin is lent
+/// from `committed` and returned there when the batch resolves (settlement credits the
+/// closing leg's margin back to free, which repays the loan). Only the flip excess needs
+/// fresh margin. The closable quantity is the opposite lots minus every unresolved leg
+/// on `side`, a lower bound on what the leg closes whatever earlier batches do.
+fn closing_loan(&self,channel:&BtcOutPoint,side:OrderSide,n:u64,tm:u64)->u64{
+ if !self.close_from_lots{return 0}
+ let Some(a)=self.accounts.get(&op(channel))else{return 0};
+ if a.position.side().is_none_or(|s|s==side){return 0}
+ let lots:u64=a.position.lots().map(|l|l.qty).sum();
+ let pending=self.unresolved.get(&op(channel)).map_or(0,|u|u[side_index(side)]);
+ let c=n.min(lots.saturating_sub(pending));
+ positions::part(tm,c,n).min(a.balance.committed)
+}
  /// Seal at most one elapsed 100 ms window using the shared HFT-03 implementation.
  pub fn seal_batch(&mut self)->T<Option<Batch>>{
   let Some(first)=self.fill_log.get(self.batch_cursor)else{return Ok(None)};
@@ -512,4 +539,22 @@ impl TieredRouter{
  pub(super) fn set_account_position(&mut self,k:&Outpoint,p:positions::Position){if let Some(a)=self.accounts.get_mut(k){a.position=p}}
  /// Pull a resting maker quote (used when a fenced abort cancels a batch's makers).
  pub(super) fn cancel_resting(&mut self,id:Key){self.remove(id);}
+ /// Fund closing taker legs from the lots they close (switched on with clearing).
+ pub(super) fn set_close_from_lots(&mut self,on:bool){self.close_from_lots=on}
+ /// Lot margin lent to each account's closing legs in `batch`.
+ pub(super) fn batch_loans(&self,batch:&Batch)->BTreeMap<Outpoint,u64>{
+  let mut out=BTreeMap::new();
+  for f in batch.legs(){if let Some((k,x))=self.loans.get(&f.taker_id){*out.entry(*k).or_insert(0)+=x;}}
+  out
+ }
+ /// `batch` resolved: its legs and loans are no longer outstanding.
+ pub(super) fn release_unresolved(&mut self,batch:&Batch){
+  for f in batch.legs(){
+   self.loans.remove(&f.taker_id);
+   let taker=if f.maker_side==OrderSide::Long{OrderSide::Short}else{OrderSide::Long};
+   for (c,s) in [(op(&f.maker_channel),f.maker_side),(op(&f.taker_channel),taker)]{
+    if let Some(u)=self.unresolved.get_mut(&c){u[side_index(s)]=u[side_index(s)].saturating_sub(f.spec.usd_notional);}
+   }
+  }
+ }
 }

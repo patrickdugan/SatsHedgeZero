@@ -53,8 +53,9 @@ impl Drop for Temp{fn drop(&mut self){let _=fs::remove_dir_all(&self.0);}}
 struct Venue{d:DurableTieredRouter,round:u64,seq:Cell<u64>}
 impl Venue{
  /// Margin release always; `fund` switches multilateral clearing on with that fund.
- fn new(path:&Path,fund:Option<u64>)->Self{
-  let mut d=DurableTieredRouter::create(path,&registry(CAP),cfg(),lanes(),recipients()).unwrap();
+ fn new(path:&Path,fund:Option<u64>)->Self{Self::with_cap(path,fund,CAP)}
+ fn with_cap(path:&Path,fund:Option<u64>,cap:u64)->Self{
+  let mut d=DurableTieredRouter::create(path,&registry(cap),cfg(),lanes(),recipients()).unwrap();
   assert!(d.enable_margin_release().unwrap());
   if let Some(f)=fund{assert!(d.enable_clearing(f).unwrap());assert!(!d.enable_clearing(f).unwrap());}
   Self{d,round:0,seq:Cell::new(0)}
@@ -67,7 +68,8 @@ impl Venue{
    quantity:q,limit_usd:price,leverage_bps:lev,max_fee_ppm:c.tariff.rate_ppm(FeedTier::Standard,action),max_fee_sats:100_000,
    max_mark_age_us:1_000_000,early_window_opt_in:false,cancel_target:[0;32],signature:ZERO_SIG}.signed(&sk(n)).unwrap()
  }
- fn seal(&mut self,maker:u8,taker:u8,taker_side:OrderSide,q:u64,price:u64,lev:(u32,u32))->Batch{
+ /// Post and take without sealing; returns the take's outcome.
+ fn attempt(&mut self,maker:u8,taker:u8,taker_side:OrderSide,q:u64,price:u64,lev:(u32,u32))->TierOutcome{
   self.round+=1;
   let t=T0+self.round*1_000_000;let now=t+200_000;
   self.d.ingest_mark(MarkView{packet_digest:tagged_hash(b"test/mark",&self.round.to_le_bytes()),seq:self.round,price_e8:Some(price*100_000_000),boundary_us:t,public_release_us:t},t).unwrap();
@@ -75,9 +77,12 @@ impl Venue{
   self.d.submit(self.intent(maker,Action::Post,maker_side,q,price,lev.0,now),None,now).unwrap();
   assert!(matches!(self.d.process_one(now).unwrap().unwrap(),TierOutcome::Posted(_)));
   self.d.submit(self.intent(taker,Action::Take,taker_side,q,price,lev.1,now),None,now).unwrap();
-  let out=self.d.process_one(now).unwrap().unwrap();
+  self.d.process_one(now).unwrap().unwrap()
+ }
+ fn seal(&mut self,maker:u8,taker:u8,taker_side:OrderSide,q:u64,price:u64,lev:(u32,u32))->Batch{
+  let out=self.attempt(maker,taker,taker_side,q,price,lev);
   assert!(matches!(out,TierOutcome::Filled(_)),"{out:?}");
-  self.d.process_one(t+500_000).unwrap();
+  self.d.process_one(T0+self.round*1_000_000+500_000).unwrap();
   let b=self.d.seal_batch().unwrap().expect("window elapsed");
   self.d.prepare(b.sequence(),approvals(&b)).unwrap();
   b
@@ -460,5 +465,85 @@ fn c5_clearing_requires_release_and_ignores_aborts(){
  assert!(v.d.resolve(AckBundle{sequence:b.sequence(),batch:b.digest(),disposition:Disposition::FencedAbort,channels}).unwrap());
  assert!(v.d.clearing(b.sequence()).unwrap().is_none());
  assert_eq!(v.d.clearing_state().unwrap().cloned(),before);
+ v.check();
+}
+
+/// P1. Liquidation close with no free margin: a 1x long that committed its whole balance
+/// takes an equal short. The closing leg borrows its margin from the lot it closes, the
+/// batch commits, the account is flat and receives the lot's payout. Without clearing the
+/// same take is refused for capacity (V2 behavior, unchanged for old journals).
+#[test]
+fn p1_a_reducing_leg_needs_no_free_margin(){
+ let m=margin(1000,100_000,X1);
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),V2,m);
+ v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
+ assert_eq!(v.bal(1).free,0);
+ assert!(matches!(v.attempt(3,1,OrderSide::Short,1000,101_000,(X1,X1)),TierOutcome::Rejected(TierReject::Capacity)));
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),m);
+ v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
+ assert_eq!((v.bal(1).free,v.bal(1).committed),(0,m));
+ let b=v.seal(3,1,OrderSide::Short,1000,101_000,(X1,X1));
+ // Between match and commit the leg's margin is lent out of committed.
+ let leg=margin(1000,101_000,X1);
+ assert_eq!((v.bal(1).free,v.bal(1).committed,v.bal(1).pending),(0,m-leg,leg));
+ assert!(v.d.resolve(ack(&v.d,&b)).unwrap());v.check();
+ let gain=value(1000,100_000)-value(1000,101_000);
+ assert_eq!((v.net(1),v.bal(1).committed,v.bal(1).realized_pnl,v.bal(1).free as i64),(0,0,gain,m as i64+gain));
+ // A loser with no free margin closes too: two lots (100x and 1x) closed in one take at
+ // a price below the 100x lot's bankruptcy; the 1x lot's released margin covers both.
+ let thin=margin(1000,100_000,X100);
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(0),m+thin);
+ v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X100));
+ v.trade(3,1,OrderSide::Long,1000,100_000,(20_000,X1));
+ assert_eq!(v.bal(1).free,0);
+ v.trade(4,1,OrderSide::Short,2000,98_000,(30_000,X100));
+ let loss=2*(value(1000,98_000)-value(1000,100_000));
+ assert_eq!((v.net(1),v.bal(1).committed,v.bal(1).realized_pnl,v.bal(1).free as i64),(0,0,-loss,(m+thin) as i64-loss));
+ assert_eq!(v.last().shortfall,0);
+}
+
+/// P2. A flip needs fresh margin only for the excess over the lots it closes.
+#[test]
+fn p2_a_flip_needs_margin_for_the_excess_only(){
+ let excess=margin(500,100_000,X1);
+ for (cap,ok) in [(margin(1000,100_000,X1)+excess,true),(margin(1000,100_000,X1)+excess-1,false)]{
+  let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(0),cap);
+  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
+  assert_eq!(v.bal(1).free,cap-margin(1000,100_000,X1));
+  if ok{
+   v.trade(3,1,OrderSide::Short,1500,100_000,(20_000,X1));
+   assert_eq!((v.net(1),v.bal(1).committed,v.bal(1).free),(-500,excess,cap-excess));
+  }else{
+   assert!(matches!(v.attempt(3,1,OrderSide::Short,1500,100_000,(20_000,X1)),TierOutcome::Rejected(TierReject::Capacity)));
+  }
+ }
+}
+
+/// P3. A fenced abort of a closing leg returns its loan to committed; the lot is intact.
+/// Unresolved legs count against the lots, so a second close of the same lots in a later
+/// window before the first resolves borrows nothing.
+#[test]
+fn p3_aborted_or_repeated_closes_do_not_double_borrow(){
+ let m=margin(1000,100_000,X1);
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),2*m);
+ v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
+ let b=v.seal(3,1,OrderSide::Short,1000,100_500,(X1,X1));
+ let leg=margin(1000,100_500,X1);
+ assert_eq!((v.bal(1).free,v.bal(1).committed),(m,m-leg));
+ // Second close of the same lots while the first is unresolved: paid from free.
+ assert!(matches!(v.attempt(4,1,OrderSide::Short,1000,100_400,(X1,X1)),TierOutcome::Filled(_)));
+ assert_eq!((v.bal(1).free,v.bal(1).committed),(m-margin(1000,100_400,X1),m-leg));
+ let mut channels=Vec::new();
+ for a in b.accounts(){
+  let mut c=lane_ack(&v.d,&b,a);c.next.commitment-=1;c.next.state=c.previous.state;
+  let h=v.d.ack_message(b.sequence(),Disposition::FencedAbort,&c).unwrap();sign_all(a.channel.txid[0],&h,&mut c);channels.push(c);
+ }
+ assert!(v.d.resolve(AckBundle{sequence:b.sequence(),batch:b.digest(),disposition:Disposition::FencedAbort,channels}).unwrap());
+ assert_eq!((v.net(1),v.bal(1).committed),(1000,m));
+ // The second close commits normally and flattens the account.
+ v.d.process_one(T0+v.round*1_000_000+500_000).unwrap();
+ let b2=v.d.seal_batch().unwrap().unwrap();v.d.prepare(b2.sequence(),approvals(&b2)).unwrap();
+ assert!(v.d.resolve(ack(&v.d,&b2)).unwrap());
+ assert_eq!((v.net(1),v.bal(1).committed),(0,0));
  v.check();
 }

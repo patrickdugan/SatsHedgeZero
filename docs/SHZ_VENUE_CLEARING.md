@@ -151,6 +151,24 @@ V3 no longer caps a lot's gain at `opp_margin`, so equity of a winning position 
 bankruptcy price shows up as a row `shortfall` and the batch `layer` (`Fund`, `Haircut` or
 `Carried`), which is the signal for sizing the clearing fund.
 
+### Closing legs need no free margin
+
+With clearing active, a taker leg that reduces the account's position borrows its leg margin
+from the lots it closes (`TieredRouter::closing_loan`): only the flip excess and the taker fee
+(zero on the Standard tier) come from `free`. The closable quantity is the opposite lots minus
+every unresolved leg of the account on the leg's side, a lower bound on what the leg closes
+whatever earlier batches do, so two closes in flight never borrow the same lot margin twice.
+Between match and resolution the loan sits in `pending` and `committed` is lower by it; a
+Commit repays it from the closing leg's margin that settlement credits back, a fenced abort
+from the refund, so `committed == position margin` holds again after every resolution.
+Maker quotes still hold their full margin from `free` when posted. Without clearing (old
+journals) the check is unchanged. Tests: `p1_a_reducing_leg_needs_no_free_margin` (0-free
+long closes and ends flat with its payout; a 0-free loser with a 100x and a 1x lot closes
+both), `p2_a_flip_needs_margin_for_the_excess_only` (exact excess margin passes, one sat less
+is refused), `p3_aborted_or_repeated_closes_do_not_double_borrow`. The perp-only rule here is
+the max-loss delta for inverse perps; it is to be replaced by `shz_margin::payoff::margin_delta`
+once that lands.
+
 ## 4. Deploying
 
 Not deployed. Deploying needs the venue to call `enable_clearing(fund_sats)` after

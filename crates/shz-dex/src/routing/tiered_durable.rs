@@ -110,7 +110,8 @@ impl State{
  }
  fn enable_clearing(&mut self,fund:u64)->R<()>{
   if !self.netting||self.clearing.is_some(){return Err(Reject::Replay)}
-  self.clearing=Some(ClearingState::open(fund,self.router.account_books().map(|(_,p,b)|(p,b)))?);Ok(())
+  self.clearing=Some(ClearingState::open(fund,self.router.account_books().map(|(_,p,b)|(p,b)))?);
+  self.router.set_close_from_lots(true);Ok(())
  }
  fn enable_netting(&mut self)->R<()>{
   if self.netting{return Err(Reject::Replay)}
@@ -141,13 +142,14 @@ impl State{
   let position_of=|k:&Outpoint|router.account_position(k);
   let cleared=self.plan_clearing(&entry.batch,bundle.disposition)?;
   let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|router.account_balance(k),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),
+   &|k:&Outpoint|router.account_balance(k),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&router.batch_loans(&entry.batch),
    &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,deadline)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.set_account_balance(&key,balance);self.lanes.get_mut(&key).unwrap().head=head;}
   let mut settlements=Vec::new();
   for (key,position,channel,s) in plan.positions{self.router.set_account_position(&key,position);settlements.push((channel,s));}
   for id in plan.cancel{self.router.cancel_resting(id);}
+  self.router.release_unresolved(&entry.batch);
   self.oracle_paid=plan.oracle;self.router_paid=plan.router;self.next_resolution=next_sequence;self.fee_receipts.extend(plan.receipts);
   let entry=self.batches.get_mut(&bundle.sequence).unwrap();
   entry.phase=match bundle.disposition{Disposition::Commit=>Phase::Committed,Disposition::FencedAbort=>Phase::Aborted};

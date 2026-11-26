@@ -143,7 +143,7 @@ impl State{
   let position_of=|k:&Outpoint|accounts.get(k).map(|a|a.position.clone());
   let cleared=self.plan_clearing(&entry.batch,bundle.disposition)?;
   let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|accounts.get(k).map(|a|a.balance),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),
+   &|k:&Outpoint|accounts.get(k).map(|a|a.balance),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&BTreeMap::new(),
    &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,false)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.accounts.get_mut(&key).unwrap().balance=balance;self.lanes.get_mut(&key).unwrap().head=head;}
@@ -221,10 +221,12 @@ pub(crate) fn lane_settlement(batch:&Batch,channel:&BtcOutPoint,position_of:Posi
 /// With `netting` (margin release active) a Commit nets each lane's legs against its
 /// open lots and the settlement is part of the signed acknowledgement message. With
 /// `cleared` (multilateral clearing active, Commit only) the settlements come from the
-/// batch's clearing plan and the acknowledgement also binds the clearing.
+/// batch's clearing plan and the acknowledgement also binds the clearing. `loans` is lot
+/// margin lent from `committed` to closing legs at match time; resolution returns it to
+/// `committed` (repaid from the closing leg's margin on Commit, from the refund on abort).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,lanes:&BTreeMap<Outpoint,LaneState>,
- balance_of:&dyn Fn(&Outpoint)->Option<Balance>,netting:Option<PositionOf>,cleared:Option<&ClearPlan>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
+ balance_of:&dyn Fn(&Outpoint)->Option<Balance>,netting:Option<PositionOf>,cleared:Option<&ClearPlan>,loans:&BTreeMap<Outpoint,u64>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
  owner_optional:bool)->R<ResolutionPlan>{
  // `owner_optional` is the deadline-abort path only: a fenced abort moves no channel
  // state and refunds every debit, so it may proceed without a silent owner's ack.
@@ -265,7 +267,9 @@ pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,la
   }
   let mut balance=balance_of(&key).ok_or(Reject::Allocation)?;
   let debit=a.margin_sats.checked_add(a.fee_sats).ok_or(Reject::Bounds)?;
+  let loan=loans.get(&key).copied().unwrap_or(0);
   balance.pending=balance.pending.checked_sub(debit).ok_or(Reject::Capacity)?;
+  balance.committed=balance.committed.checked_add(loan).ok_or(Reject::Bounds)?;
   match bundle.disposition{
    Disposition::Commit=>{
     balance.paid_fees=balance.paid_fees.checked_add(a.fee_sats).ok_or(Reject::Bounds)?;
@@ -280,6 +284,7 @@ pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,la
    },
    Disposition::FencedAbort=>{balance.free=balance.free.checked_add(debit).ok_or(Reject::Bounds)?;}
   }
+  balance.free=balance.free.checked_sub(loan).ok_or(Reject::Bounds)?;
   if !balance.conserved(){return Err(Reject::Bounds)}
   changes.push((key,balance,ack.next));
  }
