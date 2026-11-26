@@ -92,6 +92,18 @@ startup if the journal lacks it. On a journal that predates it, replay runs the 
 then the event rebuilds every position from the committed batches in sequence order and releases their
 offset margin. `GET /api/status` reports `"margin_release": true`.
 
+### Liquidation
+
+Every lot is a fully collateralized DLC leg, so the backstop is the contract: a lot's payout to its owner is clamped at 0 past its bankruptcy price, and nobody can owe more than they posted. On top of that the venue runs a perps-style risk layer (`crates/shz-venue/src/risk.rs`), recomputed on every FROST mark:
+
+- `position.risk` in `GET /api/account/{owner}`: `state` (`flat | ok | warning | maintenance | bankrupt`), `margin_bps` (exact clamped DLC value of the open lots at the mark over their notional in sats), `equity_sats`, `notional_usd`, `liquidation_price_usd` (where `margin_bps` falls below maintenance), `bankruptcy_price_usd` (where the position is worth 0), per-lot `bankruptcy_price_usd` (`InverseContractSpec::{long,short}_liquidation_price_usd`; `null` for a short covered at 1x or more), and `params`.
+- Thresholds: maintenance 500 bps, warning 750 bps. `bankrupt` means at least one lot is at or past its bankruptcy price.
+- Below maintenance (`reduce_only: true`) `POST /api/intents` accepts only posts and takes on the side opposite the position with `quantity` no larger than the committed lots (`account is maintenance (margin below 500 bps): only orders that reduce the position ...`). Cancels are always accepted.
+- Below maintenance `position.risk.liquidation` carries the partial-liquidation plan from `shz_margin::liquidation_auction::compute_partial_liquidation_tranche`: `reduce_side`, `tranche_usd` (the least notional whose close restores 800 bps), `limit_usd` (mark moved against the account by the auction discount), `auction_discount_bps` (grows linearly from 0 to 200 bps over 60 s from the first mark that saw the breach), `penalty_sats`, `post_margin_bps`, `elapsed_ms`.
+- WebSocket `{"type":"risk","owner","state","margin_bps","mark_usd"}` when an account's state changes.
+
+The venue never signs for an account. The page (`ui/venue/liquidate.js`) executes the plan with the account's own key: reduce-only fill-or-kill takes against bids (closing a long) or asks (closing a short) at or inside `limit_usd`, one resting quote per take, at most every 5 s, until the account is back above maintenance. It is on by default and can be switched off per browser. An account whose page is closed keeps the contract backstop only: its lots run to their bankruptcy price and stop there. The closes are ordinary fills and clear through the central-counterparty netting above; multilateral clearing and the default waterfall for losses past a lot's bankruptcy price are in `docs/SHZ_VENUE_CLEARING.md`.
+
 ## Wallet connect
 
 The page offers "Connect wallet" with a Nostr browser extension, a Lightning wallet (LNURL-auth QR) or a local key. No private key is pasted anywhere.

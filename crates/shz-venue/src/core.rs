@@ -201,6 +201,8 @@ pub struct Venue {
     log: File,
     pub events: Vec<Value>,
     pub wallets: crate::wallet::Wallets,
+    /// Last risk state per account with open lots, and when it first went below maintenance.
+    risk_state: BTreeMap<Key, (crate::risk::State, Option<u64>)>,
 }
 
 fn venue_scope(keys: &Keys) -> (Scope, Policy) {
@@ -296,6 +298,7 @@ impl Venue {
             log,
             events: vec![],
             wallets: Default::default(),
+            risk_state: BTreeMap::new(),
         };
         // Account metadata is restored from the venue log; the router replays its own journal.
         for e in prior {
@@ -450,7 +453,56 @@ impl Venue {
         }
         self.emit(json!({"type": "mark", "mark": packet_json(&p)}));
         self.mark = Some(p);
+        self.update_risk(now);
         Ok(())
+    }
+
+    // ------------------------------------------------------------- risk ----
+    fn mark_usd(&self) -> Option<u64> {
+        self.mark.as_ref().and_then(|m| m.median_e8).map(|m| (m + 50_000_000) / 100_000_000)
+    }
+
+    fn lots_of(&self, owner: &Key) -> Vec<shz_dex::routing::positions::Lot> {
+        self.accounts.get(owner)
+            .and_then(|a| self.router.position(&a.outpoint).ok().flatten())
+            .map(|p| p.lots().copied().collect())
+            .unwrap_or_default()
+    }
+
+    /// Recompute every account's risk state at the current mark; emit `risk` on a change and
+    /// start the liquidation-auction clock when an account first goes below maintenance.
+    fn update_risk(&mut self, now: u64) {
+        let Some(mark) = self.mark_usd() else { return };
+        let owners: Vec<Key> = self.accounts.keys().copied().collect();
+        for owner in owners {
+            let lots = self.lots_of(&owner);
+            let st = crate::risk::state(&lots, mark);
+            let prev = self.risk_state.get(&owner).copied();
+            if st == crate::risk::State::Flat && prev.is_none() {
+                continue;
+            }
+            let since = match (st.reduce_only(), prev) {
+                (true, Some((_, Some(t)))) => Some(t),
+                (true, _) => Some(now),
+                (false, _) => None,
+            };
+            if prev.map(|p| p.0) != Some(st) {
+                let ratio = crate::risk::margin_bps(&lots, mark);
+                self.emit(json!({"type": "risk", "owner": h(&owner), "state": st.name(), "margin_bps": ratio, "mark_usd": mark}));
+            }
+            if st == crate::risk::State::Flat {
+                self.risk_state.remove(&owner);
+            } else {
+                self.risk_state.insert(owner, (st, since));
+            }
+        }
+    }
+
+    pub fn risk_view(&self, owner: &Key) -> Value {
+        let lots = self.lots_of(owner);
+        let since = self.risk_state.get(owner).and_then(|r| r.1);
+        let elapsed = since.map(|t| now_us().saturating_sub(t) / 1_000);
+        crate::risk::view(&lots, self.mark_usd(), elapsed)
     }
 
     // ---------------------------------------------------- registration ----
@@ -572,6 +624,9 @@ impl Venue {
 
     pub fn submit(&mut self, i: IntentV6) -> Result<Value, String> {
         self.wallet_check(&i.owner)?;
+        if i.action != Action::Cancel {
+            crate::risk::gate(&self.lots_of(&i.owner), self.mark_usd(), i.side, i.quantity)?;
+        }
         let id = i.id();
         let ent = (i.tier != FeedTier::Standard).then(|| self.entitlements.get(&i.entitlement_digest).cloned()).flatten();
         let now = now_us().max(self.router.router().map(|r| r.clock_us()).unwrap_or(0));
@@ -962,14 +1017,14 @@ impl Venue {
                 unsettled += sign * t.qty_usd as i64;
             }
         }
-        let mark_usd = self.mark.as_ref().and_then(|m| m.median_e8).map(|m| (m + 50_000_000) / 100_000_000);
+        let mark_usd = self.mark_usd();
         let margin = pos.margin();
         let unreal = mark_usd.filter(|_| margin > 0 || pos.net_usd() != 0).map(|m| pos.value_at(m) as i64 - margin as i64);
         let lots: Vec<Value> = pos.lots().map(|l| json!({"side": side_name(l.side), "qty_usd": l.qty, "entry_usd": l.price, "margin_sats": l.margin, "counterparty_margin_sats": l.opp_margin})).collect();
         let realized = self.balance(owner).map(|b| b.realized_pnl).unwrap_or(0);
         json!({"net_usd": pos.net_usd() + unsettled, "committed_net_usd": pos.net_usd(), "unsettled_usd": unsettled,
                "avg_entry_usd": pos.avg_entry_usd(), "unrealized_sats": unreal, "margin_sats": margin, "lots": lots,
-               "realized_pnl_sats": realized, "gross_traded_usd": gross})
+               "realized_pnl_sats": realized, "gross_traded_usd": gross, "risk": self.risk_view(owner)})
     }
 
     pub fn account_view(&self, owner: &Key) -> Value {

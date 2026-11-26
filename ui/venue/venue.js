@@ -1,5 +1,6 @@
 // SHZ venue trading page. No frameworks. TESTNET ONLY: keys live in localStorage.
 import { hex, unhex, pubkey, p2trAddress, bip340Sign, signIntent, randomKey } from './crypto.js';
+import { planTakes, describe as riskText } from './liquidate.js';
 import { connectNostr, lnurlStart, lnurlFinish, nostrAvailable, weblnInfo } from './wallet.js';
 import { qrSvg } from './qr.js';
 
@@ -105,7 +106,8 @@ function reconnectWs() {
     else if (m.type === 'book') { st.book = { bids: m.bids || [], asks: m.asks || [] }; if (m.mark) setMark(m.mark); renderBook(); }
     else if (m.type === 'trade') { st.trades.unshift(m.trade || m); st.trades.length = Math.min(st.trades.length, 60); renderTrades(); }
     else if (m.type === 'batch') { const b = m.batch || m; if (b.seq !== undefined) st.batches.set(b.seq, { ...st.batches.get(b.seq), ...b }); refreshAccount().then(renderBottom); }
-    else if (m.type === 'account') { if (m.account && m.account.owner === st.owner) { st.account = m.account; autoSign(); renderBottom(); renderWallet(); renderEst(); } else if (!m.account) refreshAccount().then(renderBottom); }
+    else if (m.type === 'risk') { if (m.owner === st.owner) refreshAccount().then(() => { renderBottom(); maybeLiquidate(); }); }
+    else if (m.type === 'account') { if (m.account && m.account.owner === st.owner) { st.account = m.account; autoSign(); maybeLiquidate(); renderBottom(); renderWallet(); renderEst(); } else if (!m.account) refreshAccount().then(renderBottom); }
   };
 }
 
@@ -170,8 +172,11 @@ function renderBottom() {
     const pos = a.position || {}, un = pos.net_usd && pos.avg_entry_usd && mark ? Math.round(pos.net_usd * (1 / pos.avg_entry_usd - 1 / mark) * 1e8) : (pos.unrealized_sats || 0);
     const b = a.balance || {};
     const rz = b.realized_pnl || 0, unset = pos.unsettled_usd || 0;
-    p.innerHTML = bottomTable(['Market', 'Net USD', 'Avg entry', 'Mark', 'Unrealized (sats)', 'Realized (sats)', 'Cap', 'Free', 'Resting', 'Committed', 'Fees paid'],
-      [`<tr><td>${MARKET}</td><td class="${pos.net_usd > 0 ? 'long' : pos.net_usd < 0 ? 'short' : ''}">${fmt(pos.net_usd)}${unset ? ` <span class="muted" title="fills whose batch has not committed">(${unset > 0 ? '+' : ''}${fmt(unset)} unsettled)</span>` : ''}</td><td>${fmt(pos.avg_entry_usd, 2)}</td><td>${fmt(mark)}</td><td class="${un >= 0 ? 'long' : 'short'}">${fmt(un)}</td><td class="${rz >= 0 ? 'long' : 'short'}">${fmt(rz)}</td><td>${fmt(b.cap)}</td><td>${fmt(b.free)}</td><td>${fmt(b.resting)}</td><td>${fmt(b.committed)}</td><td>${fmt(b.paid_fees)}</td></tr>`]);
+    const r = pos.risk || {}, rt = riskText(r), auto = store.get(AUTO_LIQ) !== 'off';
+    const banner = rt ? `<div class="risk-box ${rt.level}">${esc(rt.text)}${r.reduce_only ? `<label class="autoliq"><input type="checkbox" id="autoliq" ${auto ? 'checked' : ''}> Auto-liquidate with this browser's key</label>` : ''}${st.liqLog ? `<div class="mono">${esc(st.liqLog)}</div>` : ''}</div>` : '';
+    const ratio = r.margin_bps != null ? (r.margin_bps / 100).toFixed(2) + '%' : '-';
+    p.innerHTML = banner + bottomTable(['Market', 'Net USD', 'Avg entry', 'Mark', 'Margin', 'Liq. price', 'Risk', 'Unrealized (sats)', 'Realized (sats)', 'Cap', 'Free', 'Resting', 'Committed', 'Fees paid'],
+      [`<tr><td>${MARKET}</td><td class="${pos.net_usd > 0 ? 'long' : pos.net_usd < 0 ? 'short' : ''}">${fmt(pos.net_usd)}${unset ? ` <span class="muted" title="fills whose batch has not committed">(${unset > 0 ? '+' : ''}${fmt(unset)} unsettled)</span>` : ''}</td><td>${fmt(pos.avg_entry_usd, 2)}</td><td>${fmt(mark)}</td><td>${ratio}</td><td title="bankruptcy ${fmt(r.bankruptcy_price_usd)}">${fmt(r.liquidation_price_usd)}</td><td><span class="risk ${esc(r.state || 'flat')}">${esc(r.state || 'flat')}</span></td><td class="${un >= 0 ? 'long' : 'short'}">${fmt(un)}</td><td class="${rz >= 0 ? 'long' : 'short'}">${fmt(rz)}</td><td>${fmt(b.cap)}</td><td>${fmt(b.free)}</td><td>${fmt(b.resting)}</td><td>${fmt(b.committed)}</td><td>${fmt(b.paid_fees)}</td></tr>`]);
   } else if (st.btab === 'orders') {
     p.innerHTML = bottomTable(['Order', 'Side', 'Tier', 'Size USD', 'Limit', 'Lev', ''], (a.open_orders || []).map((o) =>
       `<tr><td title="${esc(o.id)}">${esc(short(o.id))}</td><td class="${o.side === 'long' ? 'long' : 'short'}">${esc(o.side)}</td><td>${esc(o.tier)}</td><td>${fmt(o.quantity)}</td><td>${fmt(o.limit_usd)}</td><td>${(o.leverage_bps || 0) / 1e4}x</td><td><button class="btn sm" data-cancel="${esc(o.id)}">Cancel</button></td></tr>`));
@@ -294,6 +299,28 @@ async function autoSign() {
   } catch (e) { console.warn('auto-sign failed', e); }
   finally { for (const x of todo) st.signing.delete(x.id); }
 }
+// Below maintenance the venue accepts only reducing orders and publishes a Dutch-auction plan;
+// this browser executes it with its own key (the venue never signs for an account).
+const AUTO_LIQ = 'shz.venue.autoliq';
+let liqBusy = false, liqLast = 0;
+async function maybeLiquidate() {
+  const r = st.account?.position?.risk;
+  if (!r?.reduce_only || !r.liquidation || !st.key || walletExpired() || liqBusy || store.get(AUTO_LIQ) === 'off') return;
+  if (Date.now() - liqLast < 5000) return;
+  liqBusy = true; liqLast = Date.now();
+  try {
+    const takes = planTakes(r, st.book);
+    if (!takes.length) { st.liqLog = `${new Date().toLocaleTimeString('en-GB')}: no bid or ask inside the auction limit ${r.liquidation.limit_usd} yet`; return; }
+    const ppm = st.template.tariff.taker_ppm[TIERS.indexOf(st.tier)];
+    for (const k of takes) {
+      const sats = Math.ceil(k.quantity * 1e8 / k.limit_usd);
+      await submit(baseIntent({ action: 'take', side: k.side, quantity: k.quantity, limit_usd: k.limit_usd, leverage_bps: 100000,
+        max_fee_ppm: ppm, max_fee_sats: Math.ceil(sats * ppm / 1e6 * 1.2) + 1 }));
+    }
+    st.liqLog = `${new Date().toLocaleTimeString('en-GB')}: submitted ${takes.length} reduce-only take(s), ${takes.reduce((s, x) => s + x.quantity, 0)} USD`;
+  } catch (e) { st.liqLog = 'liquidation take refused: ' + e.message; }
+  finally { liqBusy = false; renderBottom(); }
+}
 async function entitlementDigest(tier) {
   if (tier === 'standard') return null;
   const k = st.owner + tier, c = st.ents.get(k);
@@ -338,6 +365,7 @@ $('otabs').onclick = (e) => { const t = e.target.dataset?.t; if (!t) return; st.
 $('sides').onclick = (e) => { const s = e.target.dataset?.s; if (!s) return; st.side = s; for (const b of $('sides').children) b.classList.toggle('on', b.dataset.s === s); renderEst(); };
 $('btabs').onclick = (e) => { const t = e.target.dataset?.t; if (!t) return; st.btab = t; renderBottom(); };
 $('bpane').onclick = (e) => { const id = e.target.dataset?.cancel; if (id) cancelOrder(id); };
+$('bpane').onchange = (e) => { if (e.target.id === 'autoliq') { store.set(AUTO_LIQ, e.target.checked ? 'on' : 'off'); if (e.target.checked) maybeLiquidate(); } };
 for (const id of ['size', 'price', 'lev']) $(id).oninput = renderEst;
 $('go').onclick = placeOrder;
 $('asks').onclick = $('bids').onclick = (e) => { const r = e.target.closest('.row'); if (r) { $('price').value = r.dataset.p; st.otype = 'limit'; for (const b of $('otabs').children) b.classList.toggle('on', b.dataset.t === 'limit'); renderEst(); } };
