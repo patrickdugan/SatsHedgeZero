@@ -1,0 +1,26 @@
+[Unit]
+Description=SHZ venue market maker on a funded testnet4 UTXO account (operator key in /var/lib/shz-venue-mm-utxo)
+After=shz-venue.service
+Requires=shz-venue.service
+ConditionPathExists=/var/lib/shz-venue-mm-utxo/mm.key
+ConditionPathExists=/etc/shz-venue/mm-utxo.env
+
+[Service]
+User=shzvmmu
+Group=shzvmmu
+# mm-utxo.env sets UTXO=<txid>:<vout> (the output paying the key's P2TR address).
+EnvironmentFile=/etc/shz-venue/mm-utxo.env
+ExecStart=/usr/bin/python3 /opt/shz-venue/ops/venue-mm/mm.py run --server http://127.0.0.1:8096 --state-dir /var/lib/shz-venue-mm-utxo --utxo ${UTXO} --expires-s 300
+StateDirectory=shz-venue-mm-utxo
+StateDirectoryMode=0700
+Restart=always
+RestartSec=5
+MemoryMax=60M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+
+[Install]
+WantedBy=multi-user.target

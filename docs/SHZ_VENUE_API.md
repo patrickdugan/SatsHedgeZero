@@ -89,6 +89,7 @@ https://shz-venue.170-75-168-145.sslip.io/ (explorer at `/explorer.html`) runs o
 
 - `shz-venue.service`: user `shzvenue`, binary `/opt/shz-venue/bin/shz-venue`, listens on 127.0.0.1:8096, reads marks from the local FROST relay (`http://127.0.0.1:8091`, group key pinned), state in `/var/lib/shz-venue`, MemoryMax 200M.
 - `shz-venue-mm.service`: resident market maker on a demo-credit account whose key is generated on the host (`/var/lib/shz-venue-mm/mm.key`), quotes expire after 300 s.
+- `shz-venue-mm-utxo.service`: market maker on the operator's funded testnet4 output (user `shzvmmu`). It starts only when the operator has placed the key at `/var/lib/shz-venue-mm-utxo/mm.key` (0600) and `UTXO=<txid>:<vout>` in `/etc/shz-venue/mm-utxo.env`.
 - Caddy terminates TLS for the sslip.io name and proxies HTTP and WebSocket to the venue (`Caddyfile.snippet`).
 - Install from a Linux checkout: `cargo build --release -p shz-venue` (with `CARGO_BUILD_JOBS=1` on a 1-vCPU host), then `sudo ops/venue-deploy/install.sh`.
 

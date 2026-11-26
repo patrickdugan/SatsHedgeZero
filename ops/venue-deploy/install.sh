@@ -27,11 +27,18 @@ install -m 0644 ops/venue-mm/mm.py ops/venue-mm/intent.py /opt/shz-venue/ops/ven
 install -m 0644 ops/public-relay/bip340.py /opt/shz-venue/ops/public-relay/
 sed -i 's/\r$//' /opt/shz-venue/ops/venue-mm/*.py /opt/shz-venue/ops/public-relay/*.py
 
-install -m 0644 ops/venue-deploy/shz-venue.service ops/venue-deploy/shz-venue-mm.service /etc/systemd/system/
+install -m 0644 ops/venue-deploy/shz-venue.service ops/venue-deploy/shz-venue-mm.service ops/venue-deploy/shz-venue-mm-utxo.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now shz-venue.service
 systemctl restart shz-venue.service
 systemctl enable --now shz-venue-mm.service
+# The UTXO maker starts only once the operator has placed its key and outpoint:
+#   /var/lib/shz-venue-mm-utxo/mm.key (owner shzvmmu, 0600) and /etc/shz-venue/mm-utxo.env (UTXO=txid:vout).
+id shzvmmu >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin shzvmmu
+systemctl enable shz-venue-mm-utxo.service
+if [ -f /var/lib/shz-venue-mm-utxo/mm.key ] && [ -f /etc/shz-venue/mm-utxo.env ]; then
+  systemctl restart shz-venue-mm-utxo.service
+fi
 
 if ! grep -q 'shz-venue.170-75-168-145.sslip.io' /etc/caddy/Caddyfile; then
   cp /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.bak-$(date -u +%Y%m%dT%H%M%SZ)"
