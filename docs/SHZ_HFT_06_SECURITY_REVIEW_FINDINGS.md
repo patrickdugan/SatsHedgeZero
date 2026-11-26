@@ -23,7 +23,7 @@ Two more findings break stated properties of the oracle with one faulty member o
 | F-09 | Low | confirmed | MNR-02 refund height wraps or becomes a timestamp; refund amounts unchecked | yes |
 | F-10 | Low | confirmed | A refused notice request blocks attestation | yes |
 | F-11 | Low | suspected | Public HTTP surface: unbounded threads, subscribers and event-file work | yes |
-| F-12 | Low | suspected | Rust member: certified-parent ratchet is in memory only | no |
+| F-12 | Low | suspected | Rust member: certified-parent ratchet is in memory only | yes |
 | F-13 | Low | suspected | Router accepts a `public_release_us` earlier than the Standard feed delay | no |
 | F-14 | Low | confirmed (live) | An interrupted DLC setup wedges its event: the coordinator retries it every 5 s forever | yes |
 
@@ -225,7 +225,7 @@ Tests: `test_review_hft06.F11_PublicHttpLimits`, `F11_RestoreVerifiesTheWindow`,
 
 `MemberCore.parent` is in memory. After a restart it is `None`, so the member accepts any valid certificate as a parent provided the proposal's sequence is above its durable lock high-water mark. A coordinator can then have restarted members certify a child of an old certificate, skipping the packets between. Contents stay honest, because members vote only on their own rebuilt packet. This extends known gap 8: the claim "the chain cannot fork" in `remote.rs:22-32` holds for an honest coordinator only.
 
-**Fix.** Persist the highest verified parent `(seq, digest)` beside the sign lock and load it at start.
+**Fix (implemented).** `member::ParentRatchet` keeps the highest verified parent `(seq, digest)` in `member<i>.parent` beside the sign lock, one line with a check hash bound to the policy id. Each advance writes a temp file, fsyncs it, renames it over the record and fsyncs the directory (Unix) before the in-memory ratchet moves; if the write fails the proposal is refused. `MemberCore::new` loads it, and an edited, emptied or foreign-policy record stops start. A deleted record reads as a fresh member, the same as a deleted sign lock. Test: `tests/review_hft06.rs::restarted_member_keeps_its_certified_parent_ratchet` (after a restart the member refuses a seq 3 proposal chained to the older certificate c1 and the genesis proposal, and still votes for the child of c2).
 
 ## F-13 Low (suspected, traced by reading): `public_release_us` is not tied to the feed delay
 

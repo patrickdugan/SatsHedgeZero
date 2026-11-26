@@ -86,6 +86,71 @@ pub enum Outcome {
 
 const KEEP_PACKETS: usize = 4_096;
 
+/// The member's highest verified certified parent, kept in `<lock>.parent` beside the
+/// sign lock (F-12). One line `seq digest check`, where `check` binds the record to the
+/// policy. It is replaced atomically (temp file, fsync, rename, directory fsync) before
+/// the in-memory ratchet moves, so a restart cannot reopen an older parent. A missing
+/// file is a fresh member; an unreadable or foreign one fails closed.
+pub struct ParentRatchet {
+    path: PathBuf,
+    policy_id: Hash,
+}
+
+fn parent_check(policy_id: &Hash, seq: u64, digest: &Hash) -> Hash {
+    let mut b = Vec::with_capacity(72);
+    b.extend(policy_id);
+    b.extend(seq.to_le_bytes());
+    b.extend(digest);
+    shz_dlc::tagged_hash(b"SHZ/HFT06/MEMBER-PARENT/V1", &b)
+}
+
+impl ParentRatchet {
+    pub fn beside(lock: &DurableSignLock, policy_id: Hash) -> Self {
+        Self { path: lock.path().with_extension("parent"), policy_id }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn load(&self) -> Result<Option<(u64, Hash)>, String> {
+        let raw = match std::fs::read_to_string(&self.path) {
+            Ok(r) => r,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(format!("{}: {e}", self.path.display())),
+        };
+        let corrupt = || format!("{}: parent ratchet corrupt or from another policy; reconcile manually", self.path.display());
+        let line = raw.strip_suffix('\n').ok_or_else(corrupt)?;
+        let mut it = line.split(' ');
+        let (Some(s), Some(d), Some(c), None) = (it.next(), it.next(), it.next(), it.next()) else {
+            return Err(corrupt());
+        };
+        let seq: u64 = s.parse().map_err(|_| corrupt())?;
+        let digest: Hash = hex::decode(d).ok().and_then(|v| v.try_into().ok()).ok_or_else(corrupt)?;
+        if hex::encode(parent_check(&self.policy_id, seq, &digest)) != c {
+            return Err(corrupt());
+        }
+        Ok(Some((seq, digest)))
+    }
+
+    pub fn store(&self, seq: u64, digest: &Hash) -> Result<(), String> {
+        use std::io::Write;
+        let io = |e: std::io::Error| format!("{}: {e}", self.path.display());
+        let tmp = self.path.with_extension("parent.tmp");
+        {
+            let mut f = std::fs::File::create(&tmp).map_err(io)?;
+            writeln!(f, "{seq} {} {}", hex::encode(digest), hex::encode(parent_check(&self.policy_id, seq, digest))).map_err(io)?;
+            f.sync_all().map_err(io)?;
+        }
+        std::fs::rename(&tmp, &self.path).map_err(io)?;
+        #[cfg(unix)]
+        if let Some(dir) = self.path.parent() {
+            std::fs::File::open(dir).and_then(|d| d.sync_all()).map_err(io)?;
+        }
+        Ok(())
+    }
+}
+
 /// Decision logic of one member, independent of any transport.
 pub struct MemberCore {
     member: u8,
@@ -95,15 +160,29 @@ pub struct MemberCore {
     lock: DurableSignLock,
     packets: BTreeMap<u64, Packet>,
     newest: u64,
-    /// Highest verified certified parent seen: (seq, digest).
+    /// Highest verified certified parent seen: (seq, digest). Loaded from and persisted to `ratchet`.
     parent: Option<(u64, Hash)>,
+    ratchet: ParentRatchet,
 }
 
 impl MemberCore {
     pub fn new(policy: &Policy, member: u8, secret: Hash, lock: DurableSignLock) -> Result<Self, String> {
         let signer = Signer::new(policy, member, secret).map_err(|e| format!("member key does not match policy.members[{member}]: {e:?}"))?;
         let policy_id = policy.id().map_err(|e| format!("{e:?}"))?;
-        Ok(Self { member, policy: policy.clone(), policy_id, signer, lock, packets: BTreeMap::new(), newest: 0, parent: None })
+        let ratchet = ParentRatchet::beside(&lock, policy_id);
+        let parent = ratchet.load()?;
+        Ok(Self { member, policy: policy.clone(), policy_id, signer, lock, packets: BTreeMap::new(), newest: 0, parent, ratchet })
+    }
+
+    /// The durable parent ratchet: (seq, digest) of the highest verified parent certificate.
+    pub fn parent(&self) -> Option<(u64, Hash)> {
+        self.parent
+    }
+
+    fn advance_parent(&mut self, seq: u64, digest: Hash) -> Result<(), String> {
+        self.ratchet.store(seq, &digest)?;
+        self.parent = Some((seq, digest));
+        Ok(())
     }
 
     pub fn member(&self) -> u8 {
@@ -131,8 +210,7 @@ impl MemberCore {
             _ => {}
         }
         c.verify(&self.policy).map_err(|e| format!("certificate rejected: {e:?}"))?;
-        self.parent = Some((c.packet.seq, d));
-        Ok(())
+        self.advance_parent(c.packet.seq, d)
     }
 
     pub fn on_proposal(&mut self, seq: u64, proposed: &Packet, parent: Option<&Certificate>) -> Outcome {
@@ -157,7 +235,9 @@ impl MemberCore {
                         if let Err(e) = c.verify(&self.policy) {
                             return Outcome::Refused(format!("parent certificate invalid: {e:?}"));
                         }
-                        self.parent = Some((c.packet.seq, pd));
+                        if let Err(e) = self.advance_parent(c.packet.seq, pd) {
+                            return Outcome::Refused(format!("parent ratchet not persisted: {e}"));
+                        }
                     }
                 }
             }
