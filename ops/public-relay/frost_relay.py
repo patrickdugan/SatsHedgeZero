@@ -175,8 +175,7 @@ def main():
         relay.stats["dlc"] = coord.stats
     print(f"frost relay group={relay.pubkey} t={relay.group['threshold']}/{relay.group['signers']} resume_seq={relay.seq} coord_auth={'on' if master else 'OFF'}", flush=True)
     host, port = a.listen.rsplit(":", 1)
-    srv = pr.ThreadingHTTPServer((host, int(port)), pr.make_handler(relay))
-    srv.daemon_threads = True
+    srv = pr.LimitedHTTPServer((host, int(port)), pr.make_handler(relay))
     stop = threading.Event()
     threading.Thread(target=relay.run, args=(stop,), daemon=True).start()
     if coord is not None:

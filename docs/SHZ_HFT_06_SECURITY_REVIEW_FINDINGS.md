@@ -22,7 +22,7 @@ Two more findings break stated properties of the oracle with one faulty member o
 | F-08 | Low | confirmed | Fee ledger accepts a journal rollback and re-emits instructions; `Instruct` double-counts a repeated sequence | yes |
 | F-09 | Low | confirmed | MNR-02 refund height wraps or becomes a timestamp; refund amounts unchecked | yes |
 | F-10 | Low | confirmed | A refused notice request blocks attestation | yes |
-| F-11 | Low | suspected | Public HTTP surface: unbounded threads, subscribers and event-file work | no |
+| F-11 | Low | suspected | Public HTTP surface: unbounded threads, subscribers and event-file work | yes |
 | F-12 | Low | suspected | Rust member: certified-parent ratchet is in memory only | no |
 | F-13 | Low | suspected | Router accepts a `public_release_us` earlier than the Standard feed delay | no |
 | F-14 | Low | confirmed (live) | An interrupted DLC setup wedges its event: the coordinator retries it every 5 s forever | yes |
@@ -209,7 +209,15 @@ All inputs come from the party building the contract, so this is self-harm today
 
 Not exercised on the live host, as instructed. To reproduce locally: start `frost_relay.py` with `test_dlc.Confed`, open 2,000 idle TCP connections to the listen port, and watch `/healthz` stop answering when descriptors run out.
 
-**Fix.** Put a reverse proxy with connection and rate limits in front, or set `timeout` on the handler and cap threads and subscribers. Cache the event list. Move attested events out of the scan directory. Verify every restored line.
+**Fix (implemented).** Every limit refuses rather than queues:
+
+- `public_relay.LimitedHTTPServer` (used by both relays) caps connections at 256 in total and 32 per address. An extra connection gets `503` and is closed before a thread starts. The handler sets a 10 s socket timeout, so an idle or slow peer is dropped.
+- `/v1/stream` allows 64 subscribers, then `503`. `GET` with a path over 256 bytes gets `414`; `GET` with a body (`Content-Length` above 0 or `Transfer-Encoding`) gets `400`.
+- `/v1/archive/` accepts only `YYYY-MM-DD.jsonl`, streams the file in 64 KiB chunks instead of reading it whole, and allows 2 downloads at a time, then `503`.
+- The DLC coordinator parses each event file once into an in-memory index. `tick()` reads only events still `announced`; `/v1/dlc/events` is built from the index, cached 5 s, with no file I/O. Resolved events more than one day past maturity move to `dlc/resolved/` and stay readable.
+- `_restore` checks the signature of every packet loaded into the served window and that each links to the one before it; any failure stops start. A torn final line is cut off (or, if it is a complete packet missing only its newline, the newline is added) and the file fsync'd. Restoring a full 1,440-packet window took 8.2 s on the development laptop.
+
+Tests: `test_review_hft06.F11_PublicHttpLimits`, `F11_RestoreVerifiesTheWindow`, `F11_DlcEventWorkIsBounded`. The member HTTP servers (`frost_signer.py`) listen on loopback behind coordinator authentication and are unchanged.
 
 ## F-12 Low (suspected, traced by reading): Rust member parent ratchet is not durable
 

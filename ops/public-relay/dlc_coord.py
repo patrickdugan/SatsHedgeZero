@@ -31,6 +31,9 @@ TICK_S = 5
 ATTEST_DELAY_S = 5  # attest from maturity + 5 s: the first packet of the window has reached the ring
 SETUP_HOLD_BEFORE_S = 60
 SETUP_HOLD_AFTER_S = (dlc.OUTCOME_WINDOW_US + dlc.UNATTESTABLE_GRACE_US) // 1_000_000 + 30
+RESOLVED_RETENTION_S = 86_400  # resolved events stay in the scan directory one day past maturity
+LISTING_TTL_S = 5.0
+LISTING_MAX = 200
 
 
 class SetupWedged(RuntimeError):
@@ -56,17 +59,56 @@ class DlcCoordinator:
         self.url_by_index: dict[int, str] = {}
         self.stats = {"announced": 0, "attested": 0, "setup_failures": 0, "attest_failures": 0, "unattestable": 0}
         self.lock = threading.Lock()
+        # F-11: event files are parsed once. `index` holds a summary per event; tick reads
+        # only events still "announced", the listing is cached, and resolved events older
+        # than RESOLVED_RETENTION_S move to dlc/resolved/ so the scan directory stays small.
+        self.resolved_dir = self.dir / "resolved"
+        self.resolved_dir.mkdir(exist_ok=True)
+        self.index: dict[str, dict] = {}
+        self.ilock = threading.Lock()
+        self._listing: tuple[float, dict] | None = None
+        self._last_retire = float("-inf")
+        self._sync_index()
 
     # ------------------------------------------------------------ storage ----
     def _path(self, event_id: str) -> Path:
         return self.dir / f"{event_id}.json"
 
     def load(self, event_id: str) -> dict | None:
-        p = self._path(event_id)
-        return json.loads(p.read_text()) if p.exists() else None
+        for p in (self._path(event_id), self.resolved_dir / f"{event_id}.json"):
+            if p.exists():
+                return json.loads(p.read_text())
+        return None
+
+    @staticmethod
+    def _summary(ev: dict) -> dict:
+        return {"event_id": ev["core"]["event_id"], "maturity_unix": ev["core"]["maturity_unix"], "status": ev["status"],
+                "price_usd": ev.get("attestation", {}).get("price_usd")}
+
+    def _sync_index(self):
+        """Parse event files not yet indexed (written by an earlier process or by hand)."""
+        for d in (self.resolved_dir, self.dir):
+            for p in d.glob("SHZ-BTCUSD-*.json"):
+                if p.stem not in self.index:
+                    s = self._summary(json.loads(p.read_text()))
+                    with self.ilock:
+                        self.index.setdefault(p.stem, s)
 
     def _save(self, ev: dict):
         dlc._atomic_write(self._path(ev["core"]["event_id"]), ev)
+        with self.ilock:
+            self.index[ev["core"]["event_id"]] = self._summary(ev)
+            self._listing = None
+
+    def retire_resolved(self, now: int):
+        """Move resolved events whose maturity is older than RESOLVED_RETENTION_S out of the
+        scan directory. They stay readable through load() and the listing."""
+        with self.ilock:
+            old = [e for e, s in self.index.items() if s["status"] != "announced" and s["maturity_unix"] < now - RESOLVED_RETENTION_S]
+        for eid in old:
+            p = self._path(eid)
+            if p.exists():
+                p.replace(self.resolved_dir / p.name)
 
     # -------------------------------------------------------------- setup ----
     def setup(self, maturity_unix: int) -> dict:
@@ -241,8 +283,16 @@ class DlcCoordinator:
         maturity is set up only after that maturity's attestation."""
         now = int(time.time()) if now is None else now
         hold = False
-        for p in sorted(self.dir.glob("SHZ-BTCUSD-*.json")):
-            ev = json.loads(p.read_text())
+        self._sync_index()
+        if time.monotonic() - self._last_retire > 3_600:
+            self.retire_resolved(now)
+            self._last_retire = time.monotonic()
+        with self.ilock:
+            pending = sorted(e for e, s in self.index.items() if s["status"] == "announced")
+        for eid in pending:
+            ev = self.load(eid)
+            if ev is None:
+                continue
             if ev["status"] == "announced" and now >= ev["core"]["maturity_unix"] + ATTEST_DELAY_S:
                 ev = self.attest(ev)
             hold = hold or self.setup_on_hold(ev, now)
@@ -287,11 +337,12 @@ class DlcCoordinator:
 
     def extra_get(self, path: str):
         if path == "/v1/dlc/events":
-            out = []
-            for p in sorted(self.dir.glob("SHZ-BTCUSD-*.json"))[-200:]:
-                ev = json.loads(p.read_text())
-                out.append({"event_id": ev["core"]["event_id"], "maturity_unix": ev["core"]["maturity_unix"], "status": ev["status"],
-                            "price_usd": ev.get("attestation", {}).get("price_usd")})
+            # Served from the in-memory index, rebuilt at most every LISTING_TTL_S: no file I/O per request.
+            with self.ilock:
+                if self._listing is None or time.monotonic() - self._listing[0] > LISTING_TTL_S:
+                    out = [dict(self.index[e]) for e in sorted(self.index)[-LISTING_MAX:]]
+                    self._listing = (time.monotonic(), out)
+                out = self._listing[1]
             return 200, {"oracle_pubkey_x": self.group["group_pubkey"], "events": out, "stats": self.stats}
         if path.startswith("/v1/dlc/event/"):
             eid = path.rsplit("/", 1)[1]

@@ -28,6 +28,7 @@ import hashlib
 import json
 import os
 import queue
+import re
 import secrets
 import ssl
 import statistics
@@ -54,6 +55,15 @@ AUDIT_MAX_AGE_US = 3_900_000_000  # Chainlink heartbeat 1 h plus margin
 MIN_FAST_SOURCES = 3
 MAX_DISPERSION_BPS = 50
 MAX_AUDIT_DEVIATION_BPS = 150
+
+# Public HTTP surface limits (F-11). Each is refused, not queued.
+MAX_CONNECTIONS = 256  # concurrent connections, one thread each
+MAX_CONNECTIONS_PER_IP = 32
+MAX_SUBSCRIBERS = 64  # concurrent /v1/stream clients
+MAX_ARCHIVE_STREAMS = 2  # concurrent /v1/archive downloads
+MAX_PATH_BYTES = 256
+IO_TIMEOUT_S = 10  # per socket read or write: a slow or idle peer is dropped
+ARCHIVE_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}\.jsonl$")
 
 
 def now_us() -> int:
@@ -255,6 +265,7 @@ class Relay:
         self.by_seq: dict[int, dict] = {}
         self.lock = threading.Lock()
         self.subscribers: set[queue.Queue] = set()
+        self.max_subscribers = MAX_SUBSCRIBERS
         self.seq, self.previous = self._restore()
         self.stats = {"published": 0, "valid": 0, "hold": 0, "started_us": now_us()}
 
@@ -281,19 +292,46 @@ class Relay:
         return bytes.fromhex(kp.read_text().strip())
 
     def _restore(self) -> tuple[int, str]:
-        """Resume the chain from the newest archive line; verify it first."""
+        """Resume the chain from the newest archive file. Every line loaded into the
+        served window is signature-checked and must link to the line before it. A torn
+        final line (crash during the append) is cut off; corruption elsewhere stops start."""
         files = sorted((self.dir / "archive").glob("*.jsonl"))
         for f in reversed(files):
-            lines = [l for l in f.read_text().splitlines() if l.strip()]
-            if lines:
-                last = json.loads(lines[-1])
-                if not verify_packet(last, self.pubkey):
-                    raise SystemExit(f"archive tail in {f} does not verify; refusing to continue the chain")
-                for l in lines[-self.ring.maxlen :]:
+            data = f.read_bytes()
+            tail = data[data.rfind(b"\n") + 1 :]
+            if tail:
+                try:
+                    ok = verify_packet(json.loads(tail), self.pubkey)
+                except (ValueError, KeyError, TypeError):
+                    ok = False
+                with open(f, "r+b") as fh:
+                    if ok:  # complete packet, only the newline was lost
+                        fh.seek(0, os.SEEK_END)
+                        fh.write(b"\n")
+                    else:
+                        fh.truncate(len(data) - len(tail))
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                if not ok:
+                    print(f"cut a torn archive tail of {len(tail)} bytes from {f}", file=sys.stderr, flush=True)
+                    data = data[: len(data) - len(tail)]
+            lines = [l for l in data.splitlines() if l.strip()]
+            if not lines:
+                continue
+            prev = None
+            for l in lines[-self.ring.maxlen :]:
+                try:
                     p = json.loads(l)
-                    self.ring.append(p)
-                    self.by_seq[p["body"]["seq"]] = p
-                return last["body"]["seq"], last["digest"]
+                    good = verify_packet(p, self.pubkey) and (prev is None or p["body"]["previous"] == prev)
+                except (ValueError, KeyError, TypeError):
+                    good = False
+                if not good:
+                    raise SystemExit(f"archive line in {f} does not verify or link; refusing to continue the chain")
+                prev = p["digest"]
+                self.ring.append(p)
+                self.by_seq[p["body"]["seq"]] = p
+            last = self.ring[-1]
+            return last["body"]["seq"], last["digest"]
         return 0, "00" * 32
 
     def publish(self, slot_us: int, results: dict, seq: int | None = None) -> dict:
@@ -354,9 +392,66 @@ class Relay:
 
 # ------------------------------------------------------------------ http ----
 
+class LimitedHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer with a global and a per-address connection cap. A connection over
+    either cap gets a one-line 503 and is closed before a thread is spawned."""
+
+    daemon_threads = True
+    request_queue_size = 128
+
+    def __init__(self, addr, handler, max_connections: int = MAX_CONNECTIONS, max_per_ip: int = MAX_CONNECTIONS_PER_IP):
+        self.max_connections, self.max_per_ip = max_connections, max_per_ip
+        self._conn_lock = threading.Lock()
+        self._conns = 0
+        self._per_ip: dict[str, int] = {}
+        self.refused = 0
+        super().__init__(addr, handler)
+
+    def _release(self, ip: str):
+        with self._conn_lock:
+            self._conns -= 1
+            n = self._per_ip.get(ip, 1) - 1
+            if n <= 0:
+                self._per_ip.pop(ip, None)
+            else:
+                self._per_ip[ip] = n
+
+    def process_request(self, request, client_address):
+        ip = client_address[0]
+        with self._conn_lock:
+            full = self._conns >= self.max_connections or self._per_ip.get(ip, 0) >= self.max_per_ip
+            if full:
+                self.refused += 1
+            else:
+                self._conns += 1
+                self._per_ip[ip] = self._per_ip.get(ip, 0) + 1
+        if full:
+            try:
+                request.settimeout(1)
+                request.sendall(b"HTTP/1.0 503 Service Unavailable\r\nRetry-After: 5\r\nContent-Length: 0\r\n\r\n")
+            except OSError:
+                pass
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._release(ip)
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._release(client_address[0])
+
+
 def make_handler(relay: Relay):
+    archive_slots = threading.BoundedSemaphore(MAX_ARCHIVE_STREAMS)
+
     class H(BaseHTTPRequestHandler):
         server_version = "shz-public-relay/1"
+        timeout = IO_TIMEOUT_S  # StreamRequestHandler applies it to every read and write
 
         def log_message(self, *a):
             pass
@@ -371,6 +466,10 @@ def make_handler(relay: Relay):
             self.wfile.write(b)
 
         def do_GET(self):
+            if len(self.path) > MAX_PATH_BYTES:
+                return self._json(414, {"error": "path too long"})
+            if self.headers.get("Content-Length", "0").strip() != "0" or self.headers.get("Transfer-Encoding"):
+                return self._json(400, {"error": "GET carries no body"})
             path = self.path.split("?")[0]
             with relay.lock:
                 latest = relay.ring[-1] if relay.ring else None
@@ -401,19 +500,38 @@ def make_handler(relay: Relay):
             if path.startswith("/v1/archive/") and path.endswith(".jsonl"):
                 name = path.rsplit("/", 1)[1]
                 f = relay.dir / "archive" / name
-                if len(name) != 16 or not f.is_file():
+                if not ARCHIVE_NAME.match(name) or not f.is_file():
                     return self._json(404, {"error": "no archive"})
-                b = f.read_bytes()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/x-ndjson")
-                self.send_header("Content-Length", str(len(b)))
-                self.end_headers()
-                self.wfile.write(b)
+                if not archive_slots.acquire(blocking=False):
+                    return self._json(503, {"error": "archive downloads busy"})
+                try:
+                    # Stream in chunks up to the size at open: the live day file is still appended to.
+                    with open(f, "rb") as fh:
+                        size = os.fstat(fh.fileno()).st_size
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/x-ndjson")
+                        self.send_header("Content-Length", str(size))
+                        self.end_headers()
+                        left = size
+                        while left > 0:
+                            chunk = fh.read(min(65_536, left))
+                            if not chunk:
+                                break
+                            self.wfile.write(chunk)
+                            left -= len(chunk)
+                except OSError:
+                    pass
+                finally:
+                    archive_slots.release()
                 return
             if path == "/v1/stream":
                 q: queue.Queue = queue.Queue(maxsize=64)
                 with relay.lock:
-                    relay.subscribers.add(q)
+                    full = len(relay.subscribers) >= relay.max_subscribers
+                    if not full:
+                        relay.subscribers.add(q)
+                if full:
+                    return self._json(503, {"error": "too many stream subscribers"})
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
                 self.send_header("Cache-Control", "no-cache")
@@ -451,8 +569,7 @@ def main():
         print(json.dumps(pkt, indent=1))
         return
     host, port = a.listen.rsplit(":", 1)
-    srv = ThreadingHTTPServer((host, int(port)), make_handler(relay))
-    srv.daemon_threads = True
+    srv = LimitedHTTPServer((host, int(port)), make_handler(relay))
     stop = threading.Event()
     threading.Thread(target=relay.run, args=(stop,), daemon=True).start()
     try:

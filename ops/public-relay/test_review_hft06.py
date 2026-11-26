@@ -504,5 +504,183 @@ class F05_CoordinatorAuthentication(unittest.TestCase):
         self.assertIn("--coord-auth-master", r.stderr)
 
 
+class F11_PublicHttpLimits(unittest.TestCase):
+    """F-11: every public HTTP resource is bounded and the excess is refused."""
+
+    def setUp(self):
+        import socket
+        import threading
+        self.socket = socket
+        self.relay = pr.Relay(Path(tempfile.mkdtemp()), 5000)
+        self.H = pr.make_handler(self.relay)
+        self.srv = pr.LimitedHTTPServer(("127.0.0.1", 0), self.H, max_connections=3, max_per_ip=3)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.port = self.srv.server_address[1]
+        self.held = []
+
+    def tearDown(self):
+        for s in self.held:
+            s.close()
+        self.srv.shutdown()
+        self.srv.server_close()
+
+    def _open(self):
+        s = self.socket.create_connection(("127.0.0.1", self.port), timeout=5)
+        self.held.append(s)
+        return s
+
+    def _req(self, path, extra=b""):
+        s = self._open()
+        s.sendall(b"GET " + path.encode() + b" HTTP/1.0\r\n" + extra + b"\r\n")
+        data = b""
+        while b"\r\n\r\n" not in data:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+        return int(data.split(b" ", 2)[1]) if data else None, s
+
+    def _wait_free(self):
+        import time
+        for _ in range(100):
+            if self.srv._conns == 0:
+                return
+            time.sleep(0.05)
+
+    def test_connection_cap_refuses_the_extra_connection(self):
+        import time
+        for _ in range(3):
+            self._open()  # idle: no request line
+        time.sleep(0.2)
+        code, _ = self._req("/v1/pubkey")
+        self.assertEqual(code, 503)
+        self.assertGreaterEqual(self.srv.refused, 1)
+        for s in self.held:
+            s.close()
+        self.held = []
+        self._wait_free()
+        self.assertEqual(self._req("/v1/pubkey")[0], 200, "slots are released when peers leave")
+
+    def test_per_ip_cap(self):
+        import time
+        self.srv.max_connections, self.srv.max_per_ip = 10, 1
+        self._open()
+        time.sleep(0.2)
+        self.assertEqual(self._req("/v1/pubkey")[0], 503)
+
+    def test_idle_connection_is_dropped_after_the_timeout(self):
+        self.H.timeout = 0.3
+        s = self._open()
+        s.settimeout(5)
+        self.assertEqual(s.recv(1), b"", "server closed the idle connection")
+        self._wait_free()
+        self.assertEqual(self.srv._conns, 0)
+
+    def test_subscriber_cap(self):
+        self.relay.max_subscribers = 1
+        self.assertEqual(self._req("/v1/stream")[0], 200)
+        self.assertEqual(self._req("/v1/stream")[0], 503)
+
+    def test_request_size_limits(self):
+        self.assertEqual(self._req("/v1/packet/" + "1" * 300)[0], 414)
+        self.assertEqual(self._req("/v1/pubkey", b"Content-Length: 5\r\n")[0], 400)
+        self.assertEqual(self._req("/v1/pubkey", b"Transfer-Encoding: chunked\r\n")[0], 400)
+
+    def test_archive_name_and_concurrency(self):
+        self.relay.publish(pr.now_us(), fake(BASE))
+        day = sorted((self.relay.dir / "archive").glob("*.jsonl"))[0].name
+        self.assertEqual(self._req("/v1/archive/" + day)[0], 200)
+        (self.relay.dir / "archive" / "aaaaaaaaaa.jsonl").write_text("x")
+        self.assertEqual(self._req("/v1/archive/aaaaaaaaaa.jsonl")[0], 404, "only YYYY-MM-DD.jsonl names")
+        old, pr.MAX_ARCHIVE_STREAMS = pr.MAX_ARCHIVE_STREAMS, 0
+        try:
+            self.srv.RequestHandlerClass = pr.make_handler(self.relay)
+        finally:
+            pr.MAX_ARCHIVE_STREAMS = old
+        self.assertEqual(self._req("/v1/archive/" + day)[0], 503, "no free download slot")
+
+
+class F11_RestoreVerifiesTheWindow(unittest.TestCase):
+    def _relay_with(self, n):
+        d = Path(tempfile.mkdtemp())
+        r = pr.Relay(d, 5000)
+        base = pr.now_us()
+        for i in range(n):
+            r.publish(base + i * 5_000_000, fake(BASE))
+        return d, sorted((d / "archive").glob("*.jsonl"))[-1]
+
+    def test_torn_tail_is_cut_and_the_chain_resumes(self):
+        d, f = self._relay_with(3)
+        with open(f, "ab") as fh:
+            fh.write(b'{"body":{"seq":4')
+        r = pr.Relay(d, 5000)
+        self.assertEqual(r.seq, 3)
+        self.assertTrue(f.read_bytes().endswith(b"\n"))
+        r.publish(pr.now_us() + 60_000_000, fake(BASE))
+        self.assertEqual(pr.Relay(d, 5000).seq, 4)
+
+    def test_tampered_earlier_line_stops_start(self):
+        d, f = self._relay_with(3)
+        lines = f.read_text().splitlines()
+        p = json.loads(lines[0])
+        p["body"]["median_e8"] += 1
+        lines[0] = json.dumps(p, separators=(",", ":"))
+        f.write_text("\n".join(lines) + "\n")
+        with self.assertRaises(SystemExit):
+            pr.Relay(d, 5000)
+
+    def test_broken_link_stops_start(self):
+        d, f = self._relay_with(3)
+        lines = f.read_text().splitlines()
+        f.write_text("\n".join([lines[0], lines[2]]) + "\n")
+        with self.assertRaises(SystemExit):
+            pr.Relay(d, 5000)
+
+
+class F11_DlcEventWorkIsBounded(unittest.TestCase):
+    def _coord(self, n_resolved):
+        import threading
+        import types
+        import dlc_coord
+        d = Path(tempfile.mkdtemp())
+        (d / "dlc").mkdir()
+        base = 1_800_000_000
+        for i in range(n_resolved):
+            m = base + i * 900
+            eid = dlc_coord.event_id_for(m)
+            (d / "dlc" / f"{eid}.json").write_text(json.dumps({"core": {"event_id": eid, "maturity_unix": m}, "status": "attested",
+                                                              "attestation": {"price_usd": 100_000 + i}}))
+        relay = types.SimpleNamespace(group={"threshold": 3, "signers": 5, "group_pubkey": "00" * 32}, lock=threading.Lock(), ring=[], signers=[])
+        return dlc_coord.DlcCoordinator(relay, d, ahead=0), d, base
+
+    def test_resolved_events_are_not_reparsed_and_the_listing_is_capped(self):
+        from unittest import mock
+        c, d, base = self._coord(300)
+        now = base + 300 * 900
+        c._last_retire = float("inf")  # keep every file in the scan directory for this test
+        reads = []
+        real = Path.read_text
+        with mock.patch.object(Path, "read_text", lambda self, *a, **k: reads.append(self) or real(self, *a, **k)):
+            for _ in range(3):
+                c.tick(now)
+            code, body = c.extra_get("/v1/dlc/events")
+            c.extra_get("/v1/dlc/events")
+        self.assertEqual(reads, [], "tick and listing read no event file once indexed")
+        self.assertEqual(code, 200)
+        self.assertEqual(len(body["events"]), 200)
+        self.assertEqual(body["events"][-1]["price_usd"], 100_299)
+
+    def test_old_resolved_events_leave_the_scan_directory(self):
+        import dlc_coord
+        c, d, base = self._coord(10)
+        c.tick(base + 9 * 900 + dlc_coord.RESOLVED_RETENTION_S - 1)
+        left = sorted(p.name for p in (d / "dlc").glob("SHZ-BTCUSD-*.json"))
+        self.assertEqual(left, [dlc_coord.event_id_for(base + 9 * 900) + ".json"])
+        self.assertEqual(len(list((d / "dlc" / "resolved").glob("*.json"))), 9)
+        self.assertEqual(c.load(dlc_coord.event_id_for(base))["status"], "attested", "still served after the move")
+        c2 = dlc_coord.DlcCoordinator(c.relay, d, ahead=0)  # a restart indexes both directories
+        self.assertEqual(len(c2.extra_get("/v1/dlc/events")[1]["events"]), 10)
+
+
 if __name__ == "__main__":
     unittest.main()
