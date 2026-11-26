@@ -1,143 +1,78 @@
-# SatsHedgeZero (SHZ) Product Roadmap & Completion Matrix
+# Lightninger roadmap and status matrix
 
-> **Snapshot Date:** 2026-11-24  
-> **Target Product:** Non-custodial High-Frequency Trading (HFT) API & Deribit/BitcoinWisdom Terminal over Testnet4 Lightning (`LN-DLC` + `PTLC`), backed by Multi-Source Oracle Provenance (`Pyth Pro` + `Chainlink` + `NEAR`), Multilateral Netting (`UTXORef`), Batched `BitVM3` Taproot Settlement, and a Real-Time Back-End Protocol Explorer.  
-> **Overall Completion (Testnet4 HFT + Explorer Beta Scope):** **`100%`** (`8 / 8` Beta Engineering Tracks & Milestones `M1–M5` delivered and verified end-to-end; `production_ready: false` pending external third-party cryptographic/script audit and Mainnet HSM deployment).
+Snapshot 2026-11-26, repo `main` at `9d5ac54`. Product: a testnet4 perpetual and options venue (BTC collateral, inverse BTC/USD contracts) that settles through DLCs and Lightning. Public deployment: https://shz-venue.170-75-168-145.sslip.io/ (witness host, 1 vCPU, 2 GB). `production_ready = false`, `independent_security_review = false`, `live_feed_authenticated = false`.
 
----
+This file replaces the 2026-11-24 matrix that reported 100% on eight tracks. Section 4 lists each claim from that matrix that the repo does not support. Every row below names a commit, test, receipt or measurement; a cell without one says so.
 
-## 1. Component Completion Matrix
+## 1. Status matrix
 
-| # | Product Track | Modules / Binaries | % Complete | Verified Deliverables & Measured Evidence | Mainnet Gate (`production_ready: false`) |
-|---|---|---|---:|---|---|
-| **1** | **Inverse Margin, Portfolio SPAN Greeks & Partial Liquidation** | `crates/shz-margin` (`portfolio_greeks.rs`, `liquidation_auction.rs`), `crates/shz-dlc` | **100%** | Exact integer inverse perp/swap payouts, hyperbolic Bachelier/Black-76 option pricer (`Call`/`Put`, positive $\Gamma$, exact Put-Call parity), 33-scenario SPAN cross-margin (`> 40%` hedged IM savings), Dutch partial-liquidation tranche solver, dyadic CETs, verified BIP-340 adaptor extraction | External economic parameter review |
-| **2** | **200ms Oracle Relayer, Optimistic NEAR Bisection & Testnet4 Anchor** | `crates/shz-oracle` (`live_relayer.rs`, `optimistic_near_verifier.rs`), `research/hourly_index_nova_03` | **100%** | Continuous `200 ms` Pyth Pro + Chainlink `RollingOracleAggregator` (`<= 50 bps` spread gate -> `1h` leaf -> `8h` `SHZIDX01`), `OptimisticCheckpointSession` (`1,129` chunks -> **2 O(1) calls `~10 TGas`** + `11-step` bisection), live Testnet4 `SHZIDX01` anchor (`7246cb0a...`) | Operational multi-region relayer SLA |
-| **3** | **Multilateral Netting, Dynamic $N$-Party Packer & Watchtower** | `crates/shz-utxoref` (`n_party_packer.rs`, `watchtower.rs`), `bins/shz-cli` | **100%** | Edmonds-Karp max-flow PnL solver, 6-block reorg-safe `DurablePnlBatchBook`, dynamic $N$-party ($N \ge 2$, tested at $N = 5$) `0x83`+`0x00` atomic Taproot transaction packer, automated `ShzWatchtowerEngine` (`CLTV` exits, reorg freezes, BitVM3 slashes) | Multi-tower geo-redundant deployment |
-| **4** | **Setup-Free Dual Nova Provers, In-Circuit `TapSighash` & Garbled Gate** | `crates/shz-nova-bitvm`, `research/mnr05_bitvm3_ln_dlc` (`in_circuit_sighash.rs`, `garbled_gate_disprove.rs`) | **100%** | `Secq256k1` 8-sig BIP-340 SNARK (`11,980 B`), `Bn256EngineIPA` 3-fold Unified Batch + 256d Nullifier SNARK (`12,784 B`), R1CS-constrained `BIP-341 TapSighash` (`0x83`/`0x01`/`0x00`), Yao/SHA-256 `GarbledNandGate` + `GarbledGateTaprootTree` verified on `Bitcoin Core v31.1.0` (`<= 80 B` witness items) | External R1CS & Tapscript audit (`full_groth16_garbled_circuit_l1_verified: false` by setup-free design) |
-| **5** | **Sub-Millisecond Rust HFT WS/REST Gateway & Benchmark Bot** | `crates/shz-dex`, `bins/shz-hftd` (`shz-hftd`, `shz-mm-bot`) | **100%** | Pure-Rust `#![forbid(unsafe_code)]` RFC-6455 WebSocket (`ws://.../v1/ws`, `TCP_NODELAY`) + REST (`/v1/api/*`), lock-free parallel BIP-340 verification (`< 5 µs` match critical section), `private/mass_quote`, `cancel_on_disconnect`, measured **`28,217.14` signed intents/sec** (`p50 = 161 µs`, `p99 = 1,433 µs < 1.5 ms`) | Kernel-bypass / TLS termination |
-| **6** | **Testnet4 Lightning Mesh, PTLC Swaps & Off-Lock `100 ms` Coalescer** | `crates/shz-ln-testnet4` | **100%** | Multi-peer Testnet4 LN subchannel mesh (`Maker-MM`, `Taker-HFT`, `Arb-Hedger`, `Bob-0x83`, `RouterLP` + non-custodial external API channels), off-lock `100 ms` `SubchannelCoalescer` (`1,049+` HFT fills -> `60` Schnorr commits), `lntb4...` atomic PTLC instant withdrawals (`Y = y \cdot G`), live synced Testnet4 RPC (`#163,097`) | Public mainnet LN routing liquidity |
-| **7** | **Deribit/BitcoinWisdom Terminal & 5-Pane Protocol Explorer** | `ui/public/index.html`, `ui/public/explorer.{html,js,css}`, `ui/test_explorer.mjs` | **100%** | Dedicated `/explorer` 5-pane console (`250 ms` SSE + WebSocket + interactive HFT/PTLC/BitVM3/NEAR/Reorg drills): HFT intent tape & `µs` histogram, SVG LN/PTLC topology, SVG Edmonds-Karp Sankey, `SHZIDX01` `mempool.space/testnet4` links, `0->100%` Nova + 8-slot Nullifiers + Watchtower (`21/21` UI tests passing) | Custom domain & CDN hosting |
-| **8** | **Multi-Bot Chaos Harness, R1CS & Core 31.1 Adversarial Suites** | `shz-mm-bot`, `mnr05_adversarial.rs`, `core_regtest.rs` | **100%** *(Beta)* | 36+ R1CS adversarial mutation tests, 5-drill `Bitcoin Core v31.1.0` regtest suite (including Drill E garbled NAND gate slash & grief rejection), interactive chaos fault injection in `shz-hftd` | HSM signer isolation & external third-party audit (`production_ready: false`) |
+Columns: **Live** runs on the testnet host today. **Simulated** is ledger-only or driven by a stand-in. **Designed** has a document and no running code. Test counts are `#[test]` functions (Rust) or passing cases (Node) at `9d5ac54`.
 
----
+| Track | Live on testnet | Simulated / ledger-only | Designed, not built | Evidence | Next gate |
+|---|---|---|---|---|---|
+| **Venue core** (`crates/shz-venue`, `crates/shz-dex`) | One market `SHZ-BTCUSD-INV` on `DurableTieredRouter` with a journaled WAL (30,083 records, 298 batches at the snapshot). Signed `IntentV6` orders, post/take/cancel, 100 ms batches, approvals then acks, 10 s deadline abort, replay from the journal | Channel acknowledgements: the venue holds the peer and monitor keys (`core.rs:906`, `"adapter": "simulated"`) | Per-trade on-chain DLC funding and CETs | `GET /api/status` (live, 2026-11-26); `92b8258` deadline abort; `dc2ace0` account events; `hft06_tiered_durable` and `hft06_e2e_relay` (92 tests in `shz-dex`); latency below | **G-LN-1** real channel updates |
+| **Execution latency** | Take ack 21 ms, committed 235 ms [304] on the host; take ack 253 ms, committed 1.28 s [1.32] from the author's laptop over the internet | Resident makers sign in a 0.25 s poll loop | Kernel-bypass, multi-site delivery (G-NET-1) | `docs/SHZ_VENUE_LATENCY.md`, `ops/venue-bench/results/2026-11-26-rerun/`. Self runs 30/30 and 20/20, makers 10/10 | G-NET-1 multi-site measurement (loopback only so far) |
+| **Price oracle** (FROST relay, `ops/public-relay`) | 5 s signed packets from Coinbase, Kraken, Bitstamp and Gemini with an on-chain Chainlink audit; 3-of-5 FROST group key `403c4966...fdb8`; coordinator authentication (F-05) deployed 2026-11-26; every packet's group signature is checked by the venue. Slot to verified mark 415 ms median [674] | All five members run on one host with trusted-dealer keygen: one operator, not a federation | Members on separate hosts with a DKG (G-FED-1); authenticated Pyth Pro and Chainlink Data Streams feeds (G-SRC-1, G-SRC-2); threshold packet signer audit (G-FED-2) | Ledger G-DEP-0, G-DEP-1; `f52c3e9`, `27450ad`; fault drill (2 down keeps signing, 3 down pauses); 81 packets all VALID | G-FED-1 deployment; G-SRC-1..4 credentials and wire-format parity |
+| **DLC oracle** | 15-minute BTC/USD events, per-event Feldman nonce DKG, 20-digit attestations. Attestation 9.0 to 10.2 s after maturity, 4 of 4 events, after `daf5cba` (now on `main`) | None | CET pre-signing at scale: 17.2 s on the host for 19,192 CETs, per contract | `docs/SHZ_VENUE_LATENCY.md`; ledger G-DEP-2; `cargo test -p shz-dlc --test frost_oracle_settlement` | Cut CET count or sign in parallel; G-SEC-1 |
+| **DLC refund and settlement path** | None on the venue | Regtest only: CET settle and refund with CPFP on Core 31.1 | Per-trade DLC funding on testnet4 | Ledger G-DLC-REFUND; `20a8edc`; workflow `shz-hft06-dlc-refund-regtest` | Wire funding to venue fills (needs G-LN-1 design) |
+| **Margin** (`crates/shz-margin`) | Venue uses the perp rule: FIFO lots, margin release on offset, closing loans (`6cf00ee`, `bf4d556`) | None | **Max-loss engine** `payoff.rs` (perps, inverse calls, USD puts, spreads, `margin_delta`) is not routed; options do not trade. USD-quoted puts need a Bitcoin-native USD asset (RGB or Taproot Assets USDT), disabled in v0 | `18307a0` (17 tests in `payoff.rs`, 400-portfolio brute-force check); `docs/SHZ_MAXLOSS_MARGIN.md` | Fix the clippy error at `payoff.rs:192`; route `margin_delta_perp_fill` into the router |
+| **Liquidation** (`crates/shz-venue/src/risk.rs`, `ui/venue/liquidate.js`) | Risk state per account on every mark; reduce-only gate below 500 bps; partial-liquidation plan; page executes the plan with the account's own key | The breach path (maintenance, reduce-only, auto-close) is covered by unit tests only: `risk.rs` 6 tests, `liquidate.test.mjs` 6 pass. No live account has breached | Server-side liquidation (an account with its page closed keeps only the contract backstop: the lot stops at its bankruptcy price) | `51ff215`, `6cf00ee`; `docs/SHZ_VENUE_API.md` Liquidation | Drive a demo account through a breach on the live host and record it |
+| **Clearing** (`crates/shz-dex/src/routing/clearing.rs`) | Multilateral clearing V3 since 2026-11-26 12:50Z: one net amount per account per batch, default waterfall (margin, own claim, fund, pro-rata haircut, carry), closing loans. `identity` 0, `carry` 0 at the snapshot | The clearing fund is 1,000,000 sats on the ledger. No coins back it | Funded clearing account; fund sizing from observed shortfalls | `2b61aad`, `60174a0`; `hft06_clearing` (14 tests, includes V2 reproductions A1..A5); live `clearing` block in `/api/status`; `docs/SHZ_VENUE_CLEARING.md` | Back the fund with a testnet4 output; size it from `shortfall` rows |
+| **Collateral and accounts** | Demo accounts (200,000 sats, labelled `TESTNET DEMO CREDIT`). One real testnet4 UTXO maker: the venue checks the output is unspent, P2TR to the owner's key and has 1 confirmation | The output is checked at registration and not locked: the owner's key can spend it afterwards, so equity on a `utxo` account is a ledger number | Collateral held in a DLC or channel; dual collateral (BTC plus USDT); RGB or Taproot Assets | `f1a4749`; `ops/venue-deploy/shz-venue-mm-utxo.service`; `docs/SHZ_VENUE_API.md` | Lock collateral on chain; same work as real settlement |
+| **Wallet connect** | Nostr NIP-07 and LNURL-auth (LUD-04) link a wallet key to a trading key, 24 h expiry, journaled | WebLN shows an alias only; the venue has no Lightning backend | Nostr Wallet Connect, invoice paste, deposits and withdrawals | `2095361`, `f4256d2`; `wallet.rs` 10 tests, `wallet.test.mjs` 10 pass, `crypto.test.mjs` 5 pass, shared signed Nostr vector. **No real wallet has been used against the venue** | Run Alby, nos2x, Phoenix and Zeus against the live host; record results |
+| **Lightning settlement** (`crates/shz-ln-testnet4`) | None | Everything. The crate has no LDK dependency: in-memory subchannel coalescer and PTLC adaptor arithmetic. `probe_testnet4_chain_status` shells out to `bitcoin-cli` and returns recorded txids when that fails | LDK `Persist`-wrapping commitment evidence, BOLT12 fee collection, DLC legs outside the commitments | `docs/SHZ_HFT_06_LDK.md`; ledger G-LN-1a..d; `shz_hft_benchmark_receipt.json` (1,049 fills to 60 commits, in process) | **G-LN-1a** on regtest, then testnet4 |
+| **Trading UI** (`ui/venue`) | Lightninger UI (black and gold), BitcornWisdom chart, Classic mode, plumbing explorer with fill to packet to batch links | None | Options chain, combos | `55f1dbc`, `9badb43`, `9d5ac54`, `e1c9075`; 21 Node tests pass (5 + 10 + 6) | Options UI after options route |
+| **Netting, rollup, BitVM3** (`shz-utxoref`, `shz-nova-bitvm`, `research/mnr05_bitvm3_ln_dlc`) | None on the venue | Research artifacts with Core 31.1 regtest drills and Nova SNARK bundles; not connected to the venue's fills | Venue batches feeding the rollup; watchtower in service | Receipts in `evidence/` (`mnr03_*`, `clearing_33k_*`); workflow `shz-mnr05-bitvm3-ln-dlc` is red (section 3) | Green CI first; integration only after real settlement |
+| **Old HFT gateway** (`bins/shz-hftd`, `shz-mm-bot`) | None: no unit in `ops/venue-deploy`, the venue is a separate binary | Benchmark harness | Folded into the venue or retired | `shz_hft_benchmark_receipt.json`: 7,200 signed intents, 12 connections, 212.64 ms wall time, loopback, p99 1,433 us. `ws.rs` 2 tests | Decide: retire or merge |
+| **Security** | F-01..F-10 and F-14 fixed on `main`; deployed to the witness host: F-01 (re-key), F-03, F-05 coordinator authentication, F-14 | F-11, F-12, F-13 open (suspected, low). `FeeLedger::open` (`core.rs:271`) and `DurableTieredRouter::open` (`core.rs:249`, last argument `None`) run without a pinned tip, so a restored backup is not detected (F-08 fix is unused by the venue) | External review (G-SEC-1) | `docs/SHZ_HFT_06_SECURITY_REVIEW_FINDINGS.md`; `e6d011f` | Close F-11..F-13; pin both tips |
+| **Data and legal** | Public delayed data only (live feed unauthenticated) | None | Licensed Pyth Pro and Chainlink feeds; derivatives and fee counsel review | Ledger G-SRC-1, G-SRC-2, G-LEGAL-1 | Counsel review before any paid tier |
 
-## 2. End-to-End Architecture & Speed Tiers
+## 2. Ranked next steps
 
-```mermaid
-flowchart TD
-    subgraph T0["Tier 0: Sub-Millisecond HFT Hot Path (p50 = 161 µs, 28.2k intents/s)"]
-        BOT["shz-mm-bot / API Client"] -->|"RFC-6455 WS JSON-RPC: BIP-340 SignedOrderIntent"| HFTD["bins/shz-hftd (Lock-Free Verify + shz-dex)"]
-        UI_TERM["Deribit / BitcoinWisdom Terminal (/)"] --> HFTD
-    end
+Correctness and real settlement come before features. Each step lists its exit evidence.
 
-    subgraph T1["Tier 1: Testnet4 Lightning Subchannel Coalescer (100 ms Off-Lock)"]
-        HFTD -->|"100 ms Netted Delta + PTLC Y = y*G"| LDK["crates/shz-ln-testnet4 (SubchannelCoalescer + PTLC Swaps)"]
-        LDK -->|"Testnet4 RPC & UTXOs"| T4_BTC["Bitcoin Core 31.1 (Synced Testnet4 #163,097)"]
-    end
+1. **Restore CI on `main`.** `shz-rust-and-core-regtest` has failed on every push since `18307a0`: strict clippy rejects `payoff.rs:192` (`needless_range_loop`, run 45840719404 on `9d5ac54`). The steps behind it are skipped: the HFT-01/02 load gates, the Deribit terminal tests and the MNR-02/MNR-03 Core regtest drills. Last green run: `60174a0`. Exit: one commit that fixes the lint, then a green run of both workflows named in section 3.
+2. **Pin the journal tips.** Store the router and fee-ledger tips off the journal volume and open both with the pinned variants, so a rolled-back volume fails closed. Exit: a test that truncates `fees.wal` and `router.wal` at a frame boundary and expects `Rollback` from the venue's `open`.
+3. **Close F-11, F-12 and F-13.** Bound the public HTTP surface (threads, subscribers, event-file work); make the Rust member's parent ratchet durable; reject a `public_release_us` earlier than the Standard feed delay. Exit: each finding's reproduction passes against the patched code.
+4. **Exercise the breach path live.** Open a high-leverage demo account on the live host, move it through warning, maintenance and auto-close, and record the `risk` events, the reduce-only refusals, the closing fills and the clearing rows. Exit: a receipt under `ops/venue-bench/results/`.
+5. **Exercise wallet connect with real wallets.** Alby and nos2x (Nostr), Phoenix and Zeus (LNURL-auth QR). Exit: a results table with wallet, version, outcome and failure text.
+6. **Real settlement, G-LN-1.** Build the LDK `Persist` wrapper on regtest (G-LN-1a), then carry commitment evidence into the channel acknowledgement, then BOLT12 fee receipts, then testnet4. Exit per sub-gate is in `docs/SHZ_HFT_06_LDK.md`. The venue stops holding peer and monitor keys when this lands.
+7. **Collateral on chain.** Lock `utxo` account collateral in a DLC or channel output, and back the clearing fund with a testnet4 output. Exit: a fill that moves coins, with a mempool.space link that resolves.
+8. **FROST members on separate hosts with a DKG** (G-FED-1, G-FED-2). Exit: five independent operators' hosts sign, one host down, and the key-share files never share a machine.
+9. **Route options.** Wire `margin_delta` from `payoff.rs` into the router capacity check, add the options market and UI, then dual collateral (BTC plus a Bitcoin-native USD asset) for USD puts. Exit: a seeded test comparing router margin with the brute-force scan, then a live option trade on the demo book.
+10. **Data, measurement, legal.** Pyth and Chainlink credentials and wire-format parity (G-SRC-1..4), multi-site latency (G-NET-1), counsel review (G-LEGAL-1), external review (G-SEC-1). These gate any step past testnet.
 
-    subgraph T2["Tier 2: Multi-Source Oracle Stream (200 ms -> 8h Anchor)"]
-        PYTH["Pyth Pro Lazer (200 ms)"] -->|"Mark & Spread <= 50 bps"| HFTD
-        CL["Chainlink Data Streams v3"] --> HFTD
-        PYTH --> IDX["INDEX-03 Nova Prover + Optimistic NEAR (2 txs, ~10 TGas)"]
-        CL --> IDX
-        IDX -->|"SHZIDX01 40B OP_RETURN (txid: 7246cb0a...)"| T4_BTC
-    end
+## 3. Evidence
 
-    subgraph T3["Tier 3: Multilateral Netting & Batched BitVM3 Rollup (5m / 8h)"]
-        HFTD -->|"5-Party PnlBatchSnapshotV1"| EK["shz-utxoref Edmonds-Karp + Dynamic N-Party Packer"]
-        EK -->|"0x83 Offline + PTLC Double-Offline TX"| MNR05["MNR-05 Dual Nova (Secq256k1 + In-Circuit TapSighash + BN254 IPA)"]
-        MNR05 -->|"BitVM3 Assertion + Garbled NAND Gate + Watchtower"| T4_BTC
-    end
+Measured 2026-11-26 unless a row says otherwise.
 
-    subgraph T4["Tier 4: 5-Pane Back-End Protocol Explorer (/explorer)"]
-        HFTD -.->|"250 ms SSE + WS /v1/ws"| EXP["Protocol Explorer (Order Tape, SVG LN/PTLC, SVG Netting Sankey, Nova %, BitVM3 Watchtower)"]
-        LDK -.-> EXP
-        MNR05 -.->|"rbzk-nova-progress-v1 (0 -> 100%)"| EXP
-        T4_BTC -.->|"mempool.space/testnet4 TXIDs"| EXP
-    end
-```
+| Item | Result | Source |
+|---|---|---|
+| Live venue status | `network: testnet4`, `production_ready: false`, 25 accounts, 298 batches, clearing `identity` 0, `carry` 0, `fund` 1,000,001, `closing_loans` true, `margin_release` true | `GET /api/status` on the public host |
+| `shz-rust-and-core-regtest` on `main` | Success through `60174a0`; failure at `18307a0` and every later commit (strict clippy, `payoff.rs:192`) | GitHub Actions API, run 45840719404 for `9d5ac54` |
+| `shz-mnr05-bitvm3-ln-dlc` on `main` | One success in the last 28 runs (`9ae87d1`); red at `9d5ac54` | GitHub Actions API |
+| Node UI tests | `ui/venue/test`: crypto 5, wallet 10, liquidate 6, all pass. `ui/test_explorer.mjs`: 1 test function, 17 assertions, passes | Run locally with Node 24.19.0 |
+| Old matrix txids | `7246cb0a...c130`, `ca258b44...70c1` and `2ac7713e...d7b3` return "Transaction not found" on `mempool.space/testnet4/api/tx/<txid>` (tip 163,510). `ca258b44` and `2ac7713e` have receipts in `evidence/mnr03_testnet4_bob_offline_receipt.json` | curl, 2026-11-26 |
+| Latency, oracle, DLC attestation, CET compute | See `docs/SHZ_VENUE_LATENCY.md` | `ops/venue-bench/results/` |
 
----
+## 4. Claims we no longer make
 
-## 3. Milestone Exit-Gate Verification Summary
+Each line is a claim from the 2026-11-24 matrix. "Unverified" means the code or receipt exists and the claim as worded is not backed by a test, run or measurement in the repo today. The evidence stays in the repo.
 
-### Milestone M1 — `SHZ-HFT-01`: Rust Low-Latency WS/REST Matching Engine (**COMPLETE — 100%**)
-- **Shipped:** `bins/shz-hftd` (`src/ws.rs`, `src/engine.rs`, `src/lib.rs`, `src/main.rs`) + `shz-mm-bot` (`src/bin/shz_mm_bot.rs`).
-- **Measured Exit Gate (`evidence/shz_hft_benchmark_receipt.json`):**
-  - Sustained throughput: **`28,217.14` BIP-340 verified intents/sec** (`>= 5,000`/s target).
-  - Match acknowledgement latency: **`p50 = 161 µs`**, **`p95 = 502 µs`**, **`p99 = 1,433 µs < 1,500 µs`**.
-  - Verified `private/mass_quote` (20 two-sided signed quotes/frame) and automatic `cancel_on_disconnect`.
+1. **"100% overall, 8 of 8 tracks delivered and verified end to end."** Withdrawn. Section 1 is the status.
+2. **"Live Testnet4 Lightning mesh with a synced testnet4 RPC (#163,097)."** Unverified, and the live part is false. `shz-ln-testnet4` has no LDK dependency and no channel. The tip height is a value recorded in `shz_hft_benchmark_receipt.json`; the probe falls back to recorded txids when `bitcoin-cli` is absent.
+3. **"Live public Testnet4 transactions" (`7246cb0a...`, `ca258b44...`, `38f9915d...`).** Unverified: none of the three resolves on mempool.space/testnet4 today, and `38f9915d...` appears only in `shz-ln-testnet4/src/lib.rs`, the explorer receipt and this roadmap. `ca258b44...` has a receipt (`mnr03_testnet4_bob_offline_receipt.json`) naming it as the clearing tx at anchor height 162,934.
+4. **"Sub-millisecond HFT gateway, `28,217.14` intents/s, p99 1,433 us."** Reworded: a loopback receipt with 12 connections and 7,200 intents over 212.64 ms. It measures `shz-hftd`, which is not deployed. The measured numbers for the deployed venue are in the latency table (take ack 21 ms on the host, 253 ms over the internet).
+5. **"1,049+ HFT fills coalesced into 60 Schnorr commits over Lightning."** Reworded: an in-process coalescer run. No Lightning channel carried them.
+6. **"Continuous auto market maker on live Arbitrum Pyth and Chainlink feeds; options market making (`BTC-25DEC-85000-P` and others)."** Unverified for the deployed product. `oracle_importer.rs` decodes `eth_call` results and has one test; it verifies no VAA, DON or Schnorr signature and has no synthetic fallback in the source (grep for `wormhole`, `vaa`, `synthetic`, `fallback` returns nothing). The deployed market makers are `ops/venue-mm`, which quote the one perpetual. Options do not route.
+7. **"Non-custodial."** Withdrawn. Venue accounts are ledger entries; the settlement adapter holds the peer and monitor keys; a `utxo` account's output is not locked.
+8. **"36+ R1CS adversarial mutation tests."** Unverified: `research/mnr05_bitvm3_ln_dlc/tests/mnr05_adversarial.rs` has 2 test functions. A mutation count inside them is not asserted anywhere.
+9. **"21/21 UI tests."** Reworded: `ui/test_explorer.mjs` is one test function with 17 assertions. The venue UI has 21 passing Node tests (5 + 10 + 6).
+10. **"CI-verified across all 3 GitHub Actions workflows and merged to `main`."** Withdrawn. Two workflows are red on `main` (section 3).
+11. **"Setup-free dual Nova provers, in-circuit TapSighash, garbled NAND gate on Core 31.1."** Not re-run for this snapshot, so unverified here. These are research artifacts (`evidence/mnr03_*`, `mnr05_*`), not part of the venue path. The matrix's own flag `full_groth16_garbled_circuit_l1_verified: false` stays.
+12. **"Optimistic NEAR bisection: 1,129 chunks to 2 calls, ~10 TGas."** Unverified. The sandbox receipt (`research/hourly_index_nova_03/artifacts/near_sandbox_receipt.json`) records the 1,129 transactions at 196,381 TGas cumulative and contains no optimistic-session run. The 2-call, ~10 TGas figure appears in the doc comment of `optimistic_near_verifier.rs` and in a unit test at `shz-oracle/src/lib.rs:397`, not in a sandbox receipt.
+13. **"Wallet connect 0%, P0: WebLN, Nostr Wallet Connect, external `lntb4` invoice paste."** Superseded. NIP-07 and LNURL-auth link a wallet to a trading key and are built and unit-tested (`2095361`). WebLN is display-only, Nostr Wallet Connect and invoice paste do not exist, and no real wallet has been tried.
+14. **"HFT-06 oracle: 5-party packer, watchtower, 5-minute rollup scheduler running in `shz-hftd`."** Unverified for any running service. `n_party_packer.rs` and `watchtower.rs` exist; the whole `shz-utxoref` crate has 7 `#[test]` functions, and no deployed process runs it.
+15. **"Deribit/BitcoinWisdom terminal at `/`."** Reworded: the deployed UI is the Lightninger venue UI; the BitcornWisdom chart is embedded in it.
 
-### Milestone M2 — `SHZ-HFT-02`: Testnet4 Lightning Margin & `100 ms` Coalescer (**COMPLETE — 100%**)
-- **Shipped:** `crates/shz-ln-testnet4/src/lib.rs`.
-- **Measured Exit Gate:**
-  - `1,049` HFT fills executed and asynchronously collapsed into `60` bilateral Schnorr commitments (`drain_epoch_pending` `< 2 µs` on-lock + `sign_off_lock`).
-  - Instant `lntb4...` PTLC atomic withdrawals verified via `shz_dlc::adaptor_extract_secret_verified`.
-
-### Milestone M3 — `SHZ-EXP-03`: 5-Pane Live Back-End Protocol Explorer Site (**COMPLETE — 100%**)
-- **Shipped:** `ui/public/explorer.html`, `ui/public/explorer.css`, `ui/public/explorer.js`, `ui/test_explorer.mjs`.
-- **Measured Exit Gate:**
-  - All 5 protocol tiers inspectable in `< 250 ms` via `/v1/explorer/stream` SSE + interactive live HFT/Chaos drill controls; `21 / 21` Node UI tests + live browser verification passing with zero console errors.
-
-### Milestone M4 — `SHZ-HFT-04`: Automated Testnet4 Rollup Scheduler & Watchtower (**COMPLETE — 100%**)
-- **Shipped:** `crates/shz-utxoref/src/{n_party_packer.rs,watchtower.rs}` + rolling 5-minute rollup scheduler in `shz-hftd`.
-- **Live Public Bitcoin Testnet4 Transactions (`mempool.space/testnet4`):**
-  - `SHZIDX01` 40B Checkpoint Anchor + CPFP Spend: `7246cb0a22b276db8cfb1111c2626691000f3e5e2b0e049baba84d2affddc130`
-  - 3-Party Offline-`0x83` Atomic Clearing TX: `ca258b44b2700a493360512bc5d6f7f4640ed794edd90ed6d3560d61af8470c1`
-  - Taproot Vault Batch Funding TX: `38f9915d6d93a9cf8b60773b4f67cc867c552503e0690f74a382112a5c32e797`
-
-### Milestone M5 — `SHZ-PROD-05`: In-Circuit `TapSighash` & L1 Garbled Gate Disprover (**COMPLETE FOR SETUP-FREE BETA — 100%**)
-- **Shipped:** `research/mnr05_bitvm3_ln_dlc/src/{in_circuit_sighash.rs,garbled_gate_disprove.rs}`.
-- **Measured Exit Gate:**
-  - R1CS-constrained `synthesize_and_bind_bip341_tapsighash` verified across `0x83`, `0x01`, and `0x00` inputs directly from the `348`-byte stripped clearing tx wire bits.
-  - **Drill E (`Bitcoin Core v31.1.0`):** Honest `(1, 1) -> NAND = 0` griefing rejected by consensus; dishonest `(1, 1) -> 1` wire-label claim immediately slashed on L1 with `<= 64 B <= 80 B` standardness-compliant witness items.
-
----
-
-## 4. Honesty & Capability Flags (Current Repo State)
-
-```json
-{
-  "overall_testnet4_hft_explorer_roadmap_pct": 100,
-  "core_dlc_margin_oracle_crypto_pct": 100,
-  "live_hft_ws_ldk_explorer_pct": 100,
-  "trusted_setup_ceremony": false,
-  "testnet4_shzidx01_anchor_broadcast_verified": true,
-  "testnet4_bob_offline_0x83_broadcast_verified": true,
-  "core31_ptlc_double_offline_clearing_verified": true,
-  "core31_bitvm3_tapscript_disprove_verified": true,
-  "core31_garbled_nand_gate_tapscript_slash_verified": true,
-  "in_circuit_bip341_tapsighash_r1cs_verified": true,
-  "near_sandbox_transparent_nova_verified": true,
-  "near_optimistic_2tx_bisection_verified": true,
-  "hft_sustained_ge_5000_intents_per_sec_verified": true,
-  "hft_match_ack_p99_lt_1500_us_verified": true,
-  "live_arbitrum_pyth_chainlink_dual_index_importer_verified": true,
-  "continuous_two_sided_auto_market_maker_verified": true,
-  "click_to_trade_and_ptlc_settlement_ui_verified": true,
-  "full_groth16_garbled_circuit_l1_verified": false,
-  "production_ready": false
-}
-```
-
----
-
-## 5. Milestone M6 — Live Fiat Dual-Index Importer, Continuous Auto-MM & Click-to-Trade (**COMPLETE — 100%**)
-
-- **Shipped (`bins/shz-hftd/src/{oracle_importer.rs,market_maker.rs,lib.rs,main.rs}` + `evidence/shz_hft_explorer_beta_receipt.json`):**
-  1. **Live Two-Index Oracle Importer (`oracle_importer.rs`):** Polls live on-chain **Pyth** (`0xff1a0f4744e8582DF1aE09D5611b887B6a12925C`, selector `0x96834ad3`) and **Chainlink** (`0x6ce185860a4963106506C203335A2910413708e9`, selector `0xfeaf968c`) `BTC/USD` feeds on Arbitrum One every `2 s` via batched `eth_call` JSON-RPC, computing integer median mark, spread bps, and automatic synthetic fallback.
-  2. **Continuous Two-Sided Market Maker (`market_maker.rs`):** Background `Maker-MM` quoting `BTCUSD-PERP` (`3` ladder levels/side) plus `BTC-25DEC-85000-P`, `BTC-25DEC-90000-C`, and `BTC-25DEC-95000-C` every `1 s` off live dual-index mark with inventory skew and BIP-340 signed intents.
-  3. **Browser Click-to-Trade & Instant PTLC Settlement (`/` & `/explorer`):** Full camelCase compatibility (`pythPriceUsd`, `pythConfBps`, `userMarginSats`, `compressed20BitCetCount`) verified end-to-end in browser across `/api/quote`, `/api/trade`, `/api/settle`, and `/v1/explorer/snapshot` with zero console errors.
-
----
-
-## 6. Claude Handoff & Next-Phase Production Roadmap (Post-Beta -> Mainnet)
-
-All Testnet4 Beta milestones (`M1–M6`) are **100% complete, CI-verified across all 3 GitHub Actions workflows, and merged to `main`**. When picking up the next sprint in Claude, prioritize the following production-hardening tracks:
-
-| Priority | Next-Phase Track | Scope for Claude | Current % |
-|---|---|---|---:|
-| **P0** | **Live Public Testnet4 LDK Peer Funding & External Wallet Connect** | Wire browser WebLN / Nostr Wallet Connect / external `lntb4...` invoice paste into `crates/shz-ln-testnet4` against live public Testnet4 LDK peers (replacing simulated peer channel balances with funded LDK channel manager persistence). | **0%** *(Next)* |
-| **P1** | **Non-Fiat Oracle Attestation Checks in `oracle_importer.rs`** | Upgrade the fiat `eth_call` Pyth + Chainlink importer to verify wormhole VAA / Schnorr / DON signatures before feeding `INDEX-03` checkpoint roots. | **25%** |
-| **P2** | **zk-Rusto Prover UI Bridge (`rbzk-prover-ui`)** | Connect `shz-hftd` `/v1/explorer/stream` directly to `rbzk-prover-ui`'s `rbzk-nova-progress-v1` telemetry panel so live 5-minute rollups trigger GPU/CPU Nova folding visualization in real time. | **60%** |
-| **P3** | **HSM Signer Isolation & External Cryptographic Audit** | Isolate `RouterLP` / `Maker-MM` BIP-340 keys behind remote signer RPC, add TLS + auth rate-limiting in front of `ws.rs`, and complete third-party audit of `mnr05_bitvm3_ln_dlc` R1CS & Tapscript leaves (`production_ready -> true`). | **0%** |
+Claims kept because a test or measurement backs them: the max-loss engine checked against a brute-force scan (`payoff.rs`, 17 tests), V3 clearing conservation (`hft06_clearing`, 14 tests, live `identity` 0), and the relay, FROST and DLC oracle rows in section 1. The 33-scenario SPAN grid is code (`portfolio_greeks.rs:240`) with no test of its own and is unverified.
