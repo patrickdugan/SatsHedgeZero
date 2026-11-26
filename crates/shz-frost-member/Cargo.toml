@@ -1,0 +1,26 @@
+[package]
+name = "shz-frost-member"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Drop-in Rust replacement for ops/public-relay/frost_signer.py: one FROST/DLC confederation member with k256 secret arithmetic."
+
+[features]
+default = ["fetch"]
+# The member's own HTTPS reading of the fast price sources (F-03).
+fetch = ["dep:native-tls"]
+# /test/* routes and harness callbacks for ops/public-relay/test_rust_member.py. Never deploy.
+test-hooks = []
+
+[dependencies]
+hmac.workspace = true
+k256.workspace = true
+native-tls = { version = "0.2", optional = true }
+rand_core.workspace = true
+sha2.workspace = true
+
+[[bin]]
+name = "shz-frost-member"
+path = "src/main.rs"

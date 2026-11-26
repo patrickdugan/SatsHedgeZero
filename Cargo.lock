@@ -1103,6 +1103,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "shz-frost-member"
+version = "0.2.0"
+dependencies = [
+ "hmac",
+ "k256",
+ "native-tls",
+ "rand_core 0.6.4",
+ "sha2",
+]
+
+[[package]]
 name = "shz-hftd"
 version = "0.2.0"
 dependencies = [
