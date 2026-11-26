@@ -178,6 +178,62 @@ class DlcOracle(unittest.TestCase):
         finally:
             c.close()
 
+    def test_tick_attests_before_setting_up_the_next_event(self):
+        """The event that enters the horizon at a maturity is set up only after that
+        maturity is attested, so the nonce dealing never delays the attestation."""
+        c = Confed(nbits=4)
+        try:
+            c.coord.every, c.coord.ahead = 3_600, 1
+            now_s = pr.now_us() // 1_000_000
+            m = now_s + 30  # the packet slot must be within the members' 60 s skew bound
+            ev = c.coord.setup(m)
+            order = []
+            real_attest = c.coord.attest
+
+            def attest(e):
+                out = real_attest(e)
+                order.append(("attest", out["status"]))
+                return out
+            c.coord.attest = attest
+            c.coord.setup = lambda mat: order.append(("setup", mat))
+
+            c.coord.tick(now=m - 30)  # maturity close: no setup, nothing to attest yet
+            c.coord.tick(now=m + 2)  # matured, before the attest delay: still no setup
+            self.assertEqual(order, [])
+            c.coord.tick(now=m + dlc_coord.ATTEST_DELAY_S)  # no packet yet: attest waits, setup stays held
+            self.assertEqual(order, [("attest", "announced")])
+            c.relay.publish(m * 1_000_000, fake(BASE))
+            order.clear()
+            c.coord.tick(now=m + dlc_coord.ATTEST_DELAY_S + 1)
+            nxt = (m + dlc_coord.ATTEST_DELAY_S + 1) // 3_600 * 3_600 + 3_600
+            self.assertEqual(order, [("attest", "attested"), ("setup", nxt)])
+            self.assertEqual(c.coord.load(ev["core"]["event_id"])["status"], "attested")
+
+            # An event that stays unresolved holds setup for at most SETUP_HOLD_AFTER_S.
+            m2 = m + 60
+            c.coord.setup = dlc_coord.DlcCoordinator.setup.__get__(c.coord)
+            c.coord.setup(m2)
+            c.coord.setup = lambda mat: order.append(("setup", mat))
+            order.clear()
+            c.coord.tick(now=m2 + dlc_coord.SETUP_HOLD_AFTER_S - 1)
+            self.assertEqual(order, [("attest", "announced")])
+            order.clear()
+            c.coord.tick(now=m2 + dlc_coord.SETUP_HOLD_AFTER_S)
+            self.assertEqual(order[0], ("attest", "announced"))
+            self.assertEqual([o[0] for o in order[1:]], ["setup"])
+        finally:
+            c.close()
+
+    def test_next_wait_wakes_at_maturity_plus_attest_delay(self):
+        coord = dlc_coord.DlcCoordinator.__new__(dlc_coord.DlcCoordinator)
+        coord.every = 900
+        base = 900 * 2_000_000
+        self.assertAlmostEqual(coord.next_wait(base + 3.0), dlc_coord.ATTEST_DELAY_S - 3.0 + 0.05)
+        self.assertAlmostEqual(coord.next_wait(base + 4.99), 0.06)
+        self.assertEqual(coord.next_wait(base + 5.5), dlc_coord.TICK_S)
+        self.assertEqual(coord.next_wait(base - 1.0), dlc_coord.TICK_S)
+        self.assertAlmostEqual(coord.next_wait(base + 901.0), 4.05)
+
     def test_dkg_rejects_bad_share_and_tampered_commitments(self):
         group, shares = frost.keygen(3, 5)
         tmp = Path(tempfile.mkdtemp())

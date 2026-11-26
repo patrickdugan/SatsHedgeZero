@@ -27,6 +27,12 @@ import frost
 import public_relay as pr
 
 
+TICK_S = 5
+ATTEST_DELAY_S = 5  # attest from maturity + 5 s: the first packet of the window has reached the ring
+SETUP_HOLD_BEFORE_S = 60
+SETUP_HOLD_AFTER_S = (dlc.OUTCOME_WINDOW_US + dlc.UNATTESTABLE_GRACE_US) // 1_000_000 + 30
+
+
 class SetupWedged(RuntimeError):
     """A member already consumed its dealing for this event (an earlier setup was
     interrupted after `receive`), so the event can never reach a full DKG again."""
@@ -228,8 +234,26 @@ class DlcCoordinator:
         self.stats["setup_abandoned"] = self.stats.get("setup_abandoned", 0) + 1
         print(f"dlc setup {event_id} abandoned: {reason}", flush=True)
 
-    def tick(self):
-        now = int(time.time())
+    def setup_on_hold(self, ev: dict, now: int) -> bool:
+        """True while `ev` is announced and near its maturity. Setup (the nonce dealing,
+        tens of seconds) runs under the same lock as attestation, so it waits until the
+        event is resolved, or at most SETUP_HOLD_AFTER_S past maturity so that an event
+        that cannot be resolved does not stall new announcements."""
+        m = ev["core"]["maturity_unix"]
+        return ev["status"] == "announced" and m - SETUP_HOLD_BEFORE_S <= now < m + SETUP_HOLD_AFTER_S
+
+    def tick(self, now: int | None = None):
+        """Attest first, then set up new events. The event that enters the horizon at a
+        maturity is set up only after that maturity's attestation."""
+        now = int(time.time()) if now is None else now
+        hold = False
+        for p in sorted(self.dir.glob("SHZ-BTCUSD-*.json")):
+            ev = json.loads(p.read_text())
+            if ev["status"] == "announced" and now >= ev["core"]["maturity_unix"] + ATTEST_DELAY_S:
+                ev = self.attest(ev)
+            hold = hold or self.setup_on_hold(ev, now)
+        if hold:
+            return
         nxt = (now // self.every + 1) * self.every
         for m in range(nxt, nxt + self.every * self.ahead, self.every):
             if self.load(event_id_for(m)) is None:
@@ -240,13 +264,17 @@ class DlcCoordinator:
                 except Exception as e:  # noqa: BLE001
                     self.stats["setup_failures"] += 1
                     print(f"dlc setup {event_id_for(m)} failed: {e!r}", flush=True)
-        for p in sorted(self.dir.glob("SHZ-BTCUSD-*.json")):
-            ev = json.loads(p.read_text())
-            if ev["status"] == "announced" and now * 1_000_000 >= ev["core"]["maturity_unix"] * 1_000_000 + 5_000_000:
-                self.attest(ev)
+
+    def next_wait(self, now: float) -> float:
+        """Seconds until the next tick: at most TICK_S, and no later than the next
+        maturity + ATTEST_DELAY_S, so attestation does not wait for the tick phase."""
+        due = (int(now) // self.every) * self.every + ATTEST_DELAY_S
+        if due <= now:
+            due += self.every
+        return min(TICK_S, max(0.05, due - now + 0.05))
 
     def run(self, stop: threading.Event):
-        while not stop.wait(5):
+        while not stop.wait(self.next_wait(time.time())):
             if not self.url_by_index:
                 # Learn member index -> URL mapping from health endpoints.
                 for url in self.relay.signers:
