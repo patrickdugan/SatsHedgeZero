@@ -101,6 +101,33 @@ was the slower machine in this run.
 - The attestation signing in the bench is a single-key simulation (scalar math), a lower bound. The live
   3-of-5 rounds are in the table above.
 
+## Rerun on the live venue after the fixes (2026-11-26, about 05:50Z)
+
+Venue binary `0c6e924`: deadline abort plus margin release. Makers poll every 0.25 s; the relay
+memory fix (`385a6ad`) is deployed. Fresh accounts for every run. Raw rows:
+`ops/venue-bench/results/2026-11-26-rerun/`.
+
+| Run | n | take ack | fill seen | batch sealed | prepared | committed | first run |
+|---|---|---|---|---|---|---|---|
+| self, on the host | 30/30 | 21 ms [48] | 35 ms [53] | 96 ms [126] | 179 ms [230] | **235 ms [304]** | 200 ms [287] |
+| self, laptop over the internet | 20/20 | 253 ms [271] | 260 ms [272] | 326 ms [357] | 781 ms [815] | **1.28 s [1.32]** | 1.63 s [1.88] |
+| vs resident makers (0.25 s poll) | 10/10 | 257 ms [266] | 268 ms [281] | 338 ms [369] | 785 ms [1265] | **1.27 s [2.00]** | 1.34 s [1.97] |
+
+The laptop's TCP connect to the host was 241-291 ms in this run. An earlier remote self run in the same
+window drifted from 1.25 s to 3.84 s over 20 trades (`exec_self_remote_noisy.jsonl`). The time was in
+the client's signing round trips, not the venue: `/api/account` answered in one round trip for those
+same accounts, and `/api/status` in under 1 ms on the host. A repeat with fresh accounts five minutes
+later was flat. The table uses the repeat.
+
+Oracle pipeline on the host (81 packets, all VALID): slot -> last fetch 132 ms [306], FROST signed,
+published and verified by the venue 268 ms [495, p99 717], **slot -> verified mark 415 ms [674, p99
+977]**. One packet is excluded: the venue's first packet after its 05:40:23 restart, which it fetched from
+`/v1/latest` on start-up (3.5 s). The earlier samples' 4.7 s and 5.6 s maxima were the same start-up
+artifact, from the restarts at 05:29 and 04:47. No relay or signer was OOM-killed after 04:10:50.
+
+Not rerun: DLC attestation, which another session is changing in the relay; and the `dlc_bench` CET
+compute, which has no code change.
+
 ## Findings
 
 1. **Signature requests were not pushed (fixed, `dc2ace0`).** Sealing and preparing a batch created
