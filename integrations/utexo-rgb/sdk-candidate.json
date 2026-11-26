@@ -1,0 +1,17 @@
+{
+  "scope": "research-only",
+  "checked": "2026-11-26",
+  "candidatePackages": {
+    "@utexo/wdk-rgb-lightning": "0.2.0-beta.5",
+    "@utexo/rgb-lightning-node-nodejs": "0.2.0-beta.5"
+  },
+  "networks": [
+    "regtest",
+    "signet",
+    "testnet"
+  ],
+  "mainnetLightning": false,
+  "mockAssertions": 31,
+  "nativeExecution": false,
+  "shzBase": "9d5ac542a590fe879ef2b0215489682ec825966c"
+}

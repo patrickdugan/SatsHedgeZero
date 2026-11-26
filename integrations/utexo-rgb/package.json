@@ -1,0 +1,12 @@
+{
+  "name": "shz-utexo-rgb-research",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node mock.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
