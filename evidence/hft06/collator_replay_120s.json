@@ -1,0 +1,29 @@
+﻿{
+  "chain_receipt": "effb98474d262f7335d89df8226a299e5a726b2798f70fdcc18b625faf3ed723",
+  "first_digest": "66a64b899d30698192320a4e2a45641e7ccc17b9d99e25b621187092dcefceab",
+  "hold_emergency": 0,
+  "hold_missing_or_stale": 88,
+  "hold_skew_or_dispersion": 244,
+  "last_digest": "541fde0171b410e9d9fbaa3423aa91565dd3582631b3dedaf12b124d1d6a3fbc",
+  "reports": 895,
+  "schema": "shz-hft06-collator-replay/v1",
+  "slots": 600,
+  "source_stats": {
+    "chainlink_streams": {
+      "accepted": 117,
+      "duplicate": 0,
+      "future_dated": 0,
+      "non_monotone": 168,
+      "rejected": 0
+    },
+    "pyth_pro": {
+      "accepted": 602,
+      "duplicate": 4,
+      "future_dated": 0,
+      "non_monotone": 0,
+      "rejected": 4
+    }
+  },
+  "synthetic": true,
+  "valid": 268
+}

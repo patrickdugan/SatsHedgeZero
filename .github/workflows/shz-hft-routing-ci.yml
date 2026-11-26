@@ -1,0 +1,75 @@
+name: shz-hft-routing-benchmark
+on:
+  push:
+    branches: ["research/shz-hft-routing-*"]
+    paths:
+      - "crates/shz-dex/**"
+      - ".github/workflows/shz-hft-routing-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shz-hft-routing-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  routing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Native routing and existing DLC tests
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hft"
+          cargo test --locked -p shz-dex --release -- --nocapture | tee "$RUNNER_TEMP/hft/tests.txt"
+          cargo build --release --locked -p shz-dex --example hft_route_bench
+      - uses: actions/checkout@v4
+        with:
+          repository: tradelayer-wallet/tl-orderbook-server
+          ref: 9284a178e8c4dcddb67b6ce38db80519ca68e4de
+          path: _tl_orderbook
+          persist-credentials: false
+      - name: Pinned upstream and SHZ matched-host workload
+        run: |
+          set -euo pipefail
+          TL="$GITHUB_WORKSPACE/_tl_orderbook/rust/tl-orderbook"
+          OUT="$RUNNER_TEMP/hft"
+          git -C "$GITHUB_WORKSPACE/_tl_orderbook" rev-parse HEAD | tee "$OUT/tl-commit.txt"
+          test "$(cat "$OUT/tl-commit.txt")" = 9284a178e8c4dcddb67b6ce38db80519ca68e4de
+          rustc -Vv > "$OUT/host.txt"
+          nproc >> "$OUT/host.txt"; uname -a >> "$OUT/host.txt"
+          cargo build --release --locked --manifest-path "$TL/Cargo.toml" --example throughput
+          for mode in cross deep; do
+            for n in 20000 100000; do
+              w="$OUT/$mode-$n.tsv"
+              node "$TL/scripts/gen-workload.cjs" "$mode" "$n" 20261030 > "$w"
+              sha256sum "$w" | tee -a "$OUT/workload-sha256.txt"
+              "$TL/target/release/examples/throughput" "$w" "$OUT/tl-$mode-$n.trace" | tee "$OUT/tl-$mode-$n.json"
+              for routers in 1 4; do
+                "$GITHUB_WORKSPACE/target/release/examples/hft_route_bench" "$w" "$mode" "$routers" | tee "$OUT/shz-$mode-$n-$routers.json"
+              done
+            done
+          done
+          node --input-type=module - "$OUT" <<'JS'
+          import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
+          const d=process.argv[2];const read=f=>JSON.parse(readFileSync(d+'/'+f,'utf8'));
+          const tl=readdirSync(d).filter(f=>/^tl-(cross|deep)-\d+\.json$/.test(f)).map(f=>({file:f,...read(f)}));
+          const shz=readdirSync(d).filter(f=>/^shz-.*\.json$/.test(f)).map(read);
+          if(tl.length!==4||shz.length!==8||shz.some(r=>r.orders!==r.posted+r.fills+r.rejected||r.fills<=0||r.maker_fee_sats+r.taker_fee_sats!==r.oracle_due_sats+r.router_due_sats||r.live_settlement||!r.signature_verification_timed))throw Error('incomplete or unsafe routing benchmark');
+          const out={schema:'shz/hft-routing-bench/v1',tl_commit:'9284a178e8c4dcddb67b6ce38db80519ca68e4de',seed:20261030,tl,shz,semantic_spot_parity:false,actual_hft_network_verified:false,live_lightning:false,source_authentication:false,production_ready:false};
+          writeFileSync(d+'/summary.json',JSON.stringify(out,null,2)+'\n');console.log(JSON.stringify(out));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shz-hft-routing-benchmark
+          path: ${{ runner.temp }}/hft
+          retention-days: 14

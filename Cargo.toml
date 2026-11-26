@@ -1,5 +1,7 @@
 [workspace]
 resolver = "2"
+# The pinned upstream benchmark is checked out here by HFT CI.
+exclude = ["_tl_orderbook/rust/tl-orderbook"]
 members = [
     "crates/shz-margin",
     "crates/shz-dlc",
@@ -8,6 +10,8 @@ members = [
     "crates/shz-dex",
     "crates/shz-nova-bitvm",
     "crates/shz-ln-testnet4",
+    "crates/shz-relay",
+    "crates/shz-venue",
     "bins/shz-cli",
     "bins/shz-hftd",
 ]
@@ -31,6 +35,8 @@ shz-ln-testnet4 = { path = "crates/shz-ln-testnet4" }
 borsh = { version = "1.5", features = ["derive"] }
 ed25519-dalek = { version = "2.1", default-features = false, features = ["std", "fast"] }
 hex = "0.4"
+hmac = "0.12"
+sha3 = "0.10"
 k256 = { version = "0.13", features = ["arithmetic", "schnorr", "ecdsa", "sha256"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0", features = ["derive"] }

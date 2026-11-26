@@ -25,7 +25,12 @@ jobs:
         run: cargo test --workspace --locked
 
       - name: Run strict clippy check
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: |
+          # Errors are also emitted as annotations (readable without sign-in).
+          if ! cargo clippy --workspace --all-targets --locked --message-format=short -- -D warnings > clippy.txt 2>&1; then
+            grep -vE '^\s*(Compiling|Checking|Blocking|Downloaded|Downloading|Updating|Locking)' clippy.txt | grep -E 'error|warning' | head -10 | while IFS= read -r l; do echo "::error title=clippy::$l"; done
+            exit 1
+          fi
 
       - name: Run synthetic and Nova/BitVM3 verification suites
         run: |

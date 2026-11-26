@@ -1,0 +1,25 @@
+[package]
+name = "shz-venue"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Testnet trading venue: HFT-06 tiered router on FROST-signed marks, HTTP/WebSocket API, BitcornWisdom relay feed and plumbing explorer."
+
+[dependencies]
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+hex.workspace = true
+k256.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+shz-dex.workspace = true
+shz-dlc.workspace = true
+shz-margin.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "macros", "io-util", "signal", "fs"] }
+tokio-tungstenite = { version = "0.28", default-features = false, features = ["handshake"] }
+
+[[bin]]
+name = "shz-venue"
+path = "src/main.rs"

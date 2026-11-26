@@ -1,0 +1,192 @@
+{
+  "schema": "shz-hft06-relay-bench/v1",
+  "synthetic": true,
+  "production_ready": false,
+  "platform": "windows-x86_64 (loopback, single process)",
+  "mode": "trusted_relay",
+  "release": {
+    "intermediate_delay_us": 100000,
+    "standard_delay_us": 200000,
+    "max_clock_uncertainty_us": 2000,
+    "certification_deadline_us": 200000
+  },
+  "seconds": 60,
+  "slots": 305,
+  "valid_slots": 137,
+  "hold_slots": [
+    44,
+    124,
+    0
+  ],
+  "reports": 457,
+  "rejected_reports": 90,
+  "ingest_verify_normalize": {
+    "count": 457,
+    "p50_us": 127,
+    "p95_us": 895,
+    "p99_us": 1151,
+    "max_us": 1550,
+    "mean_us": 297
+  },
+  "certify_durable": {
+    "count": 305,
+    "p50_us": 2815,
+    "p95_us": 3839,
+    "p99_us": 4607,
+    "max_us": 6806,
+    "mean_us": 2560
+  },
+  "server_send_after_release": {
+    "intermediate": {
+      "count": 305,
+      "p50_us": 6655,
+      "p95_us": 13311,
+      "p99_us": 14335,
+      "max_us": 14358,
+      "mean_us": 6528
+    },
+    "premium": {
+      "count": 305,
+      "p50_us": 1663,
+      "p95_us": 2303,
+      "p99_us": 3071,
+      "max_us": 7489,
+      "mean_us": 1656
+    },
+    "standard": {
+      "count": 305,
+      "p50_us": 4607,
+      "p95_us": 11263,
+      "p99_us": 12287,
+      "max_us": 12525,
+      "mean_us": 4926
+    }
+  },
+  "tiers": {
+    "intermediate": {
+      "clients": 3,
+      "received": 915,
+      "expected": 915,
+      "lost": 0,
+      "verify_failures": 0,
+      "recv_after_boundary": {
+        "count": 915,
+        "p50_us": 108977,
+        "p95_us": 115566,
+        "p99_us": 116319,
+        "max_us": 116651,
+        "mean_us": 108859
+      },
+      "recv_after_release": {
+        "count": 915,
+        "p50_us": 6977,
+        "p95_us": 13566,
+        "p99_us": 14319,
+        "max_us": 14651,
+        "mean_us": 6859
+      },
+      "client_verify": {
+        "count": 915,
+        "p50_us": 214,
+        "p95_us": 309,
+        "p99_us": 522,
+        "max_us": 1430,
+        "mean_us": 222
+      }
+    },
+    "premium": {
+      "clients": 3,
+      "received": 915,
+      "expected": 915,
+      "lost": 0,
+      "verify_failures": 0,
+      "recv_after_boundary": {
+        "count": 915,
+        "p50_us": 10430,
+        "p95_us": 17929,
+        "p99_us": 19772,
+        "max_us": 20467,
+        "mean_us": 10568
+      },
+      "recv_after_release": {
+        "count": 915,
+        "p50_us": 1816,
+        "p95_us": 2679,
+        "p99_us": 3377,
+        "max_us": 7824,
+        "mean_us": 1920
+      },
+      "client_verify": {
+        "count": 915,
+        "p50_us": 206,
+        "p95_us": 295,
+        "p99_us": 542,
+        "max_us": 812,
+        "mean_us": 208
+      }
+    },
+    "standard": {
+      "clients": 3,
+      "received": 915,
+      "expected": 915,
+      "lost": 0,
+      "verify_failures": 0,
+      "recv_after_boundary": {
+        "count": 915,
+        "p50_us": 206431,
+        "p95_us": 213403,
+        "p99_us": 214555,
+        "max_us": 214946,
+        "mean_us": 207247
+      },
+      "recv_after_release": {
+        "count": 915,
+        "p50_us": 4431,
+        "p95_us": 11403,
+        "p99_us": 12555,
+        "max_us": 12946,
+        "mean_us": 5247
+      },
+      "client_verify": {
+        "count": 915,
+        "p50_us": 210,
+        "p95_us": 323,
+        "p99_us": 515,
+        "max_us": 848,
+        "mean_us": 218
+      }
+    }
+  },
+  "realized_lead_premium_vs_standard": {
+    "count": 305,
+    "p50_us": 197746,
+    "p95_us": 201749,
+    "p99_us": 202870,
+    "max_us": 205640,
+    "mean_us": 196668
+  },
+  "realized_lead_premium_vs_intermediate": {
+    "count": 305,
+    "p50_us": 103050,
+    "p95_us": 106305,
+    "p99_us": 106925,
+    "max_us": 107472,
+    "mean_us": 98280
+  },
+  "realized_lead_intermediate_vs_standard": {
+    "count": 305,
+    "p50_us": 95834,
+    "p95_us": 109207,
+    "p99_us": 109927,
+    "max_us": 110502,
+    "mean_us": 98387
+  },
+  "deliveries_per_second": 61.0,
+  "bytes_out": 3015912,
+  "bytes_per_delivery": 824.0196721311476,
+  "checkpoint_log_bytes_per_slot": 668.0196721311476,
+  "signer_lock_bytes_per_slot": 133.64590163934426,
+  "lagging_disconnects": 0,
+  "late_certificates": 0,
+  "clock_uncertainty_note": "single process, one monotonic clock: clock uncertainty 0 by construction; cross-host uncertainty unmeasured"
+}

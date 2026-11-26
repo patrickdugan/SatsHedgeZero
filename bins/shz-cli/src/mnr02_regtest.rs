@@ -78,7 +78,7 @@ pub struct Mnr02RegtestReport {
     pub noncustodial_boundary_statement: &'static str,
 }
 
-struct IsolatedRegtestNode {
+pub(crate) struct IsolatedRegtestNode {
     child: Child,
     cli_path: PathBuf,
     datadir: PathBuf,
@@ -86,7 +86,7 @@ struct IsolatedRegtestNode {
 }
 
 impl IsolatedRegtestNode {
-    fn spawn(bitcoind_path: &Path) -> Self {
+    pub(crate) fn spawn(bitcoind_path: &Path) -> Self {
         let cli_path = bitcoind_path
             .parent()
             .expect("bin dir")
@@ -152,7 +152,7 @@ impl IsolatedRegtestNode {
         panic!("bitcoind RPC failed to become ready");
     }
 
-    fn cli_raw(&self, args: &[&str]) -> Result<String, String> {
+    pub(crate) fn cli_raw(&self, args: &[&str]) -> Result<String, String> {
         let out = Command::new(&self.cli_path)
             .arg("-regtest")
             .arg(format!("-datadir={}", self.datadir.display()))
@@ -169,16 +169,16 @@ impl IsolatedRegtestNode {
         }
     }
 
-    fn cli_json(&self, args: &[&str]) -> Value {
+    pub(crate) fn cli_json(&self, args: &[&str]) -> Value {
         let txt = self.cli_raw(args).expect("bitcoin-cli JSON call succeeded");
         serde_json::from_str(&txt).expect("valid JSON from bitcoin-cli")
     }
 
-    fn height(&self) -> u64 {
+    pub(crate) fn height(&self) -> u64 {
         self.cli_raw(&["getblockcount"]).unwrap().parse().unwrap()
     }
 
-    fn mine_blocks(&self, count: u64, miner_addr: &str) -> u64 {
+    pub(crate) fn mine_blocks(&self, count: u64, miner_addr: &str) -> u64 {
         let c = count.to_string();
         self.cli_raw(&["generatetoaddress", &c, miner_addr])
             .expect("generatetoaddress");
@@ -187,7 +187,7 @@ impl IsolatedRegtestNode {
 
     /// Funds a 34-byte P2TR `script_pubkey` (`0x51 0x20 <output_x>`) with exact `sats`
     /// using Bitcoin Core's `getdescriptorinfo("rawtr(...)")` + `deriveaddresses` + `createrawtransaction`.
-    fn fund_raw_script(&self, script_pubkey: &[u8], sats: u64) -> (String, u32) {
+    pub(crate) fn fund_raw_script(&self, script_pubkey: &[u8], sats: u64) -> (String, u32) {
         assert_eq!(script_pubkey.len(), 34);
         assert_eq!(&script_pubkey[..2], &[0x51, 0x20]);
         let out_x_hex = hex::encode(&script_pubkey[2..]);
@@ -222,7 +222,7 @@ impl IsolatedRegtestNode {
         (txid, vout)
     }
 
-    fn test_mempool_accept(&self, raw_tx_hex: &str) -> (bool, String) {
+    pub(crate) fn test_mempool_accept(&self, raw_tx_hex: &str) -> (bool, String) {
         let arg = format!("[\"{raw_tx_hex}\"]");
         let res = self.cli_json(&["testmempoolaccept", &arg]);
         let entry = &res[0];
@@ -244,7 +244,7 @@ impl Drop for IsolatedRegtestNode {
 }
 
 /// Key-path P2TR output (`OP_1 <32-byte untweaked key>`) for clean standalone destination/anchor tests.
-fn keypath_only_p2tr_spk(secret: &[u8; 32]) -> Vec<u8> {
+pub(crate) fn keypath_only_p2tr_spk(secret: &[u8; 32]) -> Vec<u8> {
     let pk_x = pubkey_x_from_secret(secret).unwrap();
     let mut spk = vec![0x51, 0x20];
     spk.extend_from_slice(&pk_x);

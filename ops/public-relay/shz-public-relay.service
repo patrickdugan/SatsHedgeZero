@@ -1,0 +1,25 @@
+[Unit]
+Description=SHZ public trusted relayer (delayed public BTC/USD, BIP340-signed, hash-chained)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=shzrelay
+Group=shzrelay
+StateDirectory=shz-public-relay
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3 /opt/shz-public-relay/public_relay.py --state /var/lib/shz-public-relay --listen 0.0.0.0:8090 --interval-ms 5000
+Restart=always
+RestartSec=3
+MemoryMax=220M
+CPUQuota=30%
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ReadWritePaths=/var/lib/shz-public-relay
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

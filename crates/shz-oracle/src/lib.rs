@@ -2,7 +2,10 @@
 //! `t-of-n` FROST state oracle confederation, and NEAR-compatible bonded fraud proofs.
 
 pub mod fraud_proofs;
+pub mod chainlink_streams;
+pub mod collator;
 pub mod frost;
+pub mod hft_packets;
 pub mod live_relayer;
 pub mod optimistic_near_verifier;
 pub mod pyth_lazer;

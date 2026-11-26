@@ -1,0 +1,74 @@
+{
+ "pubkey": "45a6a0dba963a390ce194ef56d508c10da68307e136ba12b74f7b06560f30b68",
+ "packet": {
+  "body": {
+   "schema": "shz-public-relay/v1",
+   "market": "BTC/USD",
+   "data_class": "public_delayed",
+   "seq": 1,
+   "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+   "interval_ms": 5000,
+   "slot_us": 1795569845000000,
+   "assembled_us": 1795569847251029,
+   "sources": [
+    {
+     "id": "bitstamp",
+     "role": "fast",
+     "fetched_us": 1795569847095844,
+     "response_sha256": "4e43403a09aa2af4eb2dfa1ef97e4613f760a64a730ac045e905e0eb522ade30",
+     "ok": true,
+     "source_ts_us": 1795569850000000,
+     "ts_from_fetch": false,
+     "age_us": 0
+    },
+    {
+     "id": "chainlink_eth",
+     "role": "audit",
+     "fetched_us": 1795569846703752,
+     "response_sha256": "1a11212c30012d5389a4d57931c42193d00f17f6f6c64262d98e1b4090514c53",
+     "ok": true,
+     "source_ts_us": 1795569443000000,
+     "ts_from_fetch": false,
+     "age_us": 402000000
+    },
+    {
+     "id": "coinbase",
+     "role": "fast",
+     "fetched_us": 1795569846524034,
+     "response_sha256": "42b4ff9c5e545291f62a0a9505b95dc0da27fe8b88319d67c94d2e2639d7b441",
+     "ok": true,
+     "source_ts_us": 1795569848358044,
+     "ts_from_fetch": false,
+     "age_us": 0
+    },
+    {
+     "id": "gemini",
+     "role": "fast",
+     "fetched_us": 1795569847250035,
+     "response_sha256": "39743a8529102c78184cf077b41aa5ab40dd651bb888f7dfcc64fa21c366924d",
+     "ok": true,
+     "source_ts_us": 1795569840000000,
+     "ts_from_fetch": false,
+     "age_us": 5000000
+    },
+    {
+     "id": "kraken",
+     "role": "fast",
+     "fetched_us": 1795569846509726,
+     "response_sha256": "7be89310637bfe848e1a29c334db5bfed5230f58eba24f1a4f20ef07d4f530e8",
+     "ok": true,
+     "source_ts_us": 1795569846509726,
+     "ts_from_fetch": true,
+     "age_us": 0
+    }
+   ],
+   "fast_sources_used": 4,
+   "median_e8": 5933278500000,
+   "dispersion_bps": 3,
+   "audit_deviation_bps": 15,
+   "status": "VALID"
+  },
+  "digest": "ce74052f957b2e6e2e5b3411abb2fab14cf93dcd95b3a15c40aeb01343a1d987",
+  "signature": "c4fb5f89489efe1ee20f6cd803190e81ccc4896f9ee8839dcaa832485e3ddf85fc2dce7ec9067cee6b2675bce610034a928622757e5c6efee6741a8c65649ced"
+ }
+}

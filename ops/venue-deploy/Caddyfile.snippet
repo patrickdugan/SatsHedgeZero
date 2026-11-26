@@ -1,0 +1,5 @@
+# Appended to /etc/caddy/Caddyfile on the witness host. Caddy obtains the TLS
+# certificate for the sslip.io name and proxies HTTP and WebSocket upgrades.
+shz-venue.170-75-168-145.sslip.io {
+    reverse_proxy 127.0.0.1:8096
+}

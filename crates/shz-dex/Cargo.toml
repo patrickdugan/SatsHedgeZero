@@ -11,8 +11,13 @@ description = "Decentralized zero-fee P2P inverse orderbook, matching engine, an
 hex.workspace = true
 k256.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 shz-dlc.workspace = true
 shz-margin.workspace = true
 shz-oracle.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+shz-relay = { path = "../shz-relay" }
+tokio = { version = "1", features = ["sync"] }

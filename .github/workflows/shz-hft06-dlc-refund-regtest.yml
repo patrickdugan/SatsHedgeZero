@@ -1,0 +1,50 @@
+name: shz-hft06-dlc-refund-regtest
+
+on:
+  push:
+    branches: ["research/shz-hft06-*"]
+    paths:
+      - "bins/shz-cli/**"
+      - "crates/shz-utxoref/**"
+      - "ops/public-relay/fixture_dlc_event*.json"
+      - ".github/workflows/shz-hft06-dlc-refund-regtest.yml"
+  workflow_dispatch:
+
+jobs:
+  dlc-oracle-regtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.99.0+
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Unit tests for the refund planner
+        run: cargo test --locked -p shz-cli
+
+      - name: Install SHA256-pinned Bitcoin Core 31.1
+        run: |
+          curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
+          echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
+
+      - name: Run attested settlement and unattested refund drills on regtest
+        run: |
+          cargo run --locked --release --bin shz -- dlc-oracle-regtest /tmp/bitcoin-31.1/bin/bitcoind > /tmp/dlc_oracle_regtest_ci.json
+
+      - name: Print key receipt fields as annotations
+        run: |
+          r=/tmp/dlc_oracle_regtest_ci.json
+          echo "::notice title=A attested::event $(jq -r .scenario_a_attested.event_id $r) price $(jq -r .scenario_a_attested.attested_price_usd $r) USD, CET $(jq -r .scenario_a_attested.matching_cet.index $r) of $(jq -r .scenario_a_attested.compressed_cet_count $r), settlement txid $(jq -r .scenario_a_attested.settlement.txid $r) at height $(jq -r .scenario_a_attested.settlement.height $r), outputs $(jq -c .scenario_a_attested.settlement.outputs_sats $r)"
+          echo "::notice title=A premature CET::tip $(jq -r .scenario_a_attested.premature_unilateral_cet.tip_height $r) accepted=$(jq -r .scenario_a_attested.premature_unilateral_cet.accepted $r) reason=$(jq -r .scenario_a_attested.premature_unilateral_cet.reject_reason $r)"
+          echo "::notice title=B premature refund::tip $(jq -r .scenario_b_unattested.premature_refund.tip_height $r) refund_cltv $(jq -r .scenario_b_unattested.premature_refund.refund_cltv_height $r) accepted=$(jq -r .scenario_b_unattested.premature_refund.accepted $r) reason=$(jq -r .scenario_b_unattested.premature_refund.reject_reason $r)"
+          echo "::notice title=B refund::txid $(jq -r .scenario_b_unattested.refund.txid $r) confirmed at height $(jq -r .scenario_b_unattested.refund.height $r), outputs $(jq -c .scenario_b_unattested.refund.outputs_sats $r)"
+          echo "::notice title=B CPFP::txid $(jq -r .scenario_b_unattested.cpfp_child.txid $r) height $(jq -r .scenario_b_unattested.cpfp_child.height $r) ancestors $(jq -r .scenario_b_unattested.cpfp_child.mempool_ancestor_count $r)"
+          echo "::notice title=B plan::maturity_height $(jq -r .scenario_b_unattested.plan.maturity_height $r) refund_cltv_height $(jq -r .scenario_b_unattested.plan.refund_cltv_height $r) min_gap_at_fast_speed $(jq -r .scenario_b_unattested.plan.min_gap_secs_at_fast_speed $r)s"
+
+      - name: Upload receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: dlc-oracle-regtest-receipt
+          path: /tmp/dlc_oracle_regtest_ci.json
