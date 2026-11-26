@@ -120,7 +120,12 @@ impl Venue{
    if self.flat(){assert_eq!((s.carry,s.cash as i128),(0,(s.claims+s.fund) as i128),"flat book: pool holds every claim plus the fund: {s:?}");}
   }
  }
- fn loans(&mut self){assert!(self.d.enable_closing_loans().unwrap());assert!(!self.d.enable_closing_loans().unwrap());assert!(self.d.closing_loans_active().unwrap());}
+ /// Closing loans: already on with clearing, switched on here without it.
+ fn loans(&mut self){
+  let clearing=self.d.clearing_active().unwrap();
+  assert_eq!(self.d.closing_loans_active().unwrap(),clearing);
+  assert_eq!(self.d.enable_closing_loans().unwrap(),!clearing);assert!(self.d.closing_loans_active().unwrap());
+ }
  /// Close every open position at `price` by trading longs against shorts.
  fn flatten(&mut self,price:u64){
   while let (Some(l),Some(s))=((1..=N).find(|&n|self.net(n)>0),(1..=N).find(|&n|self.net(n)<0)){
@@ -480,10 +485,6 @@ fn p1_a_reducing_leg_needs_no_free_margin(){
  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
  assert_eq!(v.bal(1).free,0);
  assert!(matches!(v.attempt(3,1,OrderSide::Short,1000,101_000,(X1,X1)),TierOutcome::Rejected(TierReject::Capacity)));
- // Clearing alone (the journal the live venue has) refuses it too: loans are their own switch.
- let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),m);
- v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
- assert!(matches!(v.attempt(3,1,OrderSide::Short,1000,101_000,(X1,X1)),TierOutcome::Rejected(TierReject::Capacity)));
  let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),m);v.loans();
  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
  assert_eq!((v.bal(1).free,v.bal(1).committed),(0,m));
@@ -553,13 +554,14 @@ fn p3_aborted_or_repeated_closes_do_not_double_borrow(){
  v.check();
 }
 
-/// P4. A journal that refused a zero-free close before closing loans were switched on
-/// replays to the same state after the switch is journaled; the retried close fills.
+/// P4. Margin release without clearing: a zero-free close is refused until
+/// `enable_closing_loans` is journaled; the retry fills and the journal replays to the
+/// same state.
 #[test]
 fn p4_closing_loans_switch_on_a_live_journal_and_replay(){
  let m=margin(1000,100_000,X1);
  let t=Temp::new();let path=t.path();
- let mut v=Venue::with_cap(&path,Some(1_000_000),m);
+ let mut v=Venue::with_cap(&path,V2,m);
  v.trade(2,1,OrderSide::Long,1000,100_000,(X1,X1));
  assert!(matches!(v.attempt(3,1,OrderSide::Short,1000,101_000,(X1,X1)),TierOutcome::Rejected(TierReject::Capacity)));
  v.loans();

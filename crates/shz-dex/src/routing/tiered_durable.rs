@@ -110,7 +110,10 @@ impl State{
  }
  fn enable_clearing(&mut self,fund:u64)->R<()>{
   if !self.netting||self.clearing.is_some(){return Err(Reject::Replay)}
-  self.clearing=Some(ClearingState::open(fund,self.router.account_books().map(|(_,p,b)|(p,b)))?);Ok(())
+  self.clearing=Some(ClearingState::open(fund,self.router.account_books().map(|(_,p,b)|(p,b)))?);
+  // Clearing switches closing loans on as well: the deployed venue journal (clearing
+  // enabled 2026-11-26 12:50Z, running bf4d556 since 12:56Z) depends on it.
+  self.router.set_close_from_lots(true);Ok(())
  }
  fn enable_closing_loans(&mut self)->R<()>{
   if !self.netting||self.router.close_from_lots(){return Err(Reject::Replay)}
@@ -209,8 +212,8 @@ enum Event{
  EnableMarginRelease,
  /// Switch on multilateral clearing with this clearing fund (V3 acknowledgements).
  EnableClearing{fund_sats:u64},
- /// Closing taker legs borrow their margin from the lots they close (`closing_loan`).
- /// Its own switch, so journals that already enabled clearing replay unchanged.
+ /// Closing taker legs borrow their margin from the lots they close (`closing_loan`),
+ /// for a journal with margin release but no clearing (`EnableClearing` turns them on too).
  EnableClosingLoans,
 }
 #[allow(clippy::large_enum_variant)]
@@ -313,9 +316,10 @@ impl DurableTieredRouter{
   self.record(Event::EnableClearing{fund_sats})?;Ok(true)
  }
  pub fn clearing_active(&self)->D<bool>{self.ready()?;Ok(self.state.clearing.is_some())}
- /// Switch on closing loans (journaled once; margin release must be active): a taker leg
- /// that reduces the account's position borrows its leg margin from the lots it closes,
- /// so only a flip excess and the taker fee need free margin. Returns `false` if already on.
+ /// Switch on closing loans without clearing (journaled once; margin release must be
+ /// active): a taker leg that reduces the account's position borrows its leg margin from
+ /// the lots it closes, so only a flip excess and the taker fee need free margin.
+ /// `enable_clearing` switches them on as well. Returns `false` if already on.
  pub fn enable_closing_loans(&mut self)->D<bool>{
   self.ready()?;if self.state.router.close_from_lots(){return Ok(false)}
   self.record(Event::EnableClosingLoans)?;Ok(true)
