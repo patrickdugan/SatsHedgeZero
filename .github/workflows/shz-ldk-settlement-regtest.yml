@@ -1,0 +1,45 @@
+name: shz-ldk-settlement-regtest
+
+on:
+  push:
+    branches: ["main", "research/**"]
+    paths:
+      - "crates/shz-ldk/**"
+      - "crates/shz-dex/src/routing/**"
+      - "Cargo.lock"
+      - ".github/workflows/shz-ldk-settlement-regtest.yml"
+  workflow_dispatch:
+
+jobs:
+  ldk-settlement-regtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.99.0+
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install SHA256-pinned Bitcoin Core 31.1
+        run: |
+          curl -fsSL -o /tmp/bitcoin-31.1.tar.gz https://bitcoincore.org/bin/bitcoin-core-31.1/bitcoin-31.1-x86_64-linux-gnu.tar.gz
+          echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
+
+      - name: Move cleared nets through LDK channels on regtest (G-LN-1a)
+        env:
+          SHZ_BITCOIND: /tmp/bitcoin-31.1/bin/bitcoind
+          SHZ_LDK_RECEIPT: /tmp/ldk_settlement_receipt.json
+        run: cargo test --locked -p shz-ldk -- --ignored --nocapture
+
+      - name: Print receipt fields as annotations
+        run: |
+          r=/tmp/ldk_settlement_receipt.json
+          echo "::notice title=G-LN-1a ledger::realized $(jq -c .realized $r), fund $(jq -r .fund0 $r) -> $(jq -r .fund_after $r), pool cash $(jq -r .cash_after $r)"
+          jq -r '.batches[] | "::notice title=batch \(.sequence)::layer \(.layer) pool_net \(.pool_net) lanes \([.lanes[] | "\(.lane):\(.net // 0)/\(.owner_sats)/\(.venue_sats)/u\(.owner_update_id)"] | join(" "))"' $r
+
+      - name: Upload receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: ldk-settlement-receipt
+          path: /tmp/ldk_settlement_receipt.json

@@ -35,9 +35,12 @@ Investigated before choosing the production implementation of `shz_dex::routing:
 
 | ID | Step | Exit criterion |
 | --- | --- | --- |
-| G-LN-1a | `ldk-node` regtest fee loop: router node pays three recipient offers per `SettlementInstruction`; recipients attest `PaymentClaimed` | Ledger `collected == committed` per recipient, duplicate preimage rejected, payer `fee_paid_msat` booked separately |
+| G-LN-1a | `lightning` `ChainMonitor` with wrapping `Persist` moves each lane's cleared `ClearingRow::net` through a real channel update between regtest LDK nodes; lane evidence from both parties' journaled monitor records is bound into the V3 ack | Balances on both nodes' persisted monitors equal the clearing ledger after batches with gains, losses and fund use; see `SHZ_LDK_SETTLEMENT.md` |
+| G-LN-1e | `ldk-node` regtest fee loop: router node pays three recipient offers per `SettlementInstruction`; recipients attest `PaymentClaimed` (listed as G-LN-1a before 2026-11-26) | Ledger `collected == committed` per recipient, duplicate preimage rejected, payer `fee_paid_msat` booked separately |
 | G-LN-1b | `lightning` `ChainMonitor` with wrapping `Persist`; lane journal records; `ChannelAck` evidence derived from monitor update ids | Kill the process between monitor fsync and ack: on restart the same ack is re-derived; no resolution without the persisted update |
 | G-LN-1c | Independent monitor replica signs acks | Monitor and router disagreement holds the batch unresolved |
 | G-LN-1d | DLC outputs in channel commitments | Separate research track; no adapter dependency |
 
 Testnet4 only after G-LN-1a and G-LN-1b pass on regtest.
+
+The `Head.commitment` mapping above was not adopted: `Head.commitment` still advances by exactly one per Commit (HFT-05's rule is unchanged), and the monitor `update_id` reaches the ack through the monitor records hashed into `ChannelAck.evidence` (`SHZ_LDK_SETTLEMENT.md`).

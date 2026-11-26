@@ -1,0 +1,22 @@
+[package]
+name = "shz-ldk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "LDK channel adapter: moves each lane's cleared net amount through a real channel update and binds the persisted monitor state to the V3 acknowledgement (gate G-LN-1a)."
+
+[dependencies]
+lightning = { version = "0.2.8", features = ["std"] }
+lightning-net-tokio = "0.2.0"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
+hex.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+shz-dex.workspace = true
+shz-dlc.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+shz-margin.workspace = true
