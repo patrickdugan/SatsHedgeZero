@@ -1,0 +1,12 @@
+{"metric":"bip340_sign","n":2000,"median_us":269.0,"p90_us":351.8,"max_us":5732.0,"msgs":1}
+{"metric":"bip340_verify","n":2000,"median_us":237.9,"p90_us":321.7,"max_us":5541.7,"sigs":1}
+{"metric":"bip340_verify_joint","n":2000,"median_us":201.1,"p90_us":274.9,"max_us":4435.4,"sigs":1}
+{"metric":"precompute_digit_points","n":500,"median_us":5695.4,"p90_us":8822.3,"max_us":22003.7,"digits":20}
+{"metric":"anticipation_point_from_table","n":20000,"median_us":8.8,"p90_us":12.3,"max_us":4448.2,"prefix_len":12}
+{"metric":"adaptor_sign","n":1000,"median_us":347.8,"p90_us":492.1,"max_us":5851.4,"cets":1}
+{"metric":"adaptor_verify","n":1000,"median_us":356.2,"p90_us":480.9,"max_us":7640.7,"cets":1}
+{"metric":"adaptor_complete","n":20000,"median_us":0.2,"p90_us":0.3,"max_us":1418.1,"cets":1}
+{"metric":"offer_v0","n":1,"median_us":80.9,"p90_us":80.9,"max_us":80.9,"cets":0}
+{"metric":"sign_and_activate_cets","n":1,"median_us":36004218.4,"p90_us":36004218.4,"max_us":36004218.4,"cets":19192}
+{"metric":"oracle_attest_sign_20_digits","n":1,"median_us":32.7,"p90_us":32.7,"max_us":32.7,"digit_sigs":20}
+{"metric":"settle_on_chain_with_attestation","n":1,"median_us":15465.9,"p90_us":15465.9,"max_us":15465.9,"cets_in_set":19192}
