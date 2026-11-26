@@ -9,7 +9,7 @@ All keys, digests and signatures are lowercase hex. Prices are integer USD. Quan
 An account is one router allocation: an owner key (BIP340 x-only) plus a Bitcoin outpoint whose sats are the collateral cap.
 
 - `demo` accounts: the venue authority signs an allocation over a synthetic outpoint (`txid = tagged_hash("SHZ/VENUE/DEMO-OUTPOINT/V1", owner)`, `vout = 0`) with a cap of 200,000 sats, labelled `TESTNET DEMO CREDIT` everywhere. No coins back it.
-- `utxo` accounts: the outpoint must be an unspent testnet4 output paying P2TR to the owner's key (key-path, no script tree); the venue checks it through the mempool.space testnet4 API before signing, and the cap is its value.
+- `utxo` accounts: the outpoint must be an unspent testnet4 output paying P2TR to the owner's key (key-path, no script tree); the funding transaction must have at least 1 confirmation; the venue checks it through the mempool.space testnet4 API before signing, and the cap is its value.
 
 Registration is two steps because the allocation needs the owner's signature too:
 

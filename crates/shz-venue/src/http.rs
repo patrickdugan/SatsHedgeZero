@@ -335,6 +335,10 @@ async fn verify_utxo(api: &str, owner: &[u8; 32], txid: &[u8; 32], vout: u32) ->
     if out["scriptpubkey"].as_str() != Some(expected.as_str()) {
         return Err("output does not pay P2TR to the owner key".into());
     }
+    // Unconfirmed collateral can be replaced or double-spent: require one confirmation.
+    if tx["status"]["confirmed"].as_bool() != Some(true) {
+        return Err("funding transaction is unconfirmed; register after 1 confirmation".into());
+    }
     let spent = curl_json(format!("{api}/tx/{txid_hex}/outspend/{vout}")).await?;
     if spent["spent"].as_bool() != Some(false) {
         return Err("output is spent or unknown".into());
