@@ -199,18 +199,24 @@ class SignerState:
         key = str(seq)
         if key not in self.s["nonces"]:
             # Drop stale nonces of abandoned older slots before adding a new pair.
-            self.s["nonces"] = {k: v for k, v in self.s["nonces"].items() if int(k) > self.s["last_seq"] and int(k) >= seq - 64}
-            self.s["nonces"][key] = [rand_scalar().to_bytes(32, "big").hex(), rand_scalar().to_bytes(32, "big").hex()]
+            keep = {k: v for k, v in self.s["nonces"].items() if int(k) > self.s["last_seq"] and int(k) >= seq - 64}
+            # Bounded store: discarding an unused nonce is always safe.
+            for k in sorted(keep, key=int)[: max(0, len(keep) - 63)]:
+                del keep[k]
+            keep[key] = [rand_scalar().to_bytes(32, "big").hex(), rand_scalar().to_bytes(32, "big").hex()]
+            self.s["nonces"] = keep
             self._save()
         d, e = self.s["nonces"][key]
         return int(d, 16), int(e, 16)
 
-    def take(self, seq: int, msg: bytes) -> tuple[int, int]:
+    def take(self, seq: int, msg: bytes, slot_us: int | None = None) -> tuple[int, int]:
         if seq <= self.s["last_seq"]:
             raise ValueError("sequence already signed or older")
         pair = self.s["nonces"].pop(str(seq), None)
         if pair is None:
             raise ValueError("no unused nonce for this sequence")
         self.s["last_seq"], self.s["last_msg"] = seq, msg.hex()
+        if slot_us is not None:
+            self.s["last_slot"] = max(slot_us, self.s.get("last_slot", 0))
         self._save()
         return int(pair[0], 16), int(pair[1], 16)

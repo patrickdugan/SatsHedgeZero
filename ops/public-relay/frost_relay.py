@@ -30,6 +30,9 @@ import frost  # noqa: E402
 import public_relay as pr  # noqa: E402
 
 
+SUSPECT_SLOTS = 60  # slots a member stays at the back of the signing order after failing /sign
+
+
 def post(url: str, obj: dict, timeout: float = 2.0) -> dict:
     req = urllib.request.Request(url, data=json.dumps(obj).encode(), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -41,7 +44,9 @@ class FrostRelay(pr.Relay):
         self.group = group
         self.signers = signers
         self.pool = cf.ThreadPoolExecutor(max_workers=len(signers))
-        self.fstats = {"signed_slots": 0, "skipped_slots": 0, "cheaters": {}, "participation": {}}
+        self.fstats = {"signed_slots": 0, "skipped_slots": 0, "cheaters": {}, "participation": {}, "refusals": {}}
+        self.suspect: dict[int, int] = {}
+        self.slot_no = 0
         self.flock = threading.Lock()
         super().__init__(state_dir, interval_ms)
         rp = self.dir / "reserved_seq"
@@ -106,15 +111,29 @@ class FrostRelay(pr.Relay):
         # Members already caught sending a bad partial are excluded from later sets.
         with self.flock:
             banned = set(self.fstats["cheaters"])
-        candidates = [i for i in sorted(commits) if str(i) not in banned]
+        # A member that committed and then refused or timed out on /sign costs the slot:
+        # the others in that set have spent this sequence. Such members go to the back of
+        # the order for SUSPECT_SLOTS slots so the next slot starts from a set without them.
+        self.slot_no += 1
+        self.suspect = {i: until for i, until in self.suspect.items() if until > self.slot_no}
+        candidates = [i for i in sorted(commits, key=lambda i: (i in self.suspect, i)) if str(i) not in banned]
+        spent: set[int] = set()
         for subset in itertools.combinations(candidates, t):
+            if spent & set(subset):
+                continue  # a member that already answered /sign for this sequence cannot sign it again
             cl = [commits[i][1] for i in subset]
             with self.lock:
                 parent = self.ring[-1] if self.ring else None
             req = {"seq": seq, "body": body, "parent": parent, "commitments": cl}
             res = list(self.pool.map(lambda i: self._try(lambda u: post(u + "/sign", req), commits[i][0]), subset))
+            spent |= set(subset)
             if any(r is None for r in res):
-                continue  # a member refused or vanished; its nonce is spent, try another set
+                with self.flock:
+                    for i, r in zip(subset, res):
+                        if r is None:
+                            self.suspect[i] = self.slot_no + SUSPECT_SLOTS
+                            self.fstats["refusals"][str(i)] = self.fstats["refusals"].get(str(i), 0) + 1
+                continue
             partials = {r["index"]: int(r["z"], 16) for r in res}
             try:
                 sig = frost.aggregate(self.group, msg, cl, partials)

@@ -82,7 +82,7 @@ class Confederation(unittest.TestCase):
         group, shares = frost.keygen(3, 5)
         members, servers, urls = [], [], []
         for s in shares:
-            m = frost_signer.Member(s, tmp / f"m{s['index']}")
+            m = frost_signer.Member(s, tmp / f"m{s['index']}", view=frost_signer.NO_PRICE_CHECK)
             srv = frost_signer.serve(m, "127.0.0.1:0")
             threading.Thread(target=srv.serve_forever, daemon=True).start()
             members.append(m)

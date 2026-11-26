@@ -32,6 +32,7 @@ pub enum LedgerError{
  #[error("ledger I/O: {0}")] Io(#[from] io::Error),
  #[error("ledger file locked")] Locked,
  #[error("corrupt or torn ledger journal")] Corrupt,
+ #[error("ledger journal is a valid prefix that ends before the pinned tip")] Rollback,
  #[error("journal configuration mismatch")] Config,
  #[error("writer poisoned after failed persistence; reopen")] Poisoned,
  #[error("invalid recipient policy or group commit bounds")] Policy,
@@ -295,7 +296,9 @@ impl State{
     self.receipts.insert(receipt.payment_hash,receipt.clone());Ok(true)
    },
    LedgerEvent::Instruct{at_us,sequences}=>{
+    let mut once=BTreeSet::new();
     for s in sequences{
+     if !once.insert(*s){return Err(LedgerError::InvalidTransition)}
      let r=self.batches.get(s).ok_or(LedgerError::UnknownBatch)?;
      if !matches!(r.state,St::Committed{..})||r.instructed{return Err(LedgerError::InvalidTransition)}
     }
@@ -375,6 +378,15 @@ impl FeeLedger{
   Ok(Self{state,file:Some(file),tip,poisoned:false})
  }
  pub fn open(path:&Path,router_id:u32,policy:RecipientPolicy,group:GroupCommit)->L<Self>{
+  Self::open_pinned(path,router_id,policy,group,None)
+ }
+ /// Journal tip `(records, digest)`. Store it outside the journal's volume after each
+ /// append and pass it to `open_pinned` to detect a valid-prefix rollback.
+ pub fn tip(&self)->(u64,Key){(self.tip.records,self.tip.digest)}
+ /// As `open`, but fails with `Rollback` unless the journal contains `minimum`.
+ /// Without a pin, recovery assumes storage has not been rolled back.
+ pub fn open_pinned(path:&Path,router_id:u32,policy:RecipientPolicy,group:GroupCommit,minimum:Option<(u64,Key)>)->L<Self>{
+  let minimum=minimum.map(|(records,digest)|Tip{records,digest});
   let (mut state,config)=Self::build(router_id,policy,group)?;
   let mut file=OpenOptions::new().read(true).write(true).open(path)?;
   file.try_lock().map_err(|_|LedgerError::Locked)?;
@@ -382,11 +394,13 @@ impl FeeLedger{
   if &magic!=MAGIC{return Err(LedgerError::Corrupt)}
   let (mut tip,genesis)=read_frame(&mut file,ZERO_TIP)?.ok_or(LedgerError::Corrupt)?;
   if genesis.as_slice()!=config.as_slice(){return Err(LedgerError::Config)}
+  let mut found=minimum.is_none()||minimum==Some(tip);
   while let Some((next,payload))=read_frame(&mut file,tip)?{
    let e:LedgerEvent=serde_json::from_slice(&payload).map_err(|_|LedgerError::Corrupt)?;
    state.apply(&e,false).map_err(|_|LedgerError::Corrupt)?;
-   tip=next;
+   tip=next;found|=minimum==Some(tip);
   }
+  if !found{return Err(LedgerError::Rollback)}
   Ok(Self{state,file:Some(file),tip,poisoned:false})
  }
  fn persist(&mut self,e:&LedgerEvent)->L<()>{

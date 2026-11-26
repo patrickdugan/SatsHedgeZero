@@ -47,7 +47,7 @@ cd ops/public-relay && python3 -m unittest test_public_relay test_frost test_dlc
 cargo test --locked -p shz-dlc --test frost_oracle_settlement
 cargo test --locked -p shz-cli
 cargo run --release --bin shz -- dlc-oracle-regtest <path-to-bitcoind-31.1>
-python3 ops/public-relay/verify_client.py http://170.75.168.145:8091 --pubkey 68b52a25233d8b87f5c09d44a71fb5e15bfd025c2dde56f9674468e1f1c3d312 --follow 10
+python3 ops/public-relay/verify_client.py http://170.75.168.145:8091 --pubkey 403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8 --follow 10
 ```
 
 Windows: add `+stable-x86_64-pc-windows-msvc` to cargo. CI: workflow `shz-hft06-oracle-relay` (last green run 45438548161).

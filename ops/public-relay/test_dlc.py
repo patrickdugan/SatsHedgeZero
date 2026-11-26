@@ -29,14 +29,24 @@ class Confed:
         self.tmp = Path(tempfile.mkdtemp())
         self.group, shares = frost.keygen(3, 5)
         self.members, self.servers, urls = [], [], []
+        self.view = frost_signer.StaticView()  # every member's own reading of the market
         for s in shares:
-            m = frost_signer.Member(s, self.tmp / f"m{s['index']}")
+            m = frost_signer.Member(s, self.tmp / f"m{s['index']}", view=self.view)
             srv = frost_signer.serve(m, "127.0.0.1:0")
             threading.Thread(target=srv.serve_forever, daemon=True).start()
             self.members.append(m)
             self.servers.append(srv)
             urls.append(f"http://127.0.0.1:{srv.server_address[1]}")
         self.relay = frost_relay.FrostRelay(self.tmp / "relay", 5000, self.group, urls)
+        # An honest coordinator publishes what the market shows, so by default the members'
+        # reading follows the results a test hands to publish(). `raw_publish` skips that:
+        # the coordinator then publishes something the members did not observe.
+        self.raw_publish = self.relay.publish
+
+        def publish(slot_us, results, seq=None):
+            self.view.set_from_results(results, slot_us)
+            return self.raw_publish(slot_us, results, seq)
+        self.relay.publish = publish
         self.coord = dlc_coord.DlcCoordinator(self.relay, self.tmp / "relay", num_bits=nbits)
 
     def close(self):
@@ -78,9 +88,13 @@ class DlcOracle(unittest.TestCase):
             # Equivocation refused: a member that attested will not sign a different price.
             signer = c.members[att["signers"][0] - 1]
             with self.assertRaises(ValueError):
-                signer.dlc.sign_outcome(core["event_id"], price + 1, att["signers"])
+                signer.dlc.sign_outcome(core["event_id"], price + 1, att["signers"], att["decision_locks"])
             # The same outcome again is harmless (same message per nonce).
-            signer.dlc.sign_outcome(core["event_id"], price, att["signers"])
+            signer.dlc.sign_outcome(core["event_id"], price, att["signers"], att["decision_locks"])
+            # No partial leaves a member without a quorum of decision locks.
+            self.assertGreaterEqual(len(att["decision_locks"]), dlc.decision_quorum(3, 5))
+            with self.assertRaises(ValueError):
+                signer.dlc.sign_outcome(core["event_id"], price, att["signers"], dict(list(att["decision_locks"].items())[:3]))
             # Members refuse a later packet once they have seen an earlier VALID one (no outcome shopping).
             spare = next(m for m in c.members if m.index not in att["signers"])
             spare._observe(p1)
@@ -135,6 +149,91 @@ class DlcOracle(unittest.TestCase):
         finally:
             c.close()
 
+    def test_interrupted_setup_is_abandoned_not_retried(self):
+        """Members that completed `receive` in an interrupted setup refuse to deal again;
+        the coordinator abandons that event instead of retrying it every tick."""
+        c = Confed(nbits=4)
+        try:
+            c.coord.every, c.coord.ahead = 3_600, 1
+            now_s = pr.now_us() // 1_000_000
+            m = (now_s // 3_600 + 1) * 3_600  # the single maturity tick() sets up
+            eid = dlc_coord.event_id_for(m)
+            # Interrupted earlier attempt: members 1 and 2 dealt and received, nothing was announced.
+            deals = {str(x.index): x.dlc.deal(eid, m, 4, [1, 2, 3, 4, 5]) for x in c.members}
+            for x in c.members[:2]:
+                x.dlc.receive(eid, deals)
+            with self.assertRaises(dlc_coord.SetupWedged):
+                c.coord.setup(m)
+            c.coord.tick()  # wedged: abandoned, not counted as a retryable failure
+            self.assertEqual(c.coord.load(eid)["status"], "setup_abandoned")
+            self.assertEqual((c.coord.stats["setup_abandoned"], c.coord.stats["setup_failures"]), (1, 0))
+            calls = []
+            real = c.coord.setup
+            c.coord.setup = lambda mat: calls.append(mat) or real(mat)
+            c.coord.tick()
+            c.coord.tick()
+            self.assertEqual(calls, [], "an abandoned event is never set up again")
+            status, body = c.coord.extra_get("/v1/dlc/events")
+            self.assertIn("setup_abandoned", [e["status"] for e in body["events"]])
+        finally:
+            c.close()
+
+    def test_tick_attests_before_setting_up_the_next_event(self):
+        """The event that enters the horizon at a maturity is set up only after that
+        maturity is attested, so the nonce dealing never delays the attestation."""
+        c = Confed(nbits=4)
+        try:
+            c.coord.every, c.coord.ahead = 3_600, 1
+            now_s = pr.now_us() // 1_000_000
+            m = now_s + 30  # the packet slot must be within the members' 60 s skew bound
+            ev = c.coord.setup(m)
+            order = []
+            real_attest = c.coord.attest
+
+            def attest(e):
+                out = real_attest(e)
+                order.append(("attest", out["status"]))
+                return out
+            c.coord.attest = attest
+            c.coord.setup = lambda mat: order.append(("setup", mat))
+
+            c.coord.tick(now=m - 30)  # maturity close: no setup, nothing to attest yet
+            c.coord.tick(now=m + 2)  # matured, before the attest delay: still no setup
+            self.assertEqual(order, [])
+            c.coord.tick(now=m + dlc_coord.ATTEST_DELAY_S)  # no packet yet: attest waits, setup stays held
+            self.assertEqual(order, [("attest", "announced")])
+            c.relay.publish(m * 1_000_000, fake(BASE))
+            order.clear()
+            c.coord.tick(now=m + dlc_coord.ATTEST_DELAY_S + 1)
+            nxt = (m + dlc_coord.ATTEST_DELAY_S + 1) // 3_600 * 3_600 + 3_600
+            self.assertEqual(order, [("attest", "attested"), ("setup", nxt)])
+            self.assertEqual(c.coord.load(ev["core"]["event_id"])["status"], "attested")
+
+            # An event that stays unresolved holds setup for at most SETUP_HOLD_AFTER_S.
+            m2 = m + 60
+            c.coord.setup = dlc_coord.DlcCoordinator.setup.__get__(c.coord)
+            c.coord.setup(m2)
+            c.coord.setup = lambda mat: order.append(("setup", mat))
+            order.clear()
+            c.coord.tick(now=m2 + dlc_coord.SETUP_HOLD_AFTER_S - 1)
+            self.assertEqual(order, [("attest", "announced")])
+            order.clear()
+            c.coord.tick(now=m2 + dlc_coord.SETUP_HOLD_AFTER_S)
+            self.assertEqual(order[0], ("attest", "announced"))
+            self.assertEqual([o[0] for o in order[1:]], ["setup"])
+        finally:
+            c.close()
+
+    def test_next_wait_wakes_at_maturity_plus_attest_delay(self):
+        coord = dlc_coord.DlcCoordinator.__new__(dlc_coord.DlcCoordinator)
+        coord.every = 900
+        base = 900 * 2_000_000
+        self.assertAlmostEqual(coord.next_wait(base + 3.0), dlc_coord.ATTEST_DELAY_S - 3.0 + 0.05)
+        self.assertAlmostEqual(coord.next_wait(base + 4.99), 0.06)
+        self.assertEqual(coord.next_wait(base + 5.5), dlc_coord.TICK_S)
+        self.assertEqual(coord.next_wait(base - 1.0), dlc_coord.TICK_S)
+        self.assertAlmostEqual(coord.next_wait(base + 901.0), 4.05)
+
     def test_dkg_rejects_bad_share_and_tampered_commitments(self):
         group, shares = frost.keygen(3, 5)
         tmp = Path(tempfile.mkdtemp())
@@ -165,11 +264,14 @@ class DlcOracle(unittest.TestCase):
             dlc.aggregate(group, deals, [bool(dlc.group_nonce(deals, d)[1] & 1) for d in range(5)], 0, core_msg, rs[1][0], parts)
         self.assertEqual(cm.exception.indices, [3])
         # Nonce locks survive restart: a reloaded member still refuses a second message on nonce 0.
-        ms[1].sign_outcome("E1", 9, [2, 3, 4])  # 1001: digit 0 matches the bit it already signed
+        locks = {str(m.i): m.lock_decision("E1", "price:9") for m in ms[:4]}  # 1001: digit 0 matches the bit already signed
+        ms[1].sign_outcome("E1", 9, [2, 3, 4], locks)
         again = dlc.DlcMember(shares[1], tmp / "d2.json")
         with self.assertRaises(ValueError):
-            again.sign_outcome("E1", 10, [2, 3, 4])
-        again.sign_outcome("E1", 9, [2, 3, 4])  # same outcome again is allowed
+            again.lock_decision("E1", "price:10")
+        with self.assertRaises(ValueError):
+            again.sign_outcome("E1", 10, [2, 3, 4], locks)
+        again.sign_outcome("E1", 9, [2, 3, 4], locks)  # same outcome again is allowed
 
     def test_digit_message_and_decomposition_match_shz(self):
         self.assertEqual(dlc.decompose(5, 4), [0, 1, 0, 1])

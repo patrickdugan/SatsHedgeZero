@@ -360,6 +360,13 @@ impl RemoteFed {
             g.metrics.votes_rejected += 1;
             return;
         }
+        // `seq` is not covered by the vote signature. Only sequences the relay has
+        // proposed or certified are recorded, so a member cannot move the window.
+        let horizon = g.current.as_ref().map(|c| c.packet.seq).max(g.parent.as_ref().map(|c| c.packet.seq)).unwrap_or(1);
+        if seq > horizon {
+            g.metrics.off_proposal_votes += 1;
+            return;
+        }
         match g.seen.get(&(seq, member)).copied() {
             Some(prev) if prev != digest => {
                 g.metrics.equivocations += 1;
@@ -372,7 +379,7 @@ impl RemoteFed {
             Some(_) => {}
             None => {
                 g.seen.insert((seq, member), digest);
-                while g.seen.first_key_value().is_some_and(|((s, _), _)| s + SEEN_WINDOW < seq) {
+                while g.seen.first_key_value().is_some_and(|((s, _), _)| s.saturating_add(SEEN_WINDOW) < seq) {
                     g.seen.pop_first();
                 }
                 g.metrics.votes_accepted += 1;

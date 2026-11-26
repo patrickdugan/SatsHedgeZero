@@ -451,8 +451,13 @@ impl Mnr02TaprootTree {
         } else {
             [bob_pubkey_x, alice_pubkey_x]
         };
-        let unilateral_cltv_height = maturity_height + grace_blocks;
-        let refund_cltv_height = maturity_height + refund_delay_blocks;
+        // CLTV and nLockTime read values of 500,000,000 or more as unix times.
+        const LOCKTIME_THRESHOLD: u32 = 500_000_000;
+        let refund_cltv_height = maturity_height
+            .checked_add(refund_delay_blocks)
+            .filter(|h| *h < LOCKTIME_THRESHOLD)
+            .ok_or(UtxoRefError::InvalidFunding("refund height must be a block height below 500,000,000"))?;
+        let unilateral_cltv_height = maturity_height + grace_blocks; // below refund_cltv_height
 
         // Leaf 1: `<unilateral_cltv> OP_CLTV OP_DROP <pk0> OP_CHECKSIGVERIFY <pk1> OP_CHECKSIG`
         let mut unilateral_cet_script = push_script_num(unilateral_cltv_height as u64);
@@ -616,8 +621,15 @@ pub fn build_origination_package(
     )?;
 
     // 1. Build and sign 2-of-2 Refund Transaction FIRST (`locktime = refund_cltv_height`)
-    let refund_alice = alice_margin_sats.saturating_sub(miner_fee_sats / 2 + DEFAULT_CPFP_ANCHOR_SATS / 2);
-    let refund_bob = distributable - refund_alice;
+    let refund_alice = alice_margin_sats
+        .checked_sub(miner_fee_sats / 2 + DEFAULT_CPFP_ANCHOR_SATS / 2)
+        .ok_or(UtxoRefError::AccountingViolation("alice margin < her share of fee + anchor"))?;
+    let refund_bob = distributable
+        .checked_sub(refund_alice)
+        .ok_or(UtxoRefError::AccountingViolation("bob margin < his share of fee + anchor"))?;
+    if refund_alice < DEFAULT_CPFP_ANCHOR_SATS || refund_bob < DEFAULT_CPFP_ANCHOR_SATS {
+        return Err(UtxoRefError::AccountingViolation("refund output below the 330-sat dust floor"));
+    }
     let mut refund_tx = SegwitTx {
         version: 2,
         inputs: vec![base_input.clone()],
