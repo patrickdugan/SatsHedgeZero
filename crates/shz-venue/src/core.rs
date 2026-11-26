@@ -1181,7 +1181,8 @@ impl Venue {
 
 pub fn balance_json(b: &Balance) -> Value {
     json!({"cap": b.cap, "free": b.free, "resting": b.resting, "pending": b.pending, "committed": b.committed,
-           "paid_fees": b.paid_fees, "realized_pnl": b.realized_pnl, "equity": b.equity() as i64})
+           "paid_fees": b.paid_fees, "withdrawal_reserved": b.withdrawal_reserved, "withdrawn": b.withdrawn,
+           "realized_pnl": b.realized_pnl, "equity": b.equity() as i64})
 }
 
 pub fn parse_tier(s: &str) -> Result<FeedTier, String> {

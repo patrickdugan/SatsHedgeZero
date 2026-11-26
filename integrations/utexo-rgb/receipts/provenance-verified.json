@@ -1,0 +1,75 @@
+{
+  "checkedAt": "2026-11-26T19:49:39.017Z",
+  "wdk": {
+    "package": "@utexo/wdk-rgb-lightning@0.2.0-beta.5",
+    "version": "0.2.0-beta.5",
+    "gitHead": "608937d849412a4c25e9b9a66a7571b561396ae0",
+    "shasum": "a781629dd83daa39a8d227b25a1f1c64ecdfdc0f",
+    "integrity": "sha512-bfRfESWIipgMlSLIZ6XMijrDzAF/ceKp3ftLSz/4puekwacWhCKkzHjVxzTSqvLmH2AqQaPGfR0TQbFgTwKgNA==",
+    "slsa": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@utexo%2fwdk-rgb-lightning@0.2.0-beta.5",
+      "predicateType": "https://slsa.dev/provenance/v1"
+    }
+  },
+  "native": {
+    "package": "@utexo/rgb-lightning-node-nodejs@0.2.0-beta.5",
+    "version": "0.2.0-beta.5",
+    "gitHead": "8b78387df4c33140a52c19c6de6fcc8d4aa7595c",
+    "shasum": "60311cc7d1ed93b8cb1017f8f183327f0d0d0573",
+    "integrity": "sha512-ZRUe27r0YtTfWABF5LT7LSutczu84q6XnIEQUzWll1aUhVjxjH6jFfVWOkf1nvf+Hf9Hz9nkgCEMEHS5ytFYbw==",
+    "slsa": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@utexo%2frgb-lightning-node-nodejs@0.2.0-beta.5",
+      "predicateType": "https://slsa.dev/provenance/v1"
+    },
+    "overlay": {
+      "ref": "ecc69f20308231400561f6f060fea88acfa40cc4",
+      "patch": "patches/release-adapter-v0.17.0-beta.3.patch",
+      "commit": "ecc69f20308231400561f6f060fea88acfa40cc4",
+      "repository": "https://github.com/UTEXO-Protocol/rgb-lightning-node.git",
+      "rlnVersion": "0.17.0-beta.3",
+      "patchSha256": "6d46717b80ffba8ed8af2de023a536af242aadcacbbb799fb9bb89f8933e4ca5",
+      "rustToolchain": "1.94.0",
+      "cffiLockSha256": "5fcdc9ad9179d3230e48973cdfa514a863d13a837752027febf8ea04713bbeb5",
+      "lightningCommit": "79b9eb5166546c62692d3a672986f385c7fe047d"
+    }
+  },
+  "linuxX64AddonSha256": "e35974417bf4658ebe87f35da8d8e14628f7a65e8054c43d225c2f6b77fbb45a",
+  "runtimeInfo": {
+    "abi_version": 1,
+    "rln_version": "0.17.0-beta.3",
+    "rln_commit": "ecc69f20308231400561f6f060fea88acfa40cc4",
+    "lightning_commit": "79b9eb5166546c62692d3a672986f385c7fe047d",
+    "adapter_sha256": "6d46717b80ffba8ed8af2de023a536af242aadcacbbb799fb9bb89f8933e4ca5",
+    "wrapper_sha256": "6e071236fea1cbb19afaeb205f794d68b830a635a0658246d8970e7063712d27",
+    "lock_sha256": "de8eedbec81519cafbdf02c3445654d31ec6fbda8181be42f5926dcaf7911108",
+    "target": "x86_64-unknown-linux-gnu",
+    "capabilities": [
+      "canonical-unlock-v1",
+      "persistent-native-signer",
+      "refresh-transfers-v1",
+      "apay-address",
+      "decoded-invoice-cltv",
+      "tagged-rgb-assignment",
+      "pending-blinded-v1",
+      "rgb-contract-import-v1",
+      "rgb-transfer-metadata-import-v1",
+      "consignment-export-v1",
+      "mainnet-lightning-rejection-v1",
+      "external-signer-eth-rpc-v1",
+      "external-signer-burn-v1",
+      "native-signer-shutdown-v1",
+      "owned-session-cleanup-v1",
+      "bip322-simple-v1",
+      "vss-backup-v1",
+      "vss-backup-info-v1",
+      "vss-restore-v1",
+      "vss-automatic-backup-v1",
+      "vss-backup-metadata-v1"
+    ],
+    "vss_policy": {
+      "supported": true,
+      "code": null,
+      "reason": null
+    }
+  }
+}

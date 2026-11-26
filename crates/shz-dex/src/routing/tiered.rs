@@ -529,6 +529,7 @@ impl TieredRouter{
  pub fn clock_us(&self)->u64{self.clock}
  pub fn batch_sequence(&self)->u64{self.batch_sequence}
  pub(super) fn authority(&self)->Key{self.authority}
+ pub(super) fn advance_clock(&mut self,now:u64)->T<()>{self.clock(now)}
  pub(super) fn account_count(&self)->usize{self.accounts.len()}
  /// Every account's position and balance, in key order (clearing summary).
  pub(super) fn account_books(&self)->impl Iterator<Item=(&Outpoint,&positions::Position,&Balance)>{self.accounts.iter().map(|(k,a)|(k,&a.position,&a.balance))}

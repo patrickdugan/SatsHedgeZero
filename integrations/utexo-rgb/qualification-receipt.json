@@ -1,0 +1,16 @@
+{
+  "status": "native-blocked",
+  "upstream": "608937d849412a4c25e9b9a66a7571b561396ae0",
+  "assertions": 124,
+  "validSequences": 29,
+  "rejectedSequences": 3877,
+  "execution": "JS isolate recovery model only; corrected SDK mock and native benchmark pending Node CI",
+  "blockers": [
+    "no Docker",
+    "no Bitcoin Core",
+    "external DNS unavailable"
+  ],
+  "nativeAttempts": 0,
+  "latency": null,
+  "fees": null
+}

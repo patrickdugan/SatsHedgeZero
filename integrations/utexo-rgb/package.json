@@ -1,0 +1,13 @@
+{
+  "name": "shz-utexo-rgb-research",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node mock.test.mjs && node recovery.test.mjs && node --test journal.test.mjs observers.test.mjs checkpoint.test.mjs native-integration.test.mjs withdrawal-bridge.test.mjs",
+    "benchmark": "node benchmark.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
