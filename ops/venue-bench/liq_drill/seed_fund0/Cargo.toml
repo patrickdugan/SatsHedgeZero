@@ -1,0 +1,13 @@
+[package]
+name = "liq-drill-seed-fund0"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Creates a venue state dir whose router journal already has multilateral clearing on with a fund of 0 sats."
+
+[dependencies]
+hex = "0.4"
+shz-dex = { path = "../../../../crates/shz-dex" }
+shz-dlc = { path = "../../../../crates/shz-dlc" }
+
+[workspace]
