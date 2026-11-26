@@ -106,5 +106,34 @@ class ChainAndRestart(unittest.TestCase):
             self.assertTrue(any((Path(d) / "raw").iterdir()))
 
 
+class SharedOpener(unittest.TestCase):
+    """Fetches reuse one opener and one verifying TLS context (no per-request cycles)."""
+
+    def test_get_reuses_the_module_opener(self):
+        import io
+        import ssl
+        import urllib.request
+        from unittest import mock
+
+        https = [h for h in pr._OPENER.handlers if isinstance(h, urllib.request.HTTPSHandler)]
+        self.assertEqual(len(https), 1)
+        self.assertIs(https[0]._context, pr._TLS)
+        self.assertEqual((pr._TLS.verify_mode, pr._TLS.check_hostname), (ssl.CERT_REQUIRED, True))
+        seen = []
+
+        def fake_open(req, timeout):
+            seen.append((req.full_url, req.get_header("Content-type"), timeout))
+            return io.BytesIO(b'{"ok":1}')
+
+        with mock.patch.object(pr._OPENER, "open", side_effect=fake_open), \
+                mock.patch.object(urllib.request, "build_opener", side_effect=AssertionError("per-request opener")), \
+                mock.patch.object(ssl, "create_default_context", side_effect=AssertionError("per-request context")):
+            for _ in range(3):
+                self.assertEqual(pr._get("https://example.invalid/t"), b'{"ok":1}')
+            self.assertEqual(pr._get("https://example.invalid/rpc", data=b"{}", timeout=1.5), b'{"ok":1}')
+        self.assertEqual(seen[-1], ("https://example.invalid/rpc", "application/json", 1.5))
+        self.assertEqual(len(seen), 4)
+
+
 if __name__ == "__main__":
     unittest.main()

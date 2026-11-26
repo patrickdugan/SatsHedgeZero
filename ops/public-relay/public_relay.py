@@ -76,12 +76,21 @@ def e8(x) -> int:
 
 # --------------------------------------------------------------- sources ----
 
+# One TLS context and one opener for the whole process. `urlopen(..., context=ctx)`
+# builds a new OpenerDirector per call; its handlers point back at it (a reference
+# cycle) and hold the context, whose OpenSSL CA store is native memory the cyclic GC
+# does not see. On the witness VPS (Python 3.14, OpenSSL 3.5) 500 fetches that way
+# grew RSS from 33 MB to 99 MB; with this shared opener RSS stayed at 33 MB.
+_TLS = ssl.create_default_context()
+_OPENER = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_TLS))
+
+
 def _get(url: str, data: bytes | None = None, timeout: float = 3.0) -> bytes:
     headers = dict(UA)
     if data is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req, timeout=timeout, context=ssl.create_default_context()) as r:
+    with _OPENER.open(req, timeout=timeout) as r:
         return r.read(1_000_000)
 
 
