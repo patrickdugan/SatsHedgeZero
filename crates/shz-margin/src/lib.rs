@@ -8,6 +8,7 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 pub mod liquidation_auction;
+pub mod payoff;
 pub mod portfolio_greeks;
 
 pub const SATS_PER_BTC: u128 = 100_000_000;
