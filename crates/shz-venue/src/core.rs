@@ -256,6 +256,9 @@ impl Venue {
         // Multilateral clearing (docs/SHZ_VENUE_CLEARING.md): journaled once; an existing journal is
         // folded in and acks switch to the V3 tag.
         router.enable_clearing(CLEARING_FUND_SATS).map_err(|e| format!("clearing: {e}"))?;
+        // Closing loans (journaled separately): a take that reduces the position borrows its leg
+        // margin from the lots it closes, so an account with no free margin can still close.
+        router.enable_closing_loans().map_err(|e| format!("closing loans: {e}"))?;
         let rp = RecipientPolicy {
             version: 1,
             oracle_operators: (1..=5).map(|i| (public(&keys.named(&format!("oracle-op-{i}"))), 1)).collect(),
@@ -1071,6 +1074,7 @@ impl Venue {
             "journal": tip.map(|t| json!({"records": t.records, "digest": h(&t.digest)})),
             "margin_release": self.router.margin_release_active().unwrap_or(false),
             "clearing": self.router.clearing_summary().ok().flatten(),
+            "closing_loans": self.router.closing_loans_active().unwrap_or(false),
             "production_ready": false,
             "network": "testnet4",
         })
