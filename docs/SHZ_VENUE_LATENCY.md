@@ -125,8 +125,23 @@ published and verified by the venue 268 ms [495, p99 717], **slot -> verified ma
 `/v1/latest` on start-up (3.5 s). The earlier samples' 4.7 s and 5.6 s maxima were the same start-up
 artifact, from the restarts at 05:29 and 04:47. No relay or signer was OOM-killed after 04:10:50.
 
-Not rerun: DLC attestation, which another session is changing in the relay; and the `dlc_bench` CET
-compute, which has no code change.
+DLC attestation after the attest-first fix (`daf5cba`, deployed to `shz-frost-relay` at 05:33Z; the fix
+is on `review/shz-hft06-security-20261125`, not on main). Same watcher (`dlc_watch.py`, 0.25 s poll) from
+05:58Z to 06:50Z, raw rows in `results/2026-11-26-rerun/dlc_watch.jsonl`:
+
+| Event (maturity) | attested after maturity | outcome |
+|---|---|---|
+| SHZ-BTCUSD-20261126T0600Z | 10.22 s | 60,729 USD |
+| SHZ-BTCUSD-20261126T0615Z | 9.02 s | 60,464 USD |
+| SHZ-BTCUSD-20261126T0630Z | 9.80 s | 60,502 USD |
+| SHZ-BTCUSD-20261126T0645Z | 9.52 s | 60,441 USD |
+
+Maturity to attestation: **about 9.7 s** (9.0-10.2 s, 4 of 4 attested), down from about 42 s. That is the
+maturity + 5 s gate, up to one 5 s tick, and the 4-of-5 signing round. The setup for the event entering the
+60-minute horizon now runs after the attestation and was published 40.1-42.2 s after each maturity, still
+about 59 minutes ahead of that event's maturity.
+
+Not rerun: the `dlc_bench` CET compute, which has no code change.
 
 ## Findings
 
@@ -164,9 +179,10 @@ compute, which has no code change.
    accounts then completed 60 of 60 (localhost, match -> committed median 169 ms, p90 230 ms), ending
    with both accounts at 0 committed and flat, realized +690 / -690
    (`results/2026-11-26/exec_self_local_release.jsonl`).
-5. **DLC attestation waits behind nonce setup (open).** About 40 s after maturity, with the outcome
-   packet ready at about 0.4 s. Attesting before setting up new events in `tick`, or running setup on its
-   own thread, removes most of it. The remaining floor is the maturity + 5 s gate and one 5 s tick.
+5. **DLC attestation waited behind nonce setup (fixed in the relay, `daf5cba`).** It landed about 42 s after
+   maturity, with the outcome packet ready at about 0.4 s, because `tick` ran the new event's nonce setup
+   first. `tick` now attests first: 9.0-10.2 s after maturity over four live events. The remaining floor is
+   the maturity + 5 s gate and one 5 s tick. The fix is deployed from the review branch and is not on main.
 6. **CET pre-signing is 17 s per contract on the host (36 s on the laptop).** It is per contract, not per trade, but
    it scales with the CET count. Coarser compression, or parallel signing on a host with more than one
    core, are the levers. The witness host has one vCPU.
