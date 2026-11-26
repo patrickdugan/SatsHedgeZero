@@ -40,6 +40,15 @@ The group was re-keyed on 2026-11-25 when the decision-lock code was deployed (`
 - Fault drill on the deployment (2026-11-25): members 1 and 3 stopped, packets kept flowing signed by {2, 4, 5}; a third member stopped, publication paused (skipped slots counted, no packet); all restarted, signing resumed with {1, 2, 3}.
 - Keygen was a trusted dealer on the box; the dealer files were shredded after distribution, and all five members share one host and one operator. This demonstrates the protocol and its failure handling; it adds no security over the single-key relayer until members run on independent machines with a DKG.
 
+- Coordinator authentication (`coord_auth.py`, review F-05): members accept a POST only with an `X-SHZ-Auth` HMAC from the coordinator, bound to the group key, the member index, the path, a timestamp within 30 s, a fresh nonce and the body hash. Provision once, as root, then restart the members and the relay:
+
+  ```
+  python3 coord_auth.py master --out /var/lib/shz-frost-relay/coord_auth.key            # chown shzrelay, 0600
+  python3 coord_auth.py derive --master /var/lib/shz-frost-relay/coord_auth.key       --group /etc/shz-frost/group.json --index N --out /var/lib/shz-frost-signer-N/coord_auth.key   # chown shzfrostN, 0600
+  ```
+
+  The units pass `--coord-auth-master` and `--coord-auth-key`; both programs refuse to start without a key unless given `--no-coord-auth`.
+
 ## DLC oracle on the FROST group (port 8091)
 
 The confederation also acts as a threshold DLC oracle for BTC/USD, compatible with `shz_dlc::OracleAnnouncement` / `OracleAttestation` and the existing CET adaptor-signature code.
