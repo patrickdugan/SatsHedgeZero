@@ -238,11 +238,14 @@ impl Venue {
         let recipients = FeeRecipients { oracle: public(&keys.named("rcpt-oracle")), router: public(&keys.named("rcpt-router")) };
         let registry = Registry::new(scope, public(&keys.authority_sk), vec![]).map_err(|e| format!("{e:?}"))?;
         let jpath = state.join("router.wal");
-        let router = if jpath.exists() {
+        let mut router = if jpath.exists() {
             DurableTieredRouter::open(&jpath, &registry, cfg.clone(), vec![], recipients, None).map_err(|e| format!("router journal: {e}"))?
         } else {
             DurableTieredRouter::create(&jpath, &registry, cfg.clone(), vec![], recipients).map_err(|e| format!("router journal: {e}"))?
         };
+        // Margin release: journaled once. On a journal that predates it, positions are rebuilt
+        // from every committed batch and the offset margin is released before anything else runs.
+        router.enable_margin_release().map_err(|e| format!("margin release: {e}"))?;
         let rp = RecipientPolicy {
             version: 1,
             oracle_operators: (1..=5).map(|i| (public(&keys.named(&format!("oracle-op-{i}"))), 1)).collect(),
@@ -928,9 +931,13 @@ impl Venue {
         })
     }
 
+    /// Position from the router's committed lots (margin release), plus fills whose batch
+    /// has not committed yet. Unrealized PnL is the exact DLC payout of the open lots at
+    /// the mark minus their margin.
     pub fn position(&self, owner: &Key) -> Value {
-        let (mut net, mut cost_inv) = (0i128, 0f64);
-        let mut gross = 0u64;
+        let Some(a) = self.accounts.get(owner) else { return json!(null) };
+        let pos = self.router.position(&a.outpoint).ok().flatten().unwrap_or_default();
+        let (mut unsettled, mut gross) = (0i64, 0u64);
         for t in &self.trades {
             if t.batch_seq.and_then(|s| self.batches.get(&s)).is_some_and(|b| b.phase == "aborted") {
                 continue; // fenced and aborted: the fill never settled
@@ -942,18 +949,20 @@ impl Venue {
             } else {
                 continue;
             };
-            net += sign * t.qty_usd as i128;
-            cost_inv += sign as f64 * t.qty_usd as f64 / t.price_usd as f64;
             gross += t.qty_usd;
+            let phase = t.batch_seq.and_then(|s| self.batches.get(&s)).map(|b| b.phase.as_str());
+            if phase != Some("committed") {
+                unsettled += sign * t.qty_usd as i64;
+            }
         }
-        let mark = self.mark.as_ref().and_then(|m| m.median_e8).map(|m| m as f64 / 1e8);
-        let avg = if net != 0 { Some(net as f64 / cost_inv) } else { None };
-        // Inverse contract: PnL in BTC = net_usd * (1/entry - 1/mark).
-        let unreal = match (mark, net) {
-            (Some(mk), n) if n != 0 => Some(((cost_inv - n as f64 / mk) * 1e8).round() as i64),
-            _ => None,
-        };
-        json!({"net_usd": net as i64, "avg_entry_usd": avg, "unrealized_sats": unreal, "gross_traded_usd": gross})
+        let mark_usd = self.mark.as_ref().and_then(|m| m.median_e8).map(|m| (m + 50_000_000) / 100_000_000);
+        let margin = pos.margin();
+        let unreal = mark_usd.filter(|_| margin > 0 || pos.net_usd() != 0).map(|m| pos.value_at(m) as i64 - margin as i64);
+        let lots: Vec<Value> = pos.lots().map(|l| json!({"side": side_name(l.side), "qty_usd": l.qty, "entry_usd": l.price, "margin_sats": l.margin, "counterparty_margin_sats": l.opp_margin})).collect();
+        let realized = self.balance(owner).map(|b| b.realized_pnl).unwrap_or(0);
+        json!({"net_usd": pos.net_usd() + unsettled, "committed_net_usd": pos.net_usd(), "unsettled_usd": unsettled,
+               "avg_entry_usd": pos.avg_entry_usd(), "unrealized_sats": unreal, "margin_sats": margin, "lots": lots,
+               "realized_pnl_sats": realized, "gross_traded_usd": gross})
     }
 
     pub fn account_view(&self, owner: &Key) -> Value {
@@ -968,7 +977,7 @@ impl Venue {
             .map(|(id, r)| intent_json(id, r)).collect();
         json!({
             "owner": h(owner), "label": a.label, "kind": a.kind, "outpoint": outpoint_json(&a.outpoint), "cap_sats": a.cap_sats,
-            "balance": b.map(|b| json!({"cap": b.cap, "free": b.free, "resting": b.resting, "pending": b.pending, "committed": b.committed, "paid_fees": b.paid_fees})),
+            "balance": b.map(|b| balance_json(&b)),
             "position": self.position(owner), "open_orders": open, "fills": fills, "rejected": recent, "pending_signatures": pending,
         })
     }
@@ -984,6 +993,7 @@ impl Venue {
             "router": r.map(|r| json!({"clock_us": r.clock_us(), "resting": r.resting(), "batch_sequence": r.batch_sequence(), "fills": r.fill_count()})),
             "accounts": self.accounts.len(),
             "journal": tip.map(|t| json!({"records": t.records, "digest": h(&t.digest)})),
+            "margin_release": self.router.margin_release_active().unwrap_or(false),
             "production_ready": false,
             "network": "testnet4",
         })
@@ -1045,8 +1055,20 @@ impl Venue {
             "created_us": b.created_us,
             "prepared_us": b.prepared_us,
             "committed_us": b.committed_us,
+            "settlements": self.router.settlements(b.seq).map(|rows| rows.iter().map(|(c, s)| json!({
+                "channel": outpoint_json(c),
+                "owner": b.accounts.iter().find(|(x, _, _, _)| x == c).map(|(_, o, _, _)| h(o)),
+                "opened_margin_sats": s.opened_margin, "closed_leg_margin_sats": s.closed_leg_margin,
+                "released_margin_sats": s.released_margin, "payout_sats": s.payout, "realized_pnl_sats": s.realized_pnl(),
+                "closed_usd": s.closed_usd, "net_before_usd": s.net_before, "net_after_usd": s.net_after, "margin_after_sats": s.margin_after,
+            })).collect::<Vec<_>>()).unwrap_or_default(),
         })
     }
+}
+
+pub fn balance_json(b: &Balance) -> Value {
+    json!({"cap": b.cap, "free": b.free, "resting": b.resting, "pending": b.pending, "committed": b.committed,
+           "paid_fees": b.paid_fees, "realized_pnl": b.realized_pnl, "equity": b.equity() as i64})
 }
 
 pub fn parse_tier(s: &str) -> Result<FeedTier, String> {

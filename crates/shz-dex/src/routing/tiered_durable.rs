@@ -4,8 +4,9 @@
 //! router configuration (scope, router id, tariff, execution policy, revenue policy,
 //! entitlement key, allocation registry, lanes, fee recipients).
 use super::*;
-use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,JournalTip,Lane,LaneState,Phase,
- ZERO_TIP,MAX_FRAME,ack_message,plan_resolution,put_head,read_frame,write_frame,exact};
+use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,JournalTip,Lane,LaneState,Phase,PositionOf,
+ ZERO_TIP,MAX_FRAME,ack_message,lane_settlement,plan_resolution,put_head,read_frame,write_frame,exact};
+use super::positions::{self,Position,Settlement};
 use super::tiered::*;
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
@@ -21,6 +22,9 @@ pub const TIERED_ACK_TAG:&[u8]=b"SHZ/HFT06/CHANNEL-ACK/V1";
 /// leaves channel commitments unchanged and returns each debit to free; the trust
 /// added is that peer and monitor can cancel, not move, a batch after the deadline.
 pub const ABORT_AFTER_US:u64=10_000_000;
+/// Acknowledgements once margin release is active: they also bind the lane's `Settlement`
+/// (released margin, payout of closed lots, position before and after).
+pub const TIERED_ACK_TAG_V2:&[u8]=b"SHZ/HFT06/CHANNEL-ACK/V2";
 
 #[derive(Debug,Error)]
 pub enum TieredDurableError{
@@ -49,10 +53,12 @@ fn lane_ok(l:&Lane,owner:&Key)->bool{
 /// Serializable mirror of `Lane` for the journal.
 #[derive(Debug,Serialize,Deserialize)]
 struct LaneRec{channel:BtcOutPoint,peer:Key,monitor:Key,initial:Head}
-struct Entry{batch:Batch,phase:Phase,ack:Option<AckBundle>}
+struct Entry{batch:Batch,phase:Phase,ack:Option<AckBundle>,settlements:Vec<(BtcOutPoint,Settlement)>}
 struct State{
  router:TieredRouter,lanes:BTreeMap<Outpoint,LaneState>,recipients:FeeRecipients,config:Key,
  batches:BTreeMap<u64,Entry>,next_resolution:u64,oracle_paid:u128,router_paid:u128,fee_receipts:BTreeSet<Key>,
+ /// Margin release (`positions`) switched on by a journaled `EnableMarginRelease`.
+ netting:bool,
 }
 impl State{
  fn new(registry:&Registry,cfg:TieredConfig,lanes:Vec<Lane>,recipients:FeeRecipients)->D<Self>{
@@ -75,11 +81,23 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT06/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new()})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false})
  }
+ fn tag(&self)->&'static [u8]{if self.netting{TIERED_ACK_TAG_V2}else{TIERED_ACK_TAG}}
  fn message(&self,sequence:u64,disposition:Disposition,ack:&ChannelAck)->R<Key>{
   let batch=&self.batches.get(&sequence).ok_or(Reject::UnknownOrder)?.batch;
-  ack_message(TIERED_ACK_TAG,&self.config,&self.recipients,sequence,batch,disposition,ack)
+  let settled=if self.netting&&disposition==Disposition::Commit{
+   Some(lane_settlement(batch,&ack.channel,&|k:&Outpoint|self.router.account_position(k))?.1)
+  }else{None};
+  ack_message(self.tag(),&self.config,&self.recipients,sequence,batch,disposition,ack,settled.as_ref())
+ }
+ fn enable_netting(&mut self)->R<()>{
+  if self.netting{return Err(Reject::Replay)}
+  let committed=self.batches.iter().filter(|(_,e)|e.phase==Phase::Committed).map(|(s,e)|(*s,&e.batch));
+  let (state,per_batch)=positions::reconcile(committed,&|k:&Outpoint|self.router.account_balance(k))?;
+  for (k,(p,b)) in state{self.router.set_account_balance(&k,b);self.router.set_account_position(&k,p);}
+  for (seq,rows) in per_batch{self.batches.get_mut(&seq).unwrap().settlements=rows;}
+  self.netting=true;Ok(())
  }
  fn prepare(&mut self,sequence:u64,approvals:&[BatchApproval])->R<()>{
   if sequence!=self.next_resolution{return Err(Reject::Replay)}
@@ -98,15 +116,20 @@ impl State{
    if self.router.clock_us()<entry.batch.window().1.saturating_add(ABORT_AFTER_US){return Err(Reject::Clock)}
   }else if entry.phase!=Phase::Prepared{return Err(Reject::Replay)}
   let next_sequence=self.next_resolution.checked_add(1).ok_or(Reject::Bounds)?;
-  let plan=plan_resolution(TIERED_ACK_TAG,&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|self.router.account_balance(k),&self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,deadline)?;
+  let router=&self.router;
+  let position_of=|k:&Outpoint|router.account_position(k);
+  let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
+   &|k:&Outpoint|router.account_balance(k),self.netting.then_some(&position_of as PositionOf),
+   &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,deadline)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.set_account_balance(&key,balance);self.lanes.get_mut(&key).unwrap().head=head;}
+  let mut settlements=Vec::new();
+  for (key,position,channel,s) in plan.positions{self.router.set_account_position(&key,position);settlements.push((channel,s));}
   for id in plan.cancel{self.router.cancel_resting(id);}
   self.oracle_paid=plan.oracle;self.router_paid=plan.router;self.next_resolution=next_sequence;self.fee_receipts.extend(plan.receipts);
   let entry=self.batches.get_mut(&bundle.sequence).unwrap();
   entry.phase=match bundle.disposition{Disposition::Commit=>Phase::Committed,Disposition::FencedAbort=>Phase::Aborted};
-  entry.ack=Some(bundle);Ok(true)
+  entry.ack=Some(bundle);entry.settlements=settlements;Ok(true)
  }
  fn register(&mut self,allocation:Allocation,rec:LaneRec)->Result<(),TierReject>{
   let lane=Lane{channel:rec.channel,peer:rec.peer,monitor:rec.monitor,initial:rec.initial};
@@ -127,13 +150,14 @@ impl State{
    Event::Seal=>{
     let batch=self.router.seal_batch()?;
     if let Some(ref b)=batch{
-     assert!(self.batches.insert(b.sequence(),Entry{batch:b.clone(),phase:Phase::Sealed,ack:None}).is_none());
+     assert!(self.batches.insert(b.sequence(),Entry{batch:b.clone(),phase:Phase::Sealed,ack:None,settlements:Vec::new()}).is_none());
     }
     Ok(Reply::Batch(batch))
    },
    Event::Prepare{sequence,approvals}=>{self.prepare(sequence,&approvals)?;Ok(Reply::Unit)},
    Event::Resolve{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,false)?)),
    Event::Expire{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,true)?)),
+   Event::EnableMarginRelease=>{self.enable_netting()?;Ok(Reply::Unit)},
   }
  }
 }
@@ -151,6 +175,7 @@ enum Event{
  Resolve{bundle:AckBundle},
  /// Deadline abort of the head batch (see `ABORT_AFTER_US`).
  Expire{bundle:AckBundle},
+ EnableMarginRelease,
 }
 #[allow(clippy::large_enum_variant)]
 enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
@@ -234,6 +259,20 @@ impl DurableTieredRouter{
  /// window end. Each lane's ack needs peer and monitor signatures; the owner's may be
  /// all-zero (a present owner signature must still verify).
  pub fn expire(&mut self,bundle:AckBundle)->D<bool>{match self.record(Event::Expire{bundle})?{Reply::Resolved(x)=>Ok(x),_=>unreachable!()}}
+ /// Switch on margin release (journaled once). Positions are rebuilt from every batch
+ /// already committed and their offset margin is released; later Commit acks use
+ /// `TIERED_ACK_TAG_V2` and bind each lane's settlement. Returns `false` if already on.
+ pub fn enable_margin_release(&mut self)->D<bool>{
+  self.ready()?;if self.state.netting{return Ok(false)}
+  self.record(Event::EnableMarginRelease)?;Ok(true)
+ }
+ pub fn margin_release_active(&self)->D<bool>{self.ready()?;Ok(self.state.netting)}
+ pub fn position(&self,channel:&BtcOutPoint)->D<Option<Position>>{self.ready()?;Ok(self.state.router.account_position(&op(channel)))}
+ /// Per-lane settlements applied when batch `sequence` committed, including those rebuilt
+ /// when margin release was switched on. Empty without margin release.
+ pub fn settlements(&self,sequence:u64)->D<&[(BtcOutPoint,Settlement)]>{
+  self.ready()?;Ok(self.state.batches.get(&sequence).map(|e|e.settlements.as_slice()).unwrap_or(&[]))
+ }
  /// Crash-testing hook: journal and fsync a process step without applying it, as if the
  /// process died between the append and the in-memory update. The writer is poisoned
  /// afterwards (memory is stale); reopen replays the step.

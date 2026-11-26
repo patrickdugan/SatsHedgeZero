@@ -161,8 +161,9 @@ function renderBottom() {
   if (st.btab === 'positions') {
     const pos = a.position || {}, un = pos.net_usd && pos.avg_entry_usd && mark ? Math.round(pos.net_usd * (1 / pos.avg_entry_usd - 1 / mark) * 1e8) : (pos.unrealized_sats || 0);
     const b = a.balance || {};
-    p.innerHTML = bottomTable(['Market', 'Net USD', 'Avg entry', 'Mark', 'Unrealized (sats)', 'Cap', 'Free', 'Resting', 'Committed', 'Fees paid'],
-      [`<tr><td>${MARKET}</td><td class="${pos.net_usd > 0 ? 'long' : pos.net_usd < 0 ? 'short' : ''}">${fmt(pos.net_usd)}</td><td>${fmt(pos.avg_entry_usd, 2)}</td><td>${fmt(mark)}</td><td class="${un >= 0 ? 'long' : 'short'}">${fmt(un)}</td><td>${fmt(b.cap)}</td><td>${fmt(b.free)}</td><td>${fmt(b.resting)}</td><td>${fmt(b.committed)}</td><td>${fmt(b.paid_fees)}</td></tr>`]);
+    const rz = b.realized_pnl || 0, unset = pos.unsettled_usd || 0;
+    p.innerHTML = bottomTable(['Market', 'Net USD', 'Avg entry', 'Mark', 'Unrealized (sats)', 'Realized (sats)', 'Cap', 'Free', 'Resting', 'Committed', 'Fees paid'],
+      [`<tr><td>${MARKET}</td><td class="${pos.net_usd > 0 ? 'long' : pos.net_usd < 0 ? 'short' : ''}">${fmt(pos.net_usd)}${unset ? ` <span class="muted" title="fills whose batch has not committed">(${unset > 0 ? '+' : ''}${fmt(unset)} unsettled)</span>` : ''}</td><td>${fmt(pos.avg_entry_usd, 2)}</td><td>${fmt(mark)}</td><td class="${un >= 0 ? 'long' : 'short'}">${fmt(un)}</td><td class="${rz >= 0 ? 'long' : 'short'}">${fmt(rz)}</td><td>${fmt(b.cap)}</td><td>${fmt(b.free)}</td><td>${fmt(b.resting)}</td><td>${fmt(b.committed)}</td><td>${fmt(b.paid_fees)}</td></tr>`]);
   } else if (st.btab === 'orders') {
     p.innerHTML = bottomTable(['Order', 'Side', 'Tier', 'Size USD', 'Limit', 'Lev', ''], (a.open_orders || []).map((o) =>
       `<tr><td title="${esc(o.id)}">${esc(short(o.id))}</td><td class="${o.side === 'long' ? 'long' : 'short'}">${esc(o.side)}</td><td>${esc(o.tier)}</td><td>${fmt(o.quantity)}</td><td>${fmt(o.limit_usd)}</td><td>${(o.leverage_bps || 0) / 1e4}x</td><td><button class="btn sm" data-cancel="${esc(o.id)}">Cancel</button></td></tr>`));

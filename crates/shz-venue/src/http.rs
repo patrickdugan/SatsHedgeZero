@@ -261,7 +261,7 @@ async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (
                 "owner": hex::encode(a.owner), "kind": a.kind, "label": a.label, "cap_sats": a.cap_sats,
                 "outpoint": {"txid": hex::encode(a.outpoint.txid), "vout": a.outpoint.vout},
                 "explorer_url": (a.kind == "utxo").then(|| format!("https://mempool.space/testnet4/tx/{}", hex::encode(a.outpoint.txid))),
-                "balance": v.balance(&a.owner).map(|b| json!({"cap": b.cap, "free": b.free, "resting": b.resting, "pending": b.pending, "committed": b.committed, "paid_fees": b.paid_fees})),
+                "balance": v.balance(&a.owner).map(|b| crate::core::balance_json(&b)),
                 "position": v.position(&a.owner),
             })).collect::<Vec<_>>()))
         }

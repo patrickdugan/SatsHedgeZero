@@ -270,7 +270,7 @@ impl TieredRouter{
   cfg.tariff.validate()?;cfg.execution.validate()?;
   let mut accounts=BTreeMap::new();
   for a in &registry.allocations{if let Some(s)=a.shares.iter().find(|s|s.router==cfg.router){
-   accounts.insert(op(&a.channel),Account{owner:a.owner,balance:Balance{cap:s.sats,free:s.sats,resting:0,pending:0,committed:0,paid_fees:0},last_seq:0});
+   accounts.insert(op(&a.channel),Account::new(a.owner,s.sats));
   }}
   let policy_id=cfg.execution.id();
   Ok(Self{cfg,authority:registry.authority,policy_id,clock:0,arrival:0,activation:0,hold:false,accounts,cancels:BTreeMap::new(),queue:BTreeMap::new(),
@@ -287,7 +287,7 @@ impl TieredRouter{
   let sats=allocation.shares.iter().find(|s|s.router==self.cfg.router).ok_or(TierReject::Allocation)?.sats;
   let k=op(&allocation.channel);
   if self.accounts.contains_key(&k){return Err(TierReject::Allocation)}
-  self.accounts.insert(k,Account{owner:allocation.owner,balance:Balance{cap:sats,free:sats,resting:0,pending:0,committed:0,paid_fees:0},last_seq:0});
+  self.accounts.insert(k,Account::new(allocation.owner,sats));
   Ok(())
  }
  pub fn execution_policy_id(&self)->Key{self.policy_id}
@@ -506,6 +506,8 @@ impl TieredRouter{
  pub(super) fn account_owner(&self,k:&Outpoint)->Option<Key>{self.accounts.get(k).map(|a|a.owner)}
  pub(super) fn account_balance(&self,k:&Outpoint)->Option<Balance>{self.accounts.get(k).map(|a|a.balance)}
  pub(super) fn set_account_balance(&mut self,k:&Outpoint,b:Balance){if let Some(a)=self.accounts.get_mut(k){a.balance=b}}
+ pub(super) fn account_position(&self,k:&Outpoint)->Option<positions::Position>{self.accounts.get(k).map(|a|a.position.clone())}
+ pub(super) fn set_account_position(&mut self,k:&Outpoint,p:positions::Position){if let Some(a)=self.accounts.get_mut(k){a.position=p}}
  /// Pull a resting maker quote (used when a fenced abort cancels a batch's makers).
  pub(super) fn cancel_resting(&mut self,id:Key){self.remove(id);}
 }
