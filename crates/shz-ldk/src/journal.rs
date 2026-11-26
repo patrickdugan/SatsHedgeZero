@@ -3,15 +3,14 @@
 //! LDK reports no commitment number or `revoke_and_ack` through its events, so the evidence
 //! comes from the one place every channel state change must pass before LDK proceeds: the
 //! `Persist` implementation of its `ChainMonitor`. [`JournalingPersist`] wraps the real
-//! persister. After the inner persister has stored the monitor durably it derives a
-//! [`MonitorRecord`] from the monitor it just stored and appends that record to a hash-chained,
-//! fsynced lane journal; only then does it report `Completed` to LDK. A channel state that the
-//! counterparty can see (LDK sends `commitment_signed` / `revoke_and_ack` only after the monitor
-//! update completed) therefore always has a journal record.
+//! persister: once the inner persister has stored a monitor durably it derives a
+//! [`MonitorRecord`] from the monitor it just stored and appends it to a hash-chained, fsynced
+//! lane journal, before LDK is told the update completed.
 use lightning::chain::chainmonitor::Persist;
 use lightning::chain::channelmonitor::{Balance, ChannelMonitor, ChannelMonitorUpdate};
 use lightning::chain::ChannelMonitorUpdateStatus;
 use lightning::sign::ecdsa::EcdsaChannelSigner;
+use lightning::ln::types::ChannelId;
 use lightning::util::persist::MonitorName;
 use lightning::util::ser::Writeable;
 use sha2::{Digest, Sha256};
@@ -162,8 +161,20 @@ impl LaneJournal {
         Ok(Self { file, tip: [0; 32], frames: 0 })
     }
 
+    /// Reopens an existing journal for appending after verifying its whole chain.
+    pub fn open(path: &Path) -> io::Result<(Self, Vec<MonitorRecord>)> {
+        let (records, tip) = Self::read_tip(path)?;
+        let file = OpenOptions::new().read(true).append(true).open(path)?;
+        let frames = records.len() as u64;
+        Ok((Self { file, tip, frames }, records))
+    }
+
     /// Every record in `path`, verifying the chain.
     pub fn read(path: &Path) -> io::Result<Vec<MonitorRecord>> {
+        Self::read_tip(path).map(|(r, _)| r)
+    }
+
+    fn read_tip(path: &Path) -> io::Result<(Vec<MonitorRecord>, [u8; 32])> {
         let mut data = Vec::new();
         File::open(path)?.read_to_end(&mut data)?;
         let bad = || io::Error::new(io::ErrorKind::InvalidData, "lane journal corrupt or torn");
@@ -183,7 +194,7 @@ impl LaneJournal {
             n += 1;
             at += 36 + len;
         }
-        Ok(out)
+        Ok((out, tip))
     }
 
     pub fn append(&mut self, rec: &MonitorRecord) -> io::Result<()> {
@@ -250,28 +261,39 @@ impl<S: EcdsaChannelSigner> Persist<S> for FilePersist {
     }
 }
 
-/// `Persist` wrapper that turns every completed monitor write into a lane-journal record.
+/// `Persist` wrapper that turns every durable monitor write into a lane-journal record, and
+/// defers that write until the node has persisted its `ChannelManager`.
 ///
-/// Order per call: inner persister writes the monitor; on `Completed` the record is appended
-/// and fsynced; only then is `Completed` returned. If the inner persister answers
-/// `InProgress` no record is written and `InProgress` is returned: asynchronous persistence
-/// has no evidence path in this gate. A journal write failure returns `UnrecoverableError`,
-/// which stops LDK from advancing the channel.
+/// Every `Persist` call is queued and answered `InProgress`. The node's worker
+/// ([`crate::node::LdkNode`]) drains the queue with [`JournalingPersist::take_queue`]: it
+/// writes the `ChannelManager` first, then each queued monitor through the inner persister
+/// ([`JournalingPersist::write`], which appends and fsyncs the record), and only then calls
+/// `ChainMonitor::channel_monitor_updated`. On disk the manager is therefore never behind a
+/// monitor: after a crash LDK replays the manager's in-flight monitor updates, whereas a monitor
+/// ahead of a stale manager would force-close the channel. The counterparty sees a new state only
+/// after `channel_monitor_updated`, so every state it can see has a journal record.
 pub struct JournalingPersist<P> {
     inner: P,
     journal: Mutex<LaneJournal>,
     path: PathBuf,
     latest: Mutex<HashMap<[u8; 32], MonitorRecord>>,
+    queue: Mutex<Vec<(ChannelId, Option<u64>)>>,
 }
 
 impl<P> JournalingPersist<P> {
     pub fn new(inner: P, journal_path: PathBuf) -> io::Result<Self> {
-        Ok(Self {
-            inner,
-            journal: Mutex::new(LaneJournal::create(&journal_path)?),
-            path: journal_path,
-            latest: Mutex::new(HashMap::new()),
-        })
+        Ok(Self::with(inner, LaneJournal::create(&journal_path)?, journal_path, Vec::new()))
+    }
+
+    /// Reopens the journal of a restarted node; the latest record per channel is rebuilt from it.
+    pub fn open(inner: P, journal_path: PathBuf) -> io::Result<Self> {
+        let (journal, records) = LaneJournal::open(&journal_path)?;
+        Ok(Self::with(inner, journal, journal_path, records))
+    }
+
+    fn with(inner: P, journal: LaneJournal, path: PathBuf, records: Vec<MonitorRecord>) -> Self {
+        let latest = records.into_iter().map(|r| (r.channel_id, r)).collect();
+        Self { inner, journal: Mutex::new(journal), path, latest: Mutex::new(latest), queue: Mutex::new(Vec::new()) }
     }
 
     pub fn journal_path(&self) -> &Path {
@@ -283,30 +305,43 @@ impl<P> JournalingPersist<P> {
         self.latest.lock().unwrap().get(channel_id).cloned()
     }
 
-    fn record<S: EcdsaChannelSigner>(&self, monitor: &ChannelMonitor<S>) -> ChannelMonitorUpdateStatus {
-        let rec = MonitorRecord::from_monitor(monitor);
-        if self.journal.lock().unwrap().append(&rec).is_err() {
-            return ChannelMonitorUpdateStatus::UnrecoverableError;
+    /// Monitors waiting to be written: channel and, when LDK expects a completion call, the
+    /// update id to pass to `channel_monitor_updated`.
+    pub fn take_queue(&self) -> Vec<(ChannelId, Option<u64>)> {
+        std::mem::take(&mut *self.queue.lock().unwrap())
+    }
+
+    fn enqueue(&self, channel: ChannelId, completion: Option<u64>) -> ChannelMonitorUpdateStatus {
+        self.queue.lock().unwrap().push((channel, completion));
+        ChannelMonitorUpdateStatus::InProgress
+    }
+}
+
+impl<P> JournalingPersist<P> {
+    /// Writes `monitor` through the inner persister, then appends and fsyncs its record.
+    pub fn write<S: EcdsaChannelSigner>(&self, monitor: &ChannelMonitor<S>) -> io::Result<()>
+    where
+        P: Persist<S>,
+    {
+        match self.inner.update_persisted_channel(monitor.persistence_key(), None, monitor) {
+            ChannelMonitorUpdateStatus::Completed => {}
+            _ => return Err(io::Error::other("inner persister did not complete")),
         }
+        let rec = MonitorRecord::from_monitor(monitor);
+        self.journal.lock().unwrap().append(&rec)?;
         self.latest.lock().unwrap().insert(rec.channel_id, rec);
-        ChannelMonitorUpdateStatus::Completed
+        Ok(())
     }
 }
 
 impl<S: EcdsaChannelSigner, P: Persist<S>> Persist<S> for JournalingPersist<P> {
-    fn persist_new_channel(&self, name: MonitorName, monitor: &ChannelMonitor<S>) -> ChannelMonitorUpdateStatus {
-        match self.inner.persist_new_channel(name, monitor) {
-            ChannelMonitorUpdateStatus::Completed => self.record(monitor),
-            other => other,
-        }
+    fn persist_new_channel(&self, _name: MonitorName, monitor: &ChannelMonitor<S>) -> ChannelMonitorUpdateStatus {
+        self.enqueue(monitor.channel_id(), Some(monitor.get_latest_update_id()))
     }
     fn update_persisted_channel(
-        &self, name: MonitorName, update: Option<&ChannelMonitorUpdate>, monitor: &ChannelMonitor<S>,
+        &self, _name: MonitorName, update: Option<&ChannelMonitorUpdate>, monitor: &ChannelMonitor<S>,
     ) -> ChannelMonitorUpdateStatus {
-        match self.inner.update_persisted_channel(name, update, monitor) {
-            ChannelMonitorUpdateStatus::Completed => self.record(monitor),
-            other => other,
-        }
+        self.enqueue(monitor.channel_id(), update.map(|u| u.update_id))
     }
     fn archive_persisted_channel(&self, name: MonitorName) {
         self.inner.archive_persisted_channel(name)

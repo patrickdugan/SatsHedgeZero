@@ -7,13 +7,13 @@
 //! Needs Bitcoin Core: `SHZ_BITCOIND=<path to bitcoind> cargo test -p shz-ldk -- --ignored`.
 //! `SHZ_LDK_RECEIPT=<file>` writes a JSON receipt of every batch.
 use shz_dex::OrderSide;
-use shz_dex::routing::durable::{AckBundle, Disposition, FeeRecipients, Lane};
+use shz_dex::routing::durable::{AckBundle, Disposition, FeeRecipients, Lane, Phase};
 use shz_dex::routing::tiered::*;
 use shz_dex::routing::tiered_durable::*;
 use shz_dex::routing::*;
 use shz_dlc::{Bip340Signature, BtcOutPoint, bip340_sign, tagged_hash};
 use shz_ldk::{Bitcoind, LaneSettlement, LdkNode, LdkSettlement, Side, attest};
-use shz_ldk::node::wait_until;
+use shz_ldk::node::{CrashPoint, wait_until};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -135,8 +135,8 @@ impl Venue {
 struct Net {
     venue: Arc<LdkNode>,
     owners: Vec<Arc<LdkNode>>,
-    _rt: tokio::runtime::Runtime,
-    _btc: Bitcoind,
+    rt: tokio::runtime::Runtime,
+    btc: Bitcoind,
 }
 
 impl Net {
@@ -148,11 +148,16 @@ impl Net {
     }
 }
 
-fn scratch() -> PathBuf {
-    let p = std::env::temp_dir().join(format!("shz-ldk-{}", std::process::id()));
+fn scratch(name: &str) -> PathBuf {
+    let p = std::env::temp_dir().join(format!("shz-ldk-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&p);
     std::fs::create_dir_all(&p).unwrap();
     p
+}
+
+const VENUE_SEED: [u8; 32] = [200; 32];
+fn owner_seed(n: u8) -> [u8; 32] {
+    [200 + n; 32]
 }
 
 /// Venue node opens one channel to each account node, pushing `PUSH_SATS` so the account can
@@ -161,9 +166,9 @@ fn network(dir: &std::path::Path) -> Net {
     let bitcoind = PathBuf::from(std::env::var_os("SHZ_BITCOIND").expect("set SHZ_BITCOIND to a bitcoind 31.x binary"));
     let btc = Bitcoind::spawn(&bitcoind, dir.join("bitcoind"));
     let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap();
-    let venue = LdkNode::start("venue", [200; 32], dir.join("venue"), btc.rpc.clone(), &rt);
+    let venue = LdkNode::start("venue", VENUE_SEED, dir.join("venue"), btc.rpc.clone(), &rt);
     let owners: Vec<_> = (1..=3u8)
-        .map(|n| LdkNode::start(&format!("acct{n}"), [200 + n; 32], dir.join(format!("acct{n}")), btc.rpc.clone(), &rt))
+        .map(|n| LdkNode::start(&format!("acct{n}"), owner_seed(n), dir.join(format!("acct{n}")), btc.rpc.clone(), &rt))
         .collect();
     for (i, o) in owners.iter().enumerate() {
         venue.connect(o, &rt);
@@ -175,7 +180,7 @@ fn network(dir: &std::path::Path) -> Net {
     })
     .expect("three funding transactions broadcast");
     btc.rpc.mine(6);
-    let net = Net { venue, owners, _rt: rt, _btc: btc };
+    let net = Net { venue, owners, rt, btc };
     wait_until(Duration::from_secs(60), || {
         net.sync();
         net.owners.iter().all(|o| {
@@ -190,13 +195,64 @@ fn network(dir: &std::path::Path) -> Net {
 /// maker, taker, taker side, price, (maker, taker) leverage
 type Trade = (u8, u8, OrderSide, u64, (u32, u32));
 
+/// A1 shape: 1 long 100x vs 2; 1 sells to 3 past its bankruptcy price (loss collected,
+/// shortfall to the fund); 2 buys back from 3 (3's gain paid from the pool and fund).
+/// A2 shape: 2 short 100x vs 1; 2 buys from 3 past bankruptcy; 1 sells to 3.
+const TRADES: [Trade; 6] = [
+    (2, 1, OrderSide::Long, 100_000, (X1, X100)),
+    (3, 1, OrderSide::Short, 98_000, (X1, X1)),
+    (3, 2, OrderSide::Long, 100_000, (X1, X1)),
+    (1, 2, OrderSide::Short, 100_000, (X1, X100)),
+    (3, 2, OrderSide::Long, 102_000, (X1, X1)),
+    (3, 1, OrderSide::Short, 104_000, (X1, X1)),
+];
+/// A1 + A2 with a 50,000 sat fund: 1 −10,000 then +38,462; 2 −10,000; 3 +20,408 −18,854.
+const FINAL_REALIZED: [i64; 3] = [28_462, -10_000, 1_554];
+
 fn sign(n: u8, h: &Key) -> Bip340Signature {
     bip340_sign(&sk(n), h).unwrap()
 }
 
+/// Everything a venue restart needs to reopen its router and adapter.
+struct World {
+    dir: PathBuf,
+    net: Net,
+    s: LdkSettlement,
+    v: Venue,
+    registry: Registry,
+    router_lanes: Vec<Lane>,
+}
+
+fn recipients() -> FeeRecipients {
+    FeeRecipients { oracle: pk(110), router: pk(111) }
+}
+
+fn world(name: &str) -> World {
+    let dir = scratch(name);
+    let net = network(&dir);
+    let mut s = LdkSettlement::new(net.venue.clone(), dir.join("settlement.json"));
+    let lanes: Vec<BtcOutPoint> = net.owners.iter().map(|o| s.bind(o.clone()).expect("bind lane")).collect();
+    let p = policy();
+    let plans = (1..=3u8)
+        .map(|n| Allocation::signed(p.scope(), &sk(n), &AUTH, lanes[n as usize - 1].clone(), CAP, vec![Share { router: 1, sats: CAP }]).unwrap())
+        .collect();
+    let registry = Registry::new(p.scope(), public(&AUTH), plans).unwrap();
+    let router_lanes: Vec<Lane> = lanes
+        .iter()
+        .map(|c| Lane { channel: c.clone(), peer: pk(VENUE_KEY), monitor: pk(MONITOR_KEY), initial: s.initial_head(c).unwrap() })
+        .collect();
+    let mut d = DurableTieredRouter::create(&dir.join("router.wal"), &registry, cfg(), router_lanes.clone(), recipients()).unwrap();
+    assert!(d.enable_margin_release().unwrap());
+    assert!(d.enable_clearing(FUND).unwrap());
+    let v = Venue { d, lanes, round: 0, seq: 0 };
+    World { dir, net, s, v, registry, router_lanes }
+}
+
 /// One committed batch: clearing previewed, nets moved through LDK, every signer attests its
 /// own journal, the V3 bundle resolves, and both nodes' persisted balances equal the ledger.
-fn run(v: &mut Venue, s: &mut LdkSettlement, net: &Net, venue_journal: &std::path::Path, b: Batch, receipt: &mut Vec<serde_json::Value>) {
+fn run(w: &mut World, b: Batch, receipt: &mut Vec<serde_json::Value>) {
+    let World { net, s, v, .. } = w;
+    let venue_journal = net.venue.persister.journal_path().to_path_buf();
     let seq = b.sequence();
     let plan = v.d.planned_clearing(seq).unwrap().expect("clearing active, batch prepared");
     let before: Vec<i64> = (1..=3).map(|n| v.realized(n)).collect();
@@ -206,10 +262,13 @@ fn run(v: &mut Venue, s: &mut LdkSettlement, net: &Net, venue_journal: &std::pat
         assert_eq!(a.channel, st.channel);
         let n = v.n_of(&a.channel);
         let mut ack = st.ack(v.d.head(&a.channel).unwrap().unwrap());
-        // Owner, venue (pinned peer) and monitor each check their own durable journal first.
-        attest(&s.owner_journal(&a.channel).unwrap(), st, Side::Owner, &ack.evidence).expect("owner attests");
-        attest(venue_journal, st, Side::Venue, &ack.evidence).expect("venue attests");
-        attest(venue_journal, st, Side::Venue, &ack.evidence).and(attest(&s.owner_journal(&a.channel).unwrap(), st, Side::Owner, &ack.evidence)).expect("monitor attests");
+        // Owner and venue (pinned peer) check their own durable journal; the monitor both.
+        let owner_journal = s.owner_journal(&a.channel).unwrap();
+        attest(&owner_journal, st, Side::Owner, &ack.evidence).expect("owner attests");
+        attest(&venue_journal, st, Side::Venue, &ack.evidence).expect("venue attests");
+        attest(&venue_journal, st, Side::Venue, &ack.evidence)
+            .and(attest(&owner_journal, st, Side::Owner, &ack.evidence))
+            .expect("monitor attests");
         let h = v.d.ack_message(seq, Disposition::Commit, &ack).unwrap();
         ack.signatures = [sign(n, &h), sign(VENUE_KEY, &h), sign(MONITOR_KEY, &h)];
         channels.push(ack);
@@ -255,74 +314,119 @@ fn run(v: &mut Venue, s: &mut LdkSettlement, net: &Net, venue_journal: &std::pat
     }));
 }
 
+fn finish(w: World, receipt: Vec<serde_json::Value>, env: &str, extra: serde_json::Value) {
+    let realized: Vec<i64> = (1..=3).map(|n| w.v.realized(n)).collect();
+    let sum = w.v.d.clearing_summary().unwrap().unwrap();
+    assert_eq!(realized, FINAL_REALIZED.to_vec());
+    assert_eq!(sum.cash, FUND as i64 - realized.iter().sum::<i64>());
+    let out = serde_json::json!({
+        "lanes": w.v.lanes.iter().map(|c| format!("{}:{}", hex::encode(c.txid), c.vout)).collect::<Vec<_>>(),
+        "fund0": FUND, "fund_after": sum.fund, "cash_after": sum.cash, "realized": realized,
+        "batches": receipt, "restarts": extra,
+    });
+    if let Some(p) = std::env::var_os(env) {
+        std::fs::write(p, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
+    }
+    eprintln!("{}", serde_json::to_string_pretty(&out).unwrap());
+    let dir = w.dir.clone();
+    drop(w);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 #[ignore = "needs Bitcoin Core: SHZ_BITCOIND=<path to bitcoind>"]
 fn ldk_lanes_move_the_cleared_net_amounts() {
-    let dir = scratch();
-    let net = network(&dir);
-    let mut s = LdkSettlement::new(net.venue.clone());
-    let lanes: Vec<BtcOutPoint> = net.owners.iter().map(|o| s.bind(o.clone()).expect("bind lane")).collect();
-    let p = policy();
-    let plans = (1..=3u8)
-        .map(|n| Allocation::signed(p.scope(), &sk(n), &AUTH, lanes[n as usize - 1].clone(), CAP, vec![Share { router: 1, sats: CAP }]).unwrap())
-        .collect();
-    let registry = Registry::new(p.scope(), public(&AUTH), plans).unwrap();
-    let router_lanes = lanes
-        .iter()
-        .map(|c| Lane { channel: c.clone(), peer: pk(VENUE_KEY), monitor: pk(MONITOR_KEY), initial: s.initial_head(c).unwrap() })
-        .collect();
-    let recipients = FeeRecipients { oracle: pk(110), router: pk(111) };
-    let mut d = DurableTieredRouter::create(&dir.join("router.wal"), &registry, cfg(), router_lanes, recipients).unwrap();
-    assert!(d.enable_margin_release().unwrap());
-    assert!(d.enable_clearing(FUND).unwrap());
-    let mut v = Venue { d, lanes: lanes.clone(), round: 0, seq: 0 };
-    let venue_journal = net.venue.persister.journal_path().to_path_buf();
+    let mut w = world("move");
     let mut receipt = Vec::new();
-
-    // A1 shape: 1 long 100x vs 2; 1 sells to 3 past its bankruptcy price (loss collected,
-    // shortfall to the fund); 2 buys back from 3 (3's gain paid from the pool and fund).
-    let trades: [Trade; 6] = [
-        (2, 1, OrderSide::Long, 100_000, (X1, X100)),
-        (3, 1, OrderSide::Short, 98_000, (X1, X1)),
-        (3, 2, OrderSide::Long, 100_000, (X1, X1)),
-        // A2 shape: 2 short 100x vs 1; 2 buys from 3 past bankruptcy; 1 sells to 3.
-        (1, 2, OrderSide::Short, 100_000, (X1, X100)),
-        (3, 2, OrderSide::Long, 102_000, (X1, X1)),
-        (3, 1, OrderSide::Short, 104_000, (X1, X1)),
-    ];
-    for (i, (maker, taker, side, price, lev)) in trades.into_iter().enumerate() {
-        let b = v.seal(maker, taker, side, 1000, price, lev);
-        run(&mut v, &mut s, &net, &venue_journal, b, &mut receipt);
+    for (i, (maker, taker, side, price, lev)) in TRADES.into_iter().enumerate() {
+        let b = w.v.seal(maker, taker, side, 1000, price, lev);
+        run(&mut w, b, &mut receipt);
         if i == 1 {
             // A ledger amount one sat off what the persisted monitor shows is refused by the
             // signer, as is evidence that names another settlement.
-            let plan_seq = v.d.next_resolution().unwrap() - 1;
-            let c = v.d.clearing(plan_seq).unwrap().unwrap().clone();
-            let st: LaneSettlement = s.settle(plan_seq, &c).unwrap().remove(0);
+            let plan_seq = w.v.d.next_resolution().unwrap() - 1;
+            let c = w.v.d.clearing(plan_seq).unwrap().unwrap().clone();
+            let st: LaneSettlement = w.s.settle(plan_seq, &c).unwrap().remove(0);
             let ev = st.evidence();
             let mut off = st.clone();
             off.owner_expected += 1;
-            let oj = s.owner_journal(&st.channel).unwrap();
+            let oj = w.s.owner_journal(&st.channel).unwrap();
             assert!(matches!(attest(&oj, &off, Side::Owner, &off.evidence()), Err(shz_ldk::AttestError::Balance { .. })));
             assert_eq!(attest(&oj, &st, Side::Owner, &[1; 32]), Err(shz_ldk::AttestError::Evidence));
             assert_eq!(attest(&oj, &st, Side::Owner, &ev), Ok(()));
         }
     }
-    let realized: Vec<i64> = (1..=3).map(|n| v.realized(n)).collect();
-    let sum = v.d.clearing_summary().unwrap().unwrap();
-    // A1 + A2 with a 50,000 sat fund: 1 −10,000 then +38,462; 2 −10,000; 3 +20,408 −18,854.
-    assert_eq!(realized, vec![28_462, -10_000, 1_554]);
-    assert_eq!(sum.cash, FUND as i64 - realized.iter().sum::<i64>());
-    let out = serde_json::json!({
-        "lanes": lanes.iter().map(|c| format!("{}:{}", hex::encode(c.txid), c.vout)).collect::<Vec<_>>(),
-        "fund0": FUND, "fund_after": sum.fund, "cash_after": sum.cash, "realized": realized,
-        "batches": receipt,
-    });
-    if let Some(p) = std::env::var_os("SHZ_LDK_RECEIPT") {
-        std::fs::write(p, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
+    finish(w, receipt, "SHZ_LDK_RECEIPT", serde_json::json!([]));
+}
+
+/// Settles until a node dies at `point` mid-payment; the batch must stay unresolved.
+fn settle_until_crash(w: &mut World, node: &LdkNode, point: CrashPoint) -> u64 {
+    let seq = w.v.d.next_resolution().unwrap();
+    let plan = w.v.d.planned_clearing(seq).unwrap().unwrap();
+    node.crash_at(point);
+    w.s.timeout = Duration::from_secs(8);
+    let err = w.s.settle(seq, &plan).expect_err("a lane cannot finish while a party is down");
+    assert!(node.stopped(), "{} crashed at {point:?}: {err}", node.name);
+    node.kill();
+    assert_eq!(w.v.d.batch(seq).unwrap().unwrap().1, Phase::Prepared, "nothing resolved");
+    seq
+}
+
+/// G-LN-1b on regtest: nodes die in the middle of a batch's channel updates and restart from
+/// disk; the batch then completes, each lane moved exactly once, and the ledger checks of
+/// `run` hold.
+///
+/// * Batch 3 (the venue pays account 3): the venue dies after writing its `ChannelManager`
+///   but before the monitor. The venue's whole process restarts: LDK node from disk, router
+///   journal reopened, adapter reloaded from its state file.
+/// * Batch 5 (account 2 pays the venue): account 2 dies after writing manager and monitor but
+///   before LDK was told the update completed.
+/// * Batch 6 (venue pays account 1, account 3 pays the venue): account 3 dies after its manager
+///   write; on resume a lane that already moved is not paid again (its balance is post-batch).
+#[test]
+#[ignore = "needs Bitcoin Core: SHZ_BITCOIND=<path to bitcoind>"]
+fn ldk_batches_survive_node_crashes_mid_settlement() {
+    let mut w = world("crash");
+    let mut receipt = Vec::new();
+    let mut restarts = Vec::new();
+    for (i, (maker, taker, side, price, lev)) in TRADES.into_iter().enumerate() {
+        let b = w.v.seal(maker, taker, side, 1000, price, lev);
+        match i {
+            2 => {
+                let venue = w.net.venue.clone();
+                let seq = settle_until_crash(&mut w, &venue, CrashPoint::AfterManager);
+                drop(venue);
+                // The venue process is gone: router journal, adapter and LDK node reopen.
+                let placeholder = DurableTieredRouter::create(&w.dir.join("placeholder.wal"), &w.registry, cfg(), w.router_lanes.clone(), recipients()).unwrap();
+                drop(std::mem::replace(&mut w.v.d, placeholder));
+                w.v.d = DurableTieredRouter::open(&w.dir.join("router.wal"), &w.registry, cfg(), w.router_lanes.clone(), recipients(), None).unwrap();
+                assert_eq!(w.v.d.batch(seq).unwrap().unwrap().1, Phase::Prepared);
+                let rpc = w.net.btc.rpc.clone();
+                w.net.venue = LdkNode::restart("venue", VENUE_SEED, w.dir.join("venue"), rpc, &w.net.rt);
+                for o in &w.net.owners {
+                    w.net.venue.connect(o, &w.net.rt);
+                }
+                w.net.sync();
+                w.s = LdkSettlement::load(w.net.venue.clone(), &w.net.owners, w.dir.join("settlement.json")).unwrap();
+                restarts.push(serde_json::json!({"batch": seq, "node": "venue", "point": "AfterManager"}));
+            }
+            4 | 5 => {
+                let n = if i == 4 { 2u8 } else { 3u8 };
+                let point = if i == 4 { CrashPoint::AfterMonitors } else { CrashPoint::AfterManager };
+                let node = w.net.owners[n as usize - 1].clone();
+                let seq = settle_until_crash(&mut w, &node, point);
+                drop(node);
+                let rpc = w.net.btc.rpc.clone();
+                let fresh = LdkNode::restart(&format!("acct{n}"), owner_seed(n), w.dir.join(format!("acct{n}")), rpc, &w.net.rt);
+                w.net.venue.connect(&fresh, &w.net.rt);
+                fresh.sync();
+                w.s.rebind_owner(fresh.clone());
+                w.net.owners[n as usize - 1] = fresh;
+                restarts.push(serde_json::json!({"batch": seq, "node": format!("acct{n}"), "point": format!("{point:?}")}));
+            }
+            _ => {}
+        }
+        run(&mut w, b, &mut receipt);
     }
-    eprintln!("{}", serde_json::to_string_pretty(&out).unwrap());
-    drop(v);
-    drop(net);
-    let _ = std::fs::remove_dir_all(&dir);
+    finish(w, receipt, "SHZ_LDK_CRASH_RECEIPT", serde_json::Value::Array(restarts));
 }

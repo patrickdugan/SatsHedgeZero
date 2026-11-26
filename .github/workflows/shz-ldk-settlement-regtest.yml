@@ -26,10 +26,11 @@ jobs:
           echo "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e  /tmp/bitcoin-31.1.tar.gz" | sha256sum -c -
           tar -xzf /tmp/bitcoin-31.1.tar.gz -C /tmp
 
-      - name: Move cleared nets through LDK channels on regtest (G-LN-1a)
+      - name: Move cleared nets through LDK channels on regtest, with crashes (G-LN-1a, G-LN-1b)
         env:
           SHZ_BITCOIND: /tmp/bitcoin-31.1/bin/bitcoind
           SHZ_LDK_RECEIPT: /tmp/ldk_settlement_receipt.json
+          SHZ_LDK_CRASH_RECEIPT: /tmp/ldk_crash_receipt.json
         run: cargo test --locked -p shz-ldk -- --ignored --nocapture
 
       - name: Print receipt fields as annotations
@@ -37,9 +38,12 @@ jobs:
           r=/tmp/ldk_settlement_receipt.json
           echo "::notice title=G-LN-1a ledger::realized $(jq -c .realized $r), fund $(jq -r .fund0 $r) -> $(jq -r .fund_after $r), pool cash $(jq -r .cash_after $r)"
           jq -r '.batches[] | "::notice title=batch \(.sequence)::layer \(.layer) pool_net \(.pool_net) lanes \([.lanes[] | "\(.lane):\(.net // 0)/\(.owner_sats)/\(.venue_sats)/u\(.owner_update_id)"] | join(" "))"' $r
+          echo "::notice title=G-LN-1b restarts::$(jq -c .restarts /tmp/ldk_crash_receipt.json), realized $(jq -c .realized /tmp/ldk_crash_receipt.json)"
 
       - name: Upload receipt
         uses: actions/upload-artifact@v4
         with:
           name: ldk-settlement-receipt
-          path: /tmp/ldk_settlement_receipt.json
+          path: |
+            /tmp/ldk_settlement_receipt.json
+            /tmp/ldk_crash_receipt.json

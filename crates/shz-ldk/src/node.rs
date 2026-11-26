@@ -10,19 +10,23 @@ use lightning::chain::chainmonitor::ChainMonitor;
 use lightning::chain::{BestBlock, Filter, Listen};
 use lightning::events::{Event, EventsProvider, ReplayEvent};
 use lightning::ln::channel_state::ChannelDetails;
-use lightning::ln::channelmanager::{ChainParameters, ChannelManager, PaymentId, RecipientOnionFields, Retry};
+use lightning::chain::channelmonitor::ChannelMonitor;
+use lightning::ln::channelmanager::{
+    ChainParameters, ChannelManager, ChannelManagerReadArgs, PaymentId, RecipientOnionFields, Retry,
+};
+use lightning::util::ser::{ReadableArgs, Writeable};
 use lightning::ln::peer_handler::{IgnoringMessageHandler, MessageHandler, PeerManager};
 use lightning::onion_message::messenger::NullMessageRouter;
 use lightning::routing::router::{InFlightHtlcs, Path, Payee, PaymentParameters, Route, RouteHop, RouteParameters, Router};
 use lightning::sign::{InMemorySigner, KeysManager, NodeSigner};
 use lightning::types::features::{ChannelFeatures, NodeFeatures};
-use lightning::types::payment::PaymentHash;
+use lightning::types::payment::{PaymentHash, PaymentPreimage};
 use lightning::util::config::{MaxDustHTLCExposure, UserConfig};
 use lightning::util::logger::{Level, Logger, Record};
 use std::net::{SocketAddr, TcpListener};
 use std::path::{Path as FsPath, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -276,20 +280,87 @@ pub struct LdkNode {
     height: Mutex<u32>,
     events: Arc<Mutex<Vec<Event>>>,
     stop: Arc<AtomicBool>,
-    worker: Option<JoinHandle<()>>,
+    crash: Arc<AtomicU8>,
+    worker: Mutex<Option<JoinHandle<()>>>,
+}
+
+/// Where a test node stops dead during a persistence flush (see [`LdkNode::crash_at`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum CrashPoint {
+    None = 0,
+    /// The `ChannelManager` is on disk, the queued monitors are not.
+    AfterManager = 1,
+    /// Manager and monitors (with their journal records) are on disk; LDK was not told the
+    /// updates completed, so nothing new reached the peer.
+    AfterMonitors = 2,
+}
+
+fn write_atomic(path: &FsPath, bytes: &[u8]) -> std::io::Result<()> {
+    let tmp = path.with_extension("tmp");
+    let mut f = std::fs::File::create(&tmp)?;
+    std::io::Write::write_all(&mut f, bytes)?;
+    f.sync_all()?;
+    drop(f);
+    std::fs::rename(&tmp, path)
+}
+
+/// One persistence flush: manager first, then the queued monitors and their journal records,
+/// then the completion calls that let LDK talk to the peer. `false` if `crash` stopped it.
+fn flush(cm: &Cm, chm: &ChainMon, persister: &Persister, manager: &FsPath, crash: CrashPoint) -> bool {
+    let queue = persister.take_queue();
+    if queue.is_empty() && !cm.get_and_clear_needs_persistence() {
+        return true;
+    }
+    write_atomic(manager, &cm.encode()).expect("persist ChannelManager");
+    if queue.is_empty() {
+        return true;
+    }
+    if crash == CrashPoint::AfterManager {
+        return false;
+    }
+    let mut written = std::collections::BTreeSet::new();
+    for (cid, _) in &queue {
+        if written.insert(cid.0) {
+            let m = chm.get_monitor(*cid).expect("queued monitor exists");
+            persister.write(&m).expect("persist ChannelMonitor and journal record");
+        }
+    }
+    if crash == CrashPoint::AfterMonitors {
+        return false;
+    }
+    for (cid, id) in queue {
+        if let Some(id) = id {
+            chm.channel_monitor_updated(cid, id).expect("monitor update completion");
+        }
+    }
+    true
 }
 
 impl LdkNode {
-    /// Starts a node with its own key seed and data directory, synced to the current tip.
+    /// Starts a fresh node with its own key seed and data directory, synced to the current tip.
     pub fn start(name: &str, seed: [u8; 32], dir: PathBuf, rpc: Rpc, rt: &tokio::runtime::Runtime) -> Arc<Self> {
+        Self::build(name, seed, dir, rpc, rt, false)
+    }
+
+    /// Restarts a node from its data directory: the persisted `ChannelManager`, every
+    /// persisted `ChannelMonitor` and the lane journal, same seed as the first start. Peers must
+    /// be reconnected; channel reestablishment completes or fails whatever was in flight.
+    pub fn restart(name: &str, seed: [u8; 32], dir: PathBuf, rpc: Rpc, rt: &tokio::runtime::Runtime) -> Arc<Self> {
+        Self::build(name, seed, dir, rpc, rt, true)
+    }
+
+    fn build(name: &str, seed: [u8; 32], dir: PathBuf, rpc: Rpc, rt: &tokio::runtime::Runtime, restore: bool) -> Arc<Self> {
         std::fs::create_dir_all(&dir).expect("node dir");
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let keys = Arc::new(KeysManager::new(&seed, now.as_secs(), now.subsec_nanos(), true));
         let log = Arc::new(Log(name.to_string()));
         let fee = Arc::new(FixedFee);
         let bcast = Arc::new(Broadcaster(rpc.clone()));
+        let files = FilePersist::new(dir.join("monitors")).expect("monitor dir");
+        let journal = dir.join("lane.journal");
         let persister = Arc::new(
-            JournalingPersist::new(FilePersist::new(dir.join("monitors")).expect("monitor dir"), dir.join("lane.journal"))
+            if restore { JournalingPersist::open(files, journal) } else { JournalingPersist::new(files, journal) }
                 .expect("lane journal"),
         );
         let chain_monitor = Arc::new(ChainMonitor::new(
@@ -301,21 +372,58 @@ impl LdkNode {
             keys.clone(),
             keys.get_peer_storage_key(),
         ));
-        let height = rpc.height();
-        let cm = Arc::new(ChannelManager::new(
-            fee,
-            chain_monitor.clone(),
-            bcast,
-            Arc::new(DirectRouter),
-            Arc::new(NullMessageRouter {}),
-            log.clone(),
-            keys.clone(),
-            keys.clone(),
-            keys.clone(),
-            config(),
-            ChainParameters { network: Network::Regtest, best_block: BestBlock::new(rpc.block_hash(height), height) },
-            now.as_secs() as u32,
-        ));
+        let manager_path = dir.join("manager.bin");
+        let (cm, height) = if restore {
+            let mut monitors = Vec::new();
+            for e in std::fs::read_dir(dir.join("monitors")).expect("monitors") {
+                let p = e.unwrap().path();
+                if p.extension().is_some_and(|x| x == "monitor") {
+                    let bytes = std::fs::read(&p).expect("read monitor");
+                    let (_, m) = <(BlockHash, ChannelMonitor<InMemorySigner>)>::read(&mut &bytes[..], (&*keys, &*keys))
+                        .expect("decode monitor");
+                    monitors.push(m);
+                }
+            }
+            let bytes = std::fs::read(&manager_path).expect("read ChannelManager");
+            let args = ChannelManagerReadArgs::new(
+                keys.clone(),
+                keys.clone(),
+                keys.clone(),
+                fee,
+                chain_monitor.clone(),
+                bcast,
+                Arc::new(DirectRouter),
+                Arc::new(NullMessageRouter {}),
+                log.clone(),
+                config(),
+                monitors.iter().collect(),
+            );
+            let (_, cm) = <(BlockHash, Arc<Cm>)>::read(&mut &bytes[..], args).expect("decode ChannelManager");
+            for m in monitors {
+                let status = chain_monitor.load_existing_monitor(m.channel_id(), m).expect("load monitor");
+                assert_eq!(status, lightning::chain::ChannelMonitorUpdateStatus::Completed);
+            }
+            let h = cm.current_best_block().height;
+            (cm, h)
+        } else {
+            let height = rpc.height();
+            let cm = Arc::new(ChannelManager::new(
+                fee,
+                chain_monitor.clone(),
+                bcast,
+                Arc::new(DirectRouter),
+                Arc::new(NullMessageRouter {}),
+                log.clone(),
+                keys.clone(),
+                keys.clone(),
+                keys.clone(),
+                config(),
+                ChainParameters { network: Network::Regtest, best_block: BestBlock::new(rpc.block_hash(height), height) },
+                now.as_secs() as u32,
+            ));
+            write_atomic(&manager_path, &cm.encode()).expect("persist ChannelManager");
+            (cm, height)
+        };
         let ign = Arc::new(IgnoringMessageHandler {});
         let pm = Arc::new(PeerManager::new(
             MessageHandler {
@@ -346,14 +454,28 @@ impl LdkNode {
         });
         let events = Arc::new(Mutex::new(Vec::new()));
         let stop = Arc::new(AtomicBool::new(false));
+        let crash = Arc::new(AtomicU8::new(0));
         let worker = {
-            let (cm, chm, pm, rpc, events, stop) =
-                (cm.clone(), chain_monitor.clone(), pm.clone(), rpc.clone(), events.clone(), stop.clone());
+            let (cm, chm, pm, rpc, events, stop, crash, persister) = (
+                cm.clone(),
+                chain_monitor.clone(),
+                pm.clone(),
+                rpc.clone(),
+                events.clone(),
+                stop.clone(),
+                crash.clone(),
+                persister.clone(),
+            );
             let name = name.to_string();
             thread::spawn(move || {
                 let handler = |ev: Event| -> Result<(), ReplayEvent> {
                     handle_event(&name, &cm, &rpc, &events, ev);
                     Ok(())
+                };
+                let point = || match crash.load(Ordering::Relaxed) {
+                    1 => CrashPoint::AfterManager,
+                    2 => CrashPoint::AfterMonitors,
+                    _ => CrashPoint::None,
                 };
                 while !stop.load(Ordering::Relaxed) {
                     // LDK 0.2 has no PendingHTLCsForwardable event: received HTLCs wait here.
@@ -362,6 +484,12 @@ impl LdkNode {
                     }
                     cm.process_pending_events(&handler);
                     chm.process_pending_events(&handler);
+                    if !flush(&cm, &chm, &persister, &manager_path, point()) {
+                        // Simulated crash: no further processing, connections dropped.
+                        stop.store(true, Ordering::Relaxed);
+                        pm.disconnect_all_peers();
+                        break;
+                    }
                     pm.process_events();
                     thread::sleep(Duration::from_millis(5));
                 }
@@ -378,8 +506,29 @@ impl LdkNode {
             height: Mutex::new(height),
             events,
             stop,
-            worker: Some(worker),
+            crash,
+            worker: Mutex::new(Some(worker)),
         })
+    }
+
+    /// Arms a crash at the next persistence flush that has queued monitors.
+    pub fn crash_at(&self, point: CrashPoint) {
+        self.crash.store(point as u8, Ordering::Relaxed);
+    }
+
+    /// Whether the worker has stopped (crashed or killed).
+    pub fn stopped(&self) -> bool {
+        self.stop.load(Ordering::Relaxed)
+    }
+
+    /// Stops the node without a final flush: the worker exits after its current step and every
+    /// connection is dropped. What is on disk is what a restart sees.
+    pub fn kill(&self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(w) = self.worker.lock().unwrap().take() {
+            let _ = w.join();
+        }
+        self.pm.disconnect_all_peers();
     }
 
     pub fn node_id(&self) -> PublicKey {
@@ -416,13 +565,13 @@ impl LdkNode {
     }
 
     /// Keysend of `amount_msat` to `to` over the direct channel. Idempotent per `id`.
-    pub fn pay(&self, to: PublicKey, amount_msat: u64, id: PaymentId) -> Result<PaymentHash, String> {
+    pub fn pay(&self, to: PublicKey, amount_msat: u64, id: PaymentId, preimage: PaymentPreimage) -> Result<PaymentHash, String> {
         let params = RouteParameters::from_payment_params_and_value(
             PaymentParameters::for_keysend(to, FINAL_CLTV, false),
             amount_msat,
         );
         self.cm
-            .send_spontaneous_payment(None, RecipientOnionFields::spontaneous_empty(), id, params, Retry::Attempts(0))
+            .send_spontaneous_payment(Some(preimage), RecipientOnionFields::spontaneous_empty(), id, params, Retry::Attempts(0))
             .map_err(|e| format!("{e:?}"))
     }
 
@@ -433,10 +582,7 @@ impl LdkNode {
 
 impl Drop for LdkNode {
     fn drop(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
-        if let Some(w) = self.worker.take() {
-            let _ = w.join();
-        }
+        self.kill();
     }
 }
 
