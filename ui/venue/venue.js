@@ -251,7 +251,7 @@ function renderModal(view) {
         const s = await lnurlStart({ api, tradeSecret, origin: location.origin });
         if (ctl.signal.aborted) return;
         $('mstate').outerHTML = `<div class="qrbox">${qrSvg(s.lnurl, { ecc: 'L', px: 5 })}</div><div class="mnote">Scan with a Lightning wallet that supports LNURL-auth. On this phone? <a href="lightning:${esc(s.lnurl)}">Open in wallet</a>. The code expires in 5 minutes.</div><textarea readonly rows="3" aria-label="LNURL" onclick="this.select()">${esc(s.lnurl)}</textarea><div id="mstate" class="msg">Waiting for the wallet…</div>`;
-        const r = await lnurlFinish({ api, tradeSecret, k1: s.k1, signal: ctl.signal, onState: (x) => { const m = $('mstate'); if (m && x === 'authed') m.textContent = 'Wallet authenticated, finishing…'; } });
+        const r = await lnurlFinish({ api, tradeSecret, k1: s.k1, expiresUs: s.expires_us, signal: ctl.signal, onState: (x) => { const m = $('mstate'); if (m && x === 'authed') m.textContent = 'Wallet authenticated, finishing…'; } });
         await finishConnect(r, tradeSecret);
       } catch (e) {
         if (ctl.signal.aborted) return;

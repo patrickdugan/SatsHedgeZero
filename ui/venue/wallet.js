@@ -57,9 +57,11 @@ export function lnurlStart({ api, tradeSecret, origin }) {
  * Poll until the wallet has authenticated k1, then sign the link hash with the trading key.
  * `onState` receives 'pending' | 'authed'. Rejects when the k1 expires or `signal` aborts.
  */
-export async function lnurlFinish({ api, tradeSecret, k1, onState = () => {}, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), signal, intervalMs = 1500 }) {
+export async function lnurlFinish({ api, tradeSecret, k1, expiresUs, nowUs = () => Date.now() * 1000, onState = () => {}, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), signal, intervalMs = 1500 }) {
   for (;;) {
     if (signal && signal.aborted) throw new Error('cancelled');
+    // The venue keeps no state for an unsigned k1, so it cannot report its expiry: track it here.
+    if (expiresUs !== undefined && nowUs() >= expiresUs) throw new Error('QR code expired; try again');
     const s = await api('/api/wallet/lnurl/status?k1=' + k1);
     if (s.status === 'expired') throw new Error('QR code expired; try again');
     onState(s.status);

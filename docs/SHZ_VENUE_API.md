@@ -103,14 +103,14 @@ Both sides consent to a link. The wallet proves control of its key (Nostr event 
 ```
 link_hash = tagged_hash("SHZ/VENUE/WALLET-LINK/V1",
   network[32] || len u8 || kind ("nostr"|"lnurl") || len u8 || wallet key (32 B x-only, or 33 B compressed for lnurl)
-  || trading_key[32] || nonce[32] (Nostr challenge, or lnurl k1) || expires_us u64le)
+  || trading_key[32] || nonce[32] (Nostr challenge MAC, or lnurl k1) || expires_us u64le)
 ```
 
 Rules: a link lasts 24 h (`expires_us`). Once a link has expired, the venue rejects `/api/intents` and `/api/signatures` for that trading key (HTTP 409 `wallet authorization expired; reconnect the wallet`); reconnecting with the same wallet renews it. A trading key stays bound to the first wallet that authorized it (`trading key is bound to another wallet`). Accounts with no link (local key, market makers) are unaffected. The trading key lives in the browser's localStorage, per wallet, so clearing site data loses the account like it does for a local key.
 
 ### Nostr (NIP-07, `window.nostr`)
 
-1. `POST /api/wallet/nostr/challenge` `{"wallet": hex32, "trade_key": hex32}` (wallet = `getPublicKey()`) -> `{"challenge", "hash" (= link_hash), "venue" (network hex), "req": "wallet-link", "kind": 27810, "expires_us" (challenge, 5 min), "link_expires_us"}`.
+1. `POST /api/wallet/nostr/challenge` `{"wallet": hex32, "trade_key": hex32}` (wallet = `getPublicKey()`) -> `{"challenge" (hex of trade_key[32] || link_expires_us u64be || expires_us u64be || mac[32]), "hash" (= link_hash), "venue" (network hex), "req": "wallet-link", "kind": 27810, "expires_us" (challenge, 5 min), "link_expires_us"}`.
 2. The page asks the extension to `signEvent` an event of kind **27810** with tags `["shz-venue", venue]`, `["shz-req", "wallet-link"]`, `["shz-hash", hash]`, `["shz-challenge", challenge]` and a human-readable `content` naming the trading key. The trading key signs `hash` with BIP340.
 3. `POST /api/wallet/nostr/link` `{"event": <signed event>, "session_signature": hex64}` -> `{"trade_key", "link": {"kind","wallet","issued_us","expires_us"}}`.
 
@@ -119,10 +119,32 @@ The venue's envelope check (`verify_nostr_envelope` in `crates/shz-venue/src/wal
 ### LNURL-auth (LUD-04)
 
 1. `POST /api/wallet/lnurl/start` `{"trade_key": hex32, "origin": "https://host"}` -> `{"k1", "callback", "lnurl" (uppercase bech32, for the QR), "expires_us" (5 min)}`. The k1 is bound to `trade_key`; `origin` must be https (http only for localhost).
-2. The wallet scans the QR and calls `GET /api/wallet/lnurl/callback?tag=login&k1=..&sig=<DER ECDSA over the 32 k1 bytes, no extra hash>&key=<33-byte compressed linking key>` -> `{"status":"OK"}` or `{"status":"ERROR","reason":".."}` (HTTP 200, as LUD-04 requires). High-S signatures are accepted. A k1 works once and expires after 5 min.
-3. The page polls `GET /api/wallet/lnurl/status?k1=..` -> `pending | expired | authed {wallet, hash, link_expires_us} | linked`. On `authed` it signs `hash` with the trading key and sends `POST /api/wallet/lnurl/confirm` `{"k1", "session_signature"}`, which installs the link.
+2. The wallet scans the QR and calls `GET /api/wallet/lnurl/callback?tag=login&action=login&k1=..&t=<trade_key>&e=<expires_us>&sig=<DER ECDSA over the 32 k1 bytes, no extra hash>&key=<33-byte compressed linking key>` -> `{"status":"OK"}` or `{"status":"ERROR","reason":".."}` (HTTP 200, as LUD-04 requires). High-S signatures are accepted. A k1 works once and expires after 5 min.
+3. The page polls `GET /api/wallet/lnurl/status?k1=..` -> `pending | expired | authed {wallet, hash, link_expires_us} | linked`. A k1 no wallet has signed is always `pending`; the page stops at the `expires_us` it got in step 1. On `authed` it signs `hash` with the trading key and sends `POST /api/wallet/lnurl/confirm` `{"k1", "session_signature"}`, which installs the link.
 
 Because the trading key is fixed when the k1 is issued and must sign the final hash, a different key cannot be swapped in between scan and confirm.
+
+### Server state
+
+Starting a login stores nothing. The Nostr challenge MAC and the LNURL k1 are keyed hashes, under a secret drawn at venue start, over the network, the trading key, the expiries and (Nostr) the wallet key; the later step recomputes and compares them. State is created only after a wallet signature verifies: used Nostr challenges (until they expire) and signed k1s, each in a table of at most 4,096 entries that drops expired entries and then the oldest when full. Unauthenticated requests therefore cannot fill a table and lock other users out. A venue restart invalidates outstanding challenges and QR codes (5 min each); installed links are journaled and survive it.
+
+### Wallets
+
+Named in the connect modal. None has been exercised against this venue with a real wallet yet.
+
+| Wallet | Path | Platform |
+|---|---|---|
+| Alby (browser extension) | Nostr NIP-07 | Chrome, Firefox |
+| nos2x | Nostr NIP-07 | Chrome |
+| Phoenix | LNURL-auth QR | Android, iOS |
+| Zeus | LNURL-auth QR | Android, iOS |
+| Breez | LNURL-auth QR | Android, iOS |
+| BlueWallet | LNURL-auth QR | Android, iOS |
+| Blixt | LNURL-auth QR | Android, iOS |
+| Alby Go (mobile) | LNURL-auth QR | Android, iOS |
+| any WebLN provider | alias display only | browser |
+
+Any other NIP-07 extension or LUD-04 wallet uses the same paths. The QR path needs the venue on https.
 
 ### WebLN
 

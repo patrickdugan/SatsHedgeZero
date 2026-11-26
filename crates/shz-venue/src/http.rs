@@ -236,8 +236,8 @@ async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (
         },
         // LUD-04 callback: errors are reported in the body with HTTP 200.
         (true, _, "/api/wallet/lnurl/callback") => {
-            let (k1, sig, key) = (q(query, "k1").unwrap_or_default(), q(query, "sig").unwrap_or_default(), q(query, "key").unwrap_or_default());
-            (200, app.venue.lock().await.wallet_lnurl_callback(&k1, &sig, &key))
+            let g = |k| q(query, k).unwrap_or_default();
+            (200, app.venue.lock().await.wallet_lnurl_callback(&g("k1"), &g("sig"), &g("key"), &g("t"), &g("e")))
         }
         (true, _, "/api/wallet/lnurl/status") => match app.venue.lock().await.wallet_lnurl_status(&q(query, "k1").unwrap_or_default()) {
             Ok(x) => (200, x),

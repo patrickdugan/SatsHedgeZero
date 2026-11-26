@@ -93,6 +93,13 @@ test('LNURL expiry surfaces as an error', async () => {
   await assert.rejects(lnurlFinish({ api, tradeSecret: TRADE_SK, k1: 'ab'.repeat(32), sleep: async () => {} }), /expired/);
 });
 
+test('LNURL: an unsigned k1 stays pending on the venue, so the browser stops at its own expiry', async () => {
+  let t = 1_000, polls = 0;
+  const api = async () => { polls++; return { status: 'pending' }; };
+  await assert.rejects(lnurlFinish({ api, tradeSecret: TRADE_SK, k1: 'ab'.repeat(32), expiresUs: 5_000, nowUs: () => t, sleep: async () => { t += 1_500; } }), /expired/);
+  assert.equal(polls, 3);
+});
+
 test('WebLN: identity only, never pays', async () => {
   assert.equal(await weblnInfo({}), null);
   const calls = [];

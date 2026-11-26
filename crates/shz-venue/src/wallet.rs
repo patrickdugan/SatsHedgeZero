@@ -25,7 +25,6 @@ pub const NOSTR_SKEW_S: u64 = 300;
 pub const CHALLENGE_TTL_US: u64 = 300_000_000;
 pub const LNURL_K1_TTL_US: u64 = 300_000_000;
 pub const LINK_TTL_US: u64 = 86_400_000_000;
-const MAX_PENDING: usize = 512;
 
 // ------------------------------------------------------- nostr envelope ----
 
@@ -190,6 +189,11 @@ pub fn bech32_decode(s: &str) -> Option<(String, Vec<u8>)> {
 }
 
 // ----------------------------------------------------------------- state ----
+//
+// Starting a login creates no server state: the Nostr challenge and the LNURL k1 are MACs
+// under a per-process secret over everything the later step needs. State is created only
+// after a wallet signature verifies, in tables of at most MAX_ENTRIES that drop their oldest
+// entry when full, so unauthenticated requests cannot fill them and lock out other users.
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct WalletLink {
@@ -204,15 +208,42 @@ impl WalletLink {
     }
 }
 
-struct NostrChallenge {
-    wallet: Key,
-    trade_key: Key,
-    expires_us: u64,
-    link_expires_us: u64,
+pub const MAX_ENTRIES: usize = 4096;
+
+/// Map keyed by a 32-byte id; when full it drops expired entries, then the oldest.
+struct Bounded<V> {
+    m: BTreeMap<Key, (u64, V)>,
+}
+impl<V> Default for Bounded<V> {
+    fn default() -> Self {
+        Self { m: BTreeMap::new() }
+    }
+}
+impl<V> Bounded<V> {
+    fn get(&self, k: &Key) -> Option<&V> {
+        self.m.get(k).map(|(_, v)| v)
+    }
+    fn get_mut(&mut self, k: &Key) -> Option<&mut V> {
+        self.m.get_mut(k).map(|(_, v)| v)
+    }
+    fn insert(&mut self, k: Key, now: u64, v: V, expired: impl Fn(&V) -> bool) {
+        if !self.m.contains_key(&k) && self.m.len() >= MAX_ENTRIES {
+            self.m.retain(|_, (_, v)| !expired(v));
+            if self.m.len() >= MAX_ENTRIES
+                && let Some(oldest) = self.m.iter().min_by_key(|(_, (t, _))| *t).map(|(k, _)| *k)
+            {
+                self.m.remove(&oldest);
+            }
+        }
+        self.m.insert(k, (now, v));
+    }
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.m.len()
+    }
 }
 
 enum LnurlState {
-    Pending,
     Authed { wallet: [u8; 33], link_expires_us: u64 },
     Done,
 }
@@ -222,11 +253,19 @@ struct LnurlSession {
     state: LnurlState,
 }
 
-#[derive(Default)]
 pub struct Wallets {
+    secret: Key,
     links: BTreeMap<Key, WalletLink>,
-    nostr: BTreeMap<Key, NostrChallenge>,
-    lnurl: BTreeMap<Key, LnurlSession>,
+    /// Nostr challenge MACs already used, kept until the challenge expires.
+    used: Bounded<u64>,
+    /// LNURL k1s a wallet has signed.
+    lnurl: Bounded<LnurlSession>,
+}
+
+impl Default for Wallets {
+    fn default() -> Self {
+        Self { secret: random32().expect("OS RNG"), links: BTreeMap::new(), used: Bounded::default(), lnurl: Bounded::default() }
+    }
 }
 
 fn random32() -> Result<Key, String> {
@@ -235,10 +274,27 @@ fn random32() -> Result<Key, String> {
     Ok(k)
 }
 
+fn eq_ct(a: &[u8], b: &[u8]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
+/// Challenge token: trade_key | link_expires_us | expires_us (both u64 BE) | mac.
+const TOKEN_LEN: usize = 32 + 8 + 8 + 32;
+
 impl Wallets {
-    fn prune(&mut self, now: u64) {
-        self.nostr.retain(|_, c| c.expires_us > now);
-        self.lnurl.retain(|_, s| s.expires_us > now || matches!(s.state, LnurlState::Done) && s.expires_us + LNURL_K1_TTL_US > now);
+    /// Keyed hash over fixed-length fields, secret first, so length extension yields no valid input.
+    fn mac(&self, tag: &[u8], parts: &[&[u8]]) -> Key {
+        let mut m = self.secret.to_vec();
+        for p in parts {
+            m.extend_from_slice(p);
+        }
+        tagged_hash(tag, &m)
+    }
+    fn nostr_mac(&self, network: &Key, wallet: &Key, trade_key: &Key, link_exp: u64, exp: u64) -> Key {
+        self.mac(b"SHZ/VENUE/NOSTR-CHALLENGE/V1", &[network, wallet, trade_key, &link_exp.to_be_bytes(), &exp.to_be_bytes()])
+    }
+    fn lnurl_k1(&self, network: &Key, trade_key: &Key, exp: u64) -> Key {
+        self.mac(b"SHZ/VENUE/LNURL-K1/V1", &[network, trade_key, &exp.to_be_bytes()])
     }
 
     pub fn link(&self, trade_key: &Key) -> Option<&WalletLink> {
@@ -271,76 +327,91 @@ impl Wallets {
     pub fn nostr_challenge(&mut self, network: &Key, wallet: Key, trade_key: Key, now: u64) -> Result<Value, String> {
         shz_dlc::lift_x_even(&wallet).map_err(|_| "wallet is not a valid x-only key")?;
         shz_dlc::lift_x_even(&trade_key).map_err(|_| "trade_key is not a valid x-only key")?;
-        self.prune(now);
-        if self.nostr.len() >= MAX_PENDING {
-            return Err("too many pending challenges".into());
-        }
-        let challenge = random32()?;
-        let link_expires_us = now + LINK_TTL_US;
-        let hash = link_hash(network, "nostr", &wallet, &trade_key, &challenge, link_expires_us);
-        self.nostr.insert(challenge, NostrChallenge { wallet, trade_key, expires_us: now + CHALLENGE_TTL_US, link_expires_us });
-        Ok(json!({"challenge": h(&challenge), "hash": h(&hash), "kind": NOSTR_KIND, "venue": h(network), "req": "wallet-link",
-                  "expires_us": now + CHALLENGE_TTL_US, "link_expires_us": link_expires_us}))
+        let (exp, link_expires_us) = (now + CHALLENGE_TTL_US, now + LINK_TTL_US);
+        let mac = self.nostr_mac(network, &wallet, &trade_key, link_expires_us, exp);
+        let mut token = Vec::with_capacity(TOKEN_LEN);
+        token.extend_from_slice(&trade_key);
+        token.extend_from_slice(&link_expires_us.to_be_bytes());
+        token.extend_from_slice(&exp.to_be_bytes());
+        token.extend_from_slice(&mac);
+        let hash = link_hash(network, "nostr", &wallet, &trade_key, &mac, link_expires_us);
+        Ok(json!({"challenge": hex::encode(token), "hash": h(&hash), "kind": NOSTR_KIND, "venue": h(network), "req": "wallet-link",
+                  "expires_us": exp, "link_expires_us": link_expires_us}))
     }
 
     /// `body`: `{event, session_signature}`. The event is a kind-27810 Nostr event with
     /// tags `shz-venue`, `shz-req=wallet-link`, `shz-hash`, `shz-challenge`.
     pub fn nostr_link(&mut self, network: &Key, body: &Value, now: u64) -> Result<(Key, WalletLink), String> {
-        self.prune(now);
         let ev = &body["event"];
         let tags = ev["tags"].as_array().ok_or("missing tags")?;
-        let challenge = parse_key(tag_value(tags, "shz-challenge")?.ok_or("missing shz-challenge tag")?)?;
-        let c = self.nostr.get(&challenge).ok_or("unknown or expired challenge")?;
-        let (wallet, trade_key, link_expires_us) = (c.wallet, c.trade_key, c.link_expires_us);
-        let hash = link_hash(network, "nostr", &wallet, &trade_key, &challenge, link_expires_us);
+        let token = hex::decode(tag_value(tags, "shz-challenge")?.ok_or("missing shz-challenge tag")?).map_err(|_| "bad challenge")?;
+        if token.len() != TOKEN_LEN {
+            return Err("bad challenge".into());
+        }
+        let trade_key: Key = token[..32].try_into().expect("32");
+        let link_expires_us = u64::from_be_bytes(token[32..40].try_into().expect("8"));
+        let exp = u64::from_be_bytes(token[40..48].try_into().expect("8"));
+        let mac: Key = token[48..].try_into().expect("32");
+        let wallet = parse_key(ev["pubkey"].as_str().unwrap_or("")).map_err(|_| "bad pubkey")?;
+        if !eq_ct(&mac, &self.nostr_mac(network, &wallet, &trade_key, link_expires_us, exp)) {
+            return Err("challenge was not issued to this wallet and trading key".into());
+        }
+        if exp <= now {
+            return Err("challenge expired".into());
+        }
+        if self.used.get(&mac).is_some() {
+            return Err("challenge already used".into());
+        }
+        let hash = link_hash(network, "nostr", &wallet, &trade_key, &mac, link_expires_us);
         let venue = h(network);
         verify_nostr_envelope(ev, &Expect { venue: &venue, req: "wallet-link", hash, pubkey: Some(wallet) }, now / 1_000_000)?;
         let ssig = parse_sig(body["session_signature"].as_str().unwrap_or("")).map_err(|_| "session_signature required")?;
         bip340_verify(&trade_key, &hash, &ssig).map_err(|_| "trading key signature does not verify")?;
         let link = self.install(trade_key, WalletLink { kind: "nostr".into(), wallet: h(&wallet), issued_us: now, expires_us: link_expires_us })?;
-        self.nostr.remove(&challenge);
+        self.used.insert(mac, now, exp, |e| *e <= now);
         Ok((trade_key, link))
     }
 
     // ---- lnurl-auth ----
-    /// Issue a k1 bound to the browser's trading key.
-    pub fn lnurl_start(&mut self, trade_key: Key, now: u64) -> Result<(Key, u64), String> {
+    /// A k1 bound to the browser's trading key and an expiry; nothing is stored.
+    pub fn lnurl_start(&mut self, network: &Key, trade_key: Key, now: u64) -> Result<(Key, u64), String> {
         shz_dlc::lift_x_even(&trade_key).map_err(|_| "trade_key is not a valid x-only key")?;
-        self.prune(now);
-        if self.lnurl.len() >= MAX_PENDING {
-            return Err("too many pending logins".into());
-        }
-        let k1 = random32()?;
-        let expires_us = now + LNURL_K1_TTL_US;
-        self.lnurl.insert(k1, LnurlSession { trade_key, expires_us, state: LnurlState::Pending });
-        Ok((k1, expires_us))
+        let exp = now + LNURL_K1_TTL_US;
+        Ok((self.lnurl_k1(network, &trade_key, exp), exp))
     }
 
     /// LUD-04 callback: `sig` is the DER ECDSA signature of k1 under the compressed `key`.
-    pub fn lnurl_callback(&mut self, k1_hex: &str, sig_hex: &str, key_hex: &str, now: u64) -> Result<(), String> {
+    /// `t` and `e` (trading key and expiry) come back in the callback URL; k1 authenticates them.
+    #[allow(clippy::too_many_arguments)]
+    pub fn lnurl_callback(&mut self, network: &Key, k1_hex: &str, sig_hex: &str, key_hex: &str, t_hex: &str, e: &str, now: u64) -> Result<(), String> {
         let k1 = parse_key(k1_hex).map_err(|_| "bad k1")?;
-        let s = self.lnurl.get_mut(&k1).ok_or("unknown k1")?;
-        if s.expires_us <= now {
+        let trade_key = parse_key(t_hex).map_err(|_| "unknown k1")?;
+        let exp: u64 = e.parse().map_err(|_| "unknown k1")?;
+        if !eq_ct(&k1, &self.lnurl_k1(network, &trade_key, exp)) {
+            return Err("unknown k1".into());
+        }
+        if exp <= now {
             return Err("k1 expired".into());
         }
-        if !matches!(s.state, LnurlState::Pending) {
+        if self.lnurl.get(&k1).is_some() {
             return Err("k1 already used".into());
         }
         let key: [u8; 33] = hex::decode(key_hex).map_err(|_| "bad key")?.try_into().map_err(|_| "key must be a 33-byte compressed point")?;
         let der = hex::decode(sig_hex).map_err(|_| "bad sig")?;
         verify_lnurl_sig(&k1, &der, &key)?;
-        s.state = LnurlState::Authed { wallet: key, link_expires_us: now + LINK_TTL_US };
+        let s = LnurlSession { trade_key, expires_us: exp, state: LnurlState::Authed { wallet: key, link_expires_us: now + LINK_TTL_US } };
+        self.lnurl.insert(k1, now, s, |s| s.expires_us + LNURL_K1_TTL_US <= now);
         Ok(())
     }
 
+    /// `pending` until a wallet signs k1 (the browser tracks the k1 expiry it was given).
     pub fn lnurl_status(&self, network: &Key, k1_hex: &str, now: u64) -> Result<Value, String> {
         let k1 = parse_key(k1_hex).map_err(|_| "bad k1")?;
-        let s = self.lnurl.get(&k1).ok_or("unknown or expired k1")?;
+        let Some(s) = self.lnurl.get(&k1) else { return Ok(json!({"status": "pending"})) };
         if s.expires_us <= now && !matches!(s.state, LnurlState::Done) {
             return Ok(json!({"status": "expired"}));
         }
         Ok(match &s.state {
-            LnurlState::Pending => json!({"status": "pending", "expires_us": s.expires_us}),
             LnurlState::Authed { wallet, link_expires_us } => json!({
                 "status": "authed", "wallet": h(wallet), "link_expires_us": link_expires_us,
                 "hash": h(&link_hash(network, "lnurl", wallet, &s.trade_key, &k1, *link_expires_us))}),
@@ -351,8 +422,8 @@ impl Wallets {
     /// The browser's trading key signs the link hash, completing the binding.
     pub fn lnurl_confirm(&mut self, network: &Key, k1_hex: &str, sig_hex: &str, now: u64) -> Result<(Key, WalletLink), String> {
         let k1 = parse_key(k1_hex).map_err(|_| "bad k1")?;
-        let s = self.lnurl.get(&k1).ok_or("unknown or expired k1")?;
-        let LnurlState::Authed { wallet, link_expires_us } = s.state else { return Err("wallet has not authenticated this k1".into()) };
+        let s = self.lnurl.get(&k1).ok_or("wallet has not authenticated this k1")?;
+        let LnurlState::Authed { wallet, link_expires_us } = s.state else { return Err("k1 already used".into()) };
         if link_expires_us <= now {
             return Err("authorization expired".into());
         }
@@ -375,13 +446,13 @@ pub fn verify_lnurl_sig(k1: &Key, der: &[u8], key: &[u8; 33]) -> Result<(), Stri
 
 // ----------------------------------------------------------------- venue ----
 
-fn session_url(origin: &str, k1: &Key) -> Result<String, String> {
+fn session_url(origin: &str, k1: &Key, trade_key: &Key, exp: u64) -> Result<String, String> {
     let o = origin.trim_end_matches('/');
     let local = o.starts_with("http://localhost") || o.starts_with("http://127.0.0.1");
     if !(o.starts_with("https://") || local) || o.len() > 200 || o.bytes().any(|b| b <= b' ' || b == b'?' || b == b'#') {
         return Err("origin must be an https URL".into());
     }
-    Ok(format!("{o}/api/wallet/lnurl/callback?tag=login&action=login&k1={}", h(k1)))
+    Ok(format!("{o}/api/wallet/lnurl/callback?tag=login&action=login&k1={}&t={}&e={exp}", h(k1), h(trade_key)))
 }
 
 impl Venue {
@@ -411,13 +482,15 @@ impl Venue {
         Ok(json!({"trade_key": h(&k), "link": l.json()}))
     }
     pub fn wallet_lnurl_start(&mut self, trade_key: Key, origin: &str) -> Result<Value, String> {
-        let (k1, exp) = self.wallets.lnurl_start(trade_key, now_us())?;
-        let url = session_url(origin, &k1)?;
+        let n = self.scope.network;
+        let (k1, exp) = self.wallets.lnurl_start(&n, trade_key, now_us())?;
+        let url = session_url(origin, &k1, &trade_key, exp)?;
         Ok(json!({"k1": h(&k1), "callback": url, "lnurl": bech32_encode("lnurl", url.as_bytes()).to_ascii_uppercase(), "expires_us": exp}))
     }
     /// LUD-04 reply body.
-    pub fn wallet_lnurl_callback(&mut self, k1: &str, sig: &str, key: &str) -> Value {
-        match self.wallets.lnurl_callback(k1, sig, key, now_us()) {
+    pub fn wallet_lnurl_callback(&mut self, k1: &str, sig: &str, key: &str, t: &str, e: &str) -> Value {
+        let n = self.scope.network;
+        match self.wallets.lnurl_callback(&n, k1, sig, key, t, e, now_us()) {
             Ok(()) => json!({"status": "OK"}),
             Err(e) => json!({"status": "ERROR", "reason": e}),
         }
@@ -536,9 +609,14 @@ mod tests {
         // the trading key must consent
         let bad = json!({"event": ev, "session_signature": h(&bip340_sign(&[6u8; 32], &hash).unwrap().to_bytes())});
         assert!(w.nostr_link(&NET, &bad, now).unwrap_err().contains("trading key"));
-        // an event from another wallet key is refused
+        // an event from another wallet key is refused: the challenge MAC names the wallet
         let (other, _) = chal_event(&[4u8; 32], &c, now);
-        assert!(w.nostr_link(&NET, &json!({"event": other, "session_signature": ssig}), now).unwrap_err().contains("different key"));
+        assert!(w.nostr_link(&NET, &json!({"event": other, "session_signature": ssig}), now).unwrap_err().contains("not issued"));
+        // a challenge whose expiries were edited no longer verifies
+        let mut tok = hex::decode(c["challenge"].as_str().unwrap()).unwrap();
+        tok[39] ^= 1;
+        let (edited, _) = chal_event(&wsk, &json!({"hash": c["hash"], "challenge": hex::encode(&tok)}), now);
+        assert!(w.nostr_link(&NET, &json!({"event": edited, "session_signature": ssig}), now).unwrap_err().contains("not issued"));
         let (k, l) = w.nostr_link(&NET, &json!({"event": ev, "session_signature": ssig}), now).unwrap();
         assert_eq!(k, trade);
         assert_eq!(l.wallet, h(&wallet));
@@ -584,26 +662,30 @@ mod tests {
         let trade = xonly(&tsk);
         let mut w = Wallets::default();
         let now = 2_000_000_000_000_000u64;
-        let (k1, exp) = w.lnurl_start(trade, now).unwrap();
+        let (k1, exp) = w.lnurl_start(&NET, trade, now).unwrap();
         assert_eq!(exp, now + LNURL_K1_TTL_US);
         assert_eq!(w.lnurl_status(&NET, &h(&k1), now).unwrap()["status"], "pending");
+        let (t, e) = (h(&trade), exp.to_string());
+        let cb = |w: &mut Wallets, k1: &str, sig: &str, key: &str, now: u64| w.lnurl_callback(&NET, k1, sig, key, &t, &e, now);
         let (sig, key) = lnurl_sign(&lsk, &k1);
         // a signature over a different k1, or from a different key, fails
         let (bad_sig, _) = lnurl_sign(&lsk, &[1; 32]);
-        assert!(w.lnurl_callback(&h(&k1), &bad_sig, &key, now).unwrap_err().contains("verify"));
+        assert!(cb(&mut w, &h(&k1), &bad_sig, &key, now).unwrap_err().contains("verify"));
         let (_, other_key) = lnurl_sign(&[0x43u8; 32], &k1);
-        assert!(w.lnurl_callback(&h(&k1), &sig, &other_key, now).unwrap_err().contains("verify"));
-        assert!(w.lnurl_callback(&h(&k1), "zz", &key, now).is_err());
-        assert!(w.lnurl_callback(&h(&k1), &sig, "02aa", now).is_err());
-        // expired and unknown k1
-        assert!(w.lnurl_callback(&h(&k1), &sig, &key, exp).unwrap_err().contains("expired"));
-        assert!(w.lnurl_callback(&h(&[9; 32]), &sig, &key, now).unwrap_err().contains("unknown"));
+        assert!(cb(&mut w, &h(&k1), &sig, &other_key, now).unwrap_err().contains("verify"));
+        assert!(cb(&mut w, &h(&k1), "zz", &key, now).is_err());
+        assert!(cb(&mut w, &h(&k1), &sig, "02aa", now).is_err());
+        // expired and unknown k1; a k1 replayed with another trading key or expiry is unknown
+        assert!(cb(&mut w, &h(&k1), &sig, &key, exp).unwrap_err().contains("expired"));
+        assert!(cb(&mut w, &h(&[9; 32]), &sig, &key, now).unwrap_err().contains("unknown"));
+        assert!(w.lnurl_callback(&NET, &h(&k1), &sig, &key, &h(&xonly(&[6u8; 32])), &e, now).unwrap_err().contains("unknown"));
+        assert!(w.lnurl_callback(&NET, &h(&k1), &sig, &key, &t, &(exp + 1).to_string(), now).unwrap_err().contains("unknown"));
         // confirm before the wallet authenticated
         let early = h(&bip340_sign(&tsk, &[0; 32]).unwrap().to_bytes());
         assert!(w.lnurl_confirm(&NET, &h(&k1), &early, now).unwrap_err().contains("not authenticated"));
-        w.lnurl_callback(&h(&k1), &sig, &key, now).unwrap();
+        cb(&mut w, &h(&k1), &sig, &key, now).unwrap();
         // single use
-        assert!(w.lnurl_callback(&h(&k1), &sig, &key, now).unwrap_err().contains("already used"));
+        assert!(cb(&mut w, &h(&k1), &sig, &key, now).unwrap_err().contains("already used"));
         let st = w.lnurl_status(&NET, &h(&k1), now).unwrap();
         assert_eq!(st["status"], "authed");
         assert_eq!(st["wallet"], key);
@@ -617,6 +699,29 @@ mod tests {
         assert_eq!(l.expires_us, now + LINK_TTL_US);
         assert!(w.check(&trade, now + LINK_TTL_US).is_err());
         assert_eq!(w.lnurl_status(&NET, &h(&k1), now).unwrap()["status"], "linked");
+    }
+
+    #[test]
+    fn starting_logins_stores_nothing_and_full_tables_evict_the_oldest() {
+        let mut w = Wallets::default();
+        let now = 2_000_000_000_000_000u64;
+        let trade = xonly(&[5u8; 32]);
+        for i in 0..10_000u64 {
+            w.lnurl_start(&NET, trade, now + i).unwrap();
+            w.nostr_challenge(&NET, xonly(&[3u8; 32]), trade, now + i).unwrap();
+        }
+        assert_eq!((w.lnurl.len(), w.used.len()), (0, 0), "unauthenticated starts create no state");
+        let mut b: Bounded<u64> = Bounded::default();
+        for i in 0..(MAX_ENTRIES as u64 + 10) {
+            let mut k = [0u8; 32];
+            k[..8].copy_from_slice(&i.to_be_bytes());
+            b.insert(k, i, u64::MAX, |_| false);
+        }
+        assert_eq!(b.len(), MAX_ENTRIES);
+        assert!(b.get(&[0u8; 32]).is_none(), "oldest entry evicted");
+        let mut newest = [0u8; 32];
+        newest[..8].copy_from_slice(&(MAX_ENTRIES as u64 + 9).to_be_bytes());
+        assert!(b.get(&newest).is_some());
     }
 
     #[test]
@@ -647,8 +752,8 @@ mod tests {
 
     #[test]
     fn origin_must_be_https() {
-        assert!(session_url("https://shz.example", &[1; 32]).unwrap().starts_with("https://shz.example/api/wallet/lnurl/callback?tag=login"));
-        assert!(session_url("http://evil.example", &[1; 32]).is_err());
-        assert!(session_url("https://a.example/?x=1", &[1; 32]).is_err());
+        assert!(session_url("https://shz.example", &[1; 32], &[2; 32], 5).unwrap().starts_with("https://shz.example/api/wallet/lnurl/callback?tag=login"));
+        assert!(session_url("http://evil.example", &[1; 32], &[2; 32], 5).is_err());
+        assert!(session_url("https://a.example/?x=1", &[1; 32], &[2; 32], 5).is_err());
     }
 }
