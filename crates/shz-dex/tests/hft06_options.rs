@@ -230,3 +230,98 @@ fn b1_journal_replays(){
  let d=DurableTieredRouter::open(&path,&registry(),cfg(),lanes(),recipients(),Some(tip)).unwrap();
  assert_eq!(format!("{:?}|{:?}",d.options().unwrap(),d.clearing_state().unwrap()),before);
 }
+
+fn short_call(q:u64,k:u64)->Leg{Leg::InverseOption{kind:OptionKind::Call,long:false,qty_usd:q,strike_usd:k,premium_sats:0}}
+/// Combos desk: series listed, makers funded and quoting every leg.
+fn combo_desk(path:&Path)->(Desk,Key,Key,Key,Key){
+ let mut v=Desk::new(path);
+ let deep=v.list(OptionKind::Call,Asset::Btc,50_000);
+ let c100=v.list(OptionKind::Call,Asset::Btc,100_000);
+ let c110=v.list(OptionKind::Call,Asset::Btc,110_000);
+ let p90=v.list(OptionKind::Put,Asset::Btc,90_000);
+ for n in [1,2]{v.d.fund_options(channel(n),40_000_000).unwrap();}
+ // An inverse put's worst case is at the bottom of the domain: a 1 USD put struck at 90k
+ // locks 1e8*(1/1 - 1/90k) sats, almost a whole bitcoin (why puts are USD-settled in C).
+ v.d.fund_options(channel(3),CAP).unwrap();
+ // Maker 2 quotes both sides of every call, maker 3 sells the put.
+ for s in [deep,c100,c110]{v.post(2,s,false,5_000,60_000);v.post(2,s,true,5_000,20_000);}
+ v.post(3,p90,false,5_000,10_000);
+ assert!(v.d.enable_combos().unwrap());assert!(!v.d.enable_combos().unwrap());
+ (v,deep,c100,c110,p90)
+}
+
+/// B2. Call spread: one signed two-leg intent fills both legs in one batch, and the
+/// writer's margin is the spread's worst case, not the naked short call's.
+#[test]
+fn b2_call_spread_margined_on_the_combined_payoff(){
+ let t=Temp::new();let (mut v,_,c100,c110,_)=combo_desk(&t.path());
+ // Bear call spread: sell the 100k call, buy the 110k call. Net credit: receives 20, pays 60
+ // sats per USD, so the taker pays 40 per USD net, at most 40,000 milli * 1,000 USD.
+ let b=v.take(1,vec![leg(c100,false,1000),leg(c110,true,1000)],40_000_000).unwrap();
+ assert_eq!(b.fills.len(),2);assert!(matches!(b.kind,OptionBatchKind::Trade{..}));
+ assert_eq!(b.sequence,v.d.options().unwrap().unwrap().batch_count());
+ let spread=payoff::max_loss(&[short_call(1000,100_000),Leg::InverseOption{kind:OptionKind::Call,long:true,qty_usd:1000,strike_usd:110_000,premium_sats:0}],Asset::Btc,domain());
+ let naked=payoff::max_loss(&[short_call(1000,100_000)],Asset::Btc,domain());
+ // Q*1e8*(1/100k - 1/110k) = 90,909.09 sats, rounded up.
+ assert_eq!((spread,naked),(90_910,904_633));
+ assert_eq!(v.acct(1).btc_locked as u128,spread);
+ assert_eq!(v.acct(1).btc_free,40_000_000-40_000-90_910);
+ v.check();
+ // Expiry of the short leg at 120k: the spread is in the money on both strikes; each series
+ // expires on its own event, and collateral tracks the remaining legs.
+ v.d.expire_series(c100,v.attest(&c100,120_000)).unwrap();
+ assert_eq!(v.acct(1).btc_locked,0,"the long 110k call alone cannot lose");
+ v.d.expire_series(c110,v.attest(&c110,120_000)).unwrap();
+ let lost=call_pays(1000,100_000,120_000)-call_pays(1000,110_000,120_000);
+ assert!((lost-v.acct(1).realized_btc.abs() as i128+40_000).abs()<=2,"{lost} {:?}",v.acct(1));
+ v.check();
+}
+
+/// B2. Covered call with a deep in-the-money call as the cover: selling the 110k call
+/// against a long 50k call needs no collateral beyond the net premium.
+#[test]
+fn b2_covered_call(){
+ let t=Temp::new();let (mut v,deep,_,c110,_)=combo_desk(&t.path());
+ v.take(1,vec![leg(deep,true,2000),leg(c110,false,2000)],80_000_000).unwrap();
+ assert_eq!(v.acct(1).btc_locked,0);
+ assert_eq!(v.acct(1).btc_free,40_000_000-(120_000-40_000));
+ // The 50k call covers up to 4,400 USD of 110k calls (2000/50k = 4400/110k as P grows);
+ // selling 3,000 more (5,000 in all) locks the uncovered worst case.
+ v.take(1,vec![leg(c110,false,3000)],-60_000_000).unwrap();
+ assert_eq!(v.acct(1).btc_locked as u128,payoff::max_loss(&v.legs(1),Asset::Btc,domain()));
+ assert!(v.acct(1).btc_locked>0);
+ v.check();
+}
+
+/// B2. Collar: long cover, long put, short call in one three-leg intent (1 USD each: the
+/// put writer must lock almost a bitcoin per USD); the combined payoff cannot lose, so
+/// only the net premium is paid.
+#[test]
+fn b2_collar(){
+ let t=Temp::new();let (mut v,deep,_,c110,p90)=combo_desk(&t.path());
+ let b=v.take(1,vec![leg(deep,true,1),leg(p90,true,1),leg(c110,false,1)],60_000).unwrap();
+ assert_eq!(b.fills.len(),3);
+ // Pays 60 + 10, receives 20 sats per USD.
+ assert_eq!((v.acct(1).btc_locked,v.acct(1).btc_free),(0,40_000_000-50));
+ assert_eq!(v.acct(3).btc_locked,99_998_889);
+ let c=&b.clearing;assert_eq!(c.rows.iter().map(|r|r.net).sum::<i64>(),0);
+ v.check();
+}
+
+/// B2. All-or-none: a combo with one unfillable leg, or over its net premium limit,
+/// changes nothing; duplicate series and more than `MAX_LEGS` legs are refused.
+#[test]
+fn b2_all_or_none(){
+ let t=Temp::new();let (mut v,deep,c100,c110,p90)=combo_desk(&t.path());
+ let snap=|v:&Desk|{
+  let d=v.d.options().unwrap().unwrap();
+  format!("{:?}|{:?}",(1..=N).map(|n|v.acct(n)).collect::<Vec<_>>(),[deep,c100,c110,p90].iter().map(|s|(d.depth(s,true),d.depth(s,false))).collect::<Vec<_>>())
+ };
+ let before=snap(&v);
+ rejected(v.take(1,vec![leg(c100,true,1000),leg(c110,false,6000)],1_000_000_000),TierReject::NoLiquidity);
+ rejected(v.take(1,vec![leg(c100,true,1000),leg(c110,false,1000)],39_999_999),TierReject::FeeLimit);
+ rejected(v.take(1,vec![leg(c100,true,1),leg(c100,true,1)],1_000_000_000),TierReject::Bounds);
+ rejected(v.take(1,vec![leg(c100,true,1),leg(c110,true,1),leg(deep,true,1),leg(p90,true,1),leg(c100,false,1)],1_000_000_000),TierReject::Bounds);
+ assert_eq!(snap(&v),before);
+ v.check();
+}

@@ -201,6 +201,7 @@ impl State{
     if self.clearing.is_none()||self.options.is_some(){return Err(TierReject::Replay)}
     self.options=Some(OptionsDesk::new(oracle_key,num_bits)?);Ok(Reply::Unit)
    },
+   Event::EnableCombos=>{let d=self.desk()?;if d.combos{return Err(TierReject::Replay)}d.combos=true;Ok(Reply::Unit)},
    Event::ListSeries{series,announcement}=>Ok(Reply::Key(self.desk()?.list(series,announcement)?)),
    Event::FundOptions{channel,sats,to_options}=>{
     let k=op(&channel);
@@ -244,6 +245,8 @@ enum Event{
  /// announcements of `num_bits` digits.
  EnableOptions{oracle_key:Key,num_bits:u8},
  ListSeries{series:Series,announcement:OracleAnnouncement},
+ /// Accept Take intents of up to `options::MAX_LEGS` legs (all-or-none, one batch).
+ EnableCombos,
  /// Move sats between the perpetual allocation and the options sub-account.
  FundOptions{channel:BtcOutPoint,sats:u64,to_options:bool},
  SubmitOption{intent:IntentV7,now:u64},
@@ -364,6 +367,13 @@ impl DurableTieredRouter{
   self.record(Event::EnableOptions{oracle_key,num_bits})?;Ok(true)
  }
  pub fn options(&self)->D<Option<&OptionsDesk>>{self.ready()?;Ok(self.state.options.as_ref())}
+ /// Accept combo takes (journaled once; options must be on): one signed `IntentV7` with
+ /// up to `options::MAX_LEGS` legs in one asset fills all-or-none in one option batch,
+ /// margined on the account's whole option payoff. Returns `false` if already on.
+ pub fn enable_combos(&mut self)->D<bool>{
+  self.ready()?;if self.state.options.as_ref().is_some_and(|d|d.combos){return Ok(false)}
+  self.record(Event::EnableCombos)?;Ok(true)
+ }
  /// List an option series; returns its id (`Series::id`).
  pub fn list_series(&mut self,series:Series,announcement:OracleAnnouncement)->D<Key>{
   match self.record(Event::ListSeries{series,announcement})?{Reply::Key(k)=>Ok(k),_=>unreachable!()}
