@@ -49,7 +49,7 @@ Sequences must strictly increase per account (use a millisecond clock). A `post`
 - `GET /api/status` -> `{"market", "mark": {"seq","status","price_usd","slot_us","packet_digest","age_s","verified": true}, "group_key", "router": {"clock_us","resting","batch_sequence"}, "accounts": n, "journal": {"records","digest"}}`
 - `GET /api/book?depth=25` -> `{"bids": [[price_usd, qty_usd, n_orders]], "asks": [...], "mark": {...}}` (bids descending, asks ascending)
 - `GET /api/trades?limit=100` -> newest first `[{"id","ts_us","price_usd","qty_usd","taker_side","maker_tier","taker_tier","packet_seq","packet_digest","batch_seq"|null}]`
-- `GET /api/account/{owner}` -> `AccountView` `{"owner","label","outpoint","balance": {"cap","free","resting","pending","committed","paid_fees"}, "position": {"net_usd","avg_entry_usd","unrealized_sats"}, "open_orders": [...], "fills": [...], "pending_signatures": [{"id","kind","message","context"}]}`
+- `GET /api/account/{owner}` -> `AccountView` `{"owner","label","outpoint","balance": {"cap","free","resting","pending","committed","paid_fees","realized_pnl","equity"}, "position": {"net_usd","committed_net_usd","unsettled_usd","avg_entry_usd","unrealized_sats","margin_sats","lots": [{"side","qty_usd","entry_usd","margin_sats","counterparty_margin_sats"}],"realized_pnl_sats","gross_traded_usd"}, "open_orders": [...], "fills": [...], "pending_signatures": [{"id","kind","message","context"}]}`. `balance` conserves `free + resting + pending + committed + paid_fees = cap + realized_pnl`; `equity = cap + realized_pnl`. `position.net_usd` is the committed lots plus fills whose batch has not committed (`unsettled_usd`).
 - `POST /api/signatures` `{"owner": hex32, "items": [{"id", "signature": hex64}]}` completes batch approvals and channel acknowledgements (see Settlement).
 - `GET /v1/candles?instrument=SHZ-BTCUSD-INV&interval=1m&limit=900` and `WS /v1/stream?instrument=SHZ-BTCUSD-INV&interval=1m`: the BitcornWisdom relay protocol (`docs/EMBED.md` in BitcornWisdom), candles built from venue trades; minutes with no trade carry the oracle mark as a zero-volume candle.
 - `WS /api/stream`: JSON frames `{"type": "book"|"trade"|"mark"|"batch"|"account", ...}` pushed on change.
@@ -63,12 +63,41 @@ Fills are sealed into 100 ms batches (HFT-03 `Batch`). Each batch then needs:
 
 Owners fetch these from `pending_signatures` and post them to `/api/signatures`. The demo clients sign automatically for their own channel. A batch moves `sealed -> prepared -> committed`; the fee ledger then shows accrued and committed fees per recipient.
 
+### Margin release
+
+Each account holds one position: FIFO lots, all on one side (`shz_dex::routing::positions`). When a
+batch commits, each account's legs net against its open lots, oldest first:
+
+- a leg on the same side as the lots (or a flat account) opens a lot; its margin moves pending -> committed;
+- a leg on the opposite side closes lots. Each closed lot's margin leaves `committed`, and the lot pays
+  out to `free` exactly as its opening DLC leg would settle at the closing fill's price
+  (`InverseContractSpec::payout_at_price`, with the lot's margin and its opening counterparty's margin).
+  `realized_pnl` moves by payout minus released margin. The closing leg's own margin for the closed
+  quantity returns to `free`; any excess quantity (a flip) opens a lot on the new side.
+
+The venue nets at the account, as a central counterparty: a lot opened against one account can be closed
+against another. The payout clamp is the DLC rule, so a loss never exceeds the lot's margin and a gain
+never exceeds the opening counterparty's margin for that quantity. Gains are funded by the margin still
+committed in open lots on the other side. Reducing orders still need free margin when they match; it
+comes back when their batch commits.
+
+The settlement is computed from the account's position after the previous resolution and the batch's
+legs, and it is bound into every lane's channel acknowledgement: once margin release is on, acks use
+the tag `SHZ/HFT06/CHANNEL-ACK/V2` and append the lane's opened, closed-leg and released margin, payout,
+closed quantity, net position before and after, and margin after. Owner, peer and monitor sign it; an
+ack without it does not resolve. A fenced abort moves no position.
+
+Margin release is switched on by one journaled `EnableMarginRelease` event, which the venue records on
+startup if the journal lacks it. On a journal that predates it, replay runs the old events unchanged,
+then the event rebuilds every position from the committed batches in sequence order and releases their
+offset margin. `GET /api/status` reports `"margin_release": true`.
+
 ## Explorer
 
 - `GET /api/explorer/packets?limit=50` -> oracle packets the venue ingested: seq, slot, status, median, digest, signers, `verified`.
 - `GET /api/explorer/fill/{id}` -> one fill end to end: taker and maker intents, the oracle packet it bound (digest, seq, slot, median, verified), the fill binding hash (`Fill.mark_id`) and its preimage fields, tariff and execution policy ids, fees and the oracle/router split, the batch (seq, digest, phase), approvals and acknowledgement status, fee-ledger state.
-- `GET /api/explorer/batches?limit=50`, `GET /api/explorer/batch/{seq}`
-- `GET /api/explorer/accounts` -> every allocation: owner, outpoint, kind, cap, label, mempool.space link for `utxo` accounts.
+- `GET /api/explorer/batches?limit=50`, `GET /api/explorer/batch/{seq}`. A committed batch carries `settlements`: per lane, `opened_margin_sats`, `closed_leg_margin_sats`, `released_margin_sats`, `payout_sats`, `realized_pnl_sats`, `closed_usd`, `net_before_usd`, `net_after_usd`, `margin_after_sats` (the values its acks signed; batches committed before margin release was on show the values rebuilt when it was switched on).
+- `GET /api/explorer/accounts` -> every allocation: owner, outpoint, kind, cap, label, balance (with `realized_pnl`), position, mempool.space link for `utxo` accounts.
 - `GET /api/explorer/journal` -> journal tip (records, digest) and config hash.
 - `GET /api/explorer/dlc` -> the FROST relay's `/v1/dlc/events`, proxied.
 

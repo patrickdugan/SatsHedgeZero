@@ -122,11 +122,21 @@ was the slower machine in this run.
    10.01 s after its window, the next batch committed 81 ms later, and the silent account went back to
    200,000 free with a flat position. After a restart the aborted batch restored with its fee-ledger
    entry reversed, and a second run passed.
-4. **Margin is never released (open).** No path in `shz-dex` routing or `shz-venue` decreases
-   `committed`: offsetting fills do not net, and positions never close. Two bench accounts that were net
-   flat after 48 alternating 5 USD fills had 196,949 of 200,000 sats committed and were refused with
-   Capacity. Each 5 USD fill at 2x locks about 4,100 sats. The 500,000-sat UTXO maker can do about 120
-   fills in total, and the 200,000-sat demo maker about 48, before they stop quoting for good.
+4. **Margin was never released (fixed, `0c6e924`).** No path in `shz-dex` routing or `shz-venue`
+   decreased `committed`: offsetting fills did not net, and positions never closed. Two bench accounts
+   that were net flat after 48 alternating 5 USD fills had 196,949 of 200,000 sats committed and were
+   refused with Capacity. Each 5 USD fill at 2x locked about 4,100 sats, so the 500,000-sat UTXO maker
+   could do about 120 fills and the 200,000-sat demo maker about 48 before they stopped quoting for good.
+   Now each account carries FIFO lots; a committed leg against the open side closes lots, releases
+   their margin, and credits the lot's exact DLC payout at the closing price, with the settlement bound
+   into every lane's channel ack (`docs/SHZ_VENUE_API.md`, Margin release). On deploy the live journal
+   replayed unchanged and the one-time `EnableMarginRelease` rebuilt positions from its committed
+   batches: the two 196,949-sat accounts went to 0 committed (realized +593 / -593), the UTXO maker
+   from 57,504 to 0 (realized +140), every one of the 15 accounts conserved, and each account's
+   committed equals the margin behind its open lots. A 60-trade self bench on one fresh pair of demo
+   accounts then completed 60 of 60 (localhost, match -> committed median 169 ms, p90 230 ms), ending
+   with both accounts at 0 committed and flat, realized +690 / -690
+   (`results/2026-11-26/exec_self_local_release.jsonl`).
 5. **DLC attestation waits behind nonce setup (open).** About 40 s after maturity, with the outcome
    packet ready at about 0.4 s. Attesting before setting up new events in `tick`, or running setup on its
    own thread, removes most of it. The remaining floor is the maturity + 5 s gate and one 5 s tick.
@@ -146,5 +156,5 @@ cargo run --release -p shz-dlc --example dlc_bench
 node ops/venue-bench/exec_bench.mjs --server https://shz-venue.170-75-168-145.sslip.io --mode mm --n 10
 ```
 
-Each `exec_bench` fill uses up about 4,100 sats of both accounts' caps for good (finding 4), and so does
-the counterparty's. Use fresh `--state` files, and keep `--n` small against the resident makers.
+Each `exec_bench` fill holds about 4,100 sats on each side until a later committed fill offsets it
+(finding 4), so `--mode self` alternating sides can run indefinitely on one pair of accounts.
