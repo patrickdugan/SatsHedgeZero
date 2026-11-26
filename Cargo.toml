@@ -12,6 +12,7 @@ members = [
     "crates/shz-ln-testnet4",
     "crates/shz-relay",
     "crates/shz-venue",
+    "crates/shz-ldk",
     "bins/shz-cli",
     "bins/shz-hftd",
 ]

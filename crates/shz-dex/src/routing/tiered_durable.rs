@@ -336,6 +336,16 @@ impl DurableTieredRouter{
  /// Multilateral net settlement of batch `sequence` (committed with clearing active):
  /// one row per account, shortfall, waterfall layer and pool totals.
  pub fn clearing(&self,sequence:u64)->D<Option<&BatchClearing>>{self.ready()?;Ok(self.state.batches.get(&sequence).and_then(|e|e.clearing.as_ref()))}
+ /// Net settlement a Commit of batch `sequence` would apply: the prepared batch at the head
+ /// of the resolution queue, with clearing active. A channel adapter moves each row's `net`
+ /// on its lane before the lanes sign the V3 acknowledgement, which binds the same rows.
+ /// `None` for any other batch.
+ pub fn planned_clearing(&self,sequence:u64)->D<Option<BatchClearing>>{
+  self.ready()?;
+  let Some(e)=self.state.batches.get(&sequence) else{return Ok(None)};
+  if sequence!=self.state.next_resolution||e.phase!=Phase::Prepared{return Ok(None)}
+  Ok(self.state.plan_clearing(&e.batch,Disposition::Commit).map_err(TierReject::from)?.map(|p|p.report))
+ }
  pub fn position(&self,channel:&BtcOutPoint)->D<Option<Position>>{self.ready()?;Ok(self.state.router.account_position(&op(channel)))}
  /// Per-lane settlements applied when batch `sequence` committed, including those rebuilt
  /// when margin release was switched on. Empty without margin release.

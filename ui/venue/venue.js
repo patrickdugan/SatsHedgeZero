@@ -310,7 +310,8 @@ async function maybeLiquidate() {
   if (Date.now() - liqLast < 5000) return;
   liqBusy = true; liqLast = Date.now();
   try {
-    const takes = planTakes(r, st.book);
+    // One take per round: the venue accepts one position-reducing take per account until it commits.
+    const takes = planTakes(r, st.book, 1);
     if (!takes.length) { st.liqLog = `${new Date().toLocaleTimeString('en-GB')}: no bid or ask inside the auction limit ${r.liquidation.limit_usd} yet`; return; }
     // Standard tier: its taker fee is 0, and a closing take borrows its margin from the lots it
     // closes (router closing loan), so an account with no free margin can still liquidate.

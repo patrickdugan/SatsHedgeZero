@@ -202,30 +202,40 @@ pub fn view(pos: &[Lot], mark: Option<u64>, breach_elapsed_ms: Option<u64>, clea
         && let Ok(plan) = compute_partial_liquidation_tranche(side == OrderSide::Long, q, equity, mark, MAINTENANCE_BPS,
             TARGET_RESTORE_BPS, breach_elapsed_ms.unwrap_or(0), AUCTION_MS, MAX_DISCOUNT_BPS)
     {
+        // Lots are isolated: closing part of a lot releases that slice's margin to free and leaves the
+        // rest at the same ratio, so no partial close restores margin_bps (docs/SHZ_LIQUIDATION_DRILL.md
+        // F2). The plan therefore closes the whole position, priced by the Dutch auction.
         let reduce = if side == OrderSide::Long { "short" } else { "long" };
         v["liquidation"] = json!({
             "reduce_side": reduce,
-            "tranche_usd": plan.tranche_notional_usd,
+            "tranche_usd": q,
             "limit_usd": plan.auction_fill_price_usd,
             "auction_discount_bps": plan.auction_discount_bps,
-            "penalty_sats": plan.auction_penalty_sats,
-            "post_margin_bps": plan.post_tranche_margin_bps,
             "elapsed_ms": breach_elapsed_ms.unwrap_or(0),
         });
     }
     v
 }
 
-/// Below maintenance only an order on the opposite side, no larger than the committed
-/// position, is accepted. Cancels are always accepted (checked by the caller).
-pub fn gate(pos: &[Lot], mark: Option<u64>, order_side: OrderSide, quantity: u64, clearing: bool) -> Result<(), String> {
+/// Below maintenance only an order on the side opposite the net position, no larger than it, is
+/// accepted. The net position counts fills that have not committed yet (`unsettled_usd`, long +),
+/// so back-to-back reducing orders cannot flip the account (docs/SHZ_LIQUIDATION_DRILL.md F3).
+/// Cancels are always accepted (checked by the caller).
+pub fn gate(pos: &[Lot], mark: Option<u64>, order_side: OrderSide, quantity: u64, clearing: bool, unsettled_usd: i64) -> Result<(), String> {
     let Some(mark) = mark else { return Ok(()) };
     let st = state(pos, mark, clearing);
     if !st.reduce_only() {
         return Ok(());
     }
-    let held = notional_usd(pos);
-    if side(pos) == Some(order_side) || quantity > held {
+    let committed = notional_usd(pos) as i64 * if side(pos) == Some(OrderSide::Short) { -1 } else { 1 };
+    let net = committed + unsettled_usd;
+    let held = net.unsigned_abs();
+    let net_side = match net {
+        n if n > 0 => Some(OrderSide::Long),
+        n if n < 0 => Some(OrderSide::Short),
+        _ => None,
+    };
+    if net_side.is_none() || net_side == Some(order_side) || quantity > held {
         return Err(format!("account is {} (margin below {} bps): only orders that reduce the position, up to {held} USD, are accepted",
                            st.name(), MAINTENANCE_BPS));
     }
@@ -301,21 +311,23 @@ mod tests {
         assert_eq!(v["reduce_only"], true);
         let l = &v["liquidation"];
         assert_eq!(l["reduce_side"], "short");
-        let tranche = l["tranche_usd"].as_u64().unwrap();
-        assert!(tranche > 0 && tranche <= 1_000);
-        assert!(l["post_margin_bps"].as_u64().unwrap() >= TARGET_RESTORE_BPS as u64 - 10);
+        assert_eq!(l["tranche_usd"], 1_000, "isolated lots: the plan closes the whole position");
         // half the auction elapsed: half the maximum discount, below the mark for a long
         assert_eq!(l["auction_discount_bps"], MAX_DISCOUNT_BPS / 2);
         assert!(l["limit_usd"].as_u64().unwrap() < liq);
         // healthy accounts carry no plan and are not gated
         assert!(view(&pos, Some(P0), None, false).get("liquidation").is_none());
-        assert!(gate(&pos, Some(P0), OrderSide::Long, 5_000, false).is_ok());
+        assert!(gate(&pos, Some(P0), OrderSide::Long, 5_000, false, 0).is_ok());
         // below maintenance: increasing or flipping is refused, reducing is accepted
-        assert!(gate(&pos, Some(liq), OrderSide::Long, 5, false).is_err());
-        assert!(gate(&pos, Some(liq), OrderSide::Short, 1_001, false).is_err());
-        assert!(gate(&pos, Some(liq), OrderSide::Short, 1_000, false).is_ok());
-        assert!(gate(&pos, None, OrderSide::Long, 5, false).is_ok(), "no mark: no gate");
+        assert!(gate(&pos, Some(liq), OrderSide::Long, 5, false, 0).is_err());
+        assert!(gate(&pos, Some(liq), OrderSide::Short, 1_001, false, 0).is_err());
+        assert!(gate(&pos, Some(liq), OrderSide::Short, 1_000, false, 0).is_ok());
+        assert!(gate(&pos, None, OrderSide::Long, 5, false, 0).is_ok(), "no mark: no gate");
         assert_eq!(view(&[], Some(P0), None, false)["state"], "flat");
+        // F3: 900 already sold but unsettled leaves 100 held; a 200 sell would flip, 100 is the most
+        assert!(gate(&pos, Some(liq), OrderSide::Short, 200, false, -900).is_err());
+        assert!(gate(&pos, Some(liq), OrderSide::Short, 100, false, -900).is_ok());
+        assert!(gate(&pos, Some(liq), OrderSide::Short, 1, false, -1_000).is_err(), "net flat: nothing left to reduce");
     }
 
     #[test]

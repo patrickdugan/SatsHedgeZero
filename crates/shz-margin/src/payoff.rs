@@ -189,9 +189,9 @@ impl Big {
         let mut carry = 0u128;
         let n = self.0.len().max(o.0.len());
         self.0.resize(n, 0);
-        for i in 0..n {
-            let t = self.0[i] as u128 + *o.0.get(i).unwrap_or(&0) as u128 + carry;
-            self.0[i] = t as u64;
+        for (i, slot) in self.0.iter_mut().enumerate() {
+            let t = *slot as u128 + *o.0.get(i).unwrap_or(&0) as u128 + carry;
+            *slot = t as u64;
             carry = t >> 64;
         }
         if carry > 0 {

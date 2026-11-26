@@ -513,6 +513,28 @@ impl Venue {
         }
     }
 
+    /// Signed USD (long +) of this account's fills whose batch has not committed, and whether any
+    /// fill of the account is still unsettled (unsealed, sealed or prepared; aborted fills never settle).
+    fn unsettled_of(&self, owner: &Key) -> (i64, bool) {
+        let (mut net, mut any) = (0i64, false);
+        for t in &self.trades {
+            let sign = if t.taker_owner == *owner {
+                if t.taker_side == OrderSide::Long { 1 } else { -1 }
+            } else if t.maker_owner == *owner {
+                if t.taker_side == OrderSide::Long { -1 } else { 1 }
+            } else {
+                continue;
+            };
+            let phase = t.batch_seq.and_then(|s| self.batches.get(&s)).map(|b| b.phase.as_str());
+            if matches!(phase, Some("committed") | Some("aborted")) {
+                continue;
+            }
+            net += sign * t.qty_usd as i64;
+            any = true;
+        }
+        (net, any)
+    }
+
     pub fn risk_view(&self, owner: &Key) -> Value {
         let lots = self.lots_of(owner);
         let since = self.risk_state.get(owner).and_then(|r| r.1);
@@ -640,7 +662,16 @@ impl Venue {
     pub fn submit(&mut self, i: IntentV6) -> Result<Value, String> {
         self.wallet_check(&i.owner)?;
         if i.action != Action::Cancel {
-            crate::risk::gate(&self.lots_of(&i.owner), self.mark_usd(), i.side, i.quantity, self.clearing_on())?;
+            let lots = self.lots_of(&i.owner);
+            let (unsettled, in_flight) = self.unsettled_of(&i.owner);
+            // One closing loan in flight per account (docs/SHZ_LIQUIDATION_DRILL.md F1): a take that
+            // reduces the position borrows margin from the lots it closes, and a second loan taken
+            // before the first batch resolves breaks that batch's balance check for every account.
+            let reduces = lots.first().is_some_and(|l| l.side != i.side);
+            if i.action == Action::Take && reduces && in_flight {
+                return Err("a previous fill of this account is still settling: a take that reduces the position waits until it commits".into());
+            }
+            crate::risk::gate(&lots, self.mark_usd(), i.side, i.quantity, self.clearing_on(), unsettled)?;
         }
         let id = i.id();
         let ent = (i.tier != FeedTier::Standard).then(|| self.entitlements.get(&i.entitlement_digest).cloned()).flatten();

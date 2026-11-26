@@ -1,0 +1,2 @@
+    416 tick: resolve: router rejected operation: Bounds
+      1 shz-venue 127.0.0.1:18095 relay=http://127.0.0.1:18091 state=D:\shz\tmp\liq-drill-fund-1795706305630 ui=D:\shz\SatsHedgeZero\ui\venue network=testnet4 production_ready=false
