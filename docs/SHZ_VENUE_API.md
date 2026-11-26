@@ -92,6 +92,42 @@ startup if the journal lacks it. On a journal that predates it, replay runs the 
 then the event rebuilds every position from the committed batches in sequence order and releases their
 offset margin. `GET /api/status` reports `"margin_release": true`.
 
+## Wallet connect
+
+The page offers "Connect wallet" with a Nostr browser extension, a Lightning wallet (LNURL-auth QR) or a local key. No private key is pasted anywhere.
+
+**What a wallet signs, and what it does not.** The router checks raw BIP340 signatures by the account owner over venue-chosen 32-byte messages (allocation digest, intent id, batch approvals, channel acks). NIP-07 can only sign Nostr events and LNURL-auth can only sign `k1`, so a wallet cannot produce those. A wallet therefore authorizes a **trading key** once, with an expiry, and the trading key signs everything as before. The account owner is the trading key; the wallet key is recorded next to it (`wallet_link` in `AccountView`, `GET /api/wallet/link/{trading_key}`) and journaled in `venue.jsonl`.
+
+Both sides consent to a link. The wallet proves control of its key (Nostr event or LNURL ECDSA signature) and the trading key BIP340-signs the same link hash, so nobody can attach someone else's key to their wallet:
+
+```
+link_hash = tagged_hash("SHZ/VENUE/WALLET-LINK/V1",
+  network[32] || len u8 || kind ("nostr"|"lnurl") || len u8 || wallet key (32 B x-only, or 33 B compressed for lnurl)
+  || trading_key[32] || nonce[32] (Nostr challenge, or lnurl k1) || expires_us u64le)
+```
+
+Rules: a link lasts 24 h (`expires_us`). Once a link has expired, the venue rejects `/api/intents` and `/api/signatures` for that trading key (HTTP 409 `wallet authorization expired; reconnect the wallet`); reconnecting with the same wallet renews it. A trading key stays bound to the first wallet that authorized it (`trading key is bound to another wallet`). Accounts with no link (local key, market makers) are unaffected. The trading key lives in the browser's localStorage, per wallet, so clearing site data loses the account like it does for a local key.
+
+### Nostr (NIP-07, `window.nostr`)
+
+1. `POST /api/wallet/nostr/challenge` `{"wallet": hex32, "trade_key": hex32}` (wallet = `getPublicKey()`) -> `{"challenge", "hash" (= link_hash), "venue" (network hex), "req": "wallet-link", "kind": 27810, "expires_us" (challenge, 5 min), "link_expires_us"}`.
+2. The page asks the extension to `signEvent` an event of kind **27810** with tags `["shz-venue", venue]`, `["shz-req", "wallet-link"]`, `["shz-hash", hash]`, `["shz-challenge", challenge]` and a human-readable `content` naming the trading key. The trading key signs `hash` with BIP340.
+3. `POST /api/wallet/nostr/link` `{"event": <signed event>, "session_signature": hex64}` -> `{"trade_key", "link": {"kind","wallet","issued_us","expires_us"}}`.
+
+The venue's envelope check (`verify_nostr_envelope` in `crates/shz-venue/src/wallet.rs`) recomputes the NIP-01 event id (`sha256` of `[0,pubkey,created_at,kind,tags,content]`), verifies the BIP340 signature over it, requires `created_at` within 5 min, kind 27810, exactly one each of the `shz-venue`, `shz-req` and `shz-hash` tags equal to what the venue expects (so an event is not replayable for another venue, request or hash), and the signer to be the wallet the challenge was issued to. Challenges are single-use. Control characters in content and tags are refused so every serializer produces the same id. `ui/venue/test/nostr_vector.json` is a signed event shared by the Rust and JS tests.
+
+### LNURL-auth (LUD-04)
+
+1. `POST /api/wallet/lnurl/start` `{"trade_key": hex32, "origin": "https://host"}` -> `{"k1", "callback", "lnurl" (uppercase bech32, for the QR), "expires_us" (5 min)}`. The k1 is bound to `trade_key`; `origin` must be https (http only for localhost).
+2. The wallet scans the QR and calls `GET /api/wallet/lnurl/callback?tag=login&k1=..&sig=<DER ECDSA over the 32 k1 bytes, no extra hash>&key=<33-byte compressed linking key>` -> `{"status":"OK"}` or `{"status":"ERROR","reason":".."}` (HTTP 200, as LUD-04 requires). High-S signatures are accepted. A k1 works once and expires after 5 min.
+3. The page polls `GET /api/wallet/lnurl/status?k1=..` -> `pending | expired | authed {wallet, hash, link_expires_us} | linked`. On `authed` it signs `hash` with the trading key and sends `POST /api/wallet/lnurl/confirm` `{"k1", "session_signature"}`, which installs the link.
+
+Because the trading key is fixed when the k1 is issued and must sign the final hash, a different key cannot be swapped in between scan and confirm.
+
+### WebLN
+
+If `window.webln` exists the modal offers to show its `getInfo()` alias. This is display only: the venue has no Lightning backend (the channel adapter is simulated, see Settlement plumbing), so `sendPayment` and `makeInvoice` are never called, and a WebLN node key is not used for authentication.
+
 ## Explorer
 
 - `GET /api/explorer/packets?limit=50` -> oracle packets the venue ingested: seq, slot, status, median, digest, signers, `verified`.

@@ -8,6 +8,7 @@
 mod core;
 mod feed;
 mod http;
+mod wallet;
 
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc, time::Duration};
 

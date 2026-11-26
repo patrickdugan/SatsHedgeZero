@@ -200,6 +200,7 @@ pub struct Venue {
     pub candles: BTreeMap<u64, [f64; 5]>,
     log: File,
     pub events: Vec<Value>,
+    pub wallets: crate::wallet::Wallets,
 }
 
 fn venue_scope(keys: &Keys) -> (Scope, Policy) {
@@ -294,9 +295,13 @@ impl Venue {
             candles: BTreeMap::new(),
             log,
             events: vec![],
+            wallets: Default::default(),
         };
         // Account metadata is restored from the venue log; the router replays its own journal.
         for e in prior {
+            if e["kind"] == "wallet_link" {
+                v.restore_link(&e);
+            }
             if e["kind"] == "account" {
                 let owner = parse_key(e["owner"].as_str().unwrap_or(""))?;
                 let txid = parse_key(e["outpoint"]["txid"].as_str().unwrap_or(""))?;
@@ -369,11 +374,11 @@ impl Venue {
         Ok(())
     }
 
-    fn persist(&mut self, e: Value) {
+    pub(crate) fn persist(&mut self, e: Value) {
         let _ = writeln!(self.log, "{e}");
         let _ = self.log.sync_data();
     }
-    fn emit(&mut self, e: Value) {
+    pub(crate) fn emit(&mut self, e: Value) {
         self.events.push(e);
     }
 
@@ -566,6 +571,7 @@ impl Venue {
     }
 
     pub fn submit(&mut self, i: IntentV6) -> Result<Value, String> {
+        self.wallet_check(&i.owner)?;
         let id = i.id();
         let ent = (i.tier != FeedTier::Standard).then(|| self.entitlements.get(&i.entitlement_digest).cloned()).flatten();
         let now = now_us().max(self.router.router().map(|r| r.clock_us()).unwrap_or(0));
@@ -760,6 +766,7 @@ impl Venue {
     }
 
     pub fn add_signatures(&mut self, owner: Key, items: &[(String, Bip340Signature)]) -> Result<usize, String> {
+        self.wallet_check(&owner)?;
         let mut n = 0;
         for (id, sig) in items {
             let Some(p) = self.pending.get(id).cloned() else { continue };
@@ -979,6 +986,7 @@ impl Venue {
             "owner": h(owner), "label": a.label, "kind": a.kind, "outpoint": outpoint_json(&a.outpoint), "cap_sats": a.cap_sats,
             "balance": b.map(|b| balance_json(&b)),
             "position": self.position(owner), "open_orders": open, "fills": fills, "rejected": recent, "pending_signatures": pending,
+            "wallet_link": self.wallet_link_view(owner),
         })
     }
 
@@ -1110,7 +1118,7 @@ pub fn intent_json(id: &Key, r: &IntentRec) -> Value {
            "accepted_us": r.accepted_us, "early_window_opt_in": i.early_window_opt_in, "signature": sig_hex(&i.signature)})
 }
 
-fn getrandom(buf: &mut [u8]) -> Result<(), String> {
+pub(crate) fn getrandom(buf: &mut [u8]) -> Result<(), String> {
     // k256's OS RNG (rand_core getrandom feature via the workspace) is not a direct dep here;
     // read the OS RNG through a fresh SigningKey's entropy path.
     use k256::elliptic_curve::rand_core::{OsRng, RngCore};

@@ -216,6 +216,44 @@ async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (
                 _ => err(400, "owner and items required"),
             }
         }
+        (_, true, "/api/wallet/nostr/challenge") => match (jb["wallet"].as_str().map(parse_key), jb["trade_key"].as_str().map(parse_key)) {
+            (Some(Ok(w)), Some(Ok(t))) => match app.venue.lock().await.wallet_nostr_challenge(w, t) {
+                Ok(x) => (200, x),
+                Err(e) => err(409, e),
+            },
+            _ => err(400, "wallet and trade_key required"),
+        },
+        (_, true, "/api/wallet/nostr/link") => match app.venue.lock().await.wallet_nostr_link(&jb) {
+            Ok(x) => (200, x),
+            Err(e) => err(409, e),
+        },
+        (_, true, "/api/wallet/lnurl/start") => match (jb["trade_key"].as_str().map(parse_key), jb["origin"].as_str()) {
+            (Some(Ok(t)), Some(o)) => match app.venue.lock().await.wallet_lnurl_start(t, o) {
+                Ok(x) => (200, x),
+                Err(e) => err(409, e),
+            },
+            _ => err(400, "trade_key and origin required"),
+        },
+        // LUD-04 callback: errors are reported in the body with HTTP 200.
+        (true, _, "/api/wallet/lnurl/callback") => {
+            let (k1, sig, key) = (q(query, "k1").unwrap_or_default(), q(query, "sig").unwrap_or_default(), q(query, "key").unwrap_or_default());
+            (200, app.venue.lock().await.wallet_lnurl_callback(&k1, &sig, &key))
+        }
+        (true, _, "/api/wallet/lnurl/status") => match app.venue.lock().await.wallet_lnurl_status(&q(query, "k1").unwrap_or_default()) {
+            Ok(x) => (200, x),
+            Err(e) => err(404, e),
+        },
+        (_, true, "/api/wallet/lnurl/confirm") => match app.venue.lock().await.wallet_lnurl_confirm(jb["k1"].as_str().unwrap_or(""), jb["session_signature"].as_str().unwrap_or("")) {
+            Ok(x) => (200, x),
+            Err(e) => err(409, e),
+        },
+        (true, _, p) if p.starts_with("/api/wallet/link/") => match parse_key(&p["/api/wallet/link/".len()..]) {
+            Ok(k) => {
+                let x = app.venue.lock().await.wallet_link_view(&k);
+                if x.is_null() { err(404, "no wallet link") } else { (200, x) }
+            }
+            Err(e) => err(400, e),
+        },
         (true, _, "/v1/candles") => candles(app, query).await,
         (true, _, "/api/explorer/packets") => {
             let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(50usize).min(600);

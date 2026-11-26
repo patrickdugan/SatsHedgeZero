@@ -1,16 +1,20 @@
 // SHZ venue trading page. No frameworks. TESTNET ONLY: keys live in localStorage.
 import { hex, unhex, pubkey, p2trAddress, bip340Sign, signIntent, randomKey } from './crypto.js';
+import { connectNostr, lnurlStart, lnurlFinish, nostrAvailable, weblnInfo } from './wallet.js';
+import { qrSvg } from './qr.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n, d = 0) => (n === null || n === undefined || Number.isNaN(n) ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
 const short = (h) => (h ? h.slice(0, 8) + '…' + h.slice(-4) : '');
 const KEY_STORE = 'shz.venue.key';
+const WALLET_STORE = 'shz.venue.wallet'; // {kind, wallet, expires_us}: which wallet authorized the stored trading key
+const TRADE_KEY_PREFIX = 'shz.venue.trade.'; // per-wallet trading key, kept across disconnects
 const TIERS = ['standard', 'intermediate', 'premium'];
 const MARKET = 'SHZ-BTCUSD-INV';
 
 const st = { template: null, mark: null, markAt: 0, book: { bids: [], asks: [] }, trades: [], account: null, batches: new Map(),
-  key: null, owner: null, address: null, tier: 'standard', otype: 'limit', side: 'long', btab: 'positions', lastSeq: 0,
+  key: null, wallet: null, owner: null, address: null, tier: 'standard', otype: 'limit', side: 'long', btab: 'positions', lastSeq: 0,
   ws: null, wsOk: false, ents: new Map(), signing: new Set(), signed: new Set() };
 
 const store = {
@@ -26,32 +30,36 @@ async function api(path, body) {
 }
 
 // ---------- wallet ----------
-async function setKey(bytes) {
+async function setKey(bytes, wallet = null) {
   st.key = bytes; st.owner = hex(pubkey(bytes)); st.address = await p2trAddress(unhex(st.owner), 'tb');
+  st.wallet = wallet; if (wallet) store.set(WALLET_STORE, JSON.stringify(wallet)); else store.del(WALLET_STORE);
   store.set(KEY_STORE, hex(bytes)); st.account = null; st.signed.clear(); await refreshAccount(); reconnectWs(); renderAll();
 }
 function renderWallet() {
   const w = $('wallet'), a = st.account;
-  let h = '<div class="warn-box">TESTNET ONLY. The key is stored unencrypted in this browser\'s localStorage. Never import a key that holds real coins.</div>';
+  let h = st.wallet
+    ? `<div class="warn-box">TESTNET ONLY. ${esc(WALLET_NAMES[st.wallet.kind])} wallet ${esc(short(st.wallet.wallet))} authorized this browser's trading key${walletExpired() ? ' &mdash; <b>authorization expired</b>' : ' until ' + esc(new Date(st.wallet.expires_us / 1000).toLocaleString('en-GB'))}. The trading key itself is stored unencrypted in localStorage.</div>${walletExpired() ? '<button class="btn" id="wreconnect">Reconnect wallet</button>' : ''}`
+    : '<div class="warn-box">TESTNET ONLY. The key is stored unencrypted in this browser\'s localStorage. Never import a key that holds real coins.</div>';
   if (!st.owner) {
-    h += '<button class="btn" id="wgen">Generate testnet key</button><label class="f">Or import 32-byte hex key<input type="text" id="wimp" placeholder="64 hex chars" autocomplete="off" spellcheck="false"></label><button class="btn" id="wimpb">Import</button>';
+    h += '<button class="btn" id="wopen">Connect wallet</button><button class="btn" id="wgen">Generate local testnet key</button><label class="f">Or import 32-byte hex key<input type="text" id="wimp" placeholder="64 hex chars" autocomplete="off" spellcheck="false"></label><button class="btn" id="wimpb">Import</button>';
   } else {
-    h += `<label class="f">Owner pubkey (x-only)<div class="addr" id="wpk">${esc(st.owner)}</div></label>
+    h += `<label class="f">${st.wallet ? 'Trading key (account owner, x-only)' : 'Owner pubkey (x-only)'}<div class="addr" id="wpk">${esc(st.owner)}</div></label>
       <label class="f">Funding address (testnet4 P2TR, key-path, no script tree)<div class="addr" id="waddr">${esc(st.address)}</div></label>`;
     if (a) h += `<div class="est"><div><span>Account</span><span>${esc(a.label || 'registered')}</span></div><div><span>Outpoint</span><span>${esc(short(a.outpoint?.txid))}:${esc(a.outpoint?.vout)}</span></div><div><span>Collateral cap</span><span>${fmt(a.balance?.cap)} sats</span></div><div><span>Free</span><span>${fmt(a.balance?.free)} sats</span></div></div>`;
     else h += `<div class="muted">Not registered. Demo credit is synthetic (no coins). For a utxo account, fund the address above on testnet4, then enter the output.</div>
       <button class="btn" id="wdemo">Register demo account (TESTNET DEMO CREDIT)</button>
       <label class="f">utxo outpoint txid:vout<input type="text" id="wutxo" placeholder="txid:vout" autocomplete="off" spellcheck="false"></label><button class="btn" id="wutxob">Register utxo account</button>`;
-    h += '<button class="btn sm" id="wforget">Forget key</button>';
+    h += st.wallet ? '<button class="btn sm" id="wdisc">Disconnect wallet</button>' : '<button class="btn sm" id="wforget">Forget key</button>';
   }
   h += '<div class="msg" id="wmsg"></div>';
   w.innerHTML = h;
   const on = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
   on('wgen', () => setKey(randomKey()));
+  on('wopen', () => openModal()); on('wreconnect', () => openModal()); on('wdisc', disconnectWallet);
   on('wimpb', async () => { try { await setKey(unhex($('wimp').value.trim(), 32)); } catch (e) { wmsg(e.message, true); } });
   on('wdemo', () => register('demo', null));
   on('wutxob', () => { const m = /^([0-9a-fA-F]{64}):(\d+)$/.exec($('wutxo').value.trim()); if (!m) return wmsg('Expected txid:vout', true); register('utxo', { txid: m[1].toLowerCase(), vout: Number(m[2]) }); });
-  on('wforget', () => { if (confirm('Delete the key from this browser? Back it up first.')) { store.del(KEY_STORE); st.key = st.owner = st.address = st.account = null; reconnectWs(); renderAll(); } });
+  on('wforget', () => { if (confirm('Delete the key from this browser? Back it up first.')) { store.del(KEY_STORE); store.del(WALLET_STORE); st.key = st.owner = st.address = st.account = st.wallet = null; reconnectWs(); renderAll(); } });
 }
 const wmsg = (t, err) => { const m = $('wmsg'); if (m) { m.textContent = t; m.className = 'msg ' + (err ? 'err' : 'ok'); } };
 async function register(kind, outpoint) {
@@ -178,11 +186,102 @@ function renderBottom() {
       bottomTable(['Pending signature', 'Kind', 'Message', 'Status'], pend.map((x) => `<tr><td>${esc(x.id)}</td><td>${esc(x.kind)}</td><td>${esc(short(x.message))}</td><td class="amber">${st.signed.has(x.id) ? 'signed, awaiting venue' : 'auto-signing…'}</td></tr>`));
   }
 }
-function renderAll() { renderTop(); renderBook(); renderTrades(); renderBottom(); renderWallet(); renderEst(); }
+function renderAll() { renderTop(); renderBook(); renderTrades(); renderBottom(); renderWallet(); renderEst(); renderWalletBtn(); }
+
+// ---------- wallet connect ----------
+const WALLET_NAMES = { nostr: 'Nostr', lnurl: 'Lightning (LNURL-auth)' };
+const walletExpired = () => !!st.wallet && st.wallet.expires_us / 1000 <= Date.now();
+function renderWalletBtn() {
+  const b = $('wbtn'); if (!b) return;
+  b.textContent = st.wallet ? `${st.wallet.kind === 'nostr' ? 'Nostr' : 'LN'} ${short(st.wallet.wallet)}${walletExpired() ? ' (expired)' : ''}` : st.owner ? 'Local key ' + short(st.owner) : 'Connect wallet';
+  b.title = st.wallet ? 'Connected wallet ' + st.wallet.wallet : '';
+}
+let lnurlAbort = null, modalView = 'list';
+function openModal(view = st.wallet && !walletExpired() ? 'connected' : 'list') { $('wmodal').hidden = false; renderModal(view); }
+function closeModal() { if (lnurlAbort) lnurlAbort.abort(); lnurlAbort = null; $('wmodal').hidden = true; }
+function tradeKeyFor(slot) {
+  const k = store.get(TRADE_KEY_PREFIX + slot);
+  if (k && /^[0-9a-f]{64}$/.test(k)) return unhex(k);
+  const nk = randomKey(); store.set(TRADE_KEY_PREFIX + slot, hex(nk)); return nk;
+}
+async function finishConnect(r, tradeSecret) {
+  await setKey(tradeSecret, { kind: r.kind, wallet: r.wallet, expires_us: r.expires_us });
+  closeModal();
+}
+function renderModal(view) {
+  if (lnurlAbort) { lnurlAbort.abort(); lnurlAbort = null; }
+  modalView = view;
+  const body = $('wmbody'), set = (h) => { body.innerHTML = h; };
+  const err = (m) => `<div class="msg err">${esc(m)}</div>`;
+  const back = '<button class="btn" id="mback">Back</button>';
+  const wire = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
+  if (view === 'list') {
+    const hasNostr = nostrAvailable(window), hasWebln = !!window.webln;
+    set(`<div class="mnote">Connecting proves you control a wallet key and authorizes a trading key in this browser. The wallet never sees your orders; the trading key signs them. Testnet only.</div>
+      <button class="wopt" id="mnostr"><b>Browser extension (Nostr / Alby)</b><span>${hasNostr ? 'NIP-07 signer detected. The extension signs one authorization event.' : 'No NIP-07 extension detected. Install Alby or nos2x, then reload.'}</span></button>
+      <button class="wopt" id="mln"><b>Lightning wallet (scan LNURL-auth QR)</b><span>Phoenix, Zeus, Breez, BlueWallet, Blixt, Alby mobile. Scan the QR code with the wallet.</span></button>
+      <button class="wopt" id="mlocal"><b>Local testnet key</b><span>${st.owner && !st.wallet ? 'Keep using the key already in this browser.' : 'Generate a throwaway key stored in this browser. Testnet only.'}</span></button>
+      ${hasWebln ? '<button class="wopt" id="mwebln"><b>WebLN wallet detected</b><span>Show its name. Identity display only.</span></button>' : ''}<div id="mweblninfo"></div>`);
+    wire('mnostr', () => renderModal('nostr')); wire('mln', () => renderModal('lnurl'));
+    wire('mlocal', async () => { if (!st.owner || st.wallet) await setKey(randomKey()); closeModal(); });
+    wire('mwebln', async () => {
+      $('mweblninfo').innerHTML = '<div class="mnote">Asking the wallet…</div>';
+      const i = await weblnInfo(window);
+      $('mweblninfo').innerHTML = !i ? err('WebLN wallet disappeared') : `<div class="est"><div><span>WebLN wallet</span><span>${esc(i.alias || 'unnamed')}</span></div>${i.pubkey ? `<div><span>Node key</span><span>${esc(short(i.pubkey))}</span></div>` : ''}</div>${i.error ? err(i.error) : ''}<div class="mnote">Identity display only. This venue has no Lightning backend (its channel adapter is simulated), so no invoices or payments are requested, and a WebLN node key proves nothing here. Use the Nostr or QR option to sign in.</div>`;
+    });
+  } else if (view === 'nostr') {
+    set(`<div class="mnote">Your extension will ask you to sign one authorization event for this venue (a Nostr event, never a payment). Approve it to continue.</div><div id="mstate" class="msg">Waiting for the extension…</div>${back}`);
+    wire('mback', () => renderModal('list'));
+    (async () => {
+      try {
+        if (!nostrAvailable(window)) throw new Error('No NIP-07 extension found. Install Alby or nos2x and reload.');
+        const pk = String(await window.nostr.getPublicKey()).toLowerCase();
+        const tradeSecret = tradeKeyFor('nostr.' + pk);
+        const r = await connectNostr({ api, nostr: window.nostr, tradeSecret });
+        await finishConnect(r, tradeSecret);
+      } catch (e) { if (modalView === 'nostr' && $('mstate')) $('mstate').outerHTML = err(e.message || String(e)); }
+    })();
+  } else if (view === 'lnurl') {
+    set('<div id="mstate" class="msg">Requesting a login code…</div>' + back);
+    const ctl = new AbortController(); lnurlAbort = ctl;
+    wire('mback', () => renderModal('list'));
+    (async () => {
+      try {
+        const tradeSecret = tradeKeyFor('lnurl');
+        const s = await lnurlStart({ api, tradeSecret, origin: location.origin });
+        if (ctl.signal.aborted) return;
+        $('mstate').outerHTML = `<div class="qrbox">${qrSvg(s.lnurl, { ecc: 'L', px: 5 })}</div><div class="mnote">Scan with a Lightning wallet that supports LNURL-auth. On this phone? <a href="lightning:${esc(s.lnurl)}">Open in wallet</a>. The code expires in 5 minutes.</div><textarea readonly rows="3" aria-label="LNURL" onclick="this.select()">${esc(s.lnurl)}</textarea><div id="mstate" class="msg">Waiting for the wallet…</div>`;
+        const r = await lnurlFinish({ api, tradeSecret, k1: s.k1, signal: ctl.signal, onState: (x) => { const m = $('mstate'); if (m && x === 'authed') m.textContent = 'Wallet authenticated, finishing…'; } });
+        await finishConnect(r, tradeSecret);
+      } catch (e) {
+        if (ctl.signal.aborted) return;
+        let m = e.message || String(e);
+        if (/bound to another wallet/.test(m)) { store.del(TRADE_KEY_PREFIX + 'lnurl'); m += ' A new trading key will be used; try again.'; }
+        const el = $('mstate'); if (el) el.outerHTML = err(m);
+      }
+    })();
+  } else {
+    const w = st.wallet;
+    set(`<div class="est"><div><span>Wallet</span><span>${esc(WALLET_NAMES[w.kind])}</span></div><div><span>Wallet key</span><span title="${esc(w.wallet)}">${esc(short(w.wallet))}</span></div><div><span>Trading key</span><span title="${esc(st.owner)}">${esc(short(st.owner))}</span></div><div><span>Authorized until</span><span>${esc(new Date(w.expires_us / 1000).toLocaleString('en-GB'))}</span></div></div>
+      <button class="btn" id="mrenew">Renew authorization</button><button class="btn" id="mdisc">Disconnect</button>`);
+    wire('mrenew', () => renderModal(w.kind === 'nostr' ? 'nostr' : 'lnurl')); wire('mdisc', () => { disconnectWallet(); closeModal(); });
+  }
+}
+function disconnectWallet() {
+  // The trading key stays in per-wallet storage so reconnecting restores the same account.
+  store.del(KEY_STORE); store.del(WALLET_STORE); st.key = st.owner = st.address = st.account = st.wallet = null; st.signed.clear();
+  reconnectWs(); renderAll();
+}
+$('wbtn').onclick = () => openModal();
+$('wmclose').onclick = closeModal;
+$('wmodal').onclick = (e) => { if (e.target === $('wmodal')) closeModal(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('wmodal').hidden) closeModal(); });
+setInterval(() => { if (walletExpired()) { renderWallet(); renderWalletBtn(); } }, 30000);
+
 
 // ---------- signing / orders ----------
 async function autoSign() {
-  const a = st.account; if (!a || !st.key) return;
+  const a = st.account; if (!a || !st.key || walletExpired()) return;
   const todo = (a.pending_signatures || []).filter((x) => !st.signing.has(x.id) && !st.signed.has(x.id));
   if (!todo.length) return;
   for (const x of todo) st.signing.add(x.id);
@@ -250,7 +349,11 @@ async function init() {
   $('chart').src = `vendor/bitcornwisdom/embed.html?instrument=${MARKET}&interval=1m&preferred=relay:1&relay=${encodeURIComponent(origin)}`;
   try { st.template = await api('/api/template'); } catch (e) { setConn('no server', 'bad'); }
   const k = store.get(KEY_STORE);
-  if (k && /^[0-9a-f]{64}$/.test(k)) { try { await setKey(unhex(k)); } catch { store.del(KEY_STORE); } }
+  if (k && /^[0-9a-f]{64}$/.test(k)) {
+    let w = null; try { w = JSON.parse(store.get(WALLET_STORE) || 'null'); } catch { /* corrupt */ }
+    if (w && !(w.kind in WALLET_NAMES && /^[0-9a-f]{64,66}$/.test(w.wallet) && Number.isFinite(w.expires_us))) w = null;
+    try { await setKey(unhex(k), w); } catch { store.del(KEY_STORE); }
+  }
   await pollAll(); refreshBatches(); reconnectWs(); renderAll();
   if (st.template && !$('price').value && st.book.bids[0]) $('price').value = st.book.bids[0][0];
   setInterval(() => { if (!st.wsOk) pollAll(); else api('/api/status').then((s) => { setMark(s.mark); st.router = s.router; renderTop(); }).catch(() => {}); }, 1500);

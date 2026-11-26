@@ -1,0 +1,38 @@
+{
+  "venue": "0707070707070707070707070707070707070707070707070707070707070707",
+  "req": "wallet-link",
+  "pubkey": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+  "hash": "aa4661d52a1e1d15f71d7c01f2603048d3cefd5879c354b3ba094a13f63dae41",
+  "link": {
+    "network": "0707070707070707070707070707070707070707070707070707070707070707",
+    "trade_key": "2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "challenge": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+    "expires_us": 1900086400000000
+  },
+  "event": {
+    "kind": 27810,
+    "created_at": 1900000000,
+    "tags": [
+      [
+        "shz-venue",
+        "0707070707070707070707070707070707070707070707070707070707070707"
+      ],
+      [
+        "shz-req",
+        "wallet-link"
+      ],
+      [
+        "shz-hash",
+        "aa4661d52a1e1d15f71d7c01f2603048d3cefd5879c354b3ba094a13f63dae41"
+      ],
+      [
+        "shz-challenge",
+        "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c"
+      ]
+    ],
+    "content": "SatsHedgeZero venue (testnet): authorize trading key 2f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240efe4",
+    "pubkey": "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+    "id": "b75c8dc67492aaf405de7b1806b59708c5c0c4aeb0fae65e84d01a87459beab0",
+    "sig": "6b1050bee04122a8535fd469422bf83a9f2682280d91dff59035593b89876c889f953fdb392b56d9e2049852500931931ac4cfe454130fea576feadb9f89c8ea"
+  }
+}
