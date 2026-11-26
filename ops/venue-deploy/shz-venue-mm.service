@@ -6,7 +6,7 @@ Requires=shz-venue.service
 [Service]
 User=shzvmm
 Group=shzvmm
-ExecStart=/usr/bin/python3 /opt/shz-venue/ops/venue-mm/mm.py run --server http://127.0.0.1:8096 --state-dir /var/lib/shz-venue-mm --expires-s 300
+ExecStart=/usr/bin/python3 /opt/shz-venue/ops/venue-mm/mm.py run --server http://127.0.0.1:8096 --state-dir /var/lib/shz-venue-mm --expires-s 300 --poll-s 0.25
 StateDirectory=shz-venue-mm
 StateDirectoryMode=0700
 Restart=always
