@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { verifyRgbLightning } from './evidence.mjs';
+import { verifyRgbLightning, verifyReceiptBackedBinding } from './evidence.mjs';
 
 const check=(v,m)=>{if(!v)throw Error(m)};
 const hex=s=>typeof s==='string'&&/^[0-9a-f]{64}$/.test(s);
@@ -43,4 +43,9 @@ async function observeAuthorizedNativeRgb({payerCall,receiverCall,invoice,...aut
   check(p.issuedAt<=r.at&&r.at<p.expiresAt&&r.expiresAt===p.expiresAt,'reservation invoice expiry mismatch');
   return verifyRgbLightning({...auth,payer:async()=>p,receiver:async()=>q});
 }
-export { qualifyNativePair,observeAuthorizedNativeRgb };
+async function observeReceiptBackedNativeRgb({payerCall,receiverCall,invoice,receipt,quote,providerSig,receiptPolicy,...auth}){
+  const verified=verifyReceiptBackedBinding({...auth,receipt,quote,providerSig,receiptPolicy});
+  const obs=await observeAuthorizedNativeRgb({payerCall,receiverCall,invoice,...auth});
+  return {...obs,receiptDigest:verified.receiptDigest,quoteDigest:verified.quoteDigest};
+}
+export { qualifyNativePair,observeAuthorizedNativeRgb,observeReceiptBackedNativeRgb };

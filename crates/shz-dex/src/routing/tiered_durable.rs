@@ -9,6 +9,11 @@ use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,Journal
 use super::positions::{self,Position,Settlement};
 use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
+use super::withdrawal::{
+ WithdrawalBook,WithdrawalCancelAttestation,WithdrawalFreezeAttestation,WithdrawalReceiptV1,
+ WithdrawalReconcileAttestation,WithdrawalRecord,WithdrawalRequest,WithdrawalState,
+ cancel_message,freeze_message,reconcile_message,
+};
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
 
@@ -66,6 +71,8 @@ struct State{
  netting:bool,
  /// Multilateral clearing (`clearing`) switched on by a journaled `EnableClearing`.
  clearing:Option<ClearingState>,
+ /// Native BTC withdrawal reservations and terminal dispositions (SHZ-RGB-01E).
+ withdrawals:WithdrawalBook,
 }
 impl State{
  fn new(registry:&Registry,cfg:TieredConfig,lanes:Vec<Lane>,recipients:FeeRecipients)->D<Self>{
@@ -88,7 +95,7 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT06/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,withdrawals:WithdrawalBook::default()})
  }
  fn tag(&self)->&'static [u8]{if self.clearing.is_some(){TIERED_ACK_TAG_V3}else if self.netting{TIERED_ACK_TAG_V2}else{TIERED_ACK_TAG}}
  fn plan_clearing(&self,batch:&Batch,disposition:Disposition)->R<Option<ClearPlan>>{
@@ -172,7 +179,58 @@ impl State{
   self.lanes.insert(k,LaneState{peer:lane.peer,monitor:lane.monitor,head:lane.initial});
   Ok(())
  }
- fn apply(&mut self,event:Event)->Result<Reply,TierReject>{
+ fn reserve_withdrawal(&mut self,req:WithdrawalRequest,now:u64,tip:JournalTip)->Result<Key,TierReject>{
+  self.router.advance_clock(now)?;
+  if req.clearing_sequence>0{
+   let entry=self.batches.get(&req.clearing_sequence).ok_or(TierReject::UnknownOrder)?;
+   if entry.phase!=Phase::Committed||entry.batch.digest()!=req.batch_digest{return Err(TierReject::Replay)}
+   if !entry.batch.accounts().iter().any(|a|op(&a.channel)==op(&req.channel)){return Err(TierReject::Allocation)}
+   let expected_clearing=entry.clearing.as_ref().map(|c|c.digest()).unwrap_or([0;32]);
+   if req.clearing_digest!=expected_clearing{return Err(TierReject::Replay)}
+  }
+  let lane=op(&req.channel);
+  let owner=self.router.account_owner(&lane).ok_or(TierReject::Allocation)?;
+  let balance=self.router.account_balance(&lane).ok_or(TierReject::Allocation)?;
+  let cfg=self.router.config();
+  let (id,next_bal)=self.withdrawals.reserve(cfg.scope.network,self.config,cfg.router,req,owner,balance,now,tip)?;
+  self.router.set_account_balance(&lane,next_bal);
+  debug_assert!(self.withdrawals.check_partition(&lane,&next_bal));
+  Ok(id)
+ }
+ fn submit_withdrawal(&mut self,withdrawal_id:Key,payment_hash:Key,now:u64)->Result<(),TierReject>{
+  self.router.advance_clock(now)?;
+  self.withdrawals.mark_submitted(&withdrawal_id,payment_hash,now)?;
+  Ok(())
+ }
+ fn mark_withdrawal_ambiguous(&mut self,withdrawal_id:Key,now:u64)->Result<(),TierReject>{
+  self.router.advance_clock(now)?;
+  self.withdrawals.mark_ambiguous(&withdrawal_id,now)?;
+  Ok(())
+ }
+ fn reconcile_withdrawal(&mut self,att:WithdrawalReconcileAttestation,now:u64)->Result<(),TierReject>{
+  self.router.advance_clock(now)?;
+  let lane=op(&self.withdrawals.record(&att.withdrawal_id).ok_or(TierReject::UnknownOrder)?.request.channel);
+  let balance=self.router.account_balance(&lane).ok_or(TierReject::Allocation)?;
+  let next_bal=self.withdrawals.reconcile(&self.config,&self.lanes,&self.fee_receipts,&att,balance,now)?;
+  self.router.set_account_balance(&lane,next_bal);
+  debug_assert!(self.withdrawals.check_partition(&lane,&next_bal));
+  Ok(())
+ }
+ fn freeze_withdrawal(&mut self,att:WithdrawalFreezeAttestation,now:u64)->Result<WithdrawalState,TierReject>{
+  self.router.advance_clock(now)?;
+  let next=self.withdrawals.freeze(&self.config,&self.lanes,&att,now)?;
+  Ok(next)
+ }
+ fn cancel_withdrawal(&mut self,att:WithdrawalCancelAttestation,now:u64)->Result<(),TierReject>{
+  self.router.advance_clock(now)?;
+  let lane=op(&self.withdrawals.record(&att.withdrawal_id).ok_or(TierReject::UnknownOrder)?.request.channel);
+  let balance=self.router.account_balance(&lane).ok_or(TierReject::Allocation)?;
+  let next_bal=self.withdrawals.cancel(&self.config,&self.lanes,&att,balance,now)?;
+  self.router.set_account_balance(&lane,next_bal);
+  debug_assert!(self.withdrawals.check_partition(&lane,&next_bal));
+  Ok(())
+ }
+ fn apply(&mut self,event:Event,tip:JournalTip)->Result<Reply,TierReject>{
   match event{
    Event::Mark{mark,now}=>{self.router.ingest_mark(mark,now)?;Ok(Reply::Unit)},
    Event::Submit{intent,entitlement,now}=>Ok(Reply::Due(self.router.submit(intent,entitlement.as_ref(),now)?)),
@@ -192,6 +250,12 @@ impl State{
    Event::EnableMarginRelease=>{self.enable_netting()?;Ok(Reply::Unit)},
    Event::EnableClearing{fund_sats}=>{self.enable_clearing(fund_sats)?;Ok(Reply::Unit)},
    Event::EnableClosingLoans=>{self.enable_closing_loans()?;Ok(Reply::Unit)},
+   Event::ReserveWithdrawal{request,now}=>Ok(Reply::WithdrawalId(self.reserve_withdrawal(request,now,tip)?)),
+   Event::SubmitWithdrawal{withdrawal_id,payment_hash,now}=>{self.submit_withdrawal(withdrawal_id,payment_hash,now)?;Ok(Reply::Unit)},
+   Event::MarkWithdrawalAmbiguous{withdrawal_id,now}=>{self.mark_withdrawal_ambiguous(withdrawal_id,now)?;Ok(Reply::Unit)},
+   Event::ReconcileWithdrawal{attestation,now}=>{self.reconcile_withdrawal(attestation,now)?;Ok(Reply::Unit)},
+   Event::FreezeWithdrawal{attestation,now}=>Ok(Reply::WithdrawalState(self.freeze_withdrawal(attestation,now)?)),
+   Event::CancelWithdrawal{attestation,now}=>{self.cancel_withdrawal(attestation,now)?;Ok(Reply::Unit)},
   }
  }
 }
@@ -215,9 +279,16 @@ enum Event{
  /// Closing taker legs borrow their margin from the lots they close (`closing_loan`),
  /// for a journal with margin release but no clearing (`EnableClearing` turns them on too).
  EnableClosingLoans,
+ /// SHZ-RGB-01E native withdrawal reservations and dispositions (appended for WAL compatibility).
+ ReserveWithdrawal{request:WithdrawalRequest,now:u64},
+ SubmitWithdrawal{withdrawal_id:Key,payment_hash:Key,now:u64},
+ MarkWithdrawalAmbiguous{withdrawal_id:Key,now:u64},
+ ReconcileWithdrawal{attestation:WithdrawalReconcileAttestation,now:u64},
+ FreezeWithdrawal{attestation:WithdrawalFreezeAttestation,now:u64},
+ CancelWithdrawal{attestation:WithdrawalCancelAttestation,now:u64},
 }
 #[allow(clippy::large_enum_variant)]
-enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
+enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool),WithdrawalId(Key),WithdrawalState(WithdrawalState)}
 
 /// Full event-sourced tiered router, including rejected calls that may advance time.
 /// No mutable `TieredRouter` escapes. The file is held exclusively for the writer
@@ -250,7 +321,7 @@ impl DurableTieredRouter{
    if payload.len()>MAX_FRAME{return Err(TieredDurableError::Corrupt)}
    let event:Event=serde_json::from_slice(&payload).map_err(|_|TieredDurableError::Corrupt)?;
    // Rejected calls were journaled too (clock may have advanced).
-   let _=state.apply(event);
+   let _=state.apply(event,next);
    tip=next;found|=minimum==Some(tip);
   }
   if !found{return Err(TieredDurableError::Rollback)}
@@ -267,7 +338,7 @@ impl DurableTieredRouter{
  }
  fn record(&mut self,event:Event)->D<Reply>{
   self.append(&event)?;
-  Ok(self.state.apply(event)?)
+  Ok(self.state.apply(event,self.tip)?)
  }
  pub fn tip(&self)->D<JournalTip>{self.ready()?;Ok(self.tip)}
  /// Read-only view of the in-memory tiered router.
@@ -357,4 +428,61 @@ impl DurableTieredRouter{
  /// afterwards (memory is stale); reopen replays the step.
  #[doc(hidden)]
  pub fn append_process_without_apply(&mut self,now:u64)->D<()>{self.append(&Event::Process{now})?;self.poisoned=true;Ok(())}
+ /// SHZ-RGB-01E: atomically reserve `request.amount_sats` from `free` into `withdrawal_reserved`
+ /// via the WAL. Excludes reserved sats from subsequent order placement and margin allocation.
+ pub fn reserve_withdrawal(&mut self,request:WithdrawalRequest,now:u64)->D<Key>{
+  match self.record(Event::ReserveWithdrawal{request,now})?{Reply::WithdrawalId(id)=>Ok(id),_=>unreachable!()}
+ }
+ pub fn submit_withdrawal(&mut self,withdrawal_id:Key,payment_hash:Key,now:u64)->D<()>{
+  self.record(Event::SubmitWithdrawal{withdrawal_id,payment_hash,now}).map(|_|())
+ }
+ pub fn mark_withdrawal_ambiguous(&mut self,withdrawal_id:Key,now:u64)->D<()>{
+  self.record(Event::MarkWithdrawalAmbiguous{withdrawal_id,now}).map(|_|())
+ }
+ pub fn reconcile_withdrawal(&mut self,attestation:WithdrawalReconcileAttestation,now:u64)->D<()>{
+  self.record(Event::ReconcileWithdrawal{attestation,now}).map(|_|())
+ }
+ pub fn freeze_withdrawal(&mut self,attestation:WithdrawalFreezeAttestation,now:u64)->D<WithdrawalState>{
+  match self.record(Event::FreezeWithdrawal{attestation,now})?{Reply::WithdrawalState(s)=>Ok(s),_=>unreachable!()}
+ }
+ pub fn cancel_withdrawal(&mut self,attestation:WithdrawalCancelAttestation,now:u64)->D<()>{
+  self.record(Event::CancelWithdrawal{attestation,now}).map(|_|())
+ }
+ pub fn withdrawal(&self,withdrawal_id:&Key)->D<Option<&WithdrawalRecord>>{self.ready()?;Ok(self.state.withdrawals.record(withdrawal_id))}
+ pub fn withdrawals(&self)->D<Vec<&WithdrawalRecord>>{self.ready()?;Ok(self.state.withdrawals.records.values().collect())}
+ pub fn withdrawal_reconcile_message(&self,withdrawal_id:&Key,btc_evidence:&Key,settlement_evidence:&Key)->D<Key>{
+  self.ready()?;
+  let rec=self.state.withdrawals.record(withdrawal_id).ok_or(TierReject::UnknownOrder)?;
+  Ok(reconcile_message(&self.state.config,rec,btc_evidence,settlement_evidence))
+ }
+ pub fn withdrawal_cancel_message(&self,withdrawal_id:&Key,cancellation_evidence:&Key)->D<Key>{
+  self.ready()?;
+  let rec=self.state.withdrawals.record(withdrawal_id).ok_or(TierReject::UnknownOrder)?;
+  Ok(cancel_message(&self.state.config,rec,cancellation_evidence))
+ }
+ pub fn withdrawal_freeze_message(&self,withdrawal_id:&Key,conflict_evidence:&Key)->D<Key>{
+  self.ready()?;
+  let rec=self.state.withdrawals.record(withdrawal_id).ok_or(TierReject::UnknownOrder)?;
+  Ok(freeze_message(&self.state.config,rec,conflict_evidence))
+ }
+ /// Exports a canonical versioned signed withdrawal receipt (`SHZ/WITHDRAWAL-RECEIPT/V1`)
+ /// usable by the RGB sidecar.
+ pub fn export_withdrawal_receipt(&self,withdrawal_id:&Key,network_name:&str,router_signer_sk:&Key)->D<WithdrawalReceiptV1>{
+  self.ready()?;
+  let rec=self.state.withdrawals.record(withdrawal_id).ok_or(TierReject::UnknownOrder)?;
+  Ok(WithdrawalReceiptV1::sign_for_record(rec,network_name,router_signer_sk).map_err(TierReject::from)?)
+ }
+ /// Verifies both balance conservation and withdrawal partition invariants across all accounts.
+ pub fn verify_withdrawal_invariants(&self)->D<bool>{
+  self.ready()?;
+  for (lane,_,bal) in self.state.router.account_books(){
+   if !self.state.withdrawals.check_partition(lane,bal){return Ok(false)}
+  }
+  Ok(true)
+ }
+ /// Crash-testing hook: journal and fsync a withdrawal reservation without applying in memory.
+ #[doc(hidden)]
+ pub fn append_withdrawal_reserve_without_apply(&mut self,request:WithdrawalRequest,now:u64)->D<()>{
+  self.append(&Event::ReserveWithdrawal{request,now})?;self.poisoned=true;Ok(())
+ }
 }

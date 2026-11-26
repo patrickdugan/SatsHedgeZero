@@ -1,4 +1,5 @@
 import { createHash, createPublicKey, verify } from 'node:crypto';
+import { verifyWithdrawalReceipt, verifyConversionQuote } from './withdrawal-receipt.mjs';
 const check=(ok,msg)=>{if(!ok)throw new Error(msg)};
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const hex=s=>typeof s==='string'&&/^[0-9a-f]{64}$/.test(s)&&!/^0+$/.test(s);
@@ -62,4 +63,11 @@ function reconciliationEvent(journalId,r,binding,btc,rgb,at){
   check(btc.kind==='btc-observation'&&rgb.kind==='rgb-ln-observation'&&btc.reservationDigest===digest&&rgb.reservationDigest===digest&&btc.bindingDigest===bindingDigest&&rgb.bindingDigest===bindingDigest&&hex(btc.evidenceId)&&hex(rgb.evidenceId)&&btc.evidenceId!==rgb.evidenceId&&rgb.paymentHash===r.paymentHash&&Number.isSafeInteger(at)&&at>=r.at,'observation mismatch');
   return {type:'reconcile',id:r.id,at,network:r.network,assetId:r.assetId,units:r.units,sats:r.sats,carrierMsat:r.carrierMsat,payee:r.payee,paymentHash:r.paymentHash,btcEvidence:btc.evidenceId,rgbEvidence:rgb.evidenceId};
 }
-export { fundingMessage, verifyBtcFunding, verifyRgbLightning, reconciliationEvent };
+function verifyReceiptBackedBinding({journalId,reserve:r,binding,signature,authorizer,receipt,quote,providerSig,receiptPolicy}){
+  const b=authorize(journalId,r,binding,signature,authorizer);
+  const rv=verifyWithdrawalReceipt(receipt,{...receiptPolicy,requireState:'reserved',nowUs:BigInt(r.at)*1000000n});
+  const qv=verifyConversionQuote(quote,providerSig,receipt,{...receiptPolicy,nowSec:r.at});
+  check(b.scriptPubKey===receipt.destination_script&&r.withdrawalId===receipt.withdrawal_id&&r.sats===receipt.amount_sats&&r.assetId===quote.assetId&&r.units===quote.assetUnits&&r.carrierMsat===quote.carrierMsat&&r.payee===quote.destination&&r.paymentHash===quote.paymentHash&&r.expiresAt===quote.expiresAt,'funding binding diverges from verified withdrawal receipt or conversion quote');
+  return Object.freeze({binding:b,receiptDigest:rv.receiptDigest,quoteDigest:qv.quoteDigest,laneKey:rv.laneKey});
+}
+export { fundingMessage, verifyBtcFunding, verifyRgbLightning, reconciliationEvent, verifyReceiptBackedBinding };

@@ -53,13 +53,13 @@ function coordinator(j,store){
     close(){if(!closed){closed=true;j.close()}}
   });
 }
-function createCoordinator(journalDir,pinDir,policy,id){
+function createCoordinator(journalDir,pinDir,policy,id,opts){
   check(path.resolve(journalDir)!==path.resolve(pinDir),'separate checkpoint path required');
-  const j=createJournal(journalDir,policy,id);
+  const j=createJournal(journalDir,policy,id,opts);
   try{return coordinator(j,checkpointStore(pinDir,id,j.tip()))}catch(e){j.close();throw e}
 }
-function openCoordinator(journalDir,pinDir,policy,id){
-  const store=checkpointStore(pinDir,id),j=openJournal(journalDir,policy,id,store.read());
+function openCoordinator(journalDir,pinDir,policy,id,opts){
+  const store=checkpointStore(pinDir,id),j=openJournal(journalDir,policy,id,store.read(),opts);
   try{return coordinator(j,store)}catch(e){j.close();throw e}
 }
 export { checkpointStore, coordinator, createCoordinator, openCoordinator };

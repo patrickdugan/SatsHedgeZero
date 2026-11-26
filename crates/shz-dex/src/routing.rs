@@ -8,6 +8,7 @@ pub mod tiered_durable;
 pub mod ln_fees;
 pub mod positions;
 pub mod clearing;
+pub mod withdrawal;
 use serde::{Serialize,Deserialize};
 pub use coalescer::{Batch, BatchApproval, ChannelObligation, ChannelPayout, COALESCE_US};
 use crate::OrderSide;
@@ -184,16 +185,24 @@ impl Mark{
 }
 #[derive(Debug,Clone,Copy,PartialEq,Eq)]
 /// `cap` is the immutable allocation share; `realized_pnl` is the signed sum of PnL
-/// realized by margin release (`positions`). Conservation: every sat of
-/// `cap + realized_pnl` is in exactly one of free, resting, pending, committed, paid_fees.
-pub struct Balance{pub cap:u64,pub free:u64,pub resting:u64,pub pending:u64,pub committed:u64,pub paid_fees:u64,pub realized_pnl:i64}
+/// realized by margin release (`positions`). Revised conservation (SHZ-RGB-01E): every sat
+/// of `cap + realized_pnl` is in exactly one of `free`, `resting`, `pending`, `committed`,
+/// `paid_fees`, `withdrawal_reserved`, or `withdrawn`.
+pub struct Balance{
+ pub cap:u64,pub free:u64,pub resting:u64,pub pending:u64,pub committed:u64,
+ pub paid_fees:u64,pub withdrawal_reserved:u64,pub withdrawn:u64,pub realized_pnl:i64,
+}
 impl Balance{
- pub fn new(cap:u64)->Self{Self{cap,free:cap,resting:0,pending:0,committed:0,paid_fees:0,realized_pnl:0}}
+ pub fn new(cap:u64)->Self{Self{cap,free:cap,resting:0,pending:0,committed:0,paid_fees:0,withdrawal_reserved:0,withdrawn:0,realized_pnl:0}}
  pub fn conserved(&self)->bool{
-  self.free as i128+self.resting as i128+self.pending as i128+self.committed as i128+self.paid_fees as i128==self.cap as i128+self.realized_pnl as i128
+  self.free as i128+self.resting as i128+self.pending as i128+self.committed as i128
+   +self.paid_fees as i128+self.withdrawal_reserved as i128+self.withdrawn as i128
+   ==self.cap as i128+self.realized_pnl as i128
  }
- /// Equity: allocation plus realized PnL.
+ /// Equity: allocation plus realized PnL (includes active reservations and finalized withdrawals).
  pub fn equity(&self)->i128{self.cap as i128+self.realized_pnl as i128}
+ /// Remaining venue equity excluding finalized withdrawals (`equity - withdrawn`).
+ pub fn remaining_venue_equity(&self)->i128{self.equity()-self.withdrawn as i128}
 }
 struct Account{owner:Key,balance:Balance,last_seq:u64,position:positions::Position}
 impl Account{fn new(owner:Key,cap:u64)->Self{Self{owner,balance:Balance::new(cap),last_seq:0,position:positions::Position::default()}}}

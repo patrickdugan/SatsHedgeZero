@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { verifyWithdrawalReceipt, rejectExplorerOrSimulated } from './withdrawal-receipt.mjs';
 const check=(v,m)=>{if(!v)throw Error(m)};
 const hex=s=>typeof s==='string'&&/^[0-9a-f]{64}$/.test(s)&&!/^0+$/.test(s);
 const n=v=>{check(Number.isSafeInteger(v),'unsafe explorer integer');return BigInt(v)};
@@ -37,7 +38,11 @@ async function inspectCandidate({get,sequence,owner,channel}){
   const free=u(acct.balance.free),realized=n(acct.balance.realized_pnl),net=n(r.net);
   const limit=[free,realized,net].reduce((x,y)=>x<y?x:y);
   const candidateSats=(limit>0n?limit:0n).toString();
-  const observation={scope:'explorer-candidate-only',sequence,owner,lane,batchDigest:b.digest,routerConfig:before[0],routerTip:{records:before[1],digest:before[2]},candidateSats,kind:acct.kind,simulatedChannel:true,withdrawalAuthorized:false,proofOfFunding:false};
+  const observation={scope:'explorer-candidate-only',sequence,owner,lane,batchDigest:b.digest,routerConfig:before[0],routerTip:{records:before[1],digest:before[2]},candidateSats,kind:acct.kind,simulatedChannel:true,withdrawalAuthorized:false,proofOfFunding:false,receiptEligible:false};
   return {...observation,observationDigest:hash(JSON.stringify(observation))};
 }
-export {inspectCandidate};
+function verifyDurableWithdrawalReceipt(candidateOrReceipt, policy){
+  rejectExplorerOrSimulated(candidateOrReceipt);
+  return verifyWithdrawalReceipt(candidateOrReceipt, policy);
+}
+export {inspectCandidate, verifyDurableWithdrawalReceipt};
