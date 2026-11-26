@@ -548,6 +548,13 @@ impl TieredRouter{
   for f in batch.legs(){if let Some((k,x))=self.loans.get(&f.taker_id){*out.entry(*k).or_insert(0)+=x;}}
   out
  }
+ /// Lot margin lent to closing legs outside `batch` (later batches still in flight).
+ pub(super) fn other_loans(&self,batch:&Batch)->BTreeMap<Outpoint,u64>{
+  let own:BTreeSet<Key>=batch.legs().iter().map(|f|f.taker_id).collect();
+  let mut out=BTreeMap::new();
+  for (id,(k,x)) in &self.loans{if !own.contains(id){*out.entry(*k).or_insert(0)+=x;}}
+  out
+ }
  /// `batch` resolved: its legs and loans are no longer outstanding.
  pub(super) fn release_unresolved(&mut self,batch:&Batch){
   for f in batch.legs(){

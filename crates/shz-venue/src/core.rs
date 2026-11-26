@@ -946,7 +946,15 @@ impl Venue {
                 }
                 "prepared" if !b.acks.is_empty() && b.acks.iter().all(|a| a.signatures[0] != ZERO_SIG) => {
                     let bundle = AckBundle { sequence: next, batch: b.digest, disposition: Disposition::Commit, channels: b.acks.clone() };
-                    self.router.resolve(bundle.clone()).map_err(|e| format!("resolve: {e}"))?;
+                    let (phase, end) = (b.phase.clone(), b.window.1);
+                    if let Err(e) = self.router.resolve(bundle.clone()) {
+                        // A fully signed head batch whose resolve errors must not hold the
+                        // venue for ever: past the abort deadline it is aborted like any other.
+                        if self.deadline_abort(next, &phase, end, now)? {
+                            continue;
+                        }
+                        return Err(format!("resolve: {e}"));
+                    }
                     let _ = self.ledger.observe_resolution(&self.router, &bundle, now);
                     let b = self.batches.get_mut(&next).unwrap();
                     b.phase = "committed".into();

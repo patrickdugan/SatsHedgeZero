@@ -148,7 +148,7 @@ impl State{
   let position_of=|k:&Outpoint|router.account_position(k);
   let cleared=self.plan_clearing(&entry.batch,bundle.disposition)?;
   let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|router.account_balance(k),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&router.batch_loans(&entry.batch),
+   &|k:&Outpoint|router.account_balance(k),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&router.batch_loans(&entry.batch),&router.other_loans(&entry.batch),
    &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,deadline)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.set_account_balance(&key,balance);self.lanes.get_mut(&key).unwrap().head=head;}

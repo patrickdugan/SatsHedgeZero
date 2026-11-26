@@ -143,7 +143,7 @@ impl State{
   let position_of=|k:&Outpoint|accounts.get(k).map(|a|a.position.clone());
   let cleared=self.plan_clearing(&entry.batch,bundle.disposition)?;
   let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|accounts.get(k).map(|a|a.balance),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&BTreeMap::new(),
+   &|k:&Outpoint|accounts.get(k).map(|a|a.balance),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&BTreeMap::new(),&BTreeMap::new(),
    &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,false)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.accounts.get_mut(&key).unwrap().balance=balance;self.lanes.get_mut(&key).unwrap().head=head;}
@@ -224,9 +224,11 @@ pub(crate) fn lane_settlement(batch:&Batch,channel:&BtcOutPoint,position_of:Posi
 /// batch's clearing plan and the acknowledgement also binds the clearing. `loans` is lot
 /// margin lent from `committed` to closing legs at match time; resolution returns it to
 /// `committed` (repaid from the closing leg's margin on Commit, from the refund on abort).
+/// `other_loans` is the same for batches still in flight behind this one: it is still
+/// out of `committed` when this batch settles.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,lanes:&BTreeMap<Outpoint,LaneState>,
- balance_of:&dyn Fn(&Outpoint)->Option<Balance>,netting:Option<PositionOf>,cleared:Option<&ClearPlan>,loans:&BTreeMap<Outpoint,u64>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
+ balance_of:&dyn Fn(&Outpoint)->Option<Balance>,netting:Option<PositionOf>,cleared:Option<&ClearPlan>,loans:&BTreeMap<Outpoint,u64>,other_loans:&BTreeMap<Outpoint,u64>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
  owner_optional:bool)->R<ResolutionPlan>{
  // `owner_optional` is the deadline-abort path only: a fenced abort moves no channel
  // state and refunds every debit, so it may proceed without a silent owner's ack.
@@ -276,7 +278,9 @@ pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,la
     match settled{
      Some((position,settlement))=>{
       balance=positions::apply(balance,&settlement,a.margin_sats)?;
-      if balance.committed!=settlement.margin_after{return Err(Reject::Bounds)}
+      // Loans of later batches' closing legs are still out of `committed`.
+      let others=other_loans.get(&key).copied().unwrap_or(0);
+      if balance.committed.checked_add(others)!=Some(settlement.margin_after){return Err(Reject::Bounds)}
       positions.push((key,position,a.channel.clone(),settlement));
      },
      None=>{balance.committed=balance.committed.checked_add(a.margin_sats).ok_or(Reject::Bounds)?;}

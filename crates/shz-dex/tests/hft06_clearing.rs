@@ -579,3 +579,27 @@ fn p4_closing_loans_switch_on_a_live_journal_and_replay(){
  assert!(d.closing_loans_active().unwrap());
  assert_eq!(snap(&d),before);
 }
+
+/// P5. One account closes in two windows before the first batch resolves. The second
+/// take's loan is still out of `committed` when the first batch settles, so resolution
+/// compares `committed + other loans` with `margin_after`; both batches commit.
+#[test]
+fn p5_two_closing_takes_in_flight_both_commit(){
+ let m=margin(2000,100_000,X1);
+ let t=Temp::new();let mut v=Venue::with_cap(&t.path(),Some(10_000_000),m);v.loans();
+ v.trade(2,1,OrderSide::Long,2000,100_000,(X1,X1));
+ assert_eq!(v.bal(1).free,0);
+ let b1=v.seal(3,1,OrderSide::Short,1000,100_500,(X1,X1));
+ assert!(matches!(v.attempt(4,1,OrderSide::Short,1000,100_400,(X1,X1)),TierOutcome::Filled(_)));
+ v.d.process_one(T0+v.round*1_000_000+500_000).unwrap();
+ let b2=v.d.seal_batch().unwrap().unwrap();
+ assert_eq!(b2.sequence(),b1.sequence()+1);
+ let (l1,l2)=(margin(1000,100_500,X1),margin(1000,100_400,X1));
+ assert_eq!(v.bal(1).committed,m-l1-l2);
+ assert!(v.d.resolve(ack(&v.d,&b1)).unwrap());
+ assert_eq!(v.net(1),1000);
+ v.d.prepare(b2.sequence(),approvals(&b2)).unwrap();
+ assert!(v.d.resolve(ack(&v.d,&b2)).unwrap());
+ assert_eq!((v.net(1),v.bal(1).committed),(0,0));v.check();
+ assert_eq!(v.last().shortfall,0);
+}
