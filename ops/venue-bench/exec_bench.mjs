@@ -78,10 +78,8 @@ const seen = new Map();  // key -> t
 const mark = (k) => { if (!seen.has(k)) seen.set(k, now()); const r = waits.get(k); if (r) { waits.delete(k); r(); } };
 const until = (k) => seen.has(k) ? Promise.resolve() : new Promise((res, rej) => { waits.set(k, res); setTimeout(() => rej(new Error('timeout ' + k)), TIMEOUT_MS); });
 const wsUrl = SERVER.replace(/^http/, 'ws') + '/api/stream';
-const ws = new WebSocket(wsUrl);
-await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws connect failed')); });
-const batchOf = new Map(); // trade id -> batch seq
-ws.onmessage = async (m) => {
+let ws, closing = false, reconnects = 0;
+function onMessage(m) {
   const t = now();
   let e; try { e = JSON.parse(m.data); } catch { return; }
   if (e.type === 'trade') { if (!seen.has('fill:' + e.trade.id)) seen.set('fill:' + e.trade.id, t); mark('fill:' + e.trade.id); }
@@ -90,7 +88,22 @@ ws.onmessage = async (m) => {
     mark(`batch:${e.seq}:${e.phase}`);
     for (const w of Object.values(who)) autoSign(w); // sealed -> approvals due, prepared -> acks due
   } else if (e.type === 'account') { for (const w of Object.values(who)) autoSign(w); }
-};
+}
+// Reconnect after a venue restart and sign whatever the restored batches still need;
+// otherwise our own pending approvals or acks would hit the venue's abort deadline.
+async function connect() {
+  for (let delay = 250; ; delay = Math.min(delay * 2, 4000)) {
+    try {
+      ws = new WebSocket(wsUrl);
+      await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error('ws connect failed')); });
+      ws.onmessage = onMessage;
+      ws.onclose = () => { if (!closing) { reconnects++; connect(); } };
+      for (const w of Object.values(who)) autoSign(w);
+      return;
+    } catch { await new Promise((r) => setTimeout(r, delay)); }
+  }
+}
+await connect();
 
 function intent(w, fields) {
   lastSeq = Math.max(lastSeq + 1, Date.now());
@@ -162,5 +175,5 @@ for (let k = 0; k < 100; k++) {
   if (!left) break;
   await new Promise((r) => setTimeout(r, 100));
 }
-console.log(JSON.stringify({ summary: true, server: SERVER, mode: MODE, n_ok: rows.length, n: N, client_ms: summarize('client_ms'), server_ms: summarize('server_ms') }));
-ws.close();
+console.log(JSON.stringify({ summary: true, server: SERVER, mode: MODE, n_ok: rows.length, n: N, ws_reconnects: reconnects, client_ms: summarize('client_ms'), server_ms: summarize('server_ms') }));
+closing = true; ws.close();
