@@ -1,0 +1,25 @@
+[Unit]
+Description=SHZ testnet venue (tiered router on FROST-signed marks, testnet4, production_ready=false)
+After=network-online.target shz-frost-relay.service
+Wants=network-online.target
+
+[Service]
+User=shzvenue
+Group=shzvenue
+ExecStart=/opt/shz-venue/bin/shz-venue --listen 127.0.0.1:8096 --state /var/lib/shz-venue --ui /opt/shz-venue/ui --relay http://127.0.0.1:8091
+StateDirectory=shz-venue
+StateDirectoryMode=0700
+Restart=always
+RestartSec=3
+MemoryMax=200M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

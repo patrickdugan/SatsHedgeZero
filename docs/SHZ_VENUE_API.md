@@ -82,3 +82,14 @@ python ops/venue-mm/mm.py run --server http://127.0.0.1:8095
 ```
 
 Open `http://127.0.0.1:8095/` for trading and `/explorer.html` for the plumbing. State lives in `--state`: `router.wal` (the HFT-06 journal), `fees.wal` (fee ledger), `venue.jsonl` (account labels), `venue.seed` (venue key seed). On restart the venue rebuilds its views from the router journal: resting quotes, every sealed batch with its fills and phase, and the signatures each unresolved batch still needs (acknowledgements for a prepared batch are regenerated). Oracle packets and rejected intents are not journaled, so a fill sealed before a restart shows its binding hash but not the packet body.
+
+### Public testnet deployment
+
+https://shz-venue.170-75-168-145.sslip.io/ (explorer at `/explorer.html`) runs on the witness host next to the FROST relay. Kit: `ops/venue-deploy/`.
+
+- `shz-venue.service`: user `shzvenue`, binary `/opt/shz-venue/bin/shz-venue`, listens on 127.0.0.1:8096, reads marks from the local FROST relay (`http://127.0.0.1:8091`, group key pinned), state in `/var/lib/shz-venue`, MemoryMax 200M.
+- `shz-venue-mm.service`: resident market maker on a demo-credit account whose key is generated on the host (`/var/lib/shz-venue-mm/mm.key`), quotes expire after 300 s.
+- Caddy terminates TLS for the sslip.io name and proxies HTTP and WebSocket to the venue (`Caddyfile.snippet`).
+- Install from a Linux checkout: `cargo build --release -p shz-venue` (with `CARGO_BUILD_JOBS=1` on a 1-vCPU host), then `sudo ops/venue-deploy/install.sh`.
+
+The market maker reposts only when the mark moves `--requote-bps` (default 5), its inventory changes, or its quotes reach 2/3 of their expiry. Reposting on every 5 s mark grew `router.wal` by about 3.4 KB/s with two makers; with the threshold and 300 s expiry it grows by about 0.34 KB/s.
