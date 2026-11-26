@@ -110,13 +110,18 @@ was the slower machine in this run.
    it refreshes its account on `batch` events.
 2. **Maker poll loop dominated commit time (fixed, `9ed1e72`).** The makers' 2 s poll put about 2 s on
    each phase. At 0.25 s, commit against them fell from 4.46 s to 1.34 s.
-3. **One silent participant halts all clearing (open).** Batches resolve strictly in sequence. `prepare`
+3. **One silent participant halted all clearing (fixed, see below).** Batches resolve strictly in sequence. `prepare`
    needs every account's approval, and the only alternative to commit, `FencedAbort`, also needs the
    owner's ack signature. Nothing times out. During this bench, one bench run exited before signing, and
    batch 22 sat in `sealed` and held every later batch until the leftover was signed. Any visitor can
-   do this deliberately by trading and never signing. A fix needs an owner-less abort path: venue
-   peer + monitor attest cancellation after a deadline, and the silent account's fill is fenced and
-   released.
+   do this deliberately by trading and never signing. Fix: `DurableTieredRouter::expire` (journaled
+   `Expire` event) accepts a `FencedAbort` of the head batch once the router clock is `ABORT_AFTER_US`
+   (10 s) past its window end. Each lane needs the peer and monitor signatures; the owner's may be
+   all-zero. A commit can never take this path. The venue applies it in `deadline_abort`. Verified
+   with `ops/venue-bench/stall_check.mjs` against a local venue: the silent taker's batch aborted
+   10.01 s after its window, the next batch committed 81 ms later, and the silent account went back to
+   200,000 free with a flat position. After a restart the aborted batch restored with its fee-ledger
+   entry reversed, and a second run passed.
 4. **Margin is never released (open).** No path in `shz-dex` routing or `shz-venue` decreases
    `committed`: offsetting fills do not net, and positions never close. Two bench accounts that were net
    flat after 48 alternating 5 USD fills had 196,949 of 200,000 sats committed and were refused with

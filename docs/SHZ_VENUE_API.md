@@ -83,6 +83,16 @@ python ops/venue-mm/mm.py run --server http://127.0.0.1:8095
 
 Open `http://127.0.0.1:8095/` for trading and `/explorer.html` for the plumbing. State lives in `--state`: `router.wal` (the HFT-06 journal), `fees.wal` (fee ledger), `venue.jsonl` (account labels), `venue.seed` (venue key seed). On restart the venue rebuilds its views from the router journal: resting quotes, every sealed batch with its fills and phase, and the signatures each unresolved batch still needs (acknowledgements for a prepared batch are regenerated). Oracle packets and rejected intents are not journaled, so a fill sealed before a restart shows its binding hash but not the packet body.
 
+### Deadline abort
+
+Batches resolve strictly in order. If the batch at the head of the queue still lacks approvals or
+channel acks 10 s (`ABORT_AFTER_US`) after its window ended, the venue fences and aborts it with the
+adapter's peer and monitor signatures (owner signature all-zero), via `DurableTieredRouter::expire`.
+Nothing moves on any channel. Every debit returns to free, the maker quotes behind its fills are
+cancelled, and the fills no longer count in positions. Pending signature requests for that batch are
+withdrawn, and its stream event is `{"type":"batch","phase":"aborted"}`. Sign within 10 s of a fill
+to keep it.
+
 ### Public testnet deployment
 
 https://shz-venue.170-75-168-145.sslip.io/ (explorer at `/explorer.html`) runs on the witness host next to the FROST relay. Kit: `ops/venue-deploy/`.
