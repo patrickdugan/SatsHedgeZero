@@ -1,0 +1,19 @@
+[package]
+name = "shz-wasm-sign"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Secret-key operations for the venue page (BIP340 sign, x-only pubkey, BIP341 secret tweak, keygen) as a dependency-free wasm32 module over k256."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+k256 = { version = "0.13", default-features = false, features = ["arithmetic", "schnorr"] }
+sha2 = { version = "0.10", default-features = false }
+
+[dev-dependencies]
+shz-dlc.workspace = true
+hex.workspace = true

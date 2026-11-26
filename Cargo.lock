@@ -1252,6 +1252,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "shz-wasm-sign"
+version = "0.2.0"
+dependencies = [
+ "hex",
+ "k256",
+ "sha2",
+ "shz-dlc",
+]
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
