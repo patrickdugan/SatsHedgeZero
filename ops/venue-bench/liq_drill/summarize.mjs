@@ -24,7 +24,7 @@ const takes = of('liq_take');
 table(['t (s)', 'account', 'mark', 'net before', 'free before', 'plan tranche / limit / discount', 'takes (qty@limit)', 'outcome'],
   takes.map((tk, i) => { const rs = results.find((r) => r.acct === tk.acct && r.t >= tk.t && r.t - tk.t < 15); return [tk.t, tk.acct, fmt(tk.mark_usd), fmt(tk.net_before), fmt(tk.free_before),
     `${tk.plan.tranche_usd} / ${fmt(tk.plan.limit_usd)} / ${tk.plan.auction_discount_bps} bps`, tk.takes.map((x) => `${x.quantity}@${fmt(x.limit_usd)}`).join(', '),
-    rs ? rs.results.map((r) => `${r.status}${r.reason ? ' (' + r.reason + ')' : ''}${r.price ? ' @' + fmt(r.price) : ''}`).join(', ') : '?']; }));
+    rs ? rs.results.map((r) => r.error ? `refused (${/still settling/.test(r.error) ? '409 still settling' : r.error})` : `${r.status}${r.reason ? ' (' + r.reason + ')' : ''}${r.price ? ' @' + fmt(r.price) : ''}`).join(', ') : '?']; }));
 const idle = of('liq_idle');
 out.push(`${idle.length} further plan evaluations found no bid inside the auction limit (client waits for the discount to grow).`, '');
 

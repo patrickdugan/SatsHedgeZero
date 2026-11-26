@@ -30,26 +30,28 @@ Needs a debug `shz-venue` (`cargo build -p shz-venue`) and, for `--fund 0`, the 
 | Client | The drill client imports the **real** `planTakes` and `describe` from `ui/venue/liquidate.js` and drives them with a **port of `maybeLiquidate`** from `ui/venue/venue.js`: Standard tier, `leverage_bps 100000`, `max_fee_ppm 0`, `max_fee_sats 1`, takes sized by `planTakes` against the live book, 5 s throttle. **No browser page was loaded** (the drill is a Node process, no DOM). A has auto-liquidation on all the time; C's client is offline until the gap, as if its owner were away. |
 | Path | 100,000 -> 99k, 98k, 97k, 96k, 95k, 94k, 93k, 92k (-8%) in 1% steps, hold at 92k until the 60 s auction has run its course, **gap to 88,000 (-12%)**, then back 90k, 92k, ..., 100,000, then a pairwise unwind to a flat book. |
 
-Closing takes are single-flight per account in these runs (the next take is sent after the previous batch resolved).
-Finding F1 explains why: without it the venue wedges. The page does not do this.
+Closing takes are single-flight per account in the default runs (the next take is sent after the previous batch resolved).
+Before `f785f47` this was the only way to avoid F1; the venue now enforces it, and `--serialize false` exercises that.
 
 ## 2. Result
 
-Both runs: **29/29 assertions pass** and every closing take filled; the book ends flat. (`results/liq-drill-fund.jsonl`: fund 1,000,000 sats; `results/liq-drill-fund0.jsonl`: fund 0.)
-What the task asked for, and where it is in the log:
+Venue at `f785f47` (F1-F3 fixed, section 7). Three full runs, **30/30 assertions each**, every batch committed, book flat at the end:
+`results/liq-drill-fund.jsonl` (fund 1,000,000), `results/liq-drill-fund0.jsonl` (fund 0), `results/liq-drill-fund-unserialized.jsonl`
+(fund 1,000,000, page-style take bursts, `--serialize false`). The pre-fix logs that evidence F1-F3 are in commit `cc9a79b`.
 
 | Requirement | Result |
 |---|---|
-| Risk transitions ok -> warning -> maintenance -> bankrupt | A: ok -> warning (97,000) -> maintenance (95,000). C: ok -> warning (95,000) -> maintenance (93,000) -> **bankrupt** (88,000). Prices match the venue's own `liquidation_price_usd` / `bankruptcy_price_usd` (A 95,454 / 90,918; C 93,333 / 88,897). |
-| Reduce-only gate refuses increases | C in maintenance and in bankruptcy: an increasing take, a flip (held+1 USD) and a new increasing quote all return 409 `only orders that reduce the position`; a 1 USD reducing take is accepted (table below). F3 is a hole in this gate. |
-| Auction plan: tranche and discount growth | C at 92,000 with its client offline: 176 plan samples, discount 26 -> 200 bps (linear in `elapsed_ms`, capped at 60 s), limit 91,760 -> 90,160 (moves away from the mark), tranche 931 -> 1,200, penalty 2,632 -> 26,087 sats. A: discount 0 -> 200 bps across 11 rounds. |
-| Closing takes with 0 free margin succeed | Control at 100,000: A (free 0) cannot increase by 10 USD (`Capacity`) but can reduce by 10 USD. Liquidation: A's first tranche filled with 970 sats free against 52,790 sats of leg margin; C's four takes (leg margin 56,944 / 57,081 / 57,104 / 11,312 sats) filled with 34 sats free. |
-| Close past bankruptcy gives a clearing `shortfall`, layer `Fund` | **Fund 1,000,000:** C's closes in batches 17 and 22-25 had shortfalls 16, 8,064, 8,308, 8,537, 1,735 sats (26,660 in all), all layer `Fund`, fund 1,000,000 -> 973,340. |
-| Fund 0: `Haircut` / `Carried` | **Fund 0:** batch 17 (C, 1 USD) `Carried` 16; batch 18 D's gain haircut by that 16 (`Haircut`); batches 22-25 `Haircut` the whole shortfall (26,644) against D's deferred claim. |
-| Solvency identity 0 after every batch | `identity == 0` and `sum(realized_pnl) + pool cash == fund0` in 38 of 41 snapshots (fund) and 39 of 41 (fund 0): one per committed batch plus the final flat state, taken only if the journal did not move during the read; per-batch conservation (`sum(row.net) + pool delta == 0`, cash never negative, cash chain continuous) holds on all 40. Final, flat: fund run identity 0, sum realized +26,660, pool cash 973,340, fund 973,340; fund-0 run identity 0, sum realized -72,741, pool cash 72,741 = claims 72,741. |
-| Client-side auto-liquidation driven | Yes: the real `planTakes`/`describe` from `ui/venue/liquidate.js`, driven by a port of the page's `maybeLiquidate`. The page itself was not loaded. |
+| Risk transitions ok -> warning -> maintenance -> bankrupt | A: ok -> warning (97,000) -> maintenance (95,000). C: ok -> warning (95,000) -> maintenance (93,000) -> **bankrupt** (88,000). Prices match the venue's `liquidation_price_usd` / `bankruptcy_price_usd` (A 95,454 / 90,918; C 93,333 / 88,897). |
+| Reduce-only gate refuses increases | C in maintenance and in bankruptcy: an increasing take, a flip (held+1 USD) and a new increasing quote all return 409 `only orders that reduce the position`; a 1 USD reducing take is accepted. |
+| Auction plan: tranche and discount growth | C at 92,000 with its client offline: 175 plan samples, discount 26 -> 200 bps (linear in `elapsed_ms`, capped at 60 s), limit 91,760 -> 90,160. **`tranche_usd` equals the committed notional in every sample** (new assertion). |
+| Closing takes with 0 free margin succeed | Control at 100,000: A (free 0) cannot increase by 10 USD (`Capacity`) but can reduce by 10 USD. Liquidation: A's first take filled with 970 sats free against 52,790 sats of leg margin; C's four takes filled with 34 sats free. |
+| Close past bankruptcy gives a clearing `shortfall`, layer `Fund` | Fund run: C's closes in batches 8 and 13-16, shortfalls 16, 8,292, 8,537, 8,765, 1,780 sats (27,390), all `Fund`; fund 1,000,000 -> 972,610. |
+| Fund 0: `Haircut` / `Carried` | Batch 8 `Carried` 16; batch 9 D's gain haircut by that 16; batches 13-16 `Haircut` 27,374 off D's deferred claim. D ends flat with an unpaid claim of 71,726 sats that the pool holds in cash. |
+| Solvency identity 0 after every batch | `identity == 0` and `sum(realized_pnl) + pool cash == fund0` in every snapshot (32 fund, 31 fund 0, 26 burst; a snapshot is taken only if the journal did not move during the read). Per-batch conservation holds on all 32 / 32 / 28 batches. |
+| Client-side auto-liquidation driven | The real `planTakes`/`describe` from `ui/venue/liquidate.js`, driven by a port of the page's `maybeLiquidate`. The page itself was not loaded. |
 
-Three defects turned up: **F1** (the venue's settlement wedges), **F2** (partial liquidation never restores the margin ratio), **F3** (the reduce-only gate checks committed lots only). See section 4.
+With the whole position as the tranche, A is closed in 2 rounds (1,990 -> 990 -> 0, at 54 s and 59 s, 16 s after the breach) instead of 11; C in one round of 4 takes.
+In the burst run the venue refuses every reducing take after the first while a fill is unsettled (409 `a previous fill of this account is still settling`), so a page-style plan executes one take per 5 s round: A in 4 rounds, C in 4, and no batch is ever stuck.
 
 ### Fund 1,000,000 run
 
@@ -77,6 +79,7 @@ Three defects turned up: **F1** (the venue's settlement wedges), **F2** (partial
 | PASS | auction discount reaches the 200 bps cap after the 60 s auction |
 | PASS | the auction limit moves away from the mark as the discount grows (C at 92,000) |
 | PASS | plan carries a tranche and the reduce side |
+| PASS | the plan closes the whole position (tranche_usd == committed notional) in every sample |
 | PASS | client auto-liquidation closed A (planTakes from ui/venue/liquidate.js) |
 | PASS | client auto-liquidation closed C past bankruptcy |
 | PASS | closing takes with free margin below the leg margin filled (closing loan): A and C had 0 free |
@@ -91,45 +94,34 @@ Three defects turned up: **F1** (the venue's settlement wedges), **F2** (partial
 
 | t (s) | account | from | to | mark | margin bps | net USD |
 |---|---|---|---|---|---|---|
-| 1.25 | A | flat | ok | 100,000 | 1,000 | 2,000 |
-| 1.25 | B | flat | ok | 100,000 | 1,000 | -2,000 |
-| 1.25 | C | flat | ok | 100,000 | 1,250 | 1,600 |
-| 1.26 | D | flat | ok | 100,000 | 1,000 | -1,600 |
-| 25.78 | A | ok | warning | 97,000 | 670 | 1,990 |
-| 43.92 | A | warning | maintenance | 95,000 | 450 | 1,990 |
-| 43.93 | C | ok | warning | 95,000 | 687 | 1,600 |
-| 105.23 | A | maintenance | flat | - | - | 0 |
-| 115.35 | C | warning | maintenance | 93,000 | 462 | 1,600 |
-| 195.85 | C | maintenance | bankrupt | 88,000 | 0 | 1,599 |
-| 202.86 | D | ok | flat | - | - | 0 |
-| 204.53 | C | bankrupt | flat | - | - | 0 |
-| 249.11 | B | ok | flat | - | - | 0 |
+| 1.28 | A | flat | ok | 100,000 | 1,000 | 2,000 |
+| 1.29 | D | flat | ok | 100,000 | 1,000 | -1,600 |
+| 1.29 | B | flat | ok | 100,000 | 1,000 | -2,000 |
+| 1.29 | C | flat | ok | 100,000 | 1,250 | 1,600 |
+| 25.27 | A | ok | warning | 97,000 | 670 | 1,990 |
+| 43.3 | A | warning | maintenance | 95,000 | 450 | 1,990 |
+| 43.3 | C | ok | warning | 95,000 | 687 | 1,600 |
+| 59.25 | A | maintenance | flat | - | - | 0 |
+| 69.58 | C | warning | maintenance | 93,000 | 462 | 1,600 |
+| 149.9 | C | maintenance | bankrupt | 88,000 | 0 | 1,599 |
+| 157.34 | C | bankrupt | flat | - | - | 0 |
 
 #### Auction plan (first and last sample per account and mark)
 
 | account | mark | samples | first: t / discount / limit / tranche | last: t / discount / limit / tranche | post_margin_bps (plan) | margin_bps (observed) |
 |---|---|---|---|---|---|---|
-| A | 95,000 | 207 | 43.92 s / 0 bps / 95,000 / 871 | 103.92 s / 200 bps / 93,100 / 1 | 10,000 | 455 |
-| C | 93,000 | 27 | 115.36 s / 0 bps / 93,000 / 676 | 123.21 s / 26 bps / 92,758 / 698 | 800 | 462 |
-| C | 92,000 | 176 | 123.4 s / 26 bps / 91,760 / 931 | 195.76 s / 200 bps / 90,160 / 1200 | 801 | 350 |
-| C | 88,000 | 5 | 195.85 s / 200 bps / 86,240 / 1599 | 204.1 s / 200 bps / 86,240 / 99 | 10,000 | 0 |
+| A | 95,000 | 55 | 43.3 s / 0 bps / 95,000 / 1990 | 59.17 s / 53 bps / 94,496 / 490 | - | 450 |
+| C | 93,000 | 27 | 69.58 s / 0 bps / 93,000 / 1600 | 77.45 s / 26 bps / 92,758 / 1600 | - | 462 |
+| C | 92,000 | 175 | 77.54 s / 26 bps / 91,760 / 1600 | 129.57 s / 200 bps / 90,160 / 1600 | - | 350 |
+| C | 88,000 | 5 | 149.9 s / 200 bps / 86,240 / 1599 | 157.01 s / 200 bps / 86,240 / 99 | - | 0 |
 
 #### Client liquidation takes (planTakes from ui/venue/liquidate.js)
 
 | t (s) | account | mark | net before | free before | plan tranche / limit / discount | takes (qty@limit) | outcome |
 |---|---|---|---|---|---|---|---|
-| 54.65 | A | 95,000 | 1,990 | 970 | 910 / 94,677 / 34 bps | 500@94,715, 410@94,677 | filled @94,715, filled @94,677 |
-| 60.04 | A | 95,000 | 1,080 | 41,020 | 505 / 94,515 / 51 bps | 500@94,639, 5@94,601 | filled @94,639, filled @94,601 |
-| 64.78 | A | 95,000 | 575 | 62,912 | 275 / 94,354 / 68 bps | 275@94,677 | filled @94,677 |
-| 69.7 | A | 95,000 | 300 | 74,951 | 147 / 94,192 / 85 bps | 147@94,677 | filled @94,677 |
-| 74.92 | A | 95,000 | 153 | 81,387 | 77 / 94,040 / 101 bps | 77@94,601 | filled @94,601 |
-| 79.91 | A | 95,000 | 76 | 84,693 | 40 / 93,879 / 118 bps | 40@94,601 | filled @94,601 |
-| 84.97 | A | 95,000 | 36 | 86,411 | 19 / 93,717 / 135 bps | 19@94,601 | filled @94,601 |
-| 90.14 | A | 95,000 | 17 | 87,227 | 10 / 93,556 / 152 bps | 10@94,601 | filled @94,601 |
-| 95.08 | A | 95,000 | 7 | 87,657 | 4 / 93,394 / 169 bps | 4@94,601 | filled @94,601 |
-| 100.28 | A | 95,000 | 3 | 87,829 | 2 / 93,233 / 186 bps | 2@94,601 | filled @94,601 |
-| 105.17 | A | 95,000 | 1 | 87,915 | 1 / 93,100 / 200 bps | 1@94,601 | filled @94,601 |
-| 204.54 | C | 88,000 | 1,598 | 34 | 1598 / 86,240 / 200 bps | 499@87,630, 500@87,595, 500@87,560, 99@87,525 | filled @87,630, filled @87,595, filled @87,560, filled @87,525 |
+| 54.17 | A | 95,000 | 1,990 | 970 | 1990 / 94,677 / 34 bps | 500@94,715, 500@94,677 | filled @94,715, filled @94,677 |
+| 59.2 | A | 95,000 | 990 | 44,960 | 990 / 94,515 / 51 bps | 500@94,639, 490@94,601 | filled @94,639, filled @94,601 |
+| 157.3 | C | 88,000 | 1,598 | 34 | 1598 / 86,240 / 200 bps | 499@87,595, 500@87,560, 500@87,525, 99@87,490 | filled @87,595, filled @87,560, filled @87,525, filled @87,490 |
 
 2 further plan evaluations found no bid inside the auction limit (client waits for the discount to grow).
 
@@ -144,40 +136,28 @@ Three defects turned up: **F1** (the venue's settlement wedges), **F2** (partial
 
 | t (s) | batch | layer | shortfall | fund absorbed | haircut | carry after | fund after | claims after | rows (who: pnl / released / collected / shortfall / paid / claim after) |
 |---|---|---|---|---|---|---|---|---|---|
-| 201.94 | 17 | Fund | 16 | 16 | 0 | 0 | 999,984 | 0 | C: -141 / 125 / 125 / 16 / 0 / 0 |
-| 204.69 | 22 | Fund | 8,064 | 8,064 | 0 | 0 | 991,920 | 0 | C: -70,439 / 62,375 / 62,375 / 8,064 / 0 / 0 |
-| 204.78 | 23 | Fund | 8,308 | 8,308 | 0 | 0 | 983,612 | 0 | C: -70,808 / 62,500 / 62,500 / 8,308 / 0 / 0 |
-| 204.86 | 24 | Fund | 8,537 | 8,537 | 0 | 0 | 975,075 | 0 | C: -71,037 / 62,500 / 62,500 / 8,537 / 0 / 0 |
-| 205.69 | 25 | Fund | 1,735 | 1,735 | 0 | 0 | 973,340 | 0 | C: -14,110 / 12,375 / 12,375 / 1,735 / 0 / 0 |
+| 154.56 | 8 | Fund | 16 | 16 | 0 | 0 | 999,984 | 0 | C: -141 / 125 / 125 / 16 / 0 / 0 |
+| 158.26 | 13 | Fund | 8,292 | 8,292 | 0 | 0 | 991,692 | 0 | C: -70,667 / 62,375 / 62,375 / 8,292 / 0 / 0 |
+| 158.32 | 14 | Fund | 8,537 | 8,537 | 0 | 0 | 983,155 | 0 | C: -71,037 / 62,500 / 62,500 / 8,537 / 0 / 0 |
+| 158.37 | 15 | Fund | 8,765 | 8,765 | 0 | 0 | 974,390 | 0 | C: -71,265 / 62,500 / 62,500 / 8,765 / 0 / 0 |
+| 158.42 | 16 | Fund | 1,780 | 1,780 | 0 | 0 | 972,610 | 0 | C: -14,155 / 12,375 / 12,375 / 1,780 / 0 / 0 |
 
-40 batches settled; clearing layers reached: None 6, Margin 29, Fund 5.
+32 batches settled; clearing layers reached: None 5, Margin 22, Fund 5.
 
 #### Solvency identity
 
-38 snapshots (one per committed batch, journal digest unchanged across the read): identity == 0 in 38; sum(realized_pnl) + pool cash == fund0 in 38.
+32 snapshots (one per committed batch, journal digest unchanged across the read): identity == 0 in 32; sum(realized_pnl) + pool cash == fund0 in 32.
 
-Last snapshot (after batch final): identity 0, sum realized 26,660, pool cash 973,340, fund0 1,000,000, fund 973,340, carry 0, claims 0, open book 0.
+Last snapshot (after batch final): identity 0, sum realized 27,390, pool cash 972,610, fund0 1,000,000, fund 972,610, carry 0, claims 0, open book 0.
 
 #### Final accounts (demo cap 200,000 sats each)
 
 | account | free | committed | realized pnl | equity | net USD | claim |
 |---|---|---|---|---|---|---|
-| A | 87,958 | 0 | -112,042 | 87,958 | 0 | 0 |
-| B | 199,760 | 0 | -240 | 199,760 | 0 | 0 |
+| A | 87,673 | 0 | -112,327 | 87,673 | 0 | 0 |
+| B | 199,600 | 0 | -400 | 199,600 | 0 | 0 |
 | C | 34 | 0 | -199,966 | 34 | 0 | 0 |
 | D | 411,659 | 0 | 211,659 | 411,659 | 0 | 0 |
-| MM1 | 127,531 | 0 | 28,031 | 228,031 | 0 | 0 |
-| MM2 | 146,284 | 0 | 46,784 | 246,784 | 0 | 0 |
-| MM3 | 127,923 | 0 | 28,423 | 228,423 | 0 | 0 |
-| MM4 | 179,317 | 0 | 79,817 | 279,817 | 0 | 0 |
-| MM5 | 170,408 | 0 | 70,908 | 270,908 | 0 | 0 |
-| MM6 | 170,137 | 0 | 71,137 | 271,137 | 0 | 0 |
-| MM7 | 113,130 | 0 | 14,130 | 214,130 | 0 | 0 |
-| MM8 | 99,000 | 0 | 0 | 200,000 | 0 | 0 |
-| MM9 | 146,735 | 0 | -53,265 | 146,735 | 0 | 0 |
-| MM10 | 146,914 | 0 | -53,086 | 146,914 | 0 | 0 |
-| MM11 | 147,093 | 0 | -52,907 | 147,093 | 0 | 0 |
-| MM12 | 147,277 | 0 | -52,723 | 147,277 | 0 | 0 |
 
 ### Fund 0 run
 
@@ -185,52 +165,73 @@ Last snapshot (after batch final): identity 0, sum realized 26,660, pool cash 97
 
 | t (s) | batch | layer | shortfall | fund absorbed | haircut | carry after | fund after | claims after | rows (who: pnl / released / collected / shortfall / paid / claim after) |
 |---|---|---|---|---|---|---|---|---|---|
-| 201.87 | 17 | Carried | 16 | 0 | 0 | 16 | 0 | 0 | C: -141 / 125 / 125 / 16 / 0 / 0 |
-| 202.19 | 18 | Haircut | 0 | 0 | 16 | 0 | 0 | 0 | D: 53,185 / 40,000 / 0 / 0 / 53,169 / 0 |
-| 204.94 | 22 | Haircut | 8,064 | 0 | 8,064 | 0 | 0 | 91,321 | C: -70,439 / 62,375 / 62,375 / 8,064 / 0 / 0 |
-| 205.75 | 23 | Haircut | 8,308 | 0 | 8,308 | 0 | 0 | 83,013 | C: -70,808 / 62,500 / 62,500 / 8,308 / 0 / 0 |
-| 205.86 | 24 | Haircut | 8,537 | 0 | 8,537 | 0 | 0 | 74,476 | C: -71,037 / 62,500 / 62,500 / 8,537 / 0 / 0 |
-| 205.93 | 25 | Haircut | 1,735 | 0 | 1,735 | 0 | 0 | 72,741 | C: -14,110 / 12,375 / 12,375 / 1,735 / 0 / 0 |
+| 154.12 | 8 | Carried | 16 | 0 | 0 | 16 | 0 | 0 | C: -141 / 125 / 125 / 16 / 0 / 0 |
+| 155.47 | 9 | Haircut | 0 | 0 | 16 | 0 | 0 | 0 | D: 53,185 / 40,000 / 0 / 0 / 53,169 / 0 |
+| 157.48 | 13 | Haircut | 8,292 | 0 | 8,292 | 0 | 0 | 90,808 | C: -70,667 / 62,375 / 62,375 / 8,292 / 0 / 0 |
+| 157.56 | 14 | Haircut | 8,537 | 0 | 8,537 | 0 | 0 | 82,271 | C: -71,037 / 62,500 / 62,500 / 8,537 / 0 / 0 |
+| 157.62 | 15 | Haircut | 8,765 | 0 | 8,765 | 0 | 0 | 73,506 | C: -71,265 / 62,500 / 62,500 / 8,765 / 0 / 0 |
+| 157.68 | 16 | Haircut | 1,780 | 0 | 1,780 | 0 | 0 | 71,726 | C: -14,155 / 12,375 / 12,375 / 1,780 / 0 / 0 |
 
-40 batches settled; clearing layers reached: None 4, Margin 30, Carried 1, Haircut 5.
+32 batches settled; clearing layers reached: None 4, Margin 22, Carried 1, Haircut 5.
 
 #### Solvency identity
 
-39 snapshots (one per committed batch, journal digest unchanged across the read): identity == 0 in 39; sum(realized_pnl) + pool cash == fund0 in 39.
+31 snapshots (one per committed batch, journal digest unchanged across the read): identity == 0 in 31; sum(realized_pnl) + pool cash == fund0 in 31.
 
-Last snapshot (after batch final): identity 0, sum realized -72,741, pool cash 72,741, fund0 0, fund 0, carry 0, claims 72,741, open book 0.
+Last snapshot (after batch final): identity 0, sum realized -71,726, pool cash 71,726, fund0 0, fund 0, carry 0, claims 71,726, open book 0.
 
 #### Final accounts (demo cap 200,000 sats each)
 
 | account | free | committed | realized pnl | equity | net USD | claim |
 |---|---|---|---|---|---|---|
-| A | 87,958 | 0 | -112,042 | 87,958 | 0 | 0 |
+| A | 87,673 | 0 | -112,327 | 87,673 | 0 | 0 |
 | B | 199,600 | 0 | -400 | 199,600 | 0 | 0 |
 | C | 34 | 0 | -199,966 | 34 | 0 | 0 |
-| D | 312,258 | 0 | 112,258 | 312,258 | 0 | 72,741 |
-| MM1 | 127,531 | 0 | 28,031 | 228,031 | 0 | 0 |
-| MM2 | 146,284 | 0 | 46,784 | 246,784 | 0 | 0 |
-| MM3 | 127,923 | 0 | 28,423 | 228,423 | 0 | 0 |
-| MM4 | 179,317 | 0 | 79,817 | 279,817 | 0 | 0 |
-| MM5 | 170,408 | 0 | 70,908 | 270,908 | 0 | 0 |
-| MM6 | 170,137 | 0 | 71,137 | 271,137 | 0 | 0 |
-| MM7 | 113,130 | 0 | 14,130 | 214,130 | 0 | 0 |
-| MM8 | 99,000 | 0 | 0 | 200,000 | 0 | 0 |
-| MM9 | 146,895 | 0 | -53,105 | 146,895 | 0 | 0 |
-| MM10 | 146,914 | 0 | -53,086 | 146,914 | 0 | 0 |
-| MM11 | 147,093 | 0 | -52,907 | 147,093 | 0 | 0 |
-| MM12 | 147,277 | 0 | -52,723 | 147,277 | 0 | 0 |
+| D | 312,543 | 0 | 112,543 | 312,543 | 0 | 71,726 |
 
-Reading the fund-0 table: C's 1 USD close at 87,630 in batch 17 is 16 sats past its bankruptcy value and nothing can absorb it, so it is `Carried`; the next gain (D's, batch 18) is haircut by exactly 16. In batches 22-25 the shortfalls meet D's outstanding deferred claim and the whole shortfall is `Haircut` off it (carry stays 0). D ends flat with a **deferred claim of 72,741 sats** that the pool holds in cash (pool cash = claims) but cannot pay until D is in another batch: by design (`SHZ_VENUE_CLEARING.md` section 2), but visible to a user as a gain that has not arrived.
+### Burst run (`--serialize false`)
+
+#### Client liquidation takes (planTakes from ui/venue/liquidate.js)
+
+| t (s) | account | mark | net before | free before | plan tranche / limit / discount | takes (qty@limit) | outcome |
+|---|---|---|---|---|---|---|---|
+| 53.52 | A | 95,000 | 1,990 | 970 | 1990 / 94,677 / 34 bps | 500@94,715, 500@94,677 | filled @94,715, refused (409 still settling) |
+| 58.65 | A | 95,000 | 1,490 | 23,071 | 1490 / 94,515 / 51 bps | 500@94,677, 500@94,639, 490@94,601 | filled @94,677, refused (409 still settling), refused (409 still settling) |
+| 63.78 | A | 95,000 | 990 | 44,960 | 990 / 94,354 / 68 bps | 500@94,639, 490@94,601 | filled @94,639, refused (409 still settling) |
+| 68.88 | A | 95,000 | 490 | 66,637 | 490 / 94,192 / 85 bps | 490@94,601 | filled @94,601 |
+| 165.03 | C | 88,000 | 1,598 | 34 | 1599 / 86,240 / 200 bps | 499@87,595, 500@87,560, 500@87,525, 100@87,490 | refused (409 still settling), filled @87,560, refused (409 still settling), refused (409 still settling) |
+| 170.06 | C | 88,000 | 1,098 | 34 | 1098 / 86,240 / 200 bps | 499@87,595, 500@87,525, 99@87,490 | filled @87,595, refused (409 still settling), refused (409 still settling) |
+| 175.04 | C | 88,000 | 599 | 34 | 599 / 86,240 / 200 bps | 500@87,525, 99@87,490 | filled @87,525, refused (409 still settling) |
+| 180.04 | C | 88,000 | 99 | 34 | 99 / 86,240 / 200 bps | 99@87,490 | filled @87,490 |
+
+2 further plan evaluations found no bid inside the auction limit (client waits for the discount to grow).
+
+#### Batches with a clearing shortfall
+
+| t (s) | batch | layer | shortfall | fund absorbed | haircut | carry after | fund after | claims after | rows (who: pnl / released / collected / shortfall / paid / claim after) |
+|---|---|---|---|---|---|---|---|---|---|
+| 165.08 | 8 | Fund | 16 | 16 | 0 | 0 | 999,984 | 0 | C: -141 / 125 / 125 / 16 / 0 / 0<br>D: 53,185 / 40,000 / 0 / 0 / 53,185 / 0 |
+| 166.03 | 9 | Fund | 8,537 | 8,537 | 0 | 0 | 991,447 | 0 | C: -71,037 / 62,500 / 62,500 / 8,537 / 0 / 0 |
+| 170.62 | 10 | Fund | 8,292 | 8,292 | 0 | 0 | 983,155 | 0 | C: -70,667 / 62,375 / 62,375 / 8,292 / 0 / 0 |
+| 175.66 | 11 | Fund | 8,765 | 8,765 | 0 | 0 | 974,390 | 0 | C: -71,265 / 62,500 / 62,500 / 8,765 / 0 / 0 |
+| 180.72 | 12 | Fund | 1,780 | 1,780 | 0 | 0 | 972,610 | 0 | C: -14,155 / 12,375 / 12,375 / 1,780 / 0 / 0 |
+
+28 batches settled; clearing layers reached: None 1, Margin 22, Fund 5.
+
+#### Solvency identity
+
+26 snapshots (one per committed batch, journal digest unchanged across the read): identity == 0 in 26; sum(realized_pnl) + pool cash == fund0 in 26.
+
+Last snapshot (after batch final): identity 0, sum realized 27,390, pool cash 972,610, fund0 1,000,000, fund 972,610, carry 0, claims 0, open book 0.
 
 ## 3. Method notes
 
 - The venue's own numbers are the oracle: the drill asserts nothing the venue did not compute. Risk prices, plan fields and clearing rows are read from `/api/account`, `/api/status` and `/api/explorer/batches`.
 - Marks are one signed packet per second plus an immediate packet on each scripted change. The venue's Standard-tier feed lags 200 ms behind (`ExecutionPolicy::defaults(FeedOnly)`).
 - Makers requote before a step inside the collar and after a gap; a 4 s maintainer keeps quotes alive (they expire after 120 s).
-- Closing takes are single-flight per account in the default runs (see F1).
+- Closing takes are single-flight per account in the default runs; the venue refuses a second one since `f785f47` (see F1, section 7).
 
-## 4. Findings
+## 4. Findings (as found at `9d5ac54`; all three fixed in the venue at `f785f47`, section 7)
 
 None of these were fixed (`crates/**` and `ui/venue/**` are untouched). Each has a deterministic reproduction in the drill.
 
@@ -239,8 +240,8 @@ None of these were fixed (`crates/**` and `ui/venue/**` are untouched). Each has
 **Reproduction (12 s, no liquidation needed):**
 
 ```
-node ops/venue-bench/liq_drill/drill.mjs --fund 1000000 --quick split150 --out /tmp/split150.jsonl     # FAIL, exit 1
-node ops/venue-bench/liq_drill/drill.mjs --fund 1000000 --quick split0   --out /tmp/split0.jsonl       # control: passes
+node ops/venue-bench/liq_drill/drill.mjs --fund 1000000 --quick split150 --out /tmp/split150.jsonl     # wedged before f785f47; now asserts the 409
+node ops/venue-bench/liq_drill/drill.mjs --fund 1000000 --quick split0   --out /tmp/split0.jsonl       # control
 ```
 
 A holds a 2,000 USD long with 0 free margin at a healthy 100,000 mark. It sells 10 USD, waits 150 ms (so the second
@@ -302,7 +303,7 @@ Evidence: `liq-drill-fund.jsonl`, kinds `liq_take` (`margin_bps_before`, `plan.t
 
 ### F3. MEDIUM. The reduce-only gate and `planTakes` size against committed lots, so an account in maintenance can flip short
 
-**Reproduction (7 s):** `node ops/venue-bench/liq_drill/drill.mjs --fund 1000000 --quick overshoot` (exit 1).
+**Reproduction (7 s):** `node ops/venue-bench/liq_drill/drill.mjs --fund 1000000 --quick overshoot` (flipped before `f785f47`; now asserts no flip).
 A is in maintenance at 95,000 with 100 USD left after four settled sells (free 82,839 sats from the released margin).
 Two takes of 90 USD go in back to back. Each is below the 100 USD `held` the gate checks (`risk::gate` uses
 `lots_of(owner)`, which is committed lots only), so both pass; the router fills both (the second needs fresh margin
@@ -344,23 +345,33 @@ needs an account that has just released margin, which is exactly an account that
 | `ops/venue-bench/liq_drill/drill.mjs` | the drill (relay, venue, accounts, makers, client, assertions) |
 | `ops/venue-bench/liq_drill/summarize.mjs` | JSONL to the tables above |
 | `ops/venue-bench/liq_drill/seed_fund0/` | standalone cargo project that seeds a journal with clearing fund 0 |
-| `ops/venue-bench/results/liq-drill-fund.jsonl`, `liq-drill-fund0.jsonl` | the two full runs (29/29) |
-| `ops/venue-bench/results/liq-drill-fund-unserialized.jsonl` (+ `-venue-log.txt`) | page-style take bursts: the wedge (F1) |
-| `ops/venue-bench/results/liq-drill-quick-split150-stuck.jsonl` (+ `-venue-log.txt`), `liq-drill-quick-split0-control.jsonl` | F1 minimal repro and control |
-| `ops/venue-bench/results/liq-drill-quick-overshoot.jsonl` | F3 repro |
+| `ops/venue-bench/results/liq-drill-fund.jsonl`, `liq-drill-fund0.jsonl` | the two full runs (30/30, venue `f785f47`; pre-fix versions in `cc9a79b`) |
+| `ops/venue-bench/results/liq-drill-fund-unserialized.jsonl` (+ `-venue-log.txt`, pre-fix) | page-style take bursts (30/30 at `f785f47`; the pre-fix wedge is in `cc9a79b`) |
+| `ops/venue-bench/results/liq-drill-quick-split150-stuck.jsonl` (+ `-venue-log.txt`, pre-fix), `liq-drill-quick-split0-control.jsonl` | F1 repro and control, asserting the fix |
+| `ops/venue-bench/results/liq-drill-quick-overshoot.jsonl` | F3 repro, asserting the fix |
 
 JSONL kinds: `mark_set`, `risk_transition`, `auction_plan`, `liq_take` / `liq_result` / `liq_idle`, `gate_probe`, `batch` (full clearing rows), `shortfall_batch`, `solvency`, `assert`, `summary`.
 
-## 6. Fixes after the drill (venue, 2026-11-27)
+## 7. Fixes after the drill (venue `f785f47`, 2026-11-27) and regression
 
 - **F1:** the venue refuses a position-reducing take while the account has any fill not yet committed
-  (`core.rs` `submit`, `unsettled_of`), so at most one closing loan is in flight per account; the page
-  sends one liquidation take per round. The router's balance check (`plan_resolution`, which compares
-  `committed` against `margin_after` without the account's other outstanding loans) is unchanged; the
-  venue guard removes the only way to reach it with two loans. Rerun: `--quick split150` and
-  `--quick overshoot` now get the second take refused (409) instead of wedging; `--serialize false`
-  completes with no wedge (28/29, the miss is the control step getting `NoLiquidity` in burst order).
-- **F2:** the liquidation plan closes the whole position (`tranche_usd` = notional), priced by the
-  Dutch auction. Full run: A liquidated in 2 takes (was 11 halving rounds), C in 1.
+  (`core.rs` `submit`, `unsettled_of`): 409 `a previous fill of this account is still settling`. At most one closing
+  loan is in flight per account. The router's balance check (`plan_resolution` compares `committed` with `margin_after`
+  without the account's other outstanding loans) is unchanged; a router-level fix is in progress in another session.
+- **F2:** the liquidation plan's `tranche_usd` is the whole position, priced by the Dutch auction
+  (`penalty_sats` and `post_margin_bps` left the plan JSON).
 - **F3:** the reduce-only gate sizes against the net position including unsettled fills.
-- Full run with fund 1,000,000: 29/29.
+
+Regression with the drill (venue debug build of `f785f47`):
+
+| Run | Result |
+|---|---|
+| `--fund 1000000` | 30/30; A closed in 2 rounds (was 11); tranche == notional in every plan sample |
+| `--fund 0` | 30/30; `Carried` then `Haircut` as before |
+| `--fund 1000000 --serialize false` | 30/30; 13 reducing takes refused with the 409 (10 liquidation takes, 3 of D's take-profit), no batch stuck (pre-fix: wedged at batch 15) |
+| `--quick split150` | 3/3: first take commits, the second 150 ms later is refused with the 409, no batch stuck, A at 1,990 (pre-fix: wedged) |
+| `--quick split0` | 3/3: second take refused (the first had already filled), no batch stuck |
+| `--quick overshoot` | 3/3: first 90 USD reduce commits, the second is refused, A ends long 10 USD (pre-fix: short 80) |
+
+The burst run's control step now pauses the maker loop, requotes and waits for the control ask to rest before the
+`Capacity` probe (it saw `NoLiquidity` when the 4 s maker loop cancelled the ask first).

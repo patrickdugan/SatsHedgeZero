@@ -317,9 +317,9 @@ async function mmRequoteInner(mark, asksOn = false) {
     } else log('mm_skip', { mm: m.name, free, hold, net_usd: v.position?.net_usd || 0, reduce_only: !!v.position?.risk?.reduce_only });
   }
 }
-let mmLoopOn = true, mmAsks = false;
+let mmLoopOn = true, mmAsks = false, mmPaused = false;
 async function mmLoop() {
-  while (mmLoopOn) { try { if (relay.price) await mmRequote(relay.price, mmAsks); } catch (e) { log('mm_error', { e: e.message }); } await sleep(4000); }
+  while (mmLoopOn) { try { if (relay.price && !mmPaused) await mmRequote(relay.price, mmAsks); } catch (e) { log('mm_error', { e: e.message }); } await sleep(4000); }
 }
 
 // ---------------------------------------------------------------- scenario helpers
@@ -408,12 +408,13 @@ async function main() {
 
   if (QUICK) return quick(QUICK);
   // -- controls at 0 free margin, healthy
-  await mmRequote(100_000, false); await sleep(1500);
-  const up = await send(accts.A, { action: 'take', side: 'long', quantity: 10, limit_usd: 100_000, leverage_bps: 100000 }).catch((e) => ({ err: e.message }));
-  note('A (0 free) tries to INCREASE by 10 USD with no ask resting: needs margin, expect rejection');
+  // The 4 s maker loop is paused here: it cancels asks while they are off, which would race the control ask.
+  mmPaused = true; await mmLock; await mmRequoteInner(100_000, false); await sleep(800);
+  note('A (0 free) tries to INCREASE by 10 USD against a resting ask: needs margin, expect rejection');
   // an ask for the increase to match against, so the rejection is about margin and not liquidity
-  const askQ = await send(accts.MM9, { action: 'post', side: 'short', quantity: 100, limit_usd: 100_100, leverage_bps: 50000 }).catch((e) => ({ err: e.message }));
-  await sleep(600);
+  const askQ = await send(accts.MM9, { action: 'post', side: 'short', quantity: 100, limit_usd: 100_100, leverage_bps: 50000 });
+  const askO = await outcome(accts.MM9, askQ, 6000);
+  if (askO.status !== 'resting') log('control_ask', askO);
   const inc = await send(accts.A, { action: 'take', side: 'long', quantity: 10, limit_usd: 100_200, leverage_bps: 100000 });
   const incO = await outcome(accts.A, inc, 6000);
   check('control: a healthy account with 0 free margin cannot INCREASE (rejected: Capacity)', incO.status === 'rejected' && /Capacity/.test(incO.reason || ''), incO);
@@ -421,6 +422,7 @@ async function main() {
   const redO = await outcome(accts.A, red, 8000);
   check('control: the same account CAN reduce by 10 USD with 0 free margin (closing loan)', redO.status === 'filled', redO);
   await settled(); await sleep(500);
+  await cancelOrder(accts.MM9, { id: askQ, side: 'short' }); mmPaused = false;
   log('control_after', { A_net: net('A'), A_free: S.views.A.balance.free });
 
   // -- walk down
@@ -487,6 +489,9 @@ async function main() {
   const limitsLong = cp.filter((p) => p.mark_usd === 92_000).map((p) => p.limit_usd);
   check('the auction limit moves away from the mark as the discount grows (C at 92,000)', limitsLong.length >= 3 && limitsLong.every((l, i) => i === 0 || l <= limitsLong[i - 1]) && limitsLong[limitsLong.length - 1] < limitsLong[0], limitsLong);
   check('plan carries a tranche and the reduce side', cp.every((p) => p.tranche_usd > 0 && p.reduce_side === 'short'), cp.slice(0, 2));
+  const allPlans = ['A', 'C'].flatMap(plans);
+  const offPlan = allPlans.filter((p) => p.tranche_usd !== p.net_usd);
+  check('the plan closes the whole position (tranche_usd == committed notional) in every sample', allPlans.length > 0 && offPlan.length === 0, { samples: allPlans.length, mismatches: offPlan.slice(0, 3).map((p) => ({ acct: p.acct, t: p.t, tranche: p.tranche_usd, notional: p.net_usd })) });
   const aTakes = S.liqEvents.filter((e) => e.acct === 'A');
   const cTakes = S.liqEvents.filter((e) => e.acct === 'C');
   const filled = (evs) => sum(evs.flatMap((e) => e.results).filter((r) => r.status === 'filled').map((r) => r.qty));
@@ -524,13 +529,20 @@ async function quickOvershoot() {
   for (const q of [500, 500, 500, 400]) { const id = await sell(q); await outcome(accts.A, id, 8000); await allResolved(); await sleep(400); }
   await snapshot();
   const before = { notional_usd: riskOf('A').notional_usd, net_usd: net('A'), committed_net_usd: cnet('A'), free: S.views.A.balance.free, state: riskOf('A').state, reduce_only: riskOf('A').reduce_only };
-  const a = await sell(90), b = await sell(90);
-  const res = [await outcome(accts.A, a, 8000), await outcome(accts.A, b, 8000)];
+  const sellRaw = (q) => sendRaw(accts.A, { action: 'take', side: 'short', quantity: q, limit_usd: 90_000, leverage_bps: 100000, max_fee_ppm: 0, max_fee_sats: 1 });
+  const r1 = await sellRaw(90), r2 = await sellRaw(90);
+  const o1 = r1.status === 200 ? await outcome(accts.A, r1.id, 8000) : { status: 'refused', reason: r1.json && r1.json.error };
+  const o2 = r2.status === 200 ? await outcome(accts.A, r2.id, 8000) : { status: 'refused', reason: r2.json && r2.json.error };
   await allResolved(); await sleep(800); await snapshot();
   const after = { net_usd: net('A'), committed_net_usd: cnet('A'), free: S.views.A.balance.free, state: riskOf('A').state, side: S.views.A.position.lots.map((l) => l.side + ':' + l.qty_usd) };
-  log('overshoot_result', { before, takes: [90, 90], outcomes: res.map((r) => r.status), after });
-  check('DEFECT F3: a reduce-only account holding 100 USD cannot sell 180 USD (two takes of 90 each pass the gate against committed lots)', after.net_usd >= 0, { before, after, outcomes: res.map((r) => r.status) });
-  await finish(after.net_usd >= 0 ? 0 : 1);
+  const stuck = await stuckBatches(5000);
+  log('overshoot_result', { before, takes: [90, 90], outcomes: [o1, o2].map((o) => ({ status: o.status, reason: o.reason })), after, stuck_batches: stuck });
+  // F3 fixed (f785f47): the gate counts unsettled fills, and a reducing take waits while a fill is unsettled.
+  check('F3: first 90 USD reduce fills and commits', o1.status === 'filled' && after.committed_net_usd === 10, { o1, after });
+  check('F3: second 90 USD reduce is refused (still settling, or above the net position)', o2.status === 'refused' && /still settling|only orders that reduce/.test(o2.reason || ''), o2);
+  check('F3: no flip (A ends long 10 USD) and no batch stuck', after.net_usd === 10 && stuck.length === 0, { after, stuck });
+  const failed = results.filter((r) => !r.ok).length;
+  await finish(failed ? 1 : 0);
 }
 /** Closing loan across two batches in flight: A (0 free margin, healthy, 100,000) reduces by 10 USD twice, `gap` ms apart. */
 async function quickSplit(variant) {
@@ -538,14 +550,24 @@ async function quickSplit(variant) {
   await mmRequote(100_000, false); await sleep(1500);
   const mk = (q) => send(accts.A, { action: 'take', side: 'short', quantity: q, limit_usd: 99_000, leverage_bps: 100000, max_fee_ppm: 0, max_fee_sats: 1 });
   const before = { free: S.views.A.balance.free, committed: S.views.A.balance.committed };
-  const id1 = await mk(10); await sleep(gap); const id2 = await mk(10);
-  const res = [await outcome(accts.A, id1, 8000), await outcome(accts.A, id2, 8000)];
-  await sleep(8000);
+  const id1 = await mk(10); await sleep(gap);
+  const r2 = await sendRaw(accts.A, { action: 'take', side: 'short', quantity: 10, limit_usd: 99_000, leverage_bps: 100000, max_fee_ppm: 0, max_fee_sats: 1 });
+  const o1 = await outcome(accts.A, id1, 8000);
+  const o2 = r2.status === 200 ? await outcome(accts.A, r2.id, 8000) : { status: 'refused', reason: r2.json && r2.json.error };
+  await sleep(8000); await snapshot();
   const stuck = await stuckBatches(5000);
   const list = await api('/api/explorer/batches?limit=4');
-  log('quick_result', { variant, gap_ms: gap, A_before: before, fills: res.map((r) => ({ status: r.status, reason: r.reason, batch: r.fill && r.fill.batch_seq })), stuck_batches: stuck, last_batches: list.map((x) => ({ seq: x.seq, phase: x.phase, legs: x.legs.length, accounts: x.accounts.length })) });
-  check(`quick ${variant}: two closing takes ${gap} ms apart both settle (no batch stuck past 5 s)`, stuck.length === 0, { stuck, batches: list.map((x) => [x.seq, x.phase]) });
-  await finish(stuck.length ? 1 : 0);
+  const after = { net_usd: net('A'), committed_net_usd: cnet('A') };
+  log('quick_result', { variant, gap_ms: gap, A_before: before, fills: [o1, o2].map((r) => ({ status: r.status, reason: r.reason, batch: r.fill && r.fill.batch_seq })), after, stuck_batches: stuck, last_batches: list.map((x) => ({ seq: x.seq, phase: x.phase, legs: x.legs.length, accounts: x.accounts.length })) });
+  // F1 fixed at the venue (f785f47): a reducing take is refused while the account has an uncommitted fill.
+  const refused = o2.status === 'refused' && /still settling/.test(o2.reason || '');
+  const expectNet = 2000 - 10 - (o2.status === 'filled' ? 10 : 0);
+  check(`quick ${variant}: first closing take fills and commits`, o1.status === 'filled' && after.committed_net_usd <= 1990, { o1: o1.status, after });
+  if (gap >= 100) check(`quick ${variant}: second closing take ${gap} ms later is refused while the first is settling`, refused, o2);
+  else check(`quick ${variant}: second closing take is refused, or fills in the same batch and commits`, refused || o2.status === 'filled', o2);
+  check(`quick ${variant}: no batch stuck past 5 s and the position is what was filled`, stuck.length === 0 && after.committed_net_usd === expectNet && after.net_usd === expectNet, { stuck, after, expectNet });
+  const failed = results.filter((r) => !r.ok).length;
+  await finish(failed ? 1 : 0);
 }
 /** Isolation runs for the stuck-batch finding: open C/D, gap to 88,000, then one of a few close patterns. */
 async function quick(variant) {
