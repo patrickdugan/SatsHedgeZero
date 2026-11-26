@@ -311,10 +311,12 @@ async function maybeLiquidate() {
   try {
     const takes = planTakes(r, st.book);
     if (!takes.length) { st.liqLog = `${new Date().toLocaleTimeString('en-GB')}: no bid or ask inside the auction limit ${r.liquidation.limit_usd} yet`; return; }
-    const ppm = st.template.tariff.taker_ppm[TIERS.indexOf(st.tier)];
+    // Standard tier: its taker fee is 0, and a closing take borrows its margin from the lots it
+    // closes (router closing loan), so an account with no free margin can still liquidate.
+    const ppm = st.template.tariff.taker_ppm[TIERS.indexOf('standard')];
     for (const k of takes) {
       const sats = Math.ceil(k.quantity * 1e8 / k.limit_usd);
-      await submit(baseIntent({ action: 'take', side: k.side, quantity: k.quantity, limit_usd: k.limit_usd, leverage_bps: 100000,
+      await submit(baseIntent({ action: 'take', tier: 'standard', side: k.side, quantity: k.quantity, limit_usd: k.limit_usd, leverage_bps: 100000,
         max_fee_ppm: ppm, max_fee_sats: Math.ceil(sats * ppm / 1e6 * 1.2) + 1 }));
     }
     st.liqLog = `${new Date().toLocaleTimeString('en-GB')}: submitted ${takes.length} reduce-only take(s), ${takes.reduce((s, x) => s + x.quantity, 0)} USD`;
