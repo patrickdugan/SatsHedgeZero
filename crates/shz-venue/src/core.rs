@@ -752,6 +752,7 @@ impl Venue {
             committed_us: None,
         });
         self.emit(json!({"type": "batch", "seq": seq, "phase": "sealed"}));
+        self.emit(json!({"type": "account"})); // approvals are now pending
     }
 
     pub fn add_signatures(&mut self, owner: Key, items: &[(String, Bip340Signature)]) -> Result<usize, String> {
@@ -829,6 +830,7 @@ impl Venue {
                     b.phase = "prepared".into();
                     b.prepared_us = Some(now_us());
                     self.emit(json!({"type": "batch", "seq": next, "phase": "prepared"}));
+                    self.emit(json!({"type": "account"})); // channel acks are now pending
                 }
                 "prepared" if !b.acks.is_empty() && b.acks.iter().all(|a| a.signatures[0] != ZERO_SIG) => {
                     let bundle = AckBundle { sequence: next, batch: b.digest, disposition: Disposition::Commit, channels: b.acks.clone() };
