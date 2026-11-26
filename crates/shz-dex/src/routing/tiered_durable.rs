@@ -9,6 +9,8 @@ use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,Journal
 use super::positions::{self,Position,Settlement};
 use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
+use super::options::{IntentV7,OptionBatch,OptionOutcome,OptionsDesk,Series};
+use shz_dlc::{OracleAnnouncement,OracleAttestation};
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
 
@@ -66,6 +68,8 @@ struct State{
  netting:bool,
  /// Multilateral clearing (`clearing`) switched on by a journaled `EnableClearing`.
  clearing:Option<ClearingState>,
+ /// Options desk (`options`) switched on by a journaled `EnableOptions`.
+ options:Option<OptionsDesk>,
 }
 impl State{
  fn new(registry:&Registry,cfg:TieredConfig,lanes:Vec<Lane>,recipients:FeeRecipients)->D<Self>{
@@ -88,7 +92,7 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT06/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None})
  }
  fn tag(&self)->&'static [u8]{if self.clearing.is_some(){TIERED_ACK_TAG_V3}else if self.netting{TIERED_ACK_TAG_V2}else{TIERED_ACK_TAG}}
  fn plan_clearing(&self,batch:&Batch,disposition:Disposition)->R<Option<ClearPlan>>{
@@ -115,6 +119,7 @@ impl State{
   // enabled 2026-11-26 12:50Z, running bf4d556 since 12:56Z) depends on it.
   self.router.set_close_from_lots(true);Ok(())
  }
+ fn desk(&mut self)->Result<&mut OptionsDesk,TierReject>{self.options.as_mut().ok_or(TierReject::Scope)}
  fn enable_closing_loans(&mut self)->R<()>{
   if !self.netting||self.router.close_from_lots(){return Err(Reject::Replay)}
   self.router.set_close_from_lots(true);Ok(())
@@ -192,6 +197,26 @@ impl State{
    Event::EnableMarginRelease=>{self.enable_netting()?;Ok(Reply::Unit)},
    Event::EnableClearing{fund_sats}=>{self.enable_clearing(fund_sats)?;Ok(Reply::Unit)},
    Event::EnableClosingLoans=>{self.enable_closing_loans()?;Ok(Reply::Unit)},
+   Event::EnableOptions{oracle_key,num_bits}=>{
+    if self.clearing.is_none()||self.options.is_some(){return Err(TierReject::Replay)}
+    self.options=Some(OptionsDesk::new(oracle_key,num_bits)?);Ok(Reply::Unit)
+   },
+   Event::ListSeries{series,announcement}=>Ok(Reply::Key(self.desk()?.list(series,announcement)?)),
+   Event::FundOptions{channel,sats,to_options}=>{
+    let k=op(&channel);
+    let mut b=self.router.account_balance(&k).ok_or(TierReject::Allocation)?;
+    self.options.as_mut().ok_or(TierReject::Scope)?.fund(k,&mut b,sats,to_options)?;
+    self.router.set_account_balance(&k,b);Ok(Reply::Unit)
+   },
+   Event::SubmitOption{intent,now}=>{
+    let (desk,clearing)=(self.options.as_mut().ok_or(TierReject::Scope)?,self.clearing.as_mut().ok_or(TierReject::Scope)?);
+    let c=self.router.config();let router=&self.router;
+    Ok(Reply::Option(desk.submit(c.scope,c.router,&|k:&Outpoint|router.account_owner(k),clearing,intent,now)?))
+   },
+   Event::ExpireSeries{series,attestation}=>{
+    let (desk,clearing)=(self.options.as_mut().ok_or(TierReject::Scope)?,self.clearing.as_mut().ok_or(TierReject::Scope)?);
+    Ok(Reply::OptionBatch(Box::new(desk.expire(&series,&attestation,clearing)?)))
+   },
   }
  }
 }
@@ -215,9 +240,17 @@ enum Event{
  /// Closing taker legs borrow their margin from the lots they close (`closing_loan`),
  /// for a journal with margin release but no clearing (`EnableClearing` turns them on too).
  EnableClosingLoans,
+ /// Switch on the options desk (clearing must be active): series settle on `oracle_key`
+ /// announcements of `num_bits` digits.
+ EnableOptions{oracle_key:Key,num_bits:u8},
+ ListSeries{series:Series,announcement:OracleAnnouncement},
+ /// Move sats between the perpetual allocation and the options sub-account.
+ FundOptions{channel:BtcOutPoint,sats:u64,to_options:bool},
+ SubmitOption{intent:IntentV7,now:u64},
+ ExpireSeries{series:Key,attestation:OracleAttestation},
 }
 #[allow(clippy::large_enum_variant)]
-enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
+enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool),Key(Key),Option(OptionOutcome),OptionBatch(Box<OptionBatch>)}
 
 /// Full event-sourced tiered router, including rejected calls that may advance time.
 /// No mutable `TieredRouter` escapes. The file is held exclusively for the writer
@@ -323,6 +356,28 @@ impl DurableTieredRouter{
  pub fn enable_closing_loans(&mut self)->D<bool>{
   self.ready()?;if self.state.router.close_from_lots(){return Ok(false)}
   self.record(Event::EnableClosingLoans)?;Ok(true)
+ }
+ /// Switch on the options desk (journaled once; clearing must be active). Series list on
+ /// announcements by `oracle_key` with `num_bits` digits, the margin domain.
+ pub fn enable_options(&mut self,oracle_key:Key,num_bits:u8)->D<bool>{
+  self.ready()?;if self.state.options.is_some(){return Ok(false)}
+  self.record(Event::EnableOptions{oracle_key,num_bits})?;Ok(true)
+ }
+ pub fn options(&self)->D<Option<&OptionsDesk>>{self.ready()?;Ok(self.state.options.as_ref())}
+ /// List an option series; returns its id (`Series::id`).
+ pub fn list_series(&mut self,series:Series,announcement:OracleAnnouncement)->D<Key>{
+  match self.record(Event::ListSeries{series,announcement})?{Reply::Key(k)=>Ok(k),_=>unreachable!()}
+ }
+ /// Move `sats` from the channel's perpetual allocation into its options sub-account.
+ pub fn fund_options(&mut self,channel:BtcOutPoint,sats:u64)->D<()>{self.record(Event::FundOptions{channel,sats,to_options:true}).map(|_|())}
+ /// Move `sats` of free option collateral back to the perpetual allocation.
+ pub fn defund_options(&mut self,channel:BtcOutPoint,sats:u64)->D<()>{self.record(Event::FundOptions{channel,sats,to_options:false}).map(|_|())}
+ pub fn submit_option(&mut self,intent:IntentV7,now:u64)->D<OptionOutcome>{
+  match self.record(Event::SubmitOption{intent,now})?{Reply::Option(x)=>Ok(x),_=>unreachable!()}
+ }
+ /// Expire a series at the oracle's attestation (one option batch through clearing).
+ pub fn expire_series(&mut self,series:Key,attestation:OracleAttestation)->D<OptionBatch>{
+  match self.record(Event::ExpireSeries{series,attestation})?{Reply::OptionBatch(x)=>Ok(*x),_=>unreachable!()}
  }
  pub fn closing_loans_active(&self)->D<bool>{self.ready()?;Ok(self.state.router.close_from_lots())}
  /// The clearing ledger: pool cash, fund, carried deficit, deferred claims.
