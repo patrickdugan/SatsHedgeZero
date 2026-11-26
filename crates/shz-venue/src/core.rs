@@ -160,6 +160,9 @@ pub struct BatchRec {
     approvals: BTreeMap<(Key, u32), Bip340Signature>,
     acks: Vec<ChannelAck>,
     pub created_us: u64,
+    /// Venue clock when this process saw the batch reach prepared / committed.
+    pub prepared_us: Option<u64>,
+    pub committed_us: Option<u64>,
 }
 
 #[derive(Clone)]
@@ -745,6 +748,8 @@ impl Venue {
             approvals: BTreeMap::new(),
             acks: vec![],
             created_us: now_us(),
+            prepared_us: None,
+            committed_us: None,
         });
         self.emit(json!({"type": "batch", "seq": seq, "phase": "sealed"}));
     }
@@ -822,13 +827,16 @@ impl Venue {
                     let b = self.batches.get_mut(&next).unwrap();
                     b.acks = acks;
                     b.phase = "prepared".into();
+                    b.prepared_us = Some(now_us());
                     self.emit(json!({"type": "batch", "seq": next, "phase": "prepared"}));
                 }
                 "prepared" if !b.acks.is_empty() && b.acks.iter().all(|a| a.signatures[0] != ZERO_SIG) => {
                     let bundle = AckBundle { sequence: next, batch: b.digest, disposition: Disposition::Commit, channels: b.acks.clone() };
                     self.router.resolve(bundle.clone()).map_err(|e| format!("resolve: {e}"))?;
                     let _ = self.ledger.observe_resolution(&self.router, &bundle, now);
-                    self.batches.get_mut(&next).unwrap().phase = "committed".into();
+                    let b = self.batches.get_mut(&next).unwrap();
+                    b.phase = "committed".into();
+                    b.committed_us = Some(now_us());
                     self.emit(json!({"type": "batch", "seq": next, "phase": "committed"}));
                 }
                 _ => return Ok(()),
@@ -971,6 +979,8 @@ impl Venue {
             "oracle_due_sats": b.oracle_due as u64, "router_due_sats": b.router_due as u64,
             "ledger_state": self.ledger_batch_state(b.seq),
             "created_us": b.created_us,
+            "prepared_us": b.prepared_us,
+            "committed_us": b.committed_us,
         })
     }
 }
