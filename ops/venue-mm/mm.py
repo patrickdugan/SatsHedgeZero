@@ -66,6 +66,7 @@ class MM:
         self.server = a.server.rstrip("/")
         os.makedirs(a.state_dir, exist_ok=True)
         self.keyfile = os.path.join(a.state_dir, "mm.key")
+        self.quoted_mark, self.quoted_net = None, None
         self.statefile = os.path.join(a.state_dir, "mm_state.json")
         self.sk = self.load_key()
         self.owner = bip340.pubkey(self.sk).hex()
@@ -221,7 +222,9 @@ class MM:
                            spread_bps=self.a.spread_bps, step_bps=self.a.step_bps, max_net_usd=self.a.max_net_usd,
                            status=m.get("status", "OK"), age_s=m.get("age_s"), verified=m.get("verified", False))
         now = time.time()
-        due = m.get("seq") != last_seq_quoted or now - last_quote_t > self.a.expires_s * 0.66
+        px = m.get("price_usd")
+        moved = px is None or self.quoted_mark is None or abs(px - self.quoted_mark) * 10000 >= self.a.requote_bps * self.quoted_mark
+        due = (m.get("seq") != last_seq_quoted and (moved or net != self.quoted_net)) or now - last_quote_t > self.a.expires_s * 0.66
         if not plan:
             if self.state["open_quotes"]:
                 log(ev="suppress", status=m.get("status"), age_s=m.get("age_s"))
@@ -230,8 +233,9 @@ class MM:
         if due:
             self.cancel_all()
             log(ev="plan", seq=m.get("seq"), mark=m.get("price_usd"), net_usd=net, quotes=plan)
-            for side, px, qty in plan:
-                self.post_quote(side, px, qty)
+            for side, qpx, qty in plan:
+                self.post_quote(side, qpx, qty)
+            self.quoted_mark, self.quoted_net = px, net
             return m.get("seq"), now
         return last_seq_quoted, last_quote_t
 
@@ -298,6 +302,8 @@ def main():
     ap.add_argument("--leverage-bps", type=int, default=20000)
     ap.add_argument("--max-mark-age-s", type=int, default=15)
     ap.add_argument("--expires-s", type=int, default=60)
+    ap.add_argument("--requote-bps", type=float, default=5.0,
+                    help="repost only when the mark moved this far, inventory changed, or quotes near expiry")
     ap.add_argument("--poll-s", type=float, default=2.0)
     ap.add_argument("--wallet", default="<wallet>")
     ap.add_argument("--fund-btc", default="0.0005")

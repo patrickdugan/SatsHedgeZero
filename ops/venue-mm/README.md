@@ -13,15 +13,16 @@ python mm.py run --dry-run              # build and sign intents, print them, se
 ```
 
 Flags: `--server --state-dir --levels --size-usd --spread-bps --step-bps --max-net-usd --leverage-bps
---max-mark-age-s --expires-s --poll-s --utxo txid:vout --wallet --fund-btc --dry-run`.
+--max-mark-age-s --expires-s --requote-bps --poll-s --utxo txid:vout --wallet --fund-btc --dry-run`.
 
 The key is `state/mm.key` (hex, mode 0600, never printed). `state/mm_state.json` holds the account outpoint
 and open quote ids; on restart the bot cancels leftovers first. Output is one JSON line per action.
 
 ## Behaviour
 
-- Polls `/api/status` every 2 s (no websocket client; stdlib has none). A new mark `seq` cancels the old quotes
-  and posts the ladder at mark -/+ (spread + k*step) bps, rounded away from the mark, inside the 200 bps collar.
+- Polls `/api/status` every 2 s (no websocket client; stdlib has none). A new mark `seq` that moved at least
+  `--requote-bps` (default 5) from the last quoted mark, an inventory change, or quotes at 2/3 of their expiry
+  cancels the old quotes and posts the ladder at mark -/+ (spread + k*step) bps, rounded away from the mark, inside the 200 bps collar.
 - No quotes when the mark is HOLD, unverified, missing or older than 20 s; existing quotes are cancelled.
 - Inventory: net position skews both sides against it by up to one spread at the cap; a side stops when
   net +/- the ladder size would pass `--max-net-usd`.
