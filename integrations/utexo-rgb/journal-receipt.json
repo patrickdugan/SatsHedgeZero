@@ -1,0 +1,14 @@
+{
+  "schema": "SHZ-RGB-01B/local-test/v1",
+  "runtime": "Node v22.16.0 Linux",
+  "testsPassed": 6,
+  "testsFailed": 0,
+  "nativeSdkExecuted": false,
+  "realPayments": 0,
+  "scope": "local signed synthetic evidence, file persistence and SIGKILL; exact repository CI pending",
+  "sourceSha256": {
+    "journal.mjs": "ab2de37a307075090fd72cca2c2fd0cb89509052446c389ded1dfa5d82b06000",
+    "journal.test.mjs": "7d360f2e2310ef91474888ad06949269796ff572a5208302ecdc862c15bca3a8",
+    "journal-crash-worker.mjs": "c8c71b026d6e4577388d1e00551cae7583c53043c9d3b49cf3abb6f975ca458c"
+  }
+}

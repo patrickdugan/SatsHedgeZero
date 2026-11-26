@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node mock.test.mjs && node recovery.test.mjs",
+    "test": "node mock.test.mjs && node recovery.test.mjs && node --test journal.test.mjs",
     "benchmark": "node benchmark.mjs"
   },
   "engines": {
