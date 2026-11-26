@@ -49,7 +49,7 @@ function validateQuote(q,now) {
 
 function checkDecoded(q,decoded,now) {
   const v=validateQuote(q,now);
-  if(decoded.network!==q.network||decoded.asset_id!==q.assetId||decoded.payee_pubkey!==q.payee||
+  if(String(decoded.network).toLowerCase()!==q.network||decoded.asset_id!==q.assetId||decoded.payee_pubkey!==q.payee||
      uint(decoded.asset_amount,"decoded asset")!==BigInt(v.assetUnits)||uint(decoded.amt_msat,"decoded carrier")!==BigInt(v.carrierMsat))
     throw new Error("Invoice binding mismatch");
   if(!Number.isSafeInteger(decoded.timestamp)||!Number.isSafeInteger(decoded.expiry_sec)||decoded.timestamp<0||decoded.expiry_sec<=0||
@@ -59,10 +59,11 @@ function checkDecoded(q,decoded,now) {
   return Object.freeze({obligationId:q.obligationId,network:q.network,assetId:q.assetId,assetUnits:String(v.assetUnits),carrierMsat:String(v.carrierMsat),payee:q.payee,paymentHash:hash32(decoded.payment_hash),expiresAt:decoded.timestamp+decoded.expiry_sec,kind:"invoice_candidate"});
 }
 
-function createDevelopmentAdapter(account,network) {
+async function createDevelopmentAdapter(account,network) {
   devNetwork(network);
   if(!account||typeof account.toReadOnlyAccount!=="function") throw new Error("Expected unlocked WDK account");
-  const read=account.toReadOnlyAccount();
+  if (account.getNetwork?.() !== network || account.getCapabilities?.().lightning !== true) throw new Error("Account capability/network mismatch");
+  const read=await account.toReadOnlyAccount();
   function local(q){if(q.network!==network) throw new Error("Account network mismatch");}
   return Object.freeze({
     async inspect(id){
@@ -84,7 +85,7 @@ function createDevelopmentAdapter(account,network) {
     async observe(candidate,invoice){
       if(candidate.network!==network||candidate.kind!=="invoice_candidate") throw new Error("Candidate mismatch");
       const d=await read.decodeInvoice(invoice);
-      if(d.payment_hash!==candidate.paymentHash||d.network!==candidate.network||d.asset_id!==candidate.assetId||
+      if(d.payment_hash!==candidate.paymentHash||String(d.network).toLowerCase()!==candidate.network||d.asset_id!==candidate.assetId||
          uint(d.asset_amount,"asset")!==uint(candidate.assetUnits,"candidate asset")||
          uint(d.amt_msat,"carrier")!==uint(candidate.carrierMsat,"candidate carrier")||d.payee_pubkey!==candidate.payee) throw new Error("Observation invoice mismatch");
       return {kind:"unverified_observation",paymentHash:hash32(candidate.paymentHash),

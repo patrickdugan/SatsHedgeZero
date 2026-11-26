@@ -22,9 +22,9 @@ Opt-in live research installation from this subfolder, after verifying npm tarba
 
     npm install --save-exact @utexo/wdk-rgb-lightning@0.2.0-beta.5 @utexo/rgb-lightning-node-nodejs@0.2.0-beta.5
 
-The manifest records the pins separately; installation is deliberately not required. Use a disposable Linux/regtest environment. Do not reuse SHZ custody, customer or production seed material. Instantiate WalletManagerRgbLightning with network=regtest, dedicated dataDir, strict signer policy and virtual channels disabled, unlock through the documented native request and obtain account 0. Pass this account to createDevelopmentAdapter(account, 'regtest'). The caller must independently establish that the account belongs to the configured network. Example API:
+The manifest records the pins separately; installation is deliberately not required. Use a disposable Linux/regtest environment. Do not reuse SHZ custody, customer or production seed material. Instantiate WalletManagerRgbLightning with network=regtest, dedicated dataDir, strict signer policy and virtual channels disabled, unlock through the documented native request and obtain account 0. Pass this account to createDevelopmentAdapter(account, 'regtest'). The adapter checks the SDK's configured network and Lightning capability; the caller must independently verify the actual chain. Example API:
 
-    const adapter = createDevelopmentAdapter(account, 'regtest')
+    const adapter = await createDevelopmentAdapter(account, 'regtest')
     const raw = await adapter.createReceiveInvoice(quote, nowSeconds)
     // Capture beta.5 response shape locally; extract the invoice via reviewed mapping.
     const candidate = await adapter.inspectInvoice(quote, invoice, nowSeconds)
@@ -43,3 +43,5 @@ The create result and observation are opaque; do not log secrets or raw response
 - [UTEXO Mint](https://www.utexo.com/mint), [RGB ecosystem](https://rgb.info/build/developer-tools/)
 
 See DESIGN.md for accounting and qualification gates.
+
+Follow-up: [SHZ-RGB-01A benchmark and recovery](BENCHMARK.md).

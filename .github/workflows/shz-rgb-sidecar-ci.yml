@@ -1,0 +1,22 @@
+name: SHZ RGB sidecar model
+on:
+  pull_request:
+    paths:
+      - 'integrations/utexo-rgb/**'
+      - '.github/workflows/shz-rgb-sidecar-ci.yml'
+  push:
+    paths:
+      - 'integrations/utexo-rgb/**'
+      - '.github/workflows/shz-rgb-sidecar-ci.yml'
+permissions:
+  contents: read
+jobs:
+  mock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm --prefix integrations/utexo-rgb test
+      - run: node --check integrations/utexo-rgb/benchmark.mjs

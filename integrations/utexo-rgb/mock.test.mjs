@@ -8,7 +8,7 @@ async function runMockTests(){
   const q={network:"regtest",assetId:id,payee,assetUnits:"12500000",carrierMsat:"3000000",expiresAt:1100,obligationId:"batch:1:row:2"};
   const d={network:"regtest",asset_id:id,payee_pubkey:payee,asset_amount:"12500000",amt_msat:3000000,timestamp:1000,expiry_sec:100,payment_hash:hash};
   let calls=0;const read={getAddressState:async()=>({status:"ready"}),getAssetMetadata:async()=>({fixture:true}),getAssetBalance:async()=>({fixture:true}),decodeInvoice:async()=>d,getInvoiceStatus:async()=>({status:"Succeeded"}),getPayment:async(h,t)=>({h,t})};
-  const account={toReadOnlyAccount:()=>read,createLightningInvoice:async req=>{calls++;return req;}};
+  const account={getNetwork:()=>"regtest",getCapabilities:()=>({lightning:true}),toReadOnlyAccount:async()=>read,createLightningInvoice:async req=>{calls++;return req;}};
   eq(quoteConversion({sats:"100000",btcUsdCents:"10000000",assetUsdCents:100,decimals:6}).assetUnits,100000000n);
   const r=quoteConversion({sats:1,btcUsdCents:12345,assetUsdCents:99,decimals:6});
   eq(r.assetUnits*r.denominator+r.remainder,12345000000n);
@@ -16,7 +16,9 @@ async function runMockTests(){
   await rejects(()=>quoteConversion({sats:1,btcUsdCents:1,assetUsdCents:0,decimals:6}));
   await rejects(()=>createDevelopmentAdapter(account,"mainnet"));
   await rejects(()=>createDevelopmentAdapter(account,"testnet4"));
-  const a=createDevelopmentAdapter(account,"regtest");
+  await rejects(()=>createDevelopmentAdapter(account,"signet"));
+  await rejects(()=>createDevelopmentAdapter({...account,getCapabilities:()=>({lightning:false})},"regtest"));
+  const a=await createDevelopmentAdapter(account,"regtest");
   eq((await a.inspect(id)).state,"ready");
   await rejects(()=>a.inspect("USDT"));
   const req=await a.createReceiveInvoice(q,1000);
