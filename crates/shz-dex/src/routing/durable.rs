@@ -105,7 +105,7 @@ impl State{
   if bundle.sequence!=self.next_resolution||entry.phase!=Phase::Prepared||bundle.batch!=entry.batch.digest(){return Err(Reject::Replay)}
   let next_sequence=self.next_resolution.checked_add(1).ok_or(Reject::Bounds)?;
   let plan=plan_resolution(HFT05_ACK_TAG,&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|self.router.accounts.get(k).map(|a|a.balance),&self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle)?;
+   &|k:&Outpoint|self.router.accounts.get(k).map(|a|a.balance),&self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,false)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.accounts.get_mut(&key).unwrap().balance=balance;self.lanes.get_mut(&key).unwrap().head=head;}
   for id in plan.cancel{self.router.remove(id);}
@@ -152,7 +152,11 @@ pub(crate) struct ResolutionPlan{
 /// fee receipts, three BIP340 signatures, balance conservation) without mutating state.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,lanes:&BTreeMap<Outpoint,LaneState>,
- balance_of:&dyn Fn(&Outpoint)->Option<Balance>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle)->R<ResolutionPlan>{
+ balance_of:&dyn Fn(&Outpoint)->Option<Balance>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
+ owner_optional:bool)->R<ResolutionPlan>{
+ // `owner_optional` is the deadline-abort path only: a fenced abort moves no channel
+ // state and refunds every debit, so it may proceed without a silent owner's ack.
+ if owner_optional&&bundle.disposition!=Disposition::FencedAbort{return Err(Reject::Replay)}
  if bundle.channels.len()!=batch.accounts().len(){return Err(Reject::Allocation)}
  let mut changes=Vec::new();let mut new_receipts=BTreeSet::new();
  // Canonical order must be the exact batch account order; no omission,
@@ -177,7 +181,10 @@ pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,la
    if ack.fee_evidence==[0;32]||spent_receipts.contains(&ack.fee_evidence)||!new_receipts.insert(ack.fee_evidence){return Err(Reject::FeeLimit)}
   }else if ack.fee_evidence!=[0;32]{return Err(Reject::FeeLimit)}
   let h=ack_message(tag,config,recipients,bundle.sequence,batch,bundle.disposition,ack)?;
-  for (k,sig) in [a.owner,lane.peer,lane.monitor].iter().zip(&ack.signatures){verify(k,&h,sig)?;}
+  for (i,(k,sig)) in [a.owner,lane.peer,lane.monitor].iter().zip(&ack.signatures).enumerate(){
+   if i==0&&owner_optional&&sig.r_x==[0;32]&&sig.s==[0;32]{continue}
+   verify(k,&h,sig)?;
+  }
   let mut balance=balance_of(&key).ok_or(Reject::Allocation)?;
   let debit=a.margin_sats.checked_add(a.fee_sats).ok_or(Reject::Bounds)?;
   balance.pending=balance.pending.checked_sub(debit).ok_or(Reject::Capacity)?;

@@ -14,6 +14,13 @@ const MAGIC:&[u8;8]=b"SHZWAL06";
 /// Distinct from the HFT-05 tag, and the config hash differs as well: an HFT-05
 /// acknowledgement can never verify against a tiered router.
 pub const TIERED_ACK_TAG:&[u8]=b"SHZ/HFT06/CHANNEL-ACK/V1";
+/// Deadline abort: once the router clock is this far past a batch window's end, the
+/// batch at the head of the resolution queue may be fenced and aborted with the peer
+/// and monitor signatures alone (owner signature all-zero). Batches resolve strictly in
+/// order, so without this one owner who never signs holds every later batch. Abort
+/// leaves channel commitments unchanged and returns each debit to free; the trust
+/// added is that peer and monitor can cancel, not move, a batch after the deadline.
+pub const ABORT_AFTER_US:u64=10_000_000;
 
 #[derive(Debug,Error)]
 pub enum TieredDurableError{
@@ -81,14 +88,18 @@ impl State{
   entry.batch.verify_approvals(approvals)?;
   entry.phase=Phase::Prepared;Ok(())
  }
- fn resolve(&mut self,bundle:AckBundle)->R<bool>{
+ fn resolve(&mut self,bundle:AckBundle,deadline:bool)->R<bool>{
   let entry=self.batches.get(&bundle.sequence).ok_or(Reject::UnknownOrder)?;
   // An exact byte-equivalent signed bundle is idempotent after recovery.
   if let Some(old)=&entry.ack{return if old==&bundle{Ok(false)}else{Err(Reject::Replay)}}
-  if bundle.sequence!=self.next_resolution||entry.phase!=Phase::Prepared||bundle.batch!=entry.batch.digest(){return Err(Reject::Replay)}
+  if bundle.sequence!=self.next_resolution||bundle.batch!=entry.batch.digest(){return Err(Reject::Replay)}
+  if deadline{
+   if bundle.disposition!=Disposition::FencedAbort||!matches!(entry.phase,Phase::Sealed|Phase::Prepared){return Err(Reject::Replay)}
+   if self.router.clock_us()<entry.batch.window().1.saturating_add(ABORT_AFTER_US){return Err(Reject::Clock)}
+  }else if entry.phase!=Phase::Prepared{return Err(Reject::Replay)}
   let next_sequence=self.next_resolution.checked_add(1).ok_or(Reject::Bounds)?;
   let plan=plan_resolution(TIERED_ACK_TAG,&self.config,&self.recipients,&self.lanes,
-   &|k:&Outpoint|self.router.account_balance(k),&self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle)?;
+   &|k:&Outpoint|self.router.account_balance(k),&self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,deadline)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.set_account_balance(&key,balance);self.lanes.get_mut(&key).unwrap().head=head;}
   for id in plan.cancel{self.router.cancel_resting(id);}
@@ -121,7 +132,8 @@ impl State{
     Ok(Reply::Batch(batch))
    },
    Event::Prepare{sequence,approvals}=>{self.prepare(sequence,&approvals)?;Ok(Reply::Unit)},
-   Event::Resolve{bundle}=>Ok(Reply::Resolved(self.resolve(bundle)?)),
+   Event::Resolve{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,false)?)),
+   Event::Expire{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,true)?)),
   }
  }
 }
@@ -137,6 +149,8 @@ enum Event{
  Seal,
  Prepare{sequence:u64,approvals:Vec<BatchApproval>},
  Resolve{bundle:AckBundle},
+ /// Deadline abort of the head batch (see `ABORT_AFTER_US`).
+ Expire{bundle:AckBundle},
 }
 #[allow(clippy::large_enum_variant)]
 enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool)}
@@ -216,6 +230,10 @@ impl DurableTieredRouter{
  pub fn seal_batch(&mut self)->D<Option<Batch>>{match self.record(Event::Seal)?{Reply::Batch(x)=>Ok(x),_=>unreachable!()}}
  pub fn prepare(&mut self,sequence:u64,approvals:Vec<BatchApproval>)->D<()>{self.record(Event::Prepare{sequence,approvals}).map(|_|())}
  pub fn resolve(&mut self,bundle:AckBundle)->D<bool>{match self.record(Event::Resolve{bundle})?{Reply::Resolved(x)=>Ok(x),_=>unreachable!()}}
+ /// Fence and abort the head batch once the router clock is `ABORT_AFTER_US` past its
+ /// window end. Each lane's ack needs peer and monitor signatures; the owner's may be
+ /// all-zero (a present owner signature must still verify).
+ pub fn expire(&mut self,bundle:AckBundle)->D<bool>{match self.record(Event::Expire{bundle})?{Reply::Resolved(x)=>Ok(x),_=>unreachable!()}}
  /// Crash-testing hook: journal and fsync a process step without applying it, as if the
  /// process died between the append and the in-memory update. The writer is poisoned
  /// afterwards (memory is stale); reopen replays the step.

@@ -21,7 +21,7 @@ use shz_dex::{
             Arm, Entitlement, ExecutionPolicy, FeedTier, IntentV6, MarkView, RevenuePolicy, TariffSchedule,
             TierOutcome, TieredConfig, ZERO_SIG,
         },
-        tiered_durable::DurableTieredRouter,
+        tiered_durable::{ABORT_AFTER_US, DurableTieredRouter},
     },
 };
 use shz_dlc::{Bip340Signature, BtcOutPoint, bip340_sign, bip340_verify, tagged_hash};
@@ -160,7 +160,8 @@ pub struct BatchRec {
     approvals: BTreeMap<(Key, u32), Bip340Signature>,
     acks: Vec<ChannelAck>,
     pub created_us: u64,
-    /// Venue clock when this process saw the batch reach prepared / committed.
+    /// Venue clock when this process saw the batch reach prepared / committed (or aborted,
+    /// in `committed_us`, for a deadline abort).
     pub prepared_us: Option<u64>,
     pub committed_us: Option<u64>,
 }
@@ -841,9 +842,67 @@ impl Venue {
                     b.committed_us = Some(now_us());
                     self.emit(json!({"type": "batch", "seq": next, "phase": "committed"}));
                 }
-                _ => return Ok(()),
+                _ => {
+                    let (phase, end) = (b.phase.clone(), b.window.1);
+                    if !self.deadline_abort(next, &phase, end, now)? {
+                        return Ok(());
+                    }
+                }
             }
         }
+    }
+
+    /// The head batch has waited `ABORT_AFTER_US` past its window for approvals or acks:
+    /// fence and abort it with the adapter's peer and monitor signatures so later batches
+    /// can resolve. Nothing moves on any channel; every debit returns to free, and the
+    /// maker quotes behind its fills are cancelled by the router.
+    fn deadline_abort(&mut self, next: u64, phase: &str, window_end: u64, now: u64) -> Result<bool, String> {
+        let deadline = window_end.saturating_add(ABORT_AFTER_US);
+        if !matches!(phase, "sealed" | "prepared" | "restored-prepared") || now < deadline {
+            return Ok(false);
+        }
+        if self.router.router().map(|r| r.clock_us()).unwrap_or(0) < deadline {
+            // Advance the router clock (journaled) to the deadline the router checks.
+            if let Some(out) = self.router.process_one(now).map_err(|e| format!("process: {e}"))? {
+                self.apply_outcome(None, out, now);
+            }
+        }
+        let rec = &self.batches[&next];
+        let (accounts, digest) = (rec.accounts.clone(), rec.digest);
+        let mut channels = vec![];
+        for (c, _, _, _) in &accounts {
+            let head = self.router.head(c).map_err(|e| e.to_string())?.ok_or("lane missing")?;
+            let mut ack = ChannelAck {
+                channel: c.clone(),
+                previous: head,
+                next: Head { revision: head.revision + 1, commitment: head.commitment, state: head.state },
+                evidence: tagged_hash(b"SHZ/VENUE/SIMULATED-CANCEL/V1", &[digest.as_slice(), &c.txid, &c.vout.to_le_bytes()].concat()),
+                fee_evidence: [0; 32],
+                signatures: [ZERO_SIG; 3],
+            };
+            let msg = self.router.ack_message(next, Disposition::FencedAbort, &ack).map_err(|e| e.to_string())?;
+            ack.signatures[1] = bip340_sign(&self.keys.lane_sk("peer", c), &msg).map_err(|e| e.to_string())?;
+            ack.signatures[2] = bip340_sign(&self.keys.lane_sk("monitor", c), &msg).map_err(|e| e.to_string())?;
+            channels.push(ack);
+        }
+        let bundle = AckBundle { sequence: next, batch: digest, disposition: Disposition::FencedAbort, channels };
+        self.router.expire(bundle.clone()).map_err(|e| format!("deadline abort: {e}"))?;
+        let _ = self.ledger.observe_resolution(&self.router, &bundle, now);
+        self.pending.retain(|_, p| p.context["batch_seq"].as_u64() != Some(next));
+        let makers: Vec<Key> = self.trades.iter().filter(|t| t.batch_seq == Some(next)).map(|t| t.maker_id).collect();
+        for m in makers {
+            if let Some(r) = self.intents.get_mut(&m).filter(|r| r.status == "resting") {
+                r.status = "cancelled".into();
+                r.remaining = 0;
+            }
+        }
+        let b = self.batches.get_mut(&next).unwrap();
+        b.phase = "aborted".into();
+        b.committed_us = Some(now_us());
+        self.emit(json!({"type": "batch", "seq": next, "phase": "aborted"}));
+        self.emit(json!({"type": "account"}));
+        self.emit(json!({"type": "book"}));
+        Ok(true)
     }
 
     // ------------------------------------------------------------ views ----
@@ -873,6 +932,9 @@ impl Venue {
         let (mut net, mut cost_inv) = (0i128, 0f64);
         let mut gross = 0u64;
         for t in &self.trades {
+            if t.batch_seq.and_then(|s| self.batches.get(&s)).is_some_and(|b| b.phase == "aborted") {
+                continue; // fenced and aborted: the fill never settled
+            }
             let sign = if t.taker_owner == *owner {
                 if t.taker_side == OrderSide::Long { 1 } else { -1 }
             } else if t.maker_owner == *owner {

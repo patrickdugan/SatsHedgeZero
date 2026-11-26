@@ -439,3 +439,66 @@ fn sum(l:&FeeLedger)->RecipientTotals{
  let h5=DurableRouter::create(&t.path("h5.wal"),policy(),&registry(CAP),1,Engine::Both,lanes(),recipients()).unwrap();
  assert!(!l.reconcile(&h5).unwrap().clean());
 }
+
+/// Fenced-abort bundle signed by peer and monitor only (owner signature all-zero).
+fn abort_without_owner(d:&DurableTieredRouter,b:&Batch)->AckBundle{
+ let mut a=ack(d,b,Disposition::FencedAbort);
+ for c in &mut a.channels{c.signatures[0]=ZERO;}
+ a
+}
+fn window_end(b:&Batch)->u64{b.window().1}
+
+#[test]fn deadline_abort_releases_a_batch_whose_owner_never_signs(){
+ let t=Temp::new();let p=t.path("dl.wal");let mut d=create(&p);
+ let b1=round(&mut d,0);let b2=round(&mut d,1);
+ // owner 2 never approves batch 1: it stays sealed and holds batch 2
+ let a=abort_without_owner(&d,&b1);
+ // an owner-less abort is not a resolution, and not before the deadline
+ assert!(d.resolve(a.clone()).is_err());
+ d.process_one(window_end(&b1)+ABORT_AFTER_US-1).unwrap();
+ assert!(matches!(d.expire(a.clone()),Err(TieredDurableError::Rejected(TierReject::Clock))));
+ assert_eq!(d.batch(1).unwrap().unwrap().1,Phase::Sealed);
+ d.process_one(window_end(&b1)+ABORT_AFTER_US).unwrap();
+ let head=d.head(&channel(1)).unwrap().unwrap();
+ assert!(d.expire(a.clone()).unwrap());
+ assert!(!d.expire(a).unwrap(),"exact retry is idempotent");
+ assert_eq!(d.batch(1).unwrap().unwrap().1,Phase::Aborted);
+ for n in [1,2]{
+  let bal=d.balance(&channel(n)).unwrap().unwrap();
+  assert_eq!((bal.pending,bal.committed,bal.paid_fees),(0,0,0));assert!(bal.conserved());
+ }
+ let after=d.head(&channel(1)).unwrap().unwrap();
+ assert_eq!((after.revision,after.commitment,after.state),(head.revision+1,head.commitment,head.state));
+ // the queue moves: batch 2 prepares and commits normally
+ d.prepare(2,approvals(&b2)).unwrap();
+ assert!(d.resolve(ack(&d,&b2,Disposition::Commit)).unwrap());
+ assert_eq!(d.next_resolution().unwrap(),3);
+ // replay reaches the same state
+ let before=snapshot(&d);let tip=d.tip().unwrap();drop(d);
+ let d=reopen(&p,Some(tip)).unwrap();assert_eq!(snapshot(&d),before);
+}
+
+#[test]fn deadline_abort_needs_peer_and_monitor_and_cannot_commit(){
+ let t=Temp::new();let p=t.path("dl2.wal");let mut d=create(&p);
+ let b1=round(&mut d,0);let _b2=round(&mut d,1);
+ d.process_one(window_end(&b1)+ABORT_AFTER_US).unwrap();
+ // a commit can never go through the deadline path, signed or not
+ assert!(d.expire(ack(&d,&b1,Disposition::Commit)).is_err());
+ let mut c=ack(&d,&b1,Disposition::Commit);for x in &mut c.channels{x.signatures[0]=ZERO;}
+ assert!(d.expire(c).is_err());
+ // peer and monitor signatures are still required
+ let mut a=abort_without_owner(&d,&b1);a.channels[0].signatures[1]=ZERO;
+ assert!(matches!(d.expire(a),Err(TieredDurableError::Rejected(TierReject::Signature))));
+ let mut a=abort_without_owner(&d,&b1);a.channels[1].signatures[2]=a.channels[0].signatures[2];
+ assert!(matches!(d.expire(a),Err(TieredDurableError::Rejected(TierReject::Signature))));
+ // a present owner signature must verify
+ let mut a=abort_without_owner(&d,&b1);a.channels[0].signatures[0]=a.channels[0].signatures[1];
+ assert!(matches!(d.expire(a),Err(TieredDurableError::Rejected(TierReject::Signature))));
+ // only the head batch, and the abort must move no channel state
+ let b2=_b2;d.process_one(window_end(&b2)+ABORT_AFTER_US).unwrap();
+ assert!(d.expire(abort_without_owner(&d,&b2)).is_err());
+ let mut a=abort_without_owner(&d,&b1);a.channels[0].next.commitment+=1;
+ assert!(d.expire(a).is_err());
+ assert_eq!(d.batch(1).unwrap().unwrap().1,Phase::Sealed);
+ assert!(d.expire(abort_without_owner(&d,&b1)).unwrap());
+}
