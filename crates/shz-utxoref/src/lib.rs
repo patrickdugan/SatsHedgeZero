@@ -54,7 +54,7 @@ mod tests {
         pnl_batch::{
             AccountRecord, BookAuthState, DurablePnlBatchBook, FundedVaultUtxo, NettingSetSpec,
             PermittedRoute, PnlBatchSnapshotV1, RealizedObligation, RouteTarget, VaultRecord,
-            solve_and_verify_pnl_batch,
+            analyze_pnl_batch_graph, solve_and_verify_pnl_batch,
         },
         signing_target::{
             DEFAULT_CPFP_ANCHOR_SATS, UnsignedDlcTx, UtxoRefOracleAnnouncementV1,
@@ -263,7 +263,20 @@ mod tests {
         assert_eq!(batch.post_account_equities["winner"], 106_000);
         assert_eq!(batch.post_account_equities["loser"], 90_000);
 
+        let good = analyze_pnl_batch_graph(&valid_snap, &valid_snap.snapshot_hash()).unwrap();
+        assert_eq!(good.delivered_sats, 200_000);
+        assert_eq!(good.deficit_sats, 0);
+        good.verify().unwrap();
         let missing_route_snap = make_snapshot(false);
+        let cert = analyze_pnl_batch_graph(&missing_route_snap, &missing_route_snap.snapshot_hash()).unwrap();
+        assert_eq!(cert.delivered_sats, 194_000);
+        assert_eq!(cert.deficit_sats, 6_000);
+        assert!(cert.sink_side_targets.iter().any(|&i| cert.targets[i] == RouteTarget::Vault("vault-winner".into())));
+        cert.verify().unwrap();
+        let mut tampered = cert.clone();
+        tampered.deficit_sats -= 1;
+        assert!(tampered.verify().is_err());
+        assert_eq!(analyze_pnl_batch_graph(&missing_route_snap, &[0; 32]), Err(UtxoRefError::SnapshotMismatch));
         assert_eq!(
             solve_and_verify_pnl_batch(&missing_route_snap, &missing_route_snap.snapshot_hash()),
             Err(UtxoRefError::CapacitatedFlowDeficit {
@@ -434,6 +447,36 @@ mod tests {
             .unwrap();
         assert_eq!(book_ok.last_settled_epoch, 1);
         assert!(book_ok.consumed_obligation_ids.contains("o1"));
+
+        // An adversarial caller may omit the persisted spent-outpoint set,
+        // change obligation IDs, and open the next epoch. The book must reject.
+        let mut replay = snap.clone();
+        replay.epoch_id = 2;
+        replay.previous_state_root = book_ok.ledger_state_root;
+        for o in &mut replay.obligations {
+            o.id.push_str("-new");
+        }
+        let head = book_ok.head_hash;
+        assert_eq!(
+            book_ok.reserve_before_signing(&head, &replay),
+            Err(UtxoRefError::ReplayDetected("vault UTXO already spent in book"))
+        );
+        assert_eq!(book_ok.head_hash, head);
+
+        // A matching txid is insufficient to substitute replay accounting.
+        let mut book_bad = DurablePnlBatchBook::new_genesis("shz-book-2", [0xAB; 32]);
+        let head = book_bad.head_hash;
+        let h1 = book_bad.reserve_before_signing(&head, &snap).unwrap();
+        let h2 = book_bad.record_signed_outcome(&h1, Ok(("deadbeef".into(), vec![0x02, 0x00]))).unwrap();
+        let mut substitution = snap.clone();
+        substitution.obligations[0].id = "substituted".into();
+        substitution.vaults[0].utxos[0].outpoint.txid = [9; 32];
+        assert_eq!(book_bad.confirm_active_chain(&h2, "deadbeef", &substitution), Err(UtxoRefError::BookFrozen));
+        assert!(matches!(book_bad.state, BookAuthState::Frozen { .. }));
+        assert_eq!(book_bad.last_settled_epoch, 0);
+        assert_eq!(book_bad.ledger_state_root, [0xAB; 32]);
+        assert!(book_bad.consumed_obligation_ids.is_empty());
+        assert!(book_bad.spent_outpoints.is_empty());
     }
 
     #[test]
