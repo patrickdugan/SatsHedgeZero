@@ -1,0 +1,22 @@
+{
+  "families": 343,
+  "strict_nonanticipativity_gaps": 30,
+  "max_gap_units": 1,
+  "witness": {
+    "hindsight_stock": [
+      1,
+      1,
+      0
+    ],
+    "hindsight_cost": 2,
+    "nonanticipative_stock": [
+      1,
+      2,
+      0
+    ],
+    "nonanticipative_cost": 3
+  },
+  "scope": "two-scenario synthetic information sets; validity of the information partition is an external assumption",
+  "execution": "function bodies evaluated in isolated JS runtime before commit",
+  "production_ready": false
+}
