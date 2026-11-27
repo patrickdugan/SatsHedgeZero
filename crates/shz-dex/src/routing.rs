@@ -9,6 +9,7 @@ pub mod ln_fees;
 pub mod positions;
 pub mod clearing;
 pub mod options;
+pub mod agents;
 use serde::{Serialize,Deserialize};
 pub use coalescer::{Batch, BatchApproval, ChannelObligation, ChannelPayout, COALESCE_US};
 use crate::OrderSide;

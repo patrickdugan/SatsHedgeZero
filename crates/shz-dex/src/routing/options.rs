@@ -390,12 +390,17 @@ impl OptionsDesk{
 
  /// Admit and execute one signed option intent. `owner_of` is the router's account owner.
  pub fn submit(&mut self,scope:Scope,router:u32,owner_of:&dyn Fn(&Outpoint)->Option<Key>,clearing:&mut ClearingState,i:IntentV7,now:u64)->R<OptionOutcome>{
+  let o=i.owner;self.submit_by(scope,router,owner_of,clearing,i,now,&o)
+ }
+ /// `submit` with the signature checked against `signer` (the owner or an authorized agent key).
+ #[allow(clippy::too_many_arguments)]
+ pub(crate) fn submit_by(&mut self,scope:Scope,router:u32,owner_of:&dyn Fn(&Outpoint)->Option<Key>,clearing:&mut ClearingState,i:IntentV7,now:u64,signer:&Key)->R<OptionOutcome>{
   if now<self.clock{return Err(Reject::Clock)}
   self.clock=now;
   let k=op(&i.channel);
   if i.version!=OPTION_INTENT_VERSION||i.scope!=scope||i.router!=router{return Err(Reject::Scope)}
   if owner_of(&k)!=Some(i.owner){return Err(Reject::Allocation)}
-  verify(&i.owner,&i.id(),&i.signature)?;
+  verify(signer,&i.id(),&i.signature)?;
   if i.expires_us<=now{return Err(Reject::Expired)}
   if i.sequence<=self.accounts.get(&k).map_or(0,|a|a.last_sequence){return Err(Reject::Replay)}
   let out=match i.action{

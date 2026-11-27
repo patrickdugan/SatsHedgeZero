@@ -218,7 +218,7 @@ impl IntentV6{
   tagged_hash(DOMAIN_INTENT,&b)
  }
  pub fn signed(mut self,sk:&Key)->T<Self>{self.owner=public(sk);self.signature=sign(sk,&self.id()).map_err(|_|TierReject::Signature)?;Ok(self)}
- fn check(&self)->T<()>{
+ fn check_by(&self,signer:&Key)->T<()>{
   if self.sequence==0||self.router==0||self.max_fee_ppm>MAX_TIER_PPM{return Err(TierReject::Bounds)}
   if self.action==Action::Cancel{
    if self.cancel_target==[0;32]||self.quantity!=0||self.limit_usd!=0||self.leverage_bps!=0||self.max_fee_ppm!=0||self.max_fee_sats!=0||
@@ -227,7 +227,7 @@ impl IntentV6{
      !(1000..=1_000_000).contains(&self.leverage_bps)||self.cancel_target!=[0;32]||self.max_mark_age_us==0||
      (self.early_window_opt_in&&self.action!=Action::Post){return Err(TierReject::Bounds)}
   if (self.tier==FeedTier::Standard)!=(self.entitlement_digest==[0;32]){return Err(TierReject::EntitlementMissing)}
-  verify(&self.owner,&self.id(),&self.signature).map_err(|_|TierReject::Signature)
+  verify(signer,&self.id(),&self.signature).map_err(|_|TierReject::Signature)
  }
 }
 
@@ -347,10 +347,13 @@ impl TieredRouter{
  }
  /// Admit an intent; returns the due time. Authentication, replay, tariff, entitlement
  /// and fee-cap checks happen here; mark, collar, margin and liquidity at execution.
- pub fn submit(&mut self,i:IntentV6,e:Option<&Entitlement>,now:u64)->T<u64>{
+ pub fn submit(&mut self,i:IntentV6,e:Option<&Entitlement>,now:u64)->T<u64>{let o=i.owner;self.submit_by(i,e,now,&o)}
+ /// `submit` with the signature checked against `signer` (the owner, or an agent key the
+ /// caller has authorized for this account: `agents`).
+ pub(super) fn submit_by(&mut self,i:IntentV6,e:Option<&Entitlement>,now:u64,signer:&Key)->T<u64>{
   self.clock(now)?;
   if i.scope!=self.cfg.scope||i.router!=self.cfg.router{return Err(TierReject::Scope)}
-  i.check()?;
+  i.check_by(signer)?;
   if i.tariff_version!=self.cfg.tariff.version{return Err(TierReject::TariffVersion)}
   if i.execution_policy!=self.policy_id{return Err(TierReject::PolicyMismatch)}
   let ent_until=self.entitlement(&i,e,now)?;
@@ -539,6 +542,15 @@ impl TieredRouter{
  pub(super) fn set_account_position(&mut self,k:&Outpoint,p:positions::Position){if let Some(a)=self.accounts.get_mut(k){a.position=p}}
  /// Pull a resting maker quote (used when a fenced abort cancels a batch's makers).
  pub(super) fn cancel_resting(&mut self,id:Key){self.remove(id);}
+ /// Drop queued (admitted, not yet processed) intents by id; returns the ids dropped.
+ pub(super) fn drop_queued(&mut self,ids:&BTreeSet<Key>)->Vec<Key>{
+  let mut out=Vec::new();
+  for q in [&mut self.queue,&mut self.cancels]{
+   let keys:Vec<_>=q.iter().filter(|(_,x)|ids.contains(&x.intent.id())).map(|(k,_)|*k).collect();
+   for k in keys{out.push(q.remove(&k).unwrap().intent.id());}
+  }
+  out
+ }
  /// Fund closing taker legs from the lots they close (journaled `EnableClosingLoans`).
  pub(super) fn set_close_from_lots(&mut self,on:bool){self.close_from_lots=on}
  pub(super) fn close_from_lots(&self)->bool{self.close_from_lots}

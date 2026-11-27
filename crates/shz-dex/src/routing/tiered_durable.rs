@@ -9,6 +9,7 @@ use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,Journal
 use super::positions::{self,Position,Settlement};
 use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
+use super::agents::{AgentBook,AgentGrant,AgentRevocation,INSTRUMENT_OPTIONS,INSTRUMENT_PERPS,INSTRUMENT_SPOT};
 use super::options::{OptionBatchKind,IntentV7,OptionAckBundle,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset,SpotIntent,SpotPair,option_ack_message};
 use shz_dlc::{OracleAnnouncement,OracleAttestation};
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
@@ -79,6 +80,8 @@ struct State{
  /// Expiry and void batches commit on peer and monitor signatures, owner optional
  /// (journaled `EnableOwnerlessExpiry`); trade batches always need every owner.
  ownerless_expiry:bool,
+ /// Delegated agent keys (`agents`), switched on by a journaled `EnableAgents`.
+ agents:Option<AgentBook>,
 }
 /// A staged option batch: the desk as it is after the batch, the BTC pool's dust (its only
 /// effect on the shared BTC ledger, applied as a delta so perpetual resolutions in between
@@ -105,7 +108,7 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT06/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None,option_acks:false,pending_option:None,last_option_resolution:None,ownerless_expiry:false})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None,option_acks:false,pending_option:None,last_option_resolution:None,ownerless_expiry:false,agents:None})
  }
  fn tag(&self)->&'static [u8]{if self.clearing.is_some(){TIERED_ACK_TAG_V3}else if self.netting{TIERED_ACK_TAG_V2}else{TIERED_ACK_TAG}}
  fn plan_clearing(&self,batch:&Batch,disposition:Disposition)->R<Option<ClearPlan>>{
@@ -144,7 +147,7 @@ impl State{
   self.pending_option=Some(PendingOption{batch:b.clone(),desk,btc_dust,staged_us:now,taker,makers});
  }
  /// Commit or fence-abort the staged option batch against every lane's V4 acknowledgement.
- fn resolve_option(&mut self,bundle:OptionAckBundle,now:u64)->R<bool>{
+ fn resolve_option(&mut self,bundle:OptionAckBundle,now:u64,delegated:&BTreeMap<Outpoint,Key>)->R<bool>{
   let staged=self.pending_option.as_ref().filter(|p|bundle.sequence==p.batch.sequence&&bundle.batch==p.batch.digest());
   // An exact byte-equivalent retry of the last resolution is idempotent after recovery.
   if staged.is_none()&&self.last_option_resolution.as_ref()==Some(&bundle){return Ok(false)}
@@ -163,6 +166,7 @@ impl State{
    let lane=self.lanes.get(&op(c)).ok_or(Reject::Allocation)?;
    let owner=self.router.account_owner(&op(c)).ok_or(Reject::Allocation)?;
    let h=option_ack_message(&self.config,&p.batch,bundle.disposition,c)?;
+   let owner=delegated.get(&op(c)).copied().unwrap_or(owner);
    for (i,(k,sig)) in [owner,lane.peer,lane.monitor].iter().zip(&a.signatures).enumerate(){
     if i==0&&owner_optional&&sig.r_x==[0;32]&&sig.s==[0;32]{continue}
     verify(k,&h,sig)?;
@@ -193,14 +197,14 @@ impl State{
   for (seq,rows) in per_batch{self.batches.get_mut(&seq).unwrap().settlements=rows;}
   self.netting=true;Ok(())
  }
- fn prepare(&mut self,sequence:u64,approvals:&[BatchApproval])->R<()>{
+ fn prepare(&mut self,sequence:u64,approvals:&[BatchApproval],delegated:&BTreeMap<Outpoint,Key>)->R<()>{
   if sequence!=self.next_resolution{return Err(Reject::Replay)}
   let entry=self.batches.get_mut(&sequence).ok_or(Reject::UnknownOrder)?;
   if !matches!(entry.phase,Phase::Sealed|Phase::Prepared){return Err(Reject::Replay)}
-  entry.batch.verify_approvals(approvals)?;
+  entry.batch.verify_approvals_with(approvals,delegated)?;
   entry.phase=Phase::Prepared;Ok(())
  }
- fn resolve(&mut self,bundle:AckBundle,deadline:bool)->R<bool>{
+ fn resolve(&mut self,bundle:AckBundle,deadline:bool,delegated:&BTreeMap<Outpoint,Key>)->R<bool>{
   let entry=self.batches.get(&bundle.sequence).ok_or(Reject::UnknownOrder)?;
   // An exact byte-equivalent signed bundle is idempotent after recovery.
   if let Some(old)=&entry.ack{return if old==&bundle{Ok(false)}else{Err(Reject::Replay)}}
@@ -215,7 +219,7 @@ impl State{
   let cleared=self.plan_clearing(&entry.batch,bundle.disposition)?;
   let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
    &|k:&Outpoint|router.account_balance(k),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&router.batch_loans(&entry.batch),&router.other_loans(&entry.batch),
-   &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,deadline)?;
+   &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,deadline,delegated)?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.set_account_balance(&key,balance);self.lanes.get_mut(&key).unwrap().head=head;}
   let mut settlements=Vec::new();
@@ -252,9 +256,9 @@ impl State{
     }
     Ok(Reply::Batch(batch))
    },
-   Event::Prepare{sequence,approvals}=>{self.prepare(sequence,&approvals)?;Ok(Reply::Unit)},
-   Event::Resolve{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,false)?)),
-   Event::Expire{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,true)?)),
+   Event::Prepare{sequence,approvals}=>{self.prepare(sequence,&approvals,&BTreeMap::new())?;Ok(Reply::Unit)},
+   Event::Resolve{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,false,&BTreeMap::new())?)),
+   Event::Expire{bundle}=>Ok(Reply::Resolved(self.resolve(bundle,true,&BTreeMap::new())?)),
    Event::EnableMarginRelease=>{self.enable_netting()?;Ok(Reply::Unit)},
    Event::EnableClearing{fund_sats}=>{self.enable_clearing(fund_sats)?;Ok(Reply::Unit)},
    Event::EnableClosingLoans=>{self.enable_closing_loans()?;Ok(Reply::Unit)},
@@ -263,7 +267,7 @@ impl State{
     self.options=Some(OptionsDesk::new(oracle_key,num_bits)?);Ok(Reply::Unit)
    },
    Event::EnableOptionAcks=>{self.desk()?;if self.option_acks{return Err(TierReject::Replay)}self.option_acks=true;Ok(Reply::Unit)},
-   Event::ResolveOption{bundle,now}=>Ok(Reply::Resolved(self.resolve_option(bundle,now)?)),
+   Event::ResolveOption{bundle,now}=>Ok(Reply::Resolved(self.resolve_option(bundle,now,&BTreeMap::new())?)),
    Event::RegisterStable{asset}=>{self.desk()?.register_stable(asset)?;Ok(Reply::Unit)},
    Event::StableTransfer{channel,asset,units,deposit}=>{
     let k=op(&channel);if self.router.account_owner(&k).is_none(){return Err(TierReject::Allocation)}
@@ -316,7 +320,108 @@ impl State{
      out=>{self.options=Some(desk);Ok(Reply::Option(out))},
     }
    },
+   Event::EnableAgents=>{if self.agents.is_some(){return Err(TierReject::Replay)}self.agents=Some(AgentBook::default());Ok(Reply::Unit)},
+   Event::GrantAgent{grant,now}=>{
+    let c=self.router.config();let (scope,rid)=(c.scope,c.router);let router=&self.router;
+    let now=now.max(router.clock_us());
+    Ok(Reply::Key(self.agents.as_mut().ok_or(TierReject::Scope)?.admit(grant,scope,rid,&|k:&Outpoint|router.account_owner(k),now)?))
+   },
+   Event::RevokeAgent{revocation,now}=>{
+    let c=self.router.config();let (scope,rid)=(c.scope,c.router);
+    let now=now.max(self.router.clock_us());
+    let ids=self.agents.as_mut().ok_or(TierReject::Scope)?.revoke(&revocation,scope,rid,now)?;
+    // Instant: the agent's resting and queued perpetual orders and its option and spot
+    // quotes (on the live desk and on a staged one) are pulled in the same event.
+    for id in &ids{self.router.cancel_resting(*id);}
+    let set:BTreeSet<Key>=ids.iter().copied().collect();
+    let dropped=self.router.drop_queued(&set);
+    if let Some(d)=self.options.as_mut(){d.cancel_quotes(&ids);}
+    if let Some(p)=self.pending_option.as_mut(){p.desk.cancel_quotes(&ids);}
+    Ok(Reply::Pulled(ids,dropped))
+   },
+   Event::SubmitAgent{intent,entitlement,now,grant}=>{
+    let book=self.agents.as_ref().ok_or(TierReject::Scope)?;
+    let g=book.authorize(&grant,INSTRUMENT_PERPS,&intent.channel,&intent.owner,now.max(self.router.clock_us()))?.agent;
+    if intent.action==Action::Cancel{book.own_order(&grant,&intent.cancel_target)?}
+    let (id,ch)=(intent.id(),intent.channel.clone());
+    let due=self.router.submit_by(intent,entitlement.as_ref(),now,&g)?;
+    self.agents.as_mut().unwrap().record(id,&ch,grant);
+    Ok(Reply::Due(due))
+   },
+   Event::SubmitOptionAgent{intent,now,grant}=>{
+    let book=self.agents.as_ref().ok_or(TierReject::Scope)?;
+    let g=book.authorize(&grant,INSTRUMENT_OPTIONS,&intent.channel,&intent.owner,now)?.agent;
+    if intent.action==Action::Cancel{book.own_order(&grant,&intent.cancel_target)?}
+    let (id,ch)=(intent.id(),intent.channel.clone());
+    let mut desk=self.desk()?.clone();let mut clearing=self.clearing.clone().ok_or(TierReject::Scope)?;
+    let c=self.router.config();let router=&self.router;
+    let taker=(op(&intent.channel),intent.sequence);
+    let out=desk.submit_by(c.scope,c.router,&|k:&Outpoint|router.account_owner(k),&mut clearing,intent,now,&g)?;
+    self.agents.as_mut().unwrap().record(id,&ch,grant);
+    match out{
+     OptionOutcome::Filled(b) if self.option_acks=>{self.stage(&b,desk,now,Some(taker));Ok(Reply::Option(OptionOutcome::Staged(b)))},
+     out=>{self.options=Some(desk);self.clearing=Some(clearing);Ok(Reply::Option(out))},
+    }
+   },
+   Event::SubmitSpotAgent{intent,now,grant}=>{
+    let book=self.agents.as_ref().ok_or(TierReject::Scope)?;
+    let g=book.authorize(&grant,INSTRUMENT_SPOT,&intent.channel,&intent.owner,now)?.agent;
+    if intent.action==Action::Cancel{book.own_order(&grant,&intent.cancel_target)?}
+    let (id,ch)=(intent.id(),intent.channel.clone());
+    let mut desk=self.desk()?.clone();let clearing=self.clearing.as_ref().ok_or(TierReject::Scope)?;
+    let c=self.router.config();let router=&self.router;
+    let taker=(op(&intent.channel),intent.sequence);
+    let out=desk.submit_spot_by(c.scope,c.router,&|k:&Outpoint|router.account_owner(k),clearing,intent,now,&g)?;
+    self.agents.as_mut().unwrap().record(id,&ch,grant);
+    match out{
+     OptionOutcome::Filled(b)=>{self.stage(&b,desk,now,Some(taker));Ok(Reply::Option(OptionOutcome::Staged(b)))},
+     out=>{self.options=Some(desk);Ok(Reply::Option(out))},
+    }
+   },
+   Event::PrepareDelegated{sequence,approvals,delegated}=>{
+    let alt=self.perp_delegates(sequence,&delegated)?;
+    self.prepare(sequence,&approvals,&alt)?;Ok(Reply::Unit)
+   },
+   Event::ResolveDelegated{bundle,delegated}=>{
+    let alt=self.perp_delegates(bundle.sequence,&delegated)?;
+    Ok(Reply::Resolved(self.resolve(bundle,false,&alt)?))
+   },
+   Event::ResolveOptionDelegated{bundle,now,delegated}=>{
+    let alt=self.option_delegates(&delegated,now)?;
+    Ok(Reply::Resolved(self.resolve_option(bundle,now,&alt)?))
+   },
   }
+ }
+ /// Owner-slot signers for a perpetual batch: each (channel, grant) must be a live grant
+ /// with perpetuals whose agent signed every leg of the batch on that channel.
+ fn perp_delegates(&self,sequence:u64,delegated:&[(BtcOutPoint,Key)])->R<BTreeMap<Outpoint,Key>>{
+  let book=self.agents.as_ref().ok_or(Reject::Scope)?;
+  if delegated.is_empty(){return Err(Reject::Bounds)}
+  let batch=&self.batches.get(&sequence).ok_or(Reject::UnknownOrder)?.batch;
+  let sides:Vec<_>=batch.legs().iter().map(|f|(f.maker_channel.clone(),f.maker_id,f.taker_channel.clone(),f.taker_id)).collect();
+  let now=self.router.clock_us();
+  let mut out=BTreeMap::new();
+  for (c,g) in delegated{
+   if out.insert(op(c),book.may_ack(g,INSTRUMENT_PERPS,c,&sides,now)?).is_some(){return Err(Reject::Replay)}
+  }
+  Ok(out)
+ }
+ /// Owner-slot signers for the staged option or spot batch (trade and spot kinds only).
+ fn option_delegates(&self,delegated:&[(BtcOutPoint,Key)],now:u64)->R<BTreeMap<Outpoint,Key>>{
+  let book=self.agents.as_ref().ok_or(Reject::Scope)?;
+  if delegated.is_empty(){return Err(Reject::Bounds)}
+  let p=self.pending_option.as_ref().ok_or(Reject::UnknownOrder)?;
+  let (instrument,sides):(u8,Vec<_>)=match p.batch.kind{
+   OptionBatchKind::Trade{..}=>(INSTRUMENT_OPTIONS,p.batch.fills.iter().map(|f|(f.long.clone(),f.maker,f.short.clone(),f.taker)).collect()),
+   OptionBatchKind::Spot{..}=>(INSTRUMENT_SPOT,p.batch.spot.iter().map(|f|(f.seller.clone(),f.maker,f.buyer.clone(),f.taker)).collect()),
+   _=>return Err(Reject::Scope),
+  };
+  let now=now.max(p.staged_us);
+  let mut out=BTreeMap::new();
+  for (c,g) in delegated{
+   if out.insert(op(c),book.may_ack(g,instrument,c,&sides,now)?).is_some(){return Err(Reject::Replay)}
+  }
+  Ok(out)
  }
 }
 
@@ -367,9 +472,25 @@ enum Event{
  ListSpotPair{pair:SpotPair},
  /// One signed spot order; a take is staged as a spot batch for the acknowledgement round.
  SubmitSpot{intent:SpotIntent,now:u64},
+ /// Switch on delegated agent keys (`agents`).
+ EnableAgents,
+ /// Admit an owner-signed agent grant.
+ GrantAgent{grant:AgentGrant,now:u64},
+ /// Owner-signed revocation; pulls the agent's resting and queued orders in the same event.
+ RevokeAgent{revocation:AgentRevocation,now:u64},
+ /// Perpetual intent signed by the agent of `grant`.
+ SubmitAgent{intent:IntentV6,entitlement:Option<Entitlement>,now:u64,grant:Key},
+ SubmitOptionAgent{intent:IntentV7,now:u64,grant:Key},
+ SubmitSpotAgent{intent:SpotIntent,now:u64,grant:Key},
+ /// `Prepare` where each listed channel's approval is signed by that grant's agent.
+ PrepareDelegated{sequence:u64,approvals:Vec<BatchApproval>,delegated:Vec<(BtcOutPoint,Key)>},
+ /// `Resolve` where each listed channel's owner signature is that grant's agent's.
+ ResolveDelegated{bundle:AckBundle,delegated:Vec<(BtcOutPoint,Key)>},
+ /// `ResolveOption` where each listed channel's owner signature is that grant's agent's.
+ ResolveOptionDelegated{bundle:OptionAckBundle,now:u64,delegated:Vec<(BtcOutPoint,Key)>},
 }
 #[allow(clippy::large_enum_variant)]
-enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool),Key(Key),Option(OptionOutcome),OptionBatch(Box<OptionBatch>)}
+enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool),Key(Key),Option(OptionOutcome),OptionBatch(Box<OptionBatch>),Pulled(Vec<Key>,Vec<Key>)}
 
 /// Full event-sourced tiered router, including rejected calls that may advance time.
 /// No mutable `TieredRouter` escapes. The file is held exclusively for the writer
@@ -603,6 +724,48 @@ impl DurableTieredRouter{
  /// when margin release was switched on. Empty without margin release.
  pub fn settlements(&self,sequence:u64)->D<&[(BtcOutPoint,Settlement)]>{
   self.ready()?;Ok(self.state.batches.get(&sequence).map(|e|e.settlements.as_slice()).unwrap_or(&[]))
+ }
+ // ---------------------------------------------------------------- agents
+ /// Switch on delegated agent keys (journaled `EnableAgents`, once). Returns `false` if already on.
+ pub fn enable_agents(&mut self)->D<bool>{
+  self.ready()?;if self.state.agents.is_some(){return Ok(false)}
+  self.record(Event::EnableAgents)?;Ok(true)
+ }
+ pub fn agents(&self)->D<Option<&AgentBook>>{self.ready()?;Ok(self.state.agents.as_ref())}
+ /// Admit an owner-signed grant; returns its id (`AgentGrant::id`).
+ pub fn grant_agent(&mut self,grant:AgentGrant,now:u64)->D<Key>{
+  match self.record(Event::GrantAgent{grant,now})?{Reply::Key(k)=>Ok(k),_=>unreachable!()}
+ }
+ /// Revoke a grant. Returns (intent ids the agent had signed, queued perpetual intents dropped).
+ pub fn revoke_agent(&mut self,revocation:AgentRevocation,now:u64)->D<(Vec<Key>,Vec<Key>)>{
+  match self.record(Event::RevokeAgent{revocation,now})?{Reply::Pulled(a,b)=>Ok((a,b)),_=>unreachable!()}
+ }
+ pub fn submit_agent(&mut self,intent:IntentV6,entitlement:Option<Entitlement>,now:u64,grant:Key)->D<u64>{
+  match self.record(Event::SubmitAgent{intent,entitlement,now,grant})?{Reply::Due(x)=>Ok(x),_=>unreachable!()}
+ }
+ pub fn submit_option_agent(&mut self,intent:IntentV7,now:u64,grant:Key)->D<OptionOutcome>{
+  match self.record(Event::SubmitOptionAgent{intent,now,grant})?{Reply::Option(x)=>Ok(x),_=>unreachable!()}
+ }
+ pub fn submit_spot_agent(&mut self,intent:SpotIntent,now:u64,grant:Key)->D<OptionOutcome>{
+  match self.record(Event::SubmitSpotAgent{intent,now,grant})?{Reply::Option(x)=>Ok(x),_=>unreachable!()}
+ }
+ pub fn prepare_delegated(&mut self,sequence:u64,approvals:Vec<BatchApproval>,delegated:Vec<(BtcOutPoint,Key)>)->D<()>{
+  self.record(Event::PrepareDelegated{sequence,approvals,delegated}).map(|_|())
+ }
+ pub fn resolve_delegated(&mut self,bundle:AckBundle,delegated:Vec<(BtcOutPoint,Key)>)->D<bool>{
+  match self.record(Event::ResolveDelegated{bundle,delegated})?{Reply::Resolved(x)=>Ok(x),_=>unreachable!()}
+ }
+ pub fn resolve_option_delegated(&mut self,bundle:OptionAckBundle,now:u64,delegated:Vec<(BtcOutPoint,Key)>)->D<bool>{
+  match self.record(Event::ResolveOptionDelegated{bundle,now,delegated})?{Reply::Resolved(x)=>Ok(x),_=>unreachable!()}
+ }
+ /// Whether `grant`'s agent may sign `channel`'s owner slot of perpetual batch `sequence`
+ /// (the rule `prepare_delegated` and `resolve_delegated` apply).
+ pub fn agent_may_ack(&self,sequence:u64,channel:&BtcOutPoint,grant:&Key)->D<bool>{
+  self.ready()?;Ok(self.state.perp_delegates(sequence,&[(channel.clone(),*grant)]).is_ok())
+ }
+ /// Same for the staged option or spot batch at desk time `now`.
+ pub fn agent_may_ack_option(&self,channel:&BtcOutPoint,grant:&Key,now:u64)->D<bool>{
+  self.ready()?;Ok(self.state.option_delegates(&[(channel.clone(),*grant)],now).is_ok())
  }
  /// Crash-testing hook: journal and fsync a process step without applying it, as if the
  /// process died between the append and the in-memory update. The writer is poisoned

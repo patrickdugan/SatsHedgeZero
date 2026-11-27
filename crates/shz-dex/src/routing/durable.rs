@@ -144,7 +144,7 @@ impl State{
   let cleared=self.plan_clearing(&entry.batch,bundle.disposition)?;
   let plan=plan_resolution(self.tag(),&self.config,&self.recipients,&self.lanes,
    &|k:&Outpoint|accounts.get(k).map(|a|a.balance),self.netting.then_some(&position_of as PositionOf),cleared.as_ref(),&BTreeMap::new(),&BTreeMap::new(),
-   &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,false)?;
+   &self.fee_receipts,(self.oracle_paid,self.router_paid),&entry.batch,&bundle,false,&BTreeMap::new())?;
   // No fallible checks past this point. All account updates atomic in memory.
   for (key,balance,head) in plan.changes{self.router.accounts.get_mut(&key).unwrap().balance=balance;self.lanes.get_mut(&key).unwrap().head=head;}
   let mut settlements=Vec::new();
@@ -229,7 +229,7 @@ pub(crate) fn lane_settlement(batch:&Batch,channel:&BtcOutPoint,position_of:Posi
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,lanes:&BTreeMap<Outpoint,LaneState>,
  balance_of:&dyn Fn(&Outpoint)->Option<Balance>,netting:Option<PositionOf>,cleared:Option<&ClearPlan>,loans:&BTreeMap<Outpoint,u64>,other_loans:&BTreeMap<Outpoint,u64>,spent_receipts:&BTreeSet<Key>,paid:(u128,u128),batch:&Batch,bundle:&AckBundle,
- owner_optional:bool)->R<ResolutionPlan>{
+ owner_optional:bool,delegated:&BTreeMap<Outpoint,Key>)->R<ResolutionPlan>{
  // `owner_optional` is the deadline-abort path only: a fenced abort moves no channel
  // state and refunds every debit, so it may proceed without a silent owner's ack.
  if owner_optional&&bundle.disposition!=Disposition::FencedAbort{return Err(Reject::Replay)}
@@ -263,7 +263,8 @@ pub(crate) fn plan_resolution(tag:&[u8],config:&Key,recipients:&FeeRecipients,la
    _=>None,
   };
   let h=ack_message(tag,config,recipients,bundle.sequence,batch,bundle.disposition,ack,settled.as_ref().map(|x|&x.1),cleared.map(|c|&c.report))?;
-  for (i,(k,sig)) in [a.owner,lane.peer,lane.monitor].iter().zip(&ack.signatures).enumerate(){
+  let owner_signer=delegated.get(&key).copied().unwrap_or(a.owner);
+  for (i,(k,sig)) in [owner_signer,lane.peer,lane.monitor].iter().zip(&ack.signatures).enumerate(){
    if i==0&&owner_optional&&sig.r_x==[0;32]&&sig.s==[0;32]{continue}
    verify(k,&h,sig)?;
   }

@@ -143,12 +143,17 @@ impl OptionsDesk{
  /// Admit and execute one signed spot intent. Post and Cancel apply here; a Take returns
  /// `Filled` with the batch (already applied to this desk: callers stage a clone).
  pub fn submit_spot(&mut self,scope:Scope,router:u32,owner_of:&dyn Fn(&Outpoint)->Option<Key>,clearing:&ClearingState,i:SpotIntent,now:u64)->R<OptionOutcome>{
+  let o=i.owner;self.submit_spot_by(scope,router,owner_of,clearing,i,now,&o)
+ }
+ /// `submit_spot` with the signature checked against `signer` (owner or authorized agent key).
+ #[allow(clippy::too_many_arguments)]
+ pub(crate) fn submit_spot_by(&mut self,scope:Scope,router:u32,owner_of:&dyn Fn(&Outpoint)->Option<Key>,clearing:&ClearingState,i:SpotIntent,now:u64,signer:&Key)->R<OptionOutcome>{
   if now<self.clock{return Err(Reject::Clock)}
   self.clock=now;
   let k=op(&i.channel);
   if i.version!=SPOT_INTENT_VERSION||i.scope!=scope||i.router!=router{return Err(Reject::Scope)}
   if owner_of(&k)!=Some(i.owner){return Err(Reject::Allocation)}
-  verify(&i.owner,&i.id(),&i.signature)?;
+  verify(signer,&i.id(),&i.signature)?;
   if i.expires_us<=now{return Err(Reject::Expired)}
   if i.sequence<=self.accounts.get(&k).map_or(0,|a|a.last_sequence){return Err(Reject::Replay)}
   let out=match i.action{

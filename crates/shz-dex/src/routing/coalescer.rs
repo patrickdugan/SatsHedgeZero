@@ -60,7 +60,10 @@ impl Batch{
  }
  /// All participating channel owners must approve exactly once.
  /// Owner signatures do not authorize an LN state transition by themselves.
- pub fn verify_approvals(&self,approvals:&[BatchApproval])->R<()>{
+ pub fn verify_approvals(&self,approvals:&[BatchApproval])->R<()>{self.verify_approvals_with(approvals,&BTreeMap::new())}
+ /// `verify_approvals` where the channels in `signer` are signed by that key (an agent
+ /// key the caller authorized) instead of the owner; the message still names the owner.
+ pub(crate) fn verify_approvals_with(&self,approvals:&[BatchApproval],signer:&BTreeMap<Outpoint,Key>)->R<()>{
   if approvals.len()!=self.accounts.len(){return Err(Reject::Allocation)}
   let mut seen=BTreeSet::new();
   let owners:BTreeMap<_,_>=self.accounts.iter().map(|a|(op(&a.channel),a.owner)).collect();
@@ -69,7 +72,7 @@ impl Batch{
    if !seen.insert(outpoint){return Err(Reject::Replay)}
    let key=owners.get(&outpoint).ok_or(Reject::Allocation)?;
    let mut b=Vec::new();b.extend(self.digest);put_op(&mut b,&a.channel);b.extend(key);
-   verify(key,&tagged_hash(b"SHZ/HFT/BATCH-APPROVAL/V1",&b),&a.signature)?;
+   verify(signer.get(&outpoint).unwrap_or(key),&tagged_hash(b"SHZ/HFT/BATCH-APPROVAL/V1",&b),&a.signature)?;
   }
   Ok(())
  }
