@@ -1,0 +1,13 @@
+{
+  "status": "executed_unproved",
+  "sp1": "6.9.0",
+  "executor": "ProverClient::builder().light() execute, WSL2 Ubuntu-24.04",
+  "elf_sha256": "b74a4ac904d9a0bc74423d5c11c52064151945c400e405a5c67b79dbce365bf7",
+  "clearing_vk_sha256": "c660c21a40d2e20340d6d2be73d3e817adf3a57ae98b85d12ab616c9c8a6477b",
+  "clearing_vk_bytes": 131995888,
+  "instruction_count": 163595198099,
+  "execute_seconds": 3557.0,
+  "exit_code": 0,
+  "public_values_sha256": "b05dccf54f9308ce47317ebf4b767f4570fb0ab186105ef1260c5ba1e9c4cf32",
+  "public_values_equal_expected_statement": true
+}

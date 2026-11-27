@@ -26,7 +26,8 @@ Work under shz/research/lightninger_dlc_batcher.
      cd sp1/script && cargo build --release
      ./target/release/dlc-batch-guest elf ../../dlc-batch-guest.elf     # prints the ELF SHA-256
      ./target/release/dlc-batch-guest vkey                              # SP1 program vkey hash (bytes32)
-   Then execute once on CPU as a gate (also checks four refusal cases):
+   Then execute once on CPU as a gate (also checks four refusal cases; on the laptop the honest run is
+   163,595,198,099 instructions / 3,557 s and each refusal case re-runs the guest):
      ./target/release/dlc-batch-guest execute ../../artifacts/regtest/guest exec.json
    exec.json must show exit_code 0 and public_values_equal_expected_statement true.
 
@@ -57,6 +58,8 @@ Return (as files, plus the numbers in your report):
   ELF SHA-256, program vkey hash, instruction count, shard count, wall time per stage
   (execute, core+compress on GPU, shrink, wrap, Groth16), peak GPU and host memory, GPU model,
   and the public values (must be byte-identical to expected_statement.bin).
+Budget: 163.6e9 instructions is about 4.8x M16 (34.1e9: 13,290 shards, 1 h 54 min on a 16 GB laptop
+GPU from a warm memo), so expect roughly 60,000 shards at 2^27 elements.
 Do not change the guest, the inputs or the SP1 version. If a stage fails, report the exact error and
 the last 50 log lines; do not retry more than once.
 ```
