@@ -74,6 +74,8 @@ struct State{
  option_acks:bool,
  /// The one option batch staged for acknowledgement, if any.
  pending_option:Option<PendingOption>,
+ /// The bundle that resolved the last option batch (an exact retry is idempotent).
+ last_option_resolution:Option<OptionAckBundle>,
 }
 /// A staged option batch: the desk as it is after the batch, the BTC pool's dust (its only
 /// effect on the shared BTC ledger, applied as a delta so perpetual resolutions in between
@@ -100,7 +102,7 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT06/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None,option_acks:false,pending_option:None})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None,option_acks:false,pending_option:None,last_option_resolution:None})
  }
  fn tag(&self)->&'static [u8]{if self.clearing.is_some(){TIERED_ACK_TAG_V3}else if self.netting{TIERED_ACK_TAG_V2}else{TIERED_ACK_TAG}}
  fn plan_clearing(&self,batch:&Batch,disposition:Disposition)->R<Option<ClearPlan>>{
@@ -140,6 +142,9 @@ impl State{
  }
  /// Commit or fence-abort the staged option batch against every lane's V4 acknowledgement.
  fn resolve_option(&mut self,bundle:OptionAckBundle,now:u64)->R<bool>{
+  let staged=self.pending_option.as_ref().filter(|p|bundle.sequence==p.batch.sequence&&bundle.batch==p.batch.digest());
+  // An exact byte-equivalent retry of the last resolution is idempotent after recovery.
+  if staged.is_none()&&self.last_option_resolution.as_ref()==Some(&bundle){return Ok(false)}
   let p=self.pending_option.as_ref().ok_or(Reject::UnknownOrder)?;
   if bundle.sequence!=p.batch.sequence||bundle.batch!=p.batch.digest(){return Err(Reject::Replay)}
   let abort=bundle.disposition==Disposition::FencedAbort;
@@ -166,6 +171,7 @@ impl State{
    let mut next=p.desk;next.touch(now);*desk=next;
    if let Some(c)=self.clearing.as_mut(){c.cash+=p.btc_dust;c.fund+=p.btc_dust as u64;}
   }
+  self.last_option_resolution=Some(bundle);
   Ok(true)
  }
  fn enable_closing_loans(&mut self)->R<()>{

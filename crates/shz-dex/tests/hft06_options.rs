@@ -589,3 +589,30 @@ fn d2_staged_batch_aborts_after_the_deadline_and_replays(){
  let d=DurableTieredRouter::open(&path,&registry(),cfg(),lanes(),recipients(),Some(tip)).unwrap();
  assert_eq!(snap(&d),before);
 }
+
+/// C3. Recovery: a batch staged when the writer stops is still staged after the journal
+/// reopens and resolves there; an exact retry of the resolving bundle is idempotent, a
+/// conflicting one is refused.
+#[test]
+fn d3_staged_batch_survives_restart_and_retries_are_idempotent(){
+ let t=Temp::new();let path=t.path();
+ let mut v=Desk::new(&path);
+ let call=v.list(OptionKind::Call,BTC,100_000);
+ for n in [1,2]{v.d.fund_options(channel(n),5_000_000).unwrap();}
+ v.post(2,call,false,1000,40_000);
+ assert!(v.d.enable_option_acks().unwrap());
+ let b=staged(&mut v,1,vec![leg(call,true,1000)],40_000_000);
+ let bundle=acks(&v,Disposition::Commit,true);
+ let abort=acks(&v,Disposition::FencedAbort,false);
+ let tip=v.d.tip().unwrap();
+ let Desk{d,oracle,events,seq,now}=v;drop(d);
+ let d=DurableTieredRouter::open(&path,&registry(),cfg(),lanes(),recipients(),Some(tip)).unwrap();
+ let mut v=Desk{d,oracle,events,seq,now};
+ assert_eq!(v.d.pending_option().unwrap(),Some(&b));
+ assert_eq!(v.btc(1).free,5_000_000);
+ assert!(v.d.resolve_option(bundle.clone(),v.now.get()).unwrap());
+ assert!(!v.d.resolve_option(bundle,v.now.get()).unwrap(),"exact retry is idempotent");
+ rejected(v.d.resolve_option(abort,v.now.get()+ABORT_AFTER_US),TierReject::UnknownOrder);
+ assert_eq!(v.btc(1).free,5_000_000-40_000);
+ v.check();
+}
