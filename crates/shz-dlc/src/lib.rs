@@ -937,3 +937,6 @@ mod tests {
         assert!(saw_negated_true && saw_negated_false);
     }
 }
+
+/// BIP-327 MuSig2 and MuSig2 adaptor signatures (DLC CETs on a 2-of-2 key path).
+pub mod musig2;
