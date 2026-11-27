@@ -23,6 +23,8 @@ shz-dlc = { path = "../../crates/shz-dlc" }
 shz-margin = { path = "../../crates/shz-margin" }
 shz-nova-bitvm = { path = "../../crates/shz-nova-bitvm" }
 shz-mnr05-bitvm3-ln-dlc = { path = "../mnr05_bitvm3_ln_dlc" }
+# M17 (Bitcoin Script on Nova, Pallas/Vesta) with Taproot: garbled-snark-verifier nova-bitvm3/m17
+m17-nova-script = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "f80c364fad9a0d0000426c2f208de03708e6e268" }
 
 [profile.release]
 panic = "unwind"

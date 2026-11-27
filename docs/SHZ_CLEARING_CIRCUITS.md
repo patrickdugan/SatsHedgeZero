@@ -15,12 +15,14 @@ The review of the earlier drafts these replace is `docs/SHZ_CLEARING_CIRCUITS_RE
 | `src/trace.rs` | real traces from `DurableTieredRouter` (post, take, seal, prepare, resolve with signed approvals and lane acks) |
 | `src/fold.rs` | fold, compress, verify, negative controls |
 | `src/audit.rs` | recording constraint system, mutation and under-constraint search, iden3 `.r1cs` export |
-| `src/main.rs` | CLI: `shape`, `trace-stats`, `prove-clearing`, `prove-tapsighash`, `audit` |
+| `src/cet.rs` | binding of M17 (Bitcoin Script on Nova, git dependency) to the TapSighash and Secq folds; the joint statement |
+| `src/main.rs` | CLI: `shape`, `trace-stats`, `prove-clearing`, `prove-tapsighash`, `prove-cet`, `audit` |
 | `tests/clearing_diff.rs` | clearing step against the router, tampers, identity, skipped/reordered batches |
 | `tests/mutation_sweep.rs` | field-level mutation sweep of the clearing step |
 | `tests/tapsighash_vectors.rs` | BIP-341 wallet test vectors (`keyPathSpending`) |
 | `tests/core_regtest.rs` | Bitcoin Core 31.1 regtest: wallet-signed transactions for all 7 hash types, annex spends through `generateblock` |
 | `tests/core_scriptpath.rs` | Bitcoin Core 31.1 regtest: script-path spends (2-signature leaf, codeseparator) for the bind mode |
+| `tests/core_cet.rs` | Bitcoin Core 31.1 regtest: DLC CET and CLTV refund spends through M17 and the bind relation |
 
 Build and test (git bash, as the other research workspaces):
 
@@ -478,7 +480,95 @@ per gadget for every audited instance are in `artifacts/audit_r1cs.json`.
   the one it expects; every receipt also records that the proof is rejected for `z_0` with one
   element changed, for `K - 1` steps, and with one bit of the proof flipped.
 
-## 7. GPU campaign handoff
+## 7. CET spends: M17 with in-circuit signatures, and the joint statement
+
+### What changed in M17
+
+M17 (garbled-snark-verifier `nova-bitvm3/m17`, Bitcoin Script on Nova over Pallas/Vesta) gained
+Taproot in commit `f80c364`; this crate takes it as a git dependency at that commit:
+- key path and tapscript on the same step machine with no new instruction (OP_CHECKSIGADD
+  compiles to `SWAP TOALT CHECKSIG FROMALT ADD`; tapscript runs as script id 4, whose opcode
+  count the circuit keeps at zero; 6,812 constraints);
+- the native engine agrees with Bitcoin Core on **all 4,995** script vectors, including the
+  **2,239 Taproot** ones (every category: applic, sighash, tapscript, siglen, opsuccess, unkver,
+  alwaysvalid, spendpath, compat, compact, sig, output);
+- the step circuit is satisfied with the engine's exact next state on every step of the 2,930
+  valid cases (247,785 steps) and refuses the failing step of 1,042 invalid ones (833 more fail
+  a claim check, 190 at compile time);
+- six Taproot cases Nova-proved and checker-verified; the mutation suite on them refused every
+  change to a read field (910 tampered steps).
+
+`engine::verify_claims_deferring_taproot` checks every claim natively except the Taproot
+signatures (it still applies their encoding, pubkey-type and validation-weight rules) and returns
+them; `circuit::fold_case` folds and verifies an input that way.
+
+### The binding (`src/cet.rs`)
+
+For each input, M17's deferred signatures `(sig, key, key_path, codeseparator register)` and the
+compiled program's tapleaf and annex give the bind-mode slots the TapSighash fold must have
+covered, in claim order. A verifier accepts the spends when
+1. every M17 input fold verifies (program consumed, no phase in progress, step count exact,
+   claims consistent, non-signature claims such as CLTV checked natively);
+2. the parameter accumulator rebuilt from those slots equals the TapSighash fold's, and the fold's
+   signature count, txid and spent-output commitment are the transaction's;
+3. the TapSighash and Secq folds end in the same authorization accumulator.
+
+So each CET signature is checked in-circuit, not by a native claim: the message by the TapSighash
+fold, the BIP-340 equation by the Secq fold. The verifier computes SHA-256 of fixed-size records
+and no curve operation.
+
+### Ground truth: DLC CET and refund on Bitcoin Core 31.1 (`tests/core_cet.rs`)
+
+A funding output P2TR(internal key, {CET leaf `<A> CHECKSIGVERIFY <B> CHECKSIG`, refund leaf
+`<h> CHECKLOCKTIMEVERIFY DROP <A> CHECKSIGVERIFY <B> CHECKSIG`}). The CET spends one funding
+output through the CET leaf; the refund (nLockTime `h`) spends another through the refund leaf.
+Both are signed with the native reference, accepted by `testmempoolaccept` and mined; a CET signed
+for the refund leaf's tapleaf is refused. M17 runs each input (valid), and its deferred
+signatures are exactly the slots that were signed (leaf, key, codeseparator).
+
+### The joint statement (`prove-cet`)
+
+| Fold | Steps | Primary constraints | Fold | Compress | Verify | Proof |
+|---|---:|---:|---:|---:|---:|---:|
+| M17, CET input | 20 (3 claims) | 6,812 per step | 1.65 s | (not compressed) | 0.07 s | |
+| TapSighash bind, CET (2 signatures) | 2 | 624,543 | 1.4 s | 62.8 s | 1.21 s | 12,752 B |
+| Secq256k1 BIP-340, CET | 2 | 144,959 | 0.6 s | 19.5 s | 0.32 s | 11,980 B |
+| M17, refund input | 23 (4 claims, incl. CLTV) | 6,812 per step | 1.86 s | | 0.07 s | |
+| TapSighash bind, refund | 2 | 624,543 | 1.5 s | 65.4 s | 1.15 s | 12,752 B |
+| Secq256k1 BIP-340, refund | 2 | 144,959 | 0.6 s | 19.7 s | 0.31 s | 11,980 B |
+| Clearing, liquidation drill (None, None, Margin, Fund) | 4 | 451,732 | | 38.6 s | 1.7 s | 13,112 B |
+
+One run, 295 s, 1,909 MiB peak (`artifacts/cet_joint_statement.json`). For each transaction the
+binding check passed and rejected six altered cases: signatures in another order, one signature
+dropped, a signature checked for another tapleaf, for another codeseparator position, a
+TapSighash fold over another transaction, a Secq fold ending in another accumulator.
+
+The statement is a `UtxoRefL2SettlementStatementV0` with `settlement_txid` = the CET's txid and
+`commitment_hash = SHA256("LIGHTNINGER/CET-SPENDS+CLEARING/V1" ‖ c_cet ‖ c_refund)`, where each
+`c` hashes, under the same tag, the clearing fold's `z_0` and `z_K`, the TapSighash and Secq
+folds' `z_K`, and each M17 input fold's `z_0` and `z_K`. `program_hash` names the four relations
+and the M17 commit, `epoch_id` is the clearing chain's next `seq`. Run: commitment
+`971b4eed…`, statement SHA-256 `c67ee0ca…`.
+
+**What "one statement" means here.** The seven proofs (per transaction an M17 fold, a TapSighash fold and a Secq fold, plus the clearing fold) are over three curve cycles (clearing and
+TapSighash Bn256/Grumpkin, Secq Secq256k1/Secp256k1 for native secp256k1 arithmetic, M17
+Pallas/Vesta), so they are not one Nova fold. The statement commits to all of their public IO,
+and the verifier above checks each proof and the bindings. Folding them into one proof needs a
+wrapper that verifies all of them (the SP1 path in section 8). The statement does not tie the CET's
+payout amounts to the clearing rows: it covers both facts side by side.
+
+### Audit of the binding
+
+- Spec and completeness: the specs are M17's native engine (agreeing with Core on all 4,995
+  vectors) and the native BIP-341/342 reference (checked against BIP-341 vectors and Core's
+  consensus). Both Core CET-pattern spends are accepted end to end.
+- Mutation: six altered bindings rejected per transaction (above); M17's mutation suite on
+  Taproot cases (910 tampered steps); the bind-mode TapSighash steps' variable audit (section 6.2
+  table, no free variable).
+- Not run: the variable-level audit (`audit`) is written for the BN254 scalar field, so M17's
+  Pallas circuit has not been through it; only M17's own field-mutation suite covers it.
+
+## 8. GPU campaign handoff
 
 ### What runs where
 
@@ -489,8 +579,9 @@ per gadget for every audited instance are in `artifacts/audit_r1cs.json`.
   limit at large `A`/`R`.
 - **`nova-bitvm3/prover-gpu` (`nb3-prove-gpu`, garbled-snark-verifier) is SP1 6.9's CUDA shard
   prover for SP1 RISC-V guests**, the backend that proved M13's guest A (the Nova verifier as a
-  guest) and M16. It does not prove Nova step circuits. It proves none of this crate's circuits
-  as-is. Two adaptations would use it:
+  guest) and M16. It does not prove Nova step circuits. As-is it proves none of this repo's
+  circuits: not the clearing step, the TapSighash step, the Secq step, or M17. What it can prove
+  once a guest exists, which is the route to one Groth16 proof for the joint statement:
   1. *Wrap (the BitVM3 path):* an SP1 guest that runs `CompressedSNARK::verify` on a clearing
      or TapSighash proof, as guest A does for M16's proof, and commits `z_0`, `K`, `z_K` and the
      304-byte statement as its public values; `nb3-prove-gpu` proves it, then
@@ -498,7 +589,9 @@ per gadget for every audited instance are in `artifacts/audit_r1cs.json`.
      the statement limbs. Guest A verifies proofs on M16's curve cycle; this crate uses
      Bn256/Grumpkin (and the Secq step Secq256k1/Secp256k1), so the guest needs those engines
      (halo2curves compiles for `riscv32im`; the MSMs in the IPA verifier dominate the cycle
-     count). Not built.
+     count). For the joint statement the guest verifies all seven proofs and runs
+     `cet::verify_binding` and M17's `verify_claims_deferring_taproot`, then commits
+     `commitment_hash`. Not built.
   2. *Direct:* an SP1 guest that runs the native `clear()` over a batch chain and recomputes
      `chain_K`, with no Nova at all. `nb3-prove-gpu` would prove it as-is once the guest exists.
      Not built.
@@ -529,7 +622,12 @@ Record per run: `fold_seconds_per_step`, `compress_seconds`, `verify_seconds` an
 `proof_bytes` from `artifacts/clearing_walk160_k{K}_A{A}_R{R}.json`, and "Maximum resident set
 size" from `time -v`. Expected shape: folding is linear in K (about 0.8–1.1 s per step here, 20
 threads), compression and verification do not depend on K (they prove one relaxed instance),
-and the proof stays about 13 KB. `walk:160` produces well over 128 batches with at most 4 rows.
+and the proof stays about 13 KB. For the CET pieces:
+`$B prove-tapsighash corescript:scriptpath`, `$B prove-cet drill_fund 4` (needs
+`artifacts/core_cet_txs.json`, committed) and `prove-cet walk:160 128` for the joint statement
+over a long clearing chain.
+
+`walk:160` produces 149 batches with at most 4 rows.
 The step needs `R` at least the largest batch, and `A` at least the 6 accounts. Grow both only to
 measure the relation's cost; the `(16, 8)` relation is 891,726 constraints per step.
 Each `(A, R)` is its own relation, with its own setup and verifying key.

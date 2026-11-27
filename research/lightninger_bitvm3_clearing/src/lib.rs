@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 pub mod audit;
+pub mod cet;
 pub mod clearing_step;
 pub mod fold;
 pub mod gadgets;
