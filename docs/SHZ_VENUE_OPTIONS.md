@@ -18,7 +18,8 @@ Without `--options` every option endpoint answers 404 (`GET /api/options/series`
 
 * `EnableOptions{oracle_key = --group-key, num_bits = 20}`: series list only on announcements by
   the pinned FROST group key with 20 digits (outcome domain 1 ..= 1,048,575 USD).
-* `EnableCombos`, `EnableOptionAcks`.
+* `EnableCombos`, `EnableOptionAcks`, `EnableOwnerlessExpiry` (expiry and void batches commit on
+  peer and monitor signatures; trades still need every owner).
 * `RegisterStable{Rgb, id, decimals 6}` for `--stable-usdt` (shown as USDT). Deposits and
   withdrawals are the simulated RGB/TAP adapter: nothing moves on chain.
 
@@ -38,8 +39,16 @@ a BTC call, a BTC put and, with `--stable-usdt`, a USDT cash-secured put.
 
 Once a listed event is past maturity the venue polls it; when its status is `attested` it calls
 `expire_series` with `shz_dlc_attestation` (the router verifies every digit signature against the
-listed announcement). The expiry batch goes through the same acknowledgement round as a trade;
-if it is fence-aborted (a holder did not sign) it is retried 30 s later.
+listed announcement). When its status is `unattestable` it calls `void_event` with
+`unattestable_signature` (the oracle's BIP340 notice over `tagged_hash("SHZ/DLC/UNATTESTABLE/V1",
+event_id)`): every open series on the event is void, legs return with no payoff, premiums stay
+paid, collateral is freed, and the event reads `void` (series `settled_price_usd` 0, batch kind
+`void`). Expiry and void batches are staged and then committed at once on the adapter's peer and
+monitor signatures, so an offline holder cannot hold them; an expiry that still fails is retried
+30 s later.
+
+The format was checked against two events fetched read-only from the public relay
+(`crates/shz-venue/src/core/fixtures/`, test `live_relay_events_verify`).
 
 ## Units
 
@@ -106,16 +115,32 @@ then, for each lane in `OptionBatch::channels()`, computes the V4 message
 simulated channel adapter, as for perpetual acks) and posts a pending owner signature
 `opt{n}:ack:{txid}:{vout}` (kind `option_ack`, context: batch, router sequence, digest, the lane's
 per-asset rows). The page signs pending signatures automatically (`POST /api/signatures`). When
-every owner has signed, the venue calls `resolve_option` (Commit). If a lane is still unsigned
+every owner has signed, the venue calls `resolve_option` (Commit); expiry and void batches post no
+owner request and commit on peer and monitor alone (ownerless expiry). If a lane is still unsigned
 `ABORT_AFTER_US` (10 s) after staging, the venue resolves a FencedAbort bundle with peer and
 monitor signatures: nothing moves, the taker's sequence stays used and the makers' quotes behind
 the fills are pulled.
+
+## Durable records
+
+`venue.jsonl` (each line fsync'd) carries, besides the router journal:
+
+* `opt_nonce {owner, expires_us}`, written before a collateral move: a signed transfer cannot run
+  twice, also across restarts.
+* `opt_batch {n, phase, staged_us, resolved_us, batch, acks}` for every resolved option batch,
+  committed or aborted; `n` is the venue number (an aborted batch's router sequence is reused).
+* `opt_intent {id, intent, status, reason, batch, accepted_us}` on every intent status change (the
+  last record per id wins).
+
+`--options` rebuilds the option views from these records; a batch the router committed without a
+record (an older journal, or a crash between the commit and the record) is appended. A staged batch
+is re-staged with fresh owner requests. Test `restart_restores_nonces_aborted_batches_and_intents`.
 
 ## Stream events (`/api/stream`)
 
 `options_series` (new series listed), `option_book {series}`, `option_batch {phase, batch}` for
 staged, committed and aborted batches (with fills and per-asset clearing), `option_fill {batch,
-fill}` per committed fill, `option_expiry {event_id, price_usd, series, batch, clearing}`, and
+fill}` per committed fill, `option_expiry {event_id, price_usd, void, series, batch, clearing}`, and
 `account` after every change.
 
 ## Page
@@ -134,7 +159,10 @@ the dlc_coord.py format under a local test key), a venue without `--options` (al
 it, and checks: listing (an event under 60 s to maturity stays unlisted), a BTC call bought, a USDT
 cash-secured put sold, a collar combo with a BTC limit in `other_limits` (and the same combo with an
 unmeetable limit refused whole), each staged then committed by acks; a take whose taker withholds
-its ack fence-aborted at 10 s; automatic expiry at the attested price; every committed batch's
-per-asset clearing rows equal each account's balance change; restart recovery. `--demo` stops after
-the makers quote and keeps everything running for a browser at `http://127.0.0.1:18295/`.
-Result log: `ops/venue-bench/results/options-drill.jsonl`.
+its ack fence-aborted at 10 s; automatic expiry at the attested price with a holder offline
+(ownerless); a third event voided on the oracle's unattestable notice; every committed batch's
+per-asset clearing rows equal each account's balance change; restart recovery of balances, committed
+and aborted batches and intent history. `--demo` stops after the makers quote and keeps everything
+running for a browser at `http://127.0.0.1:18295/`. `--mm` runs the demo market maker
+`ops/venue-mm/options_mm.py` instead of scripted makers (README there), trades against it and moves
+the mark. Result logs: `ops/venue-bench/results/options-drill.jsonl`, `options-drill-mm.jsonl`.

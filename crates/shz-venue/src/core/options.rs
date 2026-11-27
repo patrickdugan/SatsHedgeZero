@@ -268,6 +268,9 @@ impl Venue {
         }
         let b = self.router.enable_combos().map_err(|e| format!("enable combos: {e}"))?;
         let c = self.router.enable_option_acks().map_err(|e| format!("enable option acks: {e}"))?;
+        // Expiry and void batches are a function of the oracle's signature: they commit on the
+        // adapter's peer and monitor signatures, so an offline holder cannot hold them.
+        let d = self.router.enable_ownerless_expiry().map_err(|e| format!("enable ownerless expiry: {e}"))?;
         let mut st = OptState::default();
         let mut registered = false;
         if let Some(id) = usdt_contract {
@@ -278,7 +281,7 @@ impl Venue {
             }
             st.usdt = Some(asset);
         }
-        if a || b || c || registered {
+        if a || b || c || d || registered {
             self.persist(json!({"kind": "options_enabled", "oracle": h(&self.group_key), "num_bits": NUM_BITS,
                                 "usdt_rgb_contract": usdt_contract.map(|k| h(&k)), "ts_us": now_us()}));
         }
@@ -337,7 +340,7 @@ impl Venue {
     pub fn options_summary(&self) -> Value {
         let Some(st) = &self.opts else { return json!({"enabled": false}) };
         json!({"enabled": true, "oracle": h(&self.group_key), "num_bits": NUM_BITS, "usdt": st.usdt.map(|a| self.asset_json(&a)),
-               "combos": true, "acks": self.router.option_acks_active().unwrap_or(false),
+               "combos": true, "acks": self.router.option_acks_active().unwrap_or(false), "ownerless_expiry": self.router.ownerless_expiry_active().unwrap_or(false),
                "staged": st.staged.map(|i| st.batches[i].n)})
     }
 
@@ -427,6 +430,18 @@ impl Venue {
                 r.status = "settled".into();
             }
             return Ok(json!({"event_id": id, "action": "settled"}));
+        }
+        if status == "unattestable" && self.opt()?.staged.is_none() {
+            // The oracle's signed notice (dlc_coord.py declare_unattestable): every open series
+            // on the event is void, legs return with no payoff, collateral is freed.
+            let notice = parse_sig(ev["unattestable_signature"].as_str().ok_or("unattestable event without unattestable_signature")?)?;
+            let b = self.router.void_event(id.clone(), notice).map_err(opt_err)?;
+            if self.router.pending_option().map_err(|e| e.to_string())?.is_some() {
+                self.on_option_staged(b.clone(), now)?;
+            } else {
+                self.record_option_batch(b.clone(), "committed", now);
+            }
+            return Ok(json!({"event_id": id, "action": "voiding", "option_seq": b.sequence}));
         }
         if status != "attested" || self.opt()?.staged.is_some() {
             return Ok(json!({"event_id": id, "action": "waiting", "status": status}));
@@ -583,6 +598,7 @@ impl Venue {
     fn on_option_staged(&mut self, b: OptionBatch, now: u64) -> Result<u64, String> {
         let n = self.opt()?.batches.last().map_or(0, |r| r.n) + 1;
         let digest = b.digest();
+        let ownerless = self.ownerless(&b);
         let mut acks = vec![];
         for c in b.channels() {
             let msg = self.router.option_ack_message(Disposition::Commit, &c).map_err(|e| e.to_string())?;
@@ -591,9 +607,11 @@ impl Venue {
             let owner = self.owner_of_channel(&c).ok_or("option lane without a venue account")?;
             let rows: Vec<Value> = b.clearing.iter().filter_map(|ac| ac.report.rows.iter().find(|r| r.channel == c).map(|r| json!({"asset": self.asset_code(&ac.asset), "net": r.net, "paid": r.paid, "collected": r.collected}))).collect();
             let id = format!("opt{n}:ack:{}:{}", h(&c.txid), c.vout);
-            self.pending.insert(id.clone(), PendingSig { id, owner, kind: "option_ack".into(), message: msg,
+            if !ownerless {
+                self.pending.insert(id.clone(), PendingSig { id, owner, kind: "option_ack".into(), message: msg,
                 context: json!({"option_batch": n, "option_seq": b.sequence, "batch_digest": h(&digest), "channel": outpoint_json(&c),
                                 "batch_kind": batch_kind_name(&b), "rows": rows, "adapter": "simulated (venue-held peer and monitor keys)"}) });
+            }
             acks.push(OptionAck { channel: c, signatures: [ZERO_SIG, peer, monitor] });
         }
         let st = self.opt_mut()?;
@@ -636,7 +654,7 @@ impl Venue {
         let rec = &st.batches[i];
         let clock = now.max(self.desk_clock());
         let deadline = now >= rec.staged_us.saturating_add(ABORT_AFTER_US);
-        if rec.acks.iter().all(|a| a.signatures[0] != ZERO_SIG) {
+        if self.ownerless(&rec.batch) || rec.acks.iter().all(|a| a.signatures[0] != ZERO_SIG) {
             let bundle = OptionAckBundle { sequence: rec.batch.sequence, batch: rec.batch.digest(), disposition: Disposition::Commit, acks: rec.acks.clone() };
             match self.router.resolve_option(bundle, clock) {
                 Ok(_) => {
@@ -719,15 +737,13 @@ impl Venue {
             OptionBatchKind::Expiry { event_id, price_usd, .. } => {
                 if let Some(r) = st.events.get_mut(event_id) {
                     if committed {
-                        r.status = "settled".into();
-                        r.price_usd = Some(*price_usd);
+                        r.status = if batch.kind.is_void() { "void".into() } else { "settled".into() };
+                        r.price_usd = Some(*price_usd).filter(|p| *p > 0);
                     } else {
                         r.retry_after_us = now + EXPIRY_RETRY_US;
                     }
                 }
             }
-            #[allow(unreachable_patterns)]
-            _ => {}
         }
         self.persist_batch(i);
         for id in changed {
@@ -740,7 +756,7 @@ impl Venue {
                 self.emit(json!({"type": "option_fill", "batch": n, "fill": f}));
             }
             if let OptionBatchKind::Expiry { event_id, series, price_usd } = &batch.kind {
-                self.emit(json!({"type": "option_expiry", "event_id": event_id, "price_usd": price_usd, "series": series.iter().map(|s| h(s)).collect::<Vec<_>>(),
+                self.emit(json!({"type": "option_expiry", "event_id": event_id, "price_usd": price_usd, "void": batch.kind.is_void(), "series": series.iter().map(|s| h(s)).collect::<Vec<_>>(),
                                  "batch": n, "clearing": view["clearing"].clone()}));
             }
         }
@@ -749,6 +765,11 @@ impl Venue {
             self.emit(json!({"type": "option_book", "series": h(&s)}));
         }
         self.emit(json!({"type": "account"}));
+    }
+
+    /// Expiry and void batches commit without owner signatures once ownerless expiry is on.
+    fn ownerless(&self, b: &OptionBatch) -> bool {
+        !matches!(b.kind, OptionBatchKind::Trade { .. }) && self.router.ownerless_expiry_active().unwrap_or(false)
     }
 
     fn persist_intent(&mut self, id: &Key) {
@@ -771,10 +792,7 @@ impl Venue {
         let side = |c: &BtcOutPoint| json!({"channel": outpoint_json(c), "owner": self.owner_of_channel(c).map(|k| h(&k))});
         let (kind, extra) = match &b.kind {
             OptionBatchKind::Trade { taker } => ("trade", json!({"taker": h(taker)})),
-            OptionBatchKind::Expiry { event_id, series, price_usd } => ("expiry", json!({"event_id": event_id, "price_usd": price_usd, "series": series.iter().map(|s| h(s)).collect::<Vec<_>>()})),
-            // Batch kinds added to the router later (a void on an unattestable notice) keep their serde form.
-            #[allow(unreachable_patterns)]
-            other => (batch_kind_name(b), serde_json::to_value(other).unwrap_or(Value::Null)),
+            OptionBatchKind::Expiry { event_id, series, price_usd } => (batch_kind_name(b), json!({"event_id": event_id, "price_usd": price_usd, "series": series.iter().map(|s| h(s)).collect::<Vec<_>>()})),
         };
         json!({
             "n": r.n, "seq": b.sequence, "kind": kind, "detail": extra, "phase": r.phase, "digest": h(&b.digest()),
@@ -910,9 +928,8 @@ impl Venue {
 fn batch_kind_name(b: &OptionBatch) -> &'static str {
     match b.kind {
         OptionBatchKind::Trade { .. } => "trade",
+        _ if b.kind.is_void() => "void",
         OptionBatchKind::Expiry { .. } => "expiry",
-        #[allow(unreachable_patterns)]
-        _ => "void",
     }
 }
 
