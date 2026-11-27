@@ -1,0 +1,32 @@
+name: shz-capital-graph
+
+on:
+  push:
+    branches: ["research/**", "main"]
+    paths:
+      - "research/capital_graph/**"
+      - "crates/shz-utxoref/**"
+      - ".github/workflows/shz-capital-graph-ci.yml"
+      - "Cargo.lock"
+  pull_request:
+    paths:
+      - "research/capital_graph/**"
+      - "crates/shz-utxoref/**"
+      - ".github/workflows/shz-capital-graph-ci.yml"
+      - "Cargo.lock"
+
+jobs:
+  graph-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Independent reference and placement checks
+        run: |
+          node research/capital_graph/check.mjs
+          node research/capital_graph/placement.mjs
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Validated Rust graph and reservation regressions
+        run: cargo test --locked -p shz-utxoref
