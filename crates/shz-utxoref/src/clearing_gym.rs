@@ -72,6 +72,38 @@ pub struct Trace {
     pub accepted_obligations: usize,
     /// Candidates whose cold verdict was compared against the canonical solver.
     pub canonical_checked: usize,
+    /// Per window: the base snapshot (no obligations) and the accepted-batch history, so a
+    /// prefix of the candidate stream can be settled (Phase 5: batch size within a budget).
+    pub windows_detail: Vec<WindowDetail>,
+}
+
+/// Change to the accepted batch, at the query index where it happened.
+#[derive(Debug, Clone)]
+pub enum BatchEvent {
+    /// Query `q` accepted these obligations.
+    Accept { q: usize, added: Vec<RealizedObligation> },
+    /// Before query `q`, the last accepted obligation was withdrawn (novation).
+    Pop { q: usize },
+}
+
+#[derive(Debug, Clone)]
+pub struct WindowDetail {
+    pub base: PnlBatchSnapshotV1,
+    pub events: Vec<BatchEvent>,
+}
+impl WindowDetail {
+    /// The accepted batch after every query with index `<= q` was processed.
+    pub fn accepted_through(&self, q: usize) -> Vec<RealizedObligation> {
+        let mut obs: Vec<RealizedObligation> = Vec::new();
+        for e in &self.events {
+            match e {
+                BatchEvent::Accept { q: at, added } if *at <= q => obs.extend(added.iter().cloned()),
+                BatchEvent::Pop { q: at } if *at <= q => { obs.pop(); }
+                _ => {}
+            }
+        }
+        obs
+    }
 }
 
 struct Market {
@@ -178,9 +210,12 @@ pub fn reference_trace(cfg: &GymConfig, check_canonical_every: usize) -> Result<
     let mut queries = Vec::new();
     let mut roots = Vec::new();
     let mut canonical_ns = Vec::new();
+    let mut details = Vec::new();
     let (mut accepted_total, mut checked) = (0usize, 0usize);
     for w in 0..cfg.windows {
         let mut accepted: Vec<RealizedObligation> = Vec::new();
+        let mut events: Vec<BatchEvent> = Vec::new();
+        let base = m.snapshot(&[], &BTreeMap::new());
         let mut delta: BTreeMap<String, i128> = BTreeMap::new();
         let n_a = m.accounts.len() as u64;
         let mut c = 0;
@@ -222,6 +257,7 @@ pub fn reference_trace(cfg: &GymConfig, check_canonical_every: usize) -> Result<
                 CandidateKind::Novation if !accepted.is_empty() => {
                     // Reassign the creditor of the last accepted obligation.
                     let last = accepted.pop().unwrap();
+                    events.push(BatchEvent::Pop { q: queries.len() });
                     *delta.get_mut(&last.from_account_id).unwrap() += last.sats as i128;
                     *delta.get_mut(&last.to_account_id).unwrap() -= last.sats as i128;
                     let from = m.accounts.iter().position(|a| a.0 == last.from_account_id).unwrap();
@@ -263,6 +299,7 @@ pub fn reference_trace(cfg: &GymConfig, check_canonical_every: usize) -> Result<
                 if !ok { continue; }
                 c += 1;
                 if screen(&m, &obs, &BTreeMap::new(), kind, &mut queries, &mut checked)? {
+                    events.push(BatchEvent::Accept { q: queries.len() - 1, added: obs[accepted.len()..].to_vec() });
                     accepted = obs;
                     delta = d2;
                     break;
@@ -283,6 +320,7 @@ pub fn reference_trace(cfg: &GymConfig, check_canonical_every: usize) -> Result<
         canonical_ns.push(t0.elapsed().as_nanos() as u64);
         checked += 1;
         roots.push(batch.next_accounting_state_root);
+        details.push(WindowDetail { base, events });
         accepted_total += accepted.len();
         for (id, _, e) in m.accounts.iter_mut() { *e = batch.post_account_equities[id]; }
         for i in 0..m.vaults.len() {
@@ -292,5 +330,5 @@ pub fn reference_trace(cfg: &GymConfig, check_canonical_every: usize) -> Result<
         }
         m.mutate(cfg.regime, &mut r);
     }
-    Ok(Trace { queries, window_roots: roots, canonical_ns, accepted_obligations: accepted_total, canonical_checked: checked })
+    Ok(Trace { queries, window_roots: roots, canonical_ns, accepted_obligations: accepted_total, canonical_checked: checked, windows_detail: details })
 }

@@ -565,6 +565,10 @@ pub struct CertCache {
     pub repair: bool,
     /// Structural retrieval tries at most this many residents per kind, most recent first.
     pub retrieval: usize,
+    /// Keep only the node-set commitment of each frame (32 bytes), not its key list. A
+    /// certificate is then reusable only for problems with the identical node set; on any
+    /// other node set it maps nothing and fails its check (repair starts from zero flow).
+    pub compact_frames: bool,
     entries: Vec<Entry>,
     used: usize,
     clock: u64,
@@ -582,7 +586,7 @@ pub struct CertCache {
 
 impl CertCache {
     pub fn new(policy: Policy, budget_bytes: usize, repair: bool, retrieval: usize) -> Self {
-        Self { policy, budget_bytes, repair, retrieval, entries: Vec::new(), used: 0, clock: 0, aging: 0, peak_bytes: 0, bypasses: 0, evictions: 0, reuse_log: None, cold_hint: 0, frames: BTreeMap::new() }
+        Self { policy, budget_bytes, repair, retrieval, entries: Vec::new(), used: 0, clock: 0, aging: 0, peak_bytes: 0, bypasses: 0, evictions: 0, compact_frames: false, reuse_log: None, cold_hint: 0, frames: BTreeMap::new() }
     }
     pub fn used_bytes(&self) -> usize { self.used }
     pub fn len(&self) -> usize { self.entries.len() }
@@ -665,7 +669,10 @@ impl CertCache {
         Screen { verdict, path, work: w }
     }
 
-    fn admit(&mut self, commitment: [u8; 32], cert: Certificate, feasible: bool, saved: u64) {
+    fn admit(&mut self, commitment: [u8; 32], mut cert: Certificate, feasible: bool, saved: u64) {
+        if self.compact_frames {
+            cert.frame = Arc::new(Frame { node_set: cert.frame.node_set, nodes: Vec::new() });
+        }
         let bytes = cert.bytes() + std::mem::size_of::<Entry>();
         let node_set = cert.frame.node_set;
         let frame_bytes = cert.frame.bytes();
