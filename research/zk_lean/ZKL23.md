@@ -20,3 +20,14 @@ whole-shape hash comparison, and tampered indices/hashes/coefficients/context.
 No production rows are removed; no key or proof reuse is authorized. The
 scoped CI replays the synthetic fixture implications in Lean. Actual Nova
 capture remains a separate gate.
+
+## Actual capture integration
+
+The ZKL-22 capture workflow now invokes the local discovery/binding checker
+for each actual augmented row stream and attempts Lean replay of any
+candidate. Its original matrix pins come from the fresh same-setup streaming
+audit, so this is not independent production VK binding. Candidate files,
+receipts and original artifacts are preserved. Zero discovered candidates
+is explicitly inconclusive. The contextual theorem retains the external
+full-matrix membership and well-formedness premises. No circuit or
+verification parameters are rewritten.
