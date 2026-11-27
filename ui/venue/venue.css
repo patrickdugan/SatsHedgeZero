@@ -197,3 +197,14 @@ table.chain th.cgrp { text-align: center; color: var(--text-secondary); }
   .shell.opts .optchain, .shell.opts .optticket, .shell.opts .bottom { grid-column: 1; grid-row: auto; } .shell.opts .optchain { height: 460px; }
   .shell.spot .spotchart, .shell.spot .spotbook, .shell.spot .spotticket { grid-column: 1; grid-row: auto; } .shell.spot .spotchart { height: 380px; } .shell.spot .spotbook { height: 520px; }
 }
+/* Agents panel (settings): delegated agent grants */
+#sagents{margin-top:14px}
+#sagents .agrow{padding:6px 0;border-bottom:1px solid var(--line, rgba(127,127,127,.25));font-size:12px;line-height:1.6}
+#sagents .agform{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:10px;font-size:12px}
+#sagents .agform label{display:flex;flex-direction:column;gap:2px}
+#sagents .agform label.chk{flex-direction:row;align-items:center;display:inline-flex}
+#sagents .agform input{min-width:0}
+#sagents .agform button{grid-column:1/-1}
+#sagents .agreview{margin-top:8px;font-size:12px;overflow-wrap:anywhere}
+#sagents .ag-active{color:var(--up, #2fbf71)}
+#sagents .ag-revoked,#sagents .ag-expired{color:var(--dn, #e5484d)}

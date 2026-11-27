@@ -63,6 +63,12 @@ def main():
             raise
         log(ev="stopped", reason=e.code)
     finally:
+        for q in quotes:  # leave nothing resting
+            try:
+                agent.perp_cancel(q)
+            except LightningerError:
+                pass
+        time.sleep(0.5)
         stop_acks()
         stream.close()
     log(ev="done", marks_seen=len(marks), usage=agent.status()["usage"])

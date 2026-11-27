@@ -4,6 +4,7 @@ import { planTakes, describe as riskText } from './liquidate.js';
 import { connectNostr, lnurlStart, lnurlFinish, nostrAvailable, weblnInfo } from './wallet.js';
 import { qrSvg } from './qr.js';
 import { applyUiMode, chartSrc, renderSettings } from './settings.js';
+import { renderAgents } from './agents.js';
 import * as Opt from './options.js';
 import * as Spot from './spot.js';
 
@@ -409,7 +410,7 @@ async function init() {
   setInterval(refreshBatches, 5000);
 }
 applyUiMode();
-const openSettings = () => { $('smodal').hidden = false; renderSettings($('sbody'), () => { $('chart').src = chartSrc(MARKET, location.origin); Spot.reloadChart(); }); };
+const openSettings = () => { $('smodal').hidden = false; renderSettings($('sbody'), () => { $('chart').src = chartSrc(MARKET, location.origin); Spot.reloadChart(); }); renderAgents($('sagents'), { owner: st.owner, key: st.key }); };
 $('sbtn').onclick = openSettings;
 $('smclose').onclick = () => { $('smodal').hidden = true; };
 $('smodal').onclick = (e) => { if (e.target === $('smodal')) $('smodal').hidden = true; };

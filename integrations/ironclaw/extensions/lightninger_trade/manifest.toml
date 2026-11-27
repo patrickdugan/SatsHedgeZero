@@ -1,0 +1,26 @@
+# IronClaw extension: Lightninger trading under a delegated agent grant.
+# The MCP server (integrations/ironclaw/server.ts) holds an agent key, never the account owner's key;
+# the venue enforces the owner-signed grant (instruments, notional per order and per 24 h, open
+# orders, rate, price collar, expiry, no withdrawals) and the owner can revoke it at any time.
+# The bearer credential below only authenticates IronClaw to the local MCP server; IronClaw injects it
+# at its egress boundary so the model never sees it.
+schema_version = "reborn.extension_manifest.v3"
+id = "lightninger_trade"
+name = "Lightninger trading (delegated agent key)"
+version = "1.0.0"
+description = "Trade the Lightninger testnet venue (BTC perpetual, options incl. combos, BTC/USDT demo spot) with a delegated agent key inside the limits its owner signed. Includes the read-only market tools."
+trust = "third_party"
+
+[mcp]
+origin_gate_matrix = { loop_run = "gated_unless_granted", product = "forbidden", automation = "forbidden" }
+server = "http://127.0.0.1:8765/mcp/trade"
+namespace = "lightninger_trade"
+max_tools = 16
+default_permission = "ask"
+effects = ["network", "use_secret", "external_write"]
+
+[[mcp.credentials]]
+handle = "lightninger_mcp_token"
+vendor = "lightninger"
+scopes = []
+injection = { type = "header", name = "authorization", prefix = "Bearer " }

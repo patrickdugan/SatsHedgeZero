@@ -1,0 +1,17 @@
+# IronClaw extension: Lightninger market data (read-only MCP tools).
+# Shape follows IronClaw's packaged MCP extensions (crates/extensions/packages/notion-mcp/manifest.toml):
+# `[mcp]` with `server`, `namespace` equal to `id`, `default_permission` and declared effects.
+schema_version = "reborn.extension_manifest.v3"
+id = "lightninger_market"
+name = "Lightninger market data"
+version = "1.0.0"
+description = "Read-only market data from the Lightninger testnet venue: BTC perpetual, option chain and BTC/USDT (demo) spot books, trades, oracle marks, accounts."
+trust = "third_party"
+
+[mcp]
+origin_gate_matrix = { loop_run = "gated_unless_granted", product = "forbidden", automation = "forbidden" }
+server = "http://127.0.0.1:8765/mcp/market"
+namespace = "lightninger_market"
+max_tools = 16
+default_permission = "ask"
+effects = ["network"]

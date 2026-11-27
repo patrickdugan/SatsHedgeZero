@@ -48,6 +48,8 @@ try {
   if (!(e instanceof LightningerError) || !['grant.revoked', 'grant.expired', 'grant.unknown'].includes(e.code)) throw e;
   log({ ev: 'stopped', reason: e.code });
 } finally {
+  for (const q of quotes) await (perp ? agent.perpCancel(q) : agent.spotCancel(q)).catch(() => {}); // leave nothing resting
+  await new Promise((r) => setTimeout(r, 500));
   stopAcks();
   stream.close();
 }
