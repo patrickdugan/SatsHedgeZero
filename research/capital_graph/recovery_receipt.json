@@ -1,0 +1,196 @@
+{
+  "entries": [
+    {
+      "source": {
+        "repo": "patrickdugan/Spiral",
+        "ref": "be9d0b0fa19a00dfd71993c8287a38aeb7dd8fd7",
+        "path": "experiments/cbm-shz-01/results/testnet4_dlc01.json",
+        "blob_sha": "9109da502d34f010ecec230417a583e31e5e06c4"
+      },
+      "input": {
+        "schema": "cbm-shz-01/oracle-dlc-release/v1",
+        "prefix": "cbm-shz01-dlc01",
+        "chain": "testnet4",
+        "passed": true,
+        "funding": {
+          "txid": "b48a848f23d0bded24dc0a4110d43aa76ec79c6b614c1beb888d6c54962b5852",
+          "vsize": 169,
+          "amount_sat": 40000,
+          "height": 163265
+        },
+        "cet": {
+          "txid": "326ab15c5ddb76c44e4f9be8ceecb0e43fd889147c3f69f52d4a71de4a3abd11",
+          "vsize": 238,
+          "witness_items": 5,
+          "outputs": {
+            "tb1pkxmu2l96c57vw968smjtmhmscjz47z3xua7n5udrg6sey47d984sjt3wld": 19700,
+            "tb1p0msaur8j05qck3c5ussxmhdac5tfvwpxla9yvd88plhhnpxjsluq5tftcr": 19700
+          },
+          "a_sat": 19700,
+          "lp_sat": 19700
+        },
+        "lp_advance_txid": "906406357dd92178425e13b1dcdb0ac201758794b325f2c0a9be644bf08a3d4e",
+        "reuse": {
+          "a": "e98af92715c0034dd272bc932937069f43c0ea9fe031f22607ba470510e2c69d",
+          "b": "85ccea865e9218a0df17cb870cbd5dcb0aa797b7c2db19d3fb591495be881ebd",
+          "lp": "2c23368bd22b0bd30657a30917d155bab5616c806942f9ca5a6163c0d3187ecc"
+        },
+        "checks": {
+          "cets_and_refund_signed_before_funding": true,
+          "cets_incomplete_before_attestation": true,
+          "cets_presigned_only_on_own_leaf": true,
+          "refund_rejected_before_timelock": true,
+          "attestation_matches_announced_point": true,
+          "wrong_outcome_cets_stay_incomplete": true,
+          "cet_confirmed": true,
+          "lp_reimbursed_by_cet": true,
+          "released_outputs_reused": true
+        },
+        "timings_s": {
+          "attestation_to_cet_confirmed": 1180.187293767929,
+          "lp_advance_to_reimbursement_confirmed": 1174.4272780418396,
+          "cet_confirmed_to_reuse_confirmed": 2402.196717262268,
+          "funding_broadcast_to_reuse_confirmed": 7957.122861146927
+        },
+        "heights": {
+          "funding": 163265,
+          "maturity": 163267,
+          "attestation": 163267,
+          "cet": 163268
+        }
+      },
+      "expected": {
+        "chain": "testnet4",
+        "prefix": "cbm-shz01-dlc01",
+        "principal_sats": 19700,
+        "funding_face_sats": 40000,
+        "txids": {
+          "funding": "b48a848f23d0bded24dc0a4110d43aa76ec79c6b614c1beb888d6c54962b5852",
+          "cet": "326ab15c5ddb76c44e4f9be8ceecb0e43fd889147c3f69f52d4a71de4a3abd11",
+          "advance": "906406357dd92178425e13b1dcdb0ac201758794b325f2c0a9be644bf08a3d4e",
+          "lp_reuse": "2c23368bd22b0bd30657a30917d155bab5616c806942f9ca5a6163c0d3187ecc",
+          "a_reuse": "e98af92715c0034dd272bc932937069f43c0ea9fe031f22607ba470510e2c69d",
+          "b_reuse": "85ccea865e9218a0df17cb870cbd5dcb0aa797b7c2db19d3fb591495be881ebd"
+        },
+        "heights": {
+          "funding": 163265,
+          "maturity": 163267,
+          "attestation": 163267,
+          "cet": 163268
+        },
+        "clocks": {
+          "lp_advance_record_to_reimbursement_observed_s": 1174.4272780418396,
+          "reimbursement_observed_to_all_recorded_reuse_confirmed_s": 2402.196717262268,
+          "lp_advance_record_to_all_recorded_reuse_confirmed_s": 3576.6239953041077,
+          "funding_broadcast_record_to_all_recorded_reuse_confirmed_s": 7957.122861146927
+        },
+        "rounded_principal_sat_seconds": {
+          "through_reimbursement": "23147500",
+          "through_all_recorded_reuse": "70466900"
+        },
+        "recorded_checks_only": true,
+        "active_chain_independently_verified": false,
+        "exact_outpoint_lineage_verified": false,
+        "release_authorized": false,
+        "production_ready": false
+      }
+    },
+    {
+      "source": {
+        "repo": "patrickdugan/Spiral",
+        "ref": "be9d0b0fa19a00dfd71993c8287a38aeb7dd8fd7",
+        "path": "experiments/cbm-shz-01/results/dlc_regtest.json",
+        "blob_sha": "2434c912a0932620a13da88492768279b0c33ea2"
+      },
+      "input": {
+        "schema": "cbm-shz-01/oracle-dlc-release/v1",
+        "prefix": "dlc-rt",
+        "chain": "regtest",
+        "passed": true,
+        "funding": {
+          "txid": "9a3e433742b655d8e3b1b3e65320417eb67af91e9c9ad2e36e2fe97a8cd59eea",
+          "vsize": 169,
+          "amount_sat": 40000,
+          "height": 112
+        },
+        "cet": {
+          "txid": "4d21dfe8c14d42e4d95471f72cc166f50b6e1facf5a2dc7a8f16eef1c452061b",
+          "vsize": 238,
+          "witness_items": 5,
+          "outputs": {
+            "bcrt1pf37usuyxkhqzu84wm5pr3dtjshlyz6rskc503fc3ldxyy79tt9ksx5pxs0": 23622,
+            "bcrt1pkk49v7v0zy39xmaqfnvyq4vw9ml04pqhwjantlkahhmrl4rft4cscdr7wf": 15778
+          },
+          "a_sat": 23622,
+          "lp_sat": 15778
+        },
+        "lp_advance_txid": "67dd4c1a35bce9b3bfb1deda0e4b4d18bf95b174c6202a7ac2e5f96deebee231",
+        "reuse": {
+          "a": "b42c6086c824abd90b665d23f64c12353049b588c954933a5ef9198ccd3b1c2f",
+          "b": "f6f01129adda00e57b0dbc03563c97d5547affb7479bfb034a3e6592f706b63e",
+          "lp": "853d9df8e1f25be2130e1db9e8781d34d4ea98af92f8347fd1c1bbdc357ed2eb"
+        },
+        "checks": {
+          "cets_and_refund_signed_before_funding": true,
+          "cets_incomplete_before_attestation": true,
+          "cets_presigned_only_on_own_leaf": true,
+          "refund_rejected_before_timelock": true,
+          "attestation_matches_announced_point": true,
+          "wrong_outcome_cets_stay_incomplete": true,
+          "cet_confirmed": true,
+          "lp_reimbursed_by_cet": true,
+          "released_outputs_reused": true
+        },
+        "timings_s": {
+          "attestation_to_cet_confirmed": 0.5038838386535645,
+          "lp_advance_to_reimbursement_confirmed": 0.44271087646484375,
+          "cet_confirmed_to_reuse_confirmed": 0.36582493782043457,
+          "funding_broadcast_to_reuse_confirmed": 1.4899475574493408
+        },
+        "heights": {
+          "funding": 112,
+          "maturity": 114,
+          "attestation": 114,
+          "cet": 116
+        }
+      },
+      "expected": {
+        "chain": "regtest",
+        "prefix": "dlc-rt",
+        "principal_sats": 15778,
+        "funding_face_sats": 40000,
+        "txids": {
+          "funding": "9a3e433742b655d8e3b1b3e65320417eb67af91e9c9ad2e36e2fe97a8cd59eea",
+          "cet": "4d21dfe8c14d42e4d95471f72cc166f50b6e1facf5a2dc7a8f16eef1c452061b",
+          "advance": "67dd4c1a35bce9b3bfb1deda0e4b4d18bf95b174c6202a7ac2e5f96deebee231",
+          "lp_reuse": "853d9df8e1f25be2130e1db9e8781d34d4ea98af92f8347fd1c1bbdc357ed2eb",
+          "a_reuse": "b42c6086c824abd90b665d23f64c12353049b588c954933a5ef9198ccd3b1c2f",
+          "b_reuse": "f6f01129adda00e57b0dbc03563c97d5547affb7479bfb034a3e6592f706b63e"
+        },
+        "heights": {
+          "funding": 112,
+          "maturity": 114,
+          "attestation": 114,
+          "cet": 116
+        },
+        "clocks": {
+          "lp_advance_record_to_reimbursement_observed_s": 0.44271087646484375,
+          "reimbursement_observed_to_all_recorded_reuse_confirmed_s": 0.36582493782043457,
+          "lp_advance_record_to_all_recorded_reuse_confirmed_s": 0.8085358142852783,
+          "funding_broadcast_record_to_all_recorded_reuse_confirmed_s": 1.4899475574493408
+        },
+        "rounded_principal_sat_seconds": {
+          "through_reimbursement": "15778",
+          "through_all_recorded_reuse": "15778"
+        },
+        "recorded_checks_only": true,
+        "active_chain_independently_verified": false,
+        "exact_outpoint_lineage_verified": false,
+        "release_authorized": false,
+        "production_ready": false
+      }
+    }
+  ],
+  "invalid_rejected": 6,
+  "scope": "pinned receipt field projection; not independent transaction or active-chain verification"
+}
