@@ -32,7 +32,7 @@ def line(stream):
     return value
 
 
-def stream_audit(path):
+def stream_audit(path, *, visit=None, omit=None):
     # Reproduce audit.digest exactly, without retaining a complete matrix.
     with path.open("rb") as stream:
         header = line(stream)
@@ -43,6 +43,8 @@ def stream_audit(path):
         expected = header["constraints"]
         if type(expected) is not int or not 0 <= expected <= MAX_ROWS:
             raise ValueError("row count cap")
+        if omit is not None and (type(omit) is not int or not 0 <= omit < expected):
+            raise ValueError("invalid omitted global row")
         shape = canonical({"format": "zkl-r1cs-v1", "modulus": header["modulus"],
                            "wires": header["wires"], "public": header["public"], "rows": []})
         p, n = int(shape["modulus"]), shape["wires"]
@@ -52,6 +54,8 @@ def stream_audit(path):
         prefix = compact({"format": shape["format"], "modulus": shape["modulus"],
                           "public": shape["public"]})
         h.update(prefix[:-1] + b',"rows":[')
+        deletion = h.copy() if omit is not None else None
+        retained = 0
         count = 0
         nonzeros = [0, 0, 0]
         while True:
@@ -79,14 +83,28 @@ def stream_audit(path):
                 row.append(out)
             if count:
                 h.update(b",")
-            h.update(compact(row))
+            encoded = compact(row)
+            h.update(encoded)
+            if deletion is not None and count != omit:
+                if retained:
+                    deletion.update(b",")
+                deletion.update(encoded)
+                retained += 1
+            if visit is not None:
+                visit(count, row, p)
             count += 1
         if count != expected:
             raise ValueError("truncated row stream")
-        h.update(b'],"wires":' + compact(n) + b"}")
-        return {"canonical_shape_sha256": h.hexdigest(), "constraints": count,
-                "wires": n, "public": shape["public"], "modulus": str(p),
-                "canonical_nonzeros": nonzeros}
+        suffix = b'],"wires":' + compact(n) + b"}"
+        h.update(suffix)
+        receipt = {"canonical_shape_sha256": h.hexdigest(), "constraints": count,
+                   "wires": n, "public": shape["public"], "modulus": str(p),
+                   "canonical_nonzeros": nonzeros}
+        if deletion is not None:
+            deletion.update(suffix)
+            receipt.update({"deleted_row": omit, "retained_constraints": retained,
+                            "deletion_shape_sha256": deletion.hexdigest()})
+        return receipt
 
 
 def audit_capture(root):
