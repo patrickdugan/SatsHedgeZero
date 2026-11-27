@@ -1,0 +1,22 @@
+[Unit]
+Description=Lightninger options market maker (demo credit account, key generated on this host; demo USDT is a simulated ledger credit)
+After=shz-venue.service
+Requires=shz-venue.service
+
+[Service]
+User=shzvomm
+Group=shzvomm
+ExecStart=/usr/bin/python3 /opt/shz-venue/ops/venue-mm/options_mm.py run --server http://127.0.0.1:8096 --state-dir /var/lib/shz-venue-options-mm
+StateDirectory=shz-venue-options-mm
+StateDirectoryMode=0700
+Restart=always
+RestartSec=5
+MemoryMax=80M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -23,15 +23,21 @@ cp -r ui/venue/vendor ui/venue/brand /opt/shz-venue/ui.new/
 chmod -R a+rX /opt/shz-venue/ui.new
 rm -rf /opt/shz-venue/ui && mv /opt/shz-venue/ui.new /opt/shz-venue/ui
 
-install -m 0644 ops/venue-mm/mm.py ops/venue-mm/intent.py /opt/shz-venue/ops/venue-mm/
+install -m 0644 ops/venue-mm/mm.py ops/venue-mm/intent.py ops/venue-mm/options_mm.py /opt/shz-venue/ops/venue-mm/
 install -m 0644 ops/public-relay/bip340.py /opt/shz-venue/ops/public-relay/
 sed -i 's/\r$//' /opt/shz-venue/ops/venue-mm/*.py /opt/shz-venue/ops/public-relay/*.py
 
-install -m 0644 ops/venue-deploy/shz-venue.service ops/venue-deploy/shz-venue-mm.service ops/venue-deploy/shz-venue-mm-utxo.service /etc/systemd/system/
+install -m 0644 ops/venue-deploy/shz-venue.service ops/venue-deploy/shz-venue-mm.service ops/venue-deploy/shz-venue-mm-utxo.service ops/venue-deploy/shz-venue-options-mm.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now shz-venue.service
 systemctl restart shz-venue.service
 systemctl enable --now shz-venue-mm.service
+# Options market maker (only useful when shz-venue runs with --options).
+id shzvomm  >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin shzvomm
+if grep -q -- '--options' /etc/systemd/system/shz-venue.service; then
+  systemctl enable shz-venue-options-mm.service
+  systemctl restart shz-venue-options-mm.service
+fi
 # The UTXO maker starts only once the operator has placed its key and outpoint:
 #   /var/lib/shz-venue-mm-utxo/mm.key (owner shzvmmu, 0600) and /etc/shz-venue/mm-utxo.env (UTXO=txid:vout).
 id shzvmmu >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin shzvmmu
