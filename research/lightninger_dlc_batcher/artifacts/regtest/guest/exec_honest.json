@@ -1,13 +1,31 @@
 {
-  "status": "executed_unproved",
-  "sp1": "6.9.0",
-  "executor": "ProverClient::builder().light() execute, WSL2 Ubuntu-24.04",
-  "elf_sha256": "b74a4ac904d9a0bc74423d5c11c52064151945c400e405a5c67b79dbce365bf7",
-  "clearing_vk_sha256": "c660c21a40d2e20340d6d2be73d3e817adf3a57ae98b85d12ab616c9c8a6477b",
-  "clearing_vk_bytes": 131995888,
-  "instruction_count": 163595198099,
-  "execute_seconds": 3557.0,
-  "exit_code": 0,
-  "public_values_sha256": "b05dccf54f9308ce47317ebf4b767f4570fb0ab186105ef1260c5ba1e9c4cf32",
-  "public_values_equal_expected_statement": true
+  "current": {
+    "clearing_proof_sha256": "48157075c090154f8061745be1a2926ad34d7ead7209dfc02d22c38009f189ea",
+    "clearing_vk_sha256": "c660c21a40d2e20340d6d2be73d3e817adf3a57ae98b85d12ab616c9c8a6477b",
+    "elf_sha256": "bafd2c1dd7a5ed3817f73d10916a30795262813919ce4667504fdf292745bb4d",
+    "execute_seconds": 4036.841320328,
+    "exit_code": 0,
+    "guest_in_sha256": "e4299e5a02e2138bc4d5973f216ced4897205ac7eb434194a89d86a177e6041b",
+    "instruction_count": 163595198247,
+    "public_values_equal_expected_statement": true,
+    "public_values_sha256": "b05dccf54f9308ce47317ebf4b767f4570fb0ab186105ef1260c5ba1e9c4cf32",
+    "sp1": "6.9.0",
+    "status": "executed_unproved",
+    "executor": "ProverClient::builder().light() execute, WSL2 Ubuntu-24.04, DLC_GUEST_SKIP_REFUSALS=1",
+    "source": "SatsHedgeZero main 91dae33 (relation with carry_in / carried; guest_in.bin re-encoded)",
+    "clearing_vk_bytes": 131995888
+  },
+  "previous_elf_b74a4ac9": {
+    "status": "executed_unproved",
+    "sp1": "6.9.0",
+    "executor": "ProverClient::builder().light() execute, WSL2 Ubuntu-24.04",
+    "elf_sha256": "b74a4ac904d9a0bc74423d5c11c52064151945c400e405a5c67b79dbce365bf7",
+    "clearing_vk_sha256": "c660c21a40d2e20340d6d2be73d3e817adf3a57ae98b85d12ab616c9c8a6477b",
+    "clearing_vk_bytes": 131995888,
+    "instruction_count": 163595198099,
+    "execute_seconds": 3557.0,
+    "exit_code": 0,
+    "public_values_sha256": "b05dccf54f9308ce47317ebf4b767f4570fb0ab186105ef1260c5ba1e9c4cf32",
+    "public_values_equal_expected_statement": true
+  }
 }

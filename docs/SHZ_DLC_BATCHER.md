@@ -222,11 +222,13 @@ settlement confirmed): vaults of 3,564 sats (fee reimbursement; fronted is 0 thi
 **SP1 wrap guest** (`sp1/`): builds under SP1 6.9.0 (ELF `b74a4ac9…`) with the M15 patches (vendored
 halo2curves with `uint256_mulmod`, sha2 and sha3 precompiles). Executed in SP1's executor (WSL2) on
 the regtest inputs: **163,595,198,099 instructions, 3,557 s, exit code 0**, public values byte-equal to
-the statement `b05dccf5…`. Most of that is decoding the 131,995,888-byte clearing key with compressed
+the statement `b05dccf5…` (ELF `b74a4ac9…`). Rebuilt from main after the relation gained `carry_in` /
+`carried` (91dae33, `guest_in.bin` re-encoded): ELF `bafd2c1d…`, 163,595,198,247 instructions,
+4,037 s, exit 0, same statement. Most of that is decoding the 131,995,888-byte clearing key with compressed
 points; M15's raw-key encoding (`m15/keyconv`) cut guest A's decode by about 70% and is not applied
 here. The host's refusal cases (settlement paying account 3 one sat less, a batch row's net +1, a
-flipped proof bit, a TapSighash `z_K` naming another transaction) each re-run the whole guest; their
-receipt is `exec.json` beside the guest inputs when the run ends.
+flipped proof bit, a TapSighash `z_K` naming another transaction) each re-run the whole guest and
+were not completed (the run was stopped to free WSL memory).
 Proving it is the Neon prompt in [`sp1/NEON_PROMPT.md`](../research/lightninger_dlc_batcher/sp1/NEON_PROMPT.md).
 
 **Testnet4**: the builder (`cargo test --release --test core_batch testnet4 -- --ignored`, collateral
