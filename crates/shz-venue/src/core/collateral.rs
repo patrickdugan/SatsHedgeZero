@@ -131,7 +131,7 @@ fn tweak(p: &Key, root: &Key) -> Result<(Key, u8), String> {
     let pp = shz_dlc::lift_x_even(p).map_err(|_| "bad internal key")?;
     let t = tagged_hash(b"TapTweak", &[&p[..], &root[..]].concat());
     let ts: Scalar = Option::from(Scalar::from_repr(t.into())).ok_or("tweak out of range")?;
-    let q = (ProjectivePoint::from(pp) + ProjectivePoint::GENERATOR * ts).to_affine();
+    let q = (pp + ProjectivePoint::GENERATOR * ts).to_affine();
     let e = q.to_encoded_point(true);
     Ok((e.as_bytes()[1..33].try_into().unwrap(), e.as_bytes()[0] & 1))
 }
