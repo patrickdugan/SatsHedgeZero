@@ -1,0 +1,11 @@
+{
+  "graphs": 6561,
+  "unit_budget_perturbations": 13122,
+  "coordinate_interval_checks": 1296,
+  "parallel_edge_checks": 1,
+  "extra_checks": 6,
+  "method": "exhaustive independent integer allocations and destination cuts; fixed-margin fibre enumeration",
+  "source_base": "719b96088a8c91bde46b6de2681c7318fbc6982e",
+  "execution": "functions evaluated directly in JS isolate before commit; Node repository CI not run",
+  "production_ready": false
+}
