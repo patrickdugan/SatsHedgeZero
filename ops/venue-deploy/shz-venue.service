@@ -6,11 +6,12 @@ Wants=network-online.target
 # Options are ON (switched on 2026-11-27 on Patrick's yes). --stable-usdt is a DEMO asset id:
 # sha256("LIGHTNINGER DEMO USDT - TESTNET - SIMULATED LEDGER CREDIT, NOT A REAL RGB ASSET").
 # Spot BTC/USDT is ON (2026-11-27, Patrick's yes); fills settle on the venue ledger, USDT simulated.
+# Agent API ON (2026-11-27, Patrick's yes): /agent/v1 REST + WS; agents trade only under owner-signed grants.
 # Removing --options hides the option endpoints; the journal records stay.
 [Service]
 User=shzvenue
 Group=shzvenue
-ExecStart=/opt/shz-venue/bin/shz-venue --listen 127.0.0.1:8096 --state /var/lib/shz-venue --ui /opt/shz-venue/ui --relay http://127.0.0.1:8091 --options --stable-usdt 4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df --spot
+ExecStart=/opt/shz-venue/bin/shz-venue --listen 127.0.0.1:8096 --state /var/lib/shz-venue --ui /opt/shz-venue/ui --relay http://127.0.0.1:8091 --options --stable-usdt 4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df --spot --agents
 StateDirectory=shz-venue
 StateDirectoryMode=0700
 Restart=always
