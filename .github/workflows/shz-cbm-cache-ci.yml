@@ -1,0 +1,26 @@
+name: shz-cbm-cache-replay
+on:
+  pull_request:
+    paths:
+      - 'crates/shz-utxoref/**'
+      - 'crates/shz-dlc/**'
+      - '.github/workflows/shz-cbm-cache-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run native digest and replay tests
+        run: |
+          set -o pipefail
+          cargo test --release --locked -p shz-utxoref --test cbm_cache_replay -- --nocapture | tee cbm-cache-native.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cbm-cache-native
+          path: cbm-cache-native.log
+          if-no-files-found: error
