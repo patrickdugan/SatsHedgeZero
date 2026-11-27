@@ -4,11 +4,14 @@
 //! 2. `UTXORef` PnL Batch Netting (`b = A * g`), Edmonds-Karp capacitated vault routing
 //!    (eliminating greedy-allocation starvation), and durable pre-signing reservation book.
 
+pub mod clearing_gym;
+pub mod flow_cert;
 pub mod mnr02;
 pub mod mnr03;
 pub mod n_party_packer;
 pub mod pnl_batch;
 pub mod signing_target;
+pub mod verification_cache;
 pub mod watchtower;
 
 use thiserror::Error;

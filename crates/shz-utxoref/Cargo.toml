@@ -16,3 +16,6 @@ sha2.workspace = true
 shz-dlc.workspace = true
 shz-margin.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

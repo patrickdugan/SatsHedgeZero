@@ -631,11 +631,34 @@ impl DurablePnlBatchBook {
         {
             return Err(UtxoRefError::PriorLedgerMismatch);
         }
-        // Ensure snapshot carries accumulated replay sets
+        // Replay protection against the book's own durable state, independent of the
+        // replay sets the caller put in the snapshot.
         for ob in &snapshot.obligations {
             if self.consumed_obligation_ids.contains(&ob.id) {
                 return Err(UtxoRefError::ReplayDetected("obligation already settled in book"));
             }
+        }
+        let book_spent: BTreeSet<(&[u8; 32], u32)> =
+            self.spent_outpoints.iter().map(|o| (&o.txid, o.vout)).collect();
+        for v in &snapshot.vaults {
+            for u in &v.utxos {
+                if book_spent.contains(&(&u.outpoint.txid, u.outpoint.vout)) {
+                    return Err(UtxoRefError::ReplayDetected("vault UTXO already spent in book"));
+                }
+            }
+        }
+        // The snapshot's replay sets must carry the book's whole settled history, so the
+        // snapshot hash (and the next accounting root) commits to it.
+        let snap_spent: BTreeSet<(&[u8; 32], u32)> =
+            snapshot.spent_outpoints.iter().map(|o| (&o.txid, o.vout)).collect();
+        let snap_consumed: BTreeSet<&str> =
+            snapshot.consumed_obligation_ids.iter().map(String::as_str).collect();
+        if !book_spent.is_subset(&snap_spent)
+            || !self.consumed_obligation_ids.iter().all(|id| snap_consumed.contains(id.as_str()))
+        {
+            return Err(UtxoRefError::ReplayDetected(
+                "snapshot replay sets omit the book's settled history",
+            ));
         }
 
         let snap_hash = snapshot.snapshot_hash();
@@ -709,6 +732,11 @@ impl DurablePnlBatchBook {
         else {
             return Err(UtxoRefError::InvalidBookTransition);
         };
+        // The replay sets below come from `settled_snapshot`: it must be the exact snapshot
+        // the reservation verified. A different snapshot is rejected without mutation.
+        if settled_snapshot.snapshot_hash() != verified_batch.snapshot_hash {
+            return Err(UtxoRefError::SnapshotMismatch);
+        }
 
         if txid_hex != confirmed_txid_hex {
             self.bump_head(b"freeze-txid-mismatch", confirmed_txid_hex.as_bytes());
@@ -726,7 +754,9 @@ impl DurablePnlBatchBook {
         }
         for v in &settled_snapshot.vaults {
             for u in &v.utxos {
-                self.spent_outpoints.push(u.outpoint.clone());
+                if !self.spent_outpoints.contains(&u.outpoint) {
+                    self.spent_outpoints.push(u.outpoint.clone());
+                }
             }
         }
         self.state = BookAuthState::Ready;
