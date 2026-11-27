@@ -1,0 +1,56 @@
+{
+  "child_fee": 1949,
+  "child_hex": "02000000000101ae55cff8d9b24c8b232ef9bbd84dc04a291bc707cf905570fcc8296595a29e060200000000fdffffff0170f502000000000022512073563bb3aff0fe052d6667218941e4227c32899b3f5ab5d2b456da6c1202679803402015f06c68027e1b56ab489dbe0edcd1ac3af6003f045c068c2c979dd699b87c3338c1490a5e8afe3933bcd9b8343bb8ecbf35a6d3be53f0cce39c142bcefe6b2220f16edc3cb8a702191b21cad3ff3b53d0a12de0f4019915e178fb4638bf392b08ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+  "child_txid": "29c736b8980b3d8542a727379c7cf5610050fd3ad588bd3b117a49ec141b1079",
+  "child_vsize": 129,
+  "parent": "069ea2956529c8fc705590cf07c71b294ac04dd8bbf92e238b4cb2d9f8cf55ae",
+  "parent_entry_after": {
+    "ancestorcount": 1,
+    "ancestorsize": 326,
+    "bip125-replaceable": true,
+    "chunkweight": 1817,
+    "depends": [],
+    "descendantcount": 2,
+    "descendantsize": 455,
+    "fees": {
+      "ancestor": 3.26e-6,
+      "base": 3.26e-6,
+      "chunk": 0.00002275,
+      "descendant": 0.00002275,
+      "modified": 3.26e-6
+    },
+    "height": 123,
+    "spentby": [
+      "29c736b8980b3d8542a727379c7cf5610050fd3ad588bd3b117a49ec141b1079"
+    ],
+    "time": 1795806996,
+    "unbroadcast": true,
+    "vsize": 326,
+    "weight": 1304,
+    "wtxid": "32cfd46325adb5ed9ede340be6b1247bc69c9ab73bcc97ec6b44d6a2a38dfab6"
+  },
+  "parent_entry_before": {
+    "ancestorcount": 1,
+    "ancestorsize": 326,
+    "bip125-replaceable": true,
+    "chunkweight": 1304,
+    "depends": [],
+    "descendantcount": 1,
+    "descendantsize": 326,
+    "fees": {
+      "ancestor": 3.26e-6,
+      "base": 3.26e-6,
+      "chunk": 3.26e-6,
+      "descendant": 3.26e-6,
+      "modified": 3.26e-6
+    },
+    "height": 123,
+    "spentby": [],
+    "time": 1795806996,
+    "unbroadcast": true,
+    "vsize": 326,
+    "weight": 1304,
+    "wtxid": "32cfd46325adb5ed9ede340be6b1247bc69c9ab73bcc97ec6b44d6a2a38dfab6"
+  },
+  "target_rate": 5.0
+}

@@ -201,6 +201,12 @@ struct AcctState {
     refund_height: u32,
     carry_in: i64,
     status: String,
+    /// Consecutive packages left unsigned, and the time before which an account with no new rows is
+    /// not offered another one (1, 2, 4, 8, 16 epochs).
+    #[serde(default)]
+    unsigned: u32,
+    #[serde(default)]
+    skip_until_s: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -483,6 +489,8 @@ impl Daemon {
                             refund_height: h,
                             carry_in: 0,
                             status: "active".into(),
+                            unsigned: 0,
+                            skip_until_s: 0,
                         },
                     );
                 }
@@ -592,7 +600,7 @@ impl Daemon {
         for (k, seg) in segments.into_iter().enumerate() {
             let (first, last) = match (seg.first(), seg.last()) {
                 (Some(a), Some(b)) => (a["seq"].as_u64().unwrap(), b["seq"].as_u64().unwrap()),
-                _ => (self.st.last_settled_seq, self.st.last_settled_seq),
+                _ => (self.st.last_settled_seq + 1, self.st.last_settled_seq),
             };
             let r = self.settle_segment(&event, k, seg).unwrap_or_else(|e| Outcome::Rolled(e));
             let (status, stop) = match &r {
@@ -601,7 +609,8 @@ impl Daemon {
                 Outcome::Staged => ("staged".to_string(), true),
                 Outcome::Rolled(why) => (format!("rolled: {why}"), true),
             };
-            log(&format!("{event} segment {k} ({first}..{last}): {status}"));
+            let range = if first > last { "no new batches".to_string() } else { format!("{first}..{last}") };
+            log(&format!("{event} segment {k} ({range}): {status}"));
             summary.push(json!({"segment": k, "first_seq": first, "last_seq": last, "status": status}));
             self.save();
             if stop {
@@ -617,7 +626,7 @@ impl Daemon {
         let rb = venue_batches(&json!({ "batches": seg }))?;
         let (first, last) = match (rb.first(), rb.last()) {
             (Some(a), Some(b)) => (a.seq, b.seq),
-            _ => (self.st.last_settled_seq, self.st.last_settled_seq),
+            _ => (self.st.last_settled_seq + 1, self.st.last_settled_seq),
         };
         let dir = self.cfg.receipts.join(event).join(format!("seg{k}"));
         let tip = self.node.height();
@@ -654,6 +663,10 @@ impl Daemon {
             let moved = net.contains_key(&ch);
             let n = net.get(&ch).copied().unwrap_or(0);
             if !(moved || a.carry_in != 0 || withdrawals.contains_key(&a.owner) || a.refund_height <= tip + self.cfg.refund_delta / 2) {
+                continue;
+            }
+            // an account that left its last packages unsigned and has nothing new waits out its backoff
+            if !moved && now_us() / 1_000_000 < a.skip_until_s {
                 continue;
             }
             let why = match txout(&self.node, &a.txid, a.vout) {
@@ -788,6 +801,18 @@ impl Daemon {
                     let ch = (h32(e["channel"]["txid"].as_str().unwrap())?, e["channel"]["vout"].as_u64().unwrap() as u32);
                     carried.push(rel::Carry { channel_txid: ch.0, channel_vout: ch.1, owner: h32(o)?, net: e["net"].as_i64().unwrap() });
                 }
+            }
+        }
+        let now_s = now_us() / 1_000_000;
+        for e in &entries {
+            let o = e["owner"].as_str().unwrap();
+            let Some(a) = self.st.accounts.get_mut(o) else { continue };
+            if sigs.contains_key(o) {
+                a.unsigned = 0;
+                a.skip_until_s = 0;
+            } else {
+                a.unsigned += 1;
+                a.skip_until_s = now_s + self.cfg.epoch_secs * (1u64 << (a.unsigned - 1).min(4));
             }
         }
         if signers.is_empty() {

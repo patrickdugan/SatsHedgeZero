@@ -1,0 +1,221 @@
+{
+  "network": "regtest",
+  "batcher": "d69f66978bb461c168076c6188167911203dbeba90b90d4ab3826803393ab59b",
+  "operator": {
+    "txid": "29c736b8980b3d8542a727379c7cf5610050fd3ad588bd3b117a49ec141b1079",
+    "vout": 0,
+    "amount": 193904
+  },
+  "last_settled_seq": 3,
+  "last_maturity_s": 1795807260,
+  "fund_after": 1000002,
+  "carry_after": 0,
+  "accounts": {
+    "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2": {
+      "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+      "channel_txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+      "channel_vout": 0,
+      "txid": "05f3b2b1663868503fa4cd040019c7f449c5c7627b135434931f8cd2aaf1f3dc",
+      "vout": 2,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active",
+      "unsigned": 1,
+      "skip_until_s": 1795807283
+    },
+    "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080": {
+      "owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+      "channel_txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+      "channel_vout": 0,
+      "txid": "069ea2956529c8fc705590cf07c71b294ac04dd8bbf92e238b4cb2d9f8cf55ae",
+      "vout": 0,
+      "collateral": 20036,
+      "refund_height": 159,
+      "carry_in": 0,
+      "status": "withdrawn",
+      "unsigned": 0,
+      "skip_until_s": 0
+    },
+    "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9": {
+      "owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+      "channel_txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+      "channel_vout": 0,
+      "txid": "05f3b2b1663868503fa4cd040019c7f449c5c7627b135434931f8cd2aaf1f3dc",
+      "vout": 5,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": -28,
+      "status": "active",
+      "unsigned": 2,
+      "skip_until_s": 1795807284
+    },
+    "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9": {
+      "owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+      "channel_txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+      "channel_vout": 0,
+      "txid": "ec40f30426abbb55b0430ecf67c1dbdbbea2703e0ca180b101664692cb40fc99",
+      "vout": 1,
+      "collateral": 20000,
+      "refund_height": 159,
+      "carry_in": 0,
+      "status": "active",
+      "unsigned": 0,
+      "skip_until_s": 0
+    },
+    "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea": {
+      "owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+      "channel_txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+      "channel_vout": 0,
+      "txid": "05f3b2b1663868503fa4cd040019c7f449c5c7627b135434931f8cd2aaf1f3dc",
+      "vout": 3,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active",
+      "unsigned": 1,
+      "skip_until_s": 1795807283
+    },
+    "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483": {
+      "owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+      "channel_txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+      "channel_vout": 0,
+      "txid": "05f3b2b1663868503fa4cd040019c7f449c5c7627b135434931f8cd2aaf1f3dc",
+      "vout": 1,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active",
+      "unsigned": 1,
+      "skip_until_s": 1795807283
+    },
+    "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd": {
+      "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+      "channel_txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+      "channel_vout": 0,
+      "txid": "ec40f30426abbb55b0430ecf67c1dbdbbea2703e0ca180b101664692cb40fc99",
+      "vout": 2,
+      "collateral": 20000,
+      "refund_height": 159,
+      "carry_in": 0,
+      "status": "active",
+      "unsigned": 0,
+      "skip_until_s": 0
+    },
+    "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95": {
+      "owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+      "channel_txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+      "channel_vout": 0,
+      "txid": "05f3b2b1663868503fa4cd040019c7f449c5c7627b135434931f8cd2aaf1f3dc",
+      "vout": 9,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active",
+      "unsigned": 1,
+      "skip_until_s": 1795807283
+    }
+  },
+  "pending": [
+    {
+      "event": "SHZ-BTCUSD-20261127T191500Z",
+      "segment": 0,
+      "txid": "ec40f30426abbb55b0430ecf67c1dbdbbea2703e0ca180b101664692cb40fc99",
+      "fee": 628,
+      "vsize": 628,
+      "broadcast_height": 119,
+      "broadcast_us": 1795806924499521,
+      "confirmed_height": 121,
+      "bumped_by": "d7b575a0e0814d98f79963ac6136d0feb1d503451f554f1cec6b803003049b1c",
+      "receipts": "D:/shz/SatsHedgeZero/research/lightninger_dlc_batcher/artifacts/epochs/regtest-backoff\\SHZ-BTCUSD-20261127T191500Z\\seg0"
+    },
+    {
+      "event": "SHZ-BTCUSD-20261127T191630Z",
+      "segment": 0,
+      "txid": "069ea2956529c8fc705590cf07c71b294ac04dd8bbf92e238b4cb2d9f8cf55ae",
+      "fee": 326,
+      "vsize": 326,
+      "broadcast_height": 123,
+      "broadcast_us": 1795806996291229,
+      "confirmed_height": 124,
+      "bumped_by": "29c736b8980b3d8542a727379c7cf5610050fd3ad588bd3b117a49ec141b1079",
+      "receipts": "D:/shz/SatsHedgeZero/research/lightninger_dlc_batcher/artifacts/epochs/regtest-backoff\\SHZ-BTCUSD-20261127T191630Z\\seg0"
+    }
+  ],
+  "collecting": null,
+  "withdrawals_done": [
+    "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080:1795806904200754"
+  ],
+  "epochs": [
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T191500Z",
+      "maturity_unix": 1795806900,
+      "segments": [
+        {
+          "first_seq": 1,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "settled"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T191630Z",
+      "maturity_unix": 1795806990,
+      "segments": [
+        {
+          "first_seq": 4,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "settled"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T191800Z",
+      "maturity_unix": 1795807080,
+      "segments": [
+        {
+          "first_seq": 4,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "rolled: no account signed by the deadline"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T191930Z",
+      "maturity_unix": 1795807170,
+      "segments": [
+        {
+          "first_seq": 4,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "rolled: no account signed by the deadline"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T192100Z",
+      "maturity_unix": 1795807260,
+      "segments": [
+        {
+          "first_seq": 4,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "nothing-on-chain"
+        }
+      ],
+      "status": "processed"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "epoch": "SHZ-BTCUSD-20261127T191930Z",
+  "error": "no account signed by the deadline",
+  "rolled": [
+    "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+    "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+    "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+    "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95"
+  ],
+  "segment": 0,
+  "status": "rolled"
+}

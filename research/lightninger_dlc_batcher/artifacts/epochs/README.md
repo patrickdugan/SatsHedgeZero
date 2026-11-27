@@ -53,3 +53,13 @@ asks to withdraw, then epochs with no batches.
 | 18:48:00Z | 1..3 | `867d5912…` | 3 signers; trader 0 rolled (−28 carried) |
 | 18:49:30Z | none | `e146f2a3…` | trader 0 rolled to 19,972 (carry −28); trader 3 withdrew 20,036 |
 | 18:51:00Z | none | — | nothing to settle |
+
+## `regtest-backoff/` — accounts that never sign back off (`drill_plan_batchless.json`, bots for traders 1-3 only)
+
+| Epoch | Package | Result |
+| --- | --- | --- |
+| 19:15:00Z | batches 1..3, traders 0-3 | `ec40f304…`, trader 0 unsigned (−28 carried, backoff 1 epoch) |
+| 19:16:30Z | trader 3's withdrawal (trader 0 inside its backoff) | `069ea295…` |
+| 19:18:00Z | trader 0's carry | unsigned (backoff 2 epochs) |
+| 19:19:30Z | traders 4-7 near their refund height (no bots running) | unsigned (each backs off 1 epoch); trader 0 skipped |
+| 19:21:00Z | — | nothing offered |

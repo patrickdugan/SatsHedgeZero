@@ -1,0 +1,5 @@
+[1795806904.200] trader 3: signed SHZ-BTCUSD-20261127T191500Z#0 (payout 20036 "roll", net 36)
+[1795806904.363] trader 3: asked to withdraw to <T> CHECKSIG: Ok(200)
+[1795806906.572] trader 1: signed SHZ-BTCUSD-20261127T191500Z#0 (payout 20000 "roll", net 0)
+[1795806906.748] trader 2: signed SHZ-BTCUSD-20261127T191500Z#0 (payout 20000 "roll", net 0)
+[1795806995.688] trader 3: signed SHZ-BTCUSD-20261127T191630Z#0 (payout 20036 "withdraw", net 0)
