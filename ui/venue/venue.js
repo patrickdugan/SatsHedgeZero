@@ -7,6 +7,7 @@ import { applyUiMode, chartSrc, renderSettings } from './settings.js';
 import { renderAgents } from './agents.js';
 import * as Opt from './options.js';
 import * as Spot from './spot.js';
+import * as Coll from './collateral.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -50,9 +51,11 @@ function renderWallet() {
   if (!st.owner) {
     h += '<button class="btn" id="wopen">Connect wallet</button><button class="btn" id="wgen">Generate local testnet key</button><label class="f">Or import 32-byte hex key<input type="text" id="wimp" placeholder="64 hex chars" autocomplete="off" spellcheck="false"></label><button class="btn" id="wimpb">Import</button>';
   } else {
-    h += `<label class="f">${st.wallet ? 'Trading key (account owner, x-only)' : 'Owner pubkey (x-only)'}<div class="addr" id="wpk">${esc(st.owner)}</div></label>
-      <label class="f">Funding address (testnet4 P2TR, key-path, no script tree)<div class="addr" id="waddr">${esc(st.address)}</div></label>`;
-    if (a) h += `<div class="est"><div><span>Account</span><span>${esc(a.label || 'registered')}</span></div><div><span>Outpoint</span><span>${esc(short(a.outpoint?.txid))}:${esc(a.outpoint?.vout)}</span></div><div><span>Collateral cap</span><span>${fmt(a.balance?.cap)} sats</span></div><div><span>Free</span><span>${fmt(a.balance?.free)} sats</span></div></div>`;
+    h += `<label class="f">${st.wallet ? 'Trading key (account owner, x-only)' : 'Owner pubkey (x-only)'}<div class="addr" id="wpk">${esc(st.owner)}</div></label>`;
+    if (Coll.on()) h += Coll.walletHtml();
+    else h += `<label class="f">Funding address (testnet4 P2TR, key-path, no script tree)<div class="addr" id="waddr">${esc(st.address)}</div></label>`;
+    if (Coll.on()) { /* collateral block above replaces demo and utxo registration */ }
+    else if (a) h += `<div class="est"><div><span>Account</span><span>${esc(a.label || 'registered')}</span></div><div><span>Outpoint</span><span>${esc(short(a.outpoint?.txid))}:${esc(a.outpoint?.vout)}</span></div><div><span>Collateral cap</span><span>${fmt(a.balance?.cap)} sats</span></div><div><span>Free</span><span>${fmt(a.balance?.free)} sats</span></div></div>`;
     else h += `<div class="muted">Not registered. Demo credit is synthetic (no coins). For a utxo account, fund the address above on testnet4, then enter the output.</div>
       <button class="btn" id="wdemo">Register demo account (TESTNET DEMO CREDIT)</button>
       <label class="f">utxo outpoint txid:vout<input type="text" id="wutxo" placeholder="txid:vout" autocomplete="off" spellcheck="false"></label><button class="btn" id="wutxob">Register utxo account</button>`;
@@ -60,6 +63,7 @@ function renderWallet() {
   }
   h += '<div class="msg" id="wmsg"></div>';
   w.innerHTML = h;
+  if (Coll.on()) Coll.bind();
   const on = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
   on('wgen', () => setKey(randomKey()));
   on('wopen', () => openModal()); on('wreconnect', () => openModal()); on('wdisc', disconnectWallet);
@@ -83,6 +87,7 @@ async function register(kind, outpoint) {
 async function refreshAccount() {
   if (!st.owner) return;
   try { st.account = await api('/api/account/' + st.owner); } catch (e) { if (e.status === 404) st.account = null; else return; }
+  if (Coll.on()) await Coll.refresh();
   autoSign();
 }
 async function refreshBatches() {
@@ -91,7 +96,7 @@ async function refreshBatches() {
 async function pollAll() {
   try {
     const [status, book, trades] = await Promise.all([api('/api/status'), api('/api/book?depth=25'), api('/api/trades?limit=60')]);
-    setMark(status.mark); st.book = book; st.trades = trades; st.router = status.router;
+    setMark(status.mark); st.book = book; st.trades = trades; st.router = status.router; setCollateral(status.collateral);
     await refreshAccount(); renderAll(); setConn(st.wsOk ? 'live (ws)' : 'polling', st.wsOk ? 'ok' : 'warn');
   } catch (e) { setConn('offline', 'bad'); }
 }
@@ -113,6 +118,7 @@ function reconnectWs() {
     else if (m.type === 'trade') { st.trades.unshift(m.trade || m); st.trades.length = Math.min(st.trades.length, 60); renderTrades(); }
     else if (m.type === 'batch') { const b = m.batch || m; if (b.seq !== undefined) st.batches.set(b.seq, { ...st.batches.get(b.seq), ...b }); refreshAccount().then(renderBottom); }
     else if (m.type === 'risk') { if (m.owner === st.owner) refreshAccount().then(() => { renderBottom(); maybeLiquidate(); }); }
+    else if (m.type === 'collateral' || m.type === 'settlement') { if (Coll.on()) Coll.refresh().then(() => { renderWallet(); renderBottom(); }); }
     else if (String(m.type).startsWith('option')) Opt.onEvent(m);
     else if (String(m.type).startsWith('spot')) Spot.onEvent(m);
     else if (m.type === 'account') { if (m.account && m.account.owner === st.owner) { st.account = m.account; autoSign(); maybeLiquidate(); renderBottom(); renderWallet(); renderEst(); } else if (!m.account) refreshAccount().then(renderBottom); }
@@ -189,6 +195,8 @@ function renderBottom() {
   } else if (st.btab === 'orders') {
     p.innerHTML = bottomTable(['Order', 'Side', 'Tier', 'Size USD', 'Limit', 'Lev', ''], (a.open_orders || []).map((o) =>
       `<tr><td title="${esc(o.id)}">${esc(short(o.id))}</td><td class="${o.side === 'long' ? 'long' : 'short'}">${esc(o.side)}</td><td>${esc(o.tier)}</td><td>${fmt(o.quantity)}</td><td>${fmt(o.limit_usd)}</td><td>${(o.leverage_bps || 0) / 1e4}x</td><td><button class="btn sm" data-cancel="${esc(o.id)}">Cancel</button></td></tr>`));
+  } else if (st.btab === 'collateral') {
+    p.innerHTML = Coll.bottomHtml(bottomTable);
   } else if (st.btab === 'options') {
     Opt.renderBottom(p, bottomTable);
   } else if (st.btab === 'spot') {
@@ -203,6 +211,13 @@ function renderBottom() {
       bottomTable(['Batch', 'Phase', 'Fills'], mine.map((s) => { const b = st.batches.get(s) || {}; const ph = b.phase || (a.fills.find((f) => f.batch_seq === s) || {}).batch_phase || 'sealed'; return `<tr><td><a href="explorer.html#/batch/${s}">#${s}</a></td><td><span class="phase ${esc(ph)}">${esc(ph)}</span></td><td>${b.fills ?? ''}</td></tr>`; })) +
       bottomTable(['Pending signature', 'Kind', 'Message', 'Status'], pend.map((x) => `<tr><td>${esc(x.id)}</td><td>${esc(x.kind)}</td><td>${esc(short(x.message))}</td><td class="amber">${st.signed.has(x.id) ? 'signed, awaiting venue' : 'auto-signing…'}</td></tr>`));
   }
+}
+// --collateral-chain venues: the network tag and the Collateral tab follow the status.
+function setCollateral(c) {
+  const was = !!st.collateral; st.collateral = c || null;
+  for (const e of document.querySelectorAll('[data-coll]')) e.hidden = !c;
+  const tag = document.querySelector('.brand .tag'); if (tag && c) tag.textContent = String(c.network).toUpperCase();
+  if (!was && c) Coll.refresh().then(() => { renderWallet(); renderBottom(); });
 }
 function renderAll() { renderTop(); renderBook(); renderTrades(); renderBottom(); renderWallet(); renderEst(); renderWalletBtn(); }
 
@@ -392,6 +407,8 @@ async function init() {
   const origin = location.origin;
   $('chart').src = chartSrc(MARKET, origin);
   try { st.template = await api('/api/template'); } catch (e) { setConn('no server', 'bad'); }
+  Coll.init({ api, esc, fmt, short, st, store, refreshAccount, rerender: () => { renderWallet(); renderBottom(); } });
+  try { setCollateral((await api('/api/status')).collateral); } catch { /* status later */ }
   const k = store.get(KEY_STORE);
   if (k && /^[0-9a-f]{64}$/.test(k)) {
     let w = null; try { w = JSON.parse(store.get(WALLET_STORE) || 'null'); } catch { /* corrupt */ }

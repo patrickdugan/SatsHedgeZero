@@ -12,7 +12,25 @@
   "account_next_spk": "51206dc6f3703a48e045ae3cb8eb9a17d79dbf3a6210d729f471784c7e4b96a75861",
   "batcher": "90999dbbf43034bffb1dd53eac1eb4c33a4ea1c4f48ba585cfde3830840f0555",
   "description": "Shared collateral vectors (crates/shz-venue/src/core/collateral.rs shared_collateral_vectors).",
-  "package_id_through_19": "00917ba4b9dafa0a57f51480af353b75851e8b86d57b0aa3085943bb9ddec03a",
+  "entry": {
+    "input": {
+      "amount": 20000,
+      "leaf": "206930f46dd0b16d866d59d1054aa63298b357499cd1862ef16f3f55f1cafceb82ad2090999dbbf43034bffb1dd53eac1eb4c33a4ea1c4f48ba585cfde3830840f0555ac",
+      "leaf_hash": "e5b2f90cd70315297b87adb019248ed70e42e2c499fff22e60af878dc610b4f0",
+      "sequence": 4294967293,
+      "spk": "5120ca734bf0a19a3aade8d3824c29d9ab7cbe6816237e39a8c01ca19be3572a885d",
+      "txid": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "vout": 1
+    },
+    "output": {
+      "kind": "roll",
+      "refund_height": 600,
+      "spk": "51206dc6f3703a48e045ae3cb8eb9a17d79dbf3a6210d729f471784c7e4b96a75861",
+      "value": 19972
+    },
+    "sighash": "e4c37b1f9cf3fda640655851537fb512337ba937167e357e61e01d5111beb060"
+  },
+  "post_digest_of_tx_hex": "1f23a62828a6bffc62507af8f2c5f4552b573d714f582fa4789a2d188e061ff3",
   "prevouts": [
     {
       "spk": "5120ca734bf0a19a3aade8d3824c29d9ab7cbe6816237e39a8c01ca19be3572a885d",
@@ -40,9 +58,8 @@
   "txid": "63074a61bfb7cf63e54519fca635fd6a01f98c86e70dfc544e0737408d21b036",
   "withdraw": {
     "address_regtest": "bcrt1qvenxvenxvenxvenxvenxvenxvenxvenxq8rguk",
-    "digest": "cec24a3032dcfa4fa812e2d47e482837b120883839a2c7221077960bad090c20",
-    "nonce_us": 1764300000000000,
-    "sats": 500,
-    "spk": "00146666666666666666666666666666666666666666"
+    "message": "ab2eaf1a10e808e64d9c649b8eee40f1a0fdcfdd4849f0dbe5ceae4d332f7535",
+    "spk": "00146666666666666666666666666666666666666666",
+    "time_us": 1764300000000000
   }
 }

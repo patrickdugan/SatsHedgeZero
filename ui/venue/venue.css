@@ -208,3 +208,8 @@ table.chain th.cgrp { text-align: center; color: var(--text-secondary); }
 #sagents .agreview{margin-top:8px;font-size:12px;overflow-wrap:anywhere}
 #sagents .ag-active{color:var(--up, #2fbf71)}
 #sagents .ag-revoked,#sagents .ag-expired{color:var(--dn, #e5484d)}
+/* --collateral-chain: deposit QR and the settlement review card */
+.wallet .qr{background:#fff;padding:6px;width:max-content;margin:6px 0}
+.wallet .qr svg{display:block;width:150px;height:150px}
+.wallet .review{border:1px solid var(--border-strong);padding:8px;margin:8px 0}
+.wallet .review .est{margin:6px 0}

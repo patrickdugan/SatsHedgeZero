@@ -589,9 +589,11 @@ impl Venue {
         if self.accounts.contains_key(&owner) {
             return Err("owner already has an account".into());
         }
-        if self.coll.is_some() && kind != "collateral" {
+        if self.coll.is_some() && kind != "collateral" && kind != "utxo" {
             return Err("this venue takes on-chain collateral only: deposit to your collateral address, then register kind collateral".into());
         }
+        // Under --collateral-chain every account is a collateral account (venue kind "utxo").
+        let kind = if self.coll.is_some() { "collateral" } else { kind };
         let (outpoint, cap, label) = match kind {
             "demo" => (demo_outpoint(&owner), DEMO_CAP_SATS, "TESTNET DEMO CREDIT".to_string()),
             "collateral" => self.collateral_draft_source(&owner)?,
@@ -616,7 +618,7 @@ impl Venue {
         };
         let digest = allocation.digest().map_err(|e| format!("{e:?}"))?;
         let draft_id = h(&tagged_hash(b"SHZ/VENUE/DRAFT/V1", &[digest.as_slice(), &now_us().to_le_bytes()].concat()))[..24].to_string();
-        let meta = AccountMeta { owner, outpoint: outpoint.clone(), kind: kind.into(), cap_sats: cap, label: label.clone() };
+        let meta = AccountMeta { owner, outpoint: outpoint.clone(), kind: if kind == "collateral" { "utxo".into() } else { kind.into() }, cap_sats: cap, label: label.clone() };
         self.drafts.insert(draft_id.clone(), Draft { allocation, meta });
         Ok(json!({"allocation_digest": h(&digest), "draft_id": draft_id, "cap_sats": cap, "outpoint": outpoint_json(&outpoint), "label": label}))
     }
@@ -638,7 +640,7 @@ impl Venue {
         self.persist(json!({"kind": "account", "owner": h(&meta.owner), "outpoint": outpoint_json(&meta.outpoint),
                             "account_kind": meta.kind, "cap_sats": meta.cap_sats, "label": meta.label}));
         self.accounts.insert(meta.owner, meta.clone());
-        if meta.kind == "collateral" {
+        if self.coll.is_some() {
             self.collateral_registered(&meta.owner)?;
         }
         Ok(self.account_view(&meta.owner))

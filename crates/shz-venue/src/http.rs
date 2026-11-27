@@ -114,7 +114,7 @@ async fn http(app: Arc<App>, mut s: TcpStream) {
         }
         (r.code, r.ctype, r.body)
     } else if path.starts_with("/api/") || path.starts_with("/v1/") {
-        let (c, v) = api(&app, &method, &path, &query, body).await;
+        let (c, v) = api(&app, &method, &path, &query, &head, body).await;
         (c, "application/json", v.to_string().into_bytes())
     } else {
         static_file(&app, &path)
@@ -172,6 +172,10 @@ fn q(query: &str, k: &str) -> Option<String> {
 fn err(code: u16, m: impl ToString) -> (u16, Value) {
     (code, json!({"error": m.to_string()}))
 }
+/// Value of request header `name` (lower-case).
+fn header(head: &str, name: &str) -> Option<String> {
+    head.lines().find_map(|l| l.split_once(':').filter(|(k, _)| k.trim().eq_ignore_ascii_case(name)).map(|(_, v)| v.trim().to_string()))
+}
 /// 200 with the value, or 409 with the venue's refusal.
 fn wrap(r: Result<Value, String>) -> (u16, Value) {
     match r {
@@ -181,7 +185,7 @@ fn wrap(r: Result<Value, String>) -> (u16, Value) {
     }
 }
 
-async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (u16, Value) {
+async fn api(app: &App, method: &str, path: &str, query: &str, head: &str, body: &[u8]) -> (u16, Value) {
     let jb: Value = if body.is_empty() { Value::Null } else { serde_json::from_slice(body).unwrap_or(Value::Null) };
     let get = method == "GET";
     let post = method == "POST";
@@ -393,25 +397,38 @@ async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (
         }
         (true, _, "/api/settlement/epoch") => wrap(app.venue.lock().await.settlement_epoch()),
         (true, _, "/api/settlement/open") => wrap(app.venue.lock().await.settlement_open()),
-        (true, _, "/api/settlement/history") => {
-            let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(20usize).min(200);
-            wrap(app.venue.lock().await.settlement_history(limit))
+        (true, _, "/api/settlement/withdrawals") => wrap(app.venue.lock().await.collateral_withdrawals()),
+        (true, _, "/api/explorer/settlements") => {
+            let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(50usize).min(500);
+            wrap(app.venue.lock().await.settlement_results(limit))
         }
-        (true, _, p) if p.starts_with("/api/settlement/package/") => match parse_key(&p["/api/settlement/package/".len()..]) {
-            Ok(k) => match app.venue.lock().await.settlement_package_view(&k) {
+        (true, _, "/api/settlement/package") => match q(query, "owner").map(|o| parse_key(&o)) {
+            Some(Ok(o)) => match app.venue.lock().await.settlement_package_for(&o) {
+                Ok(x) => (200, x),
+                Err(e) if e.contains("are off") || e.contains("no open package") => err(404, e),
+                Err(e) => err(409, e),
+            },
+            _ => err(400, "owner required"),
+        },
+        (true, _, "/api/settlement/signatures") => {
+            let seg = q(query, "segment").and_then(|s| s.parse().ok()).unwrap_or(0u64);
+            match app.venue.lock().await.settlement_signatures(&q(query, "epoch").unwrap_or_default(), seg) {
                 Ok(x) => (200, x),
                 Err(e) => err(404, e),
-            },
-            Err(e) => err(400, e),
+            }
+        }
+        (_, true, "/api/settlement/package") => wrap(app.venue.lock().await.settlement_package(body, header(head, "x-shz-batcher").as_deref())),
+        (_, true, "/api/settlement/result") => wrap(app.venue.lock().await.settlement_result(body, header(head, "x-shz-batcher").as_deref())),
+        (_, true, "/api/settlement/signature") => match app.venue.lock().await.settlement_signature(&jb) {
+            Ok(x) => (200, x),
+            Err(e) if e.starts_with("BAD") || e.contains("65 bytes") => err(400, e),
+            Err(e) => err(409, e),
         },
-        (_, true, "/api/settlement/package") => wrap(app.venue.lock().await.settlement_package(&jb)),
-        (_, true, "/api/settlement/sign") => wrap(app.venue.lock().await.settlement_sign(&jb)),
-        (_, true, "/api/settlement/broadcast") => wrap(app.venue.lock().await.settlement_broadcast(&jb)),
+        (_, true, "/api/settlement/withdraw") => wrap(app.venue.lock().await.collateral_withdraw(&jb)),
         (_, true, "/api/collateral/address") => match jb["owner"].as_str().map(parse_key) {
             Some(Ok(o)) => wrap(app.venue.lock().await.collateral_address(o)),
             _ => err(400, "owner required"),
         },
-        (_, true, "/api/collateral/withdraw") => wrap(app.venue.lock().await.collateral_withdraw(&jb)),
         (true, _, p) if p.starts_with("/api/collateral/") => match parse_key(&p["/api/collateral/".len()..]) {
             Ok(k) => match app.venue.lock().await.collateral_view(&k) {
                 Ok(x) => (200, x),
@@ -463,8 +480,9 @@ async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (
             (200, json!(v.accounts.values().map(|a| json!({
                 "owner": hex::encode(a.owner), "kind": a.kind, "label": a.label, "cap_sats": a.cap_sats,
                 "outpoint": {"txid": hex::encode(a.outpoint.txid), "vout": a.outpoint.vout},
-                "explorer_url": (a.kind == "utxo" || (a.kind == "collateral" && v.coll.as_ref().is_some_and(|c| c.cfg.net == crate::core::collateral::Net::Testnet4))).then(|| format!("https://mempool.space/testnet4/tx/{}", hex::encode(a.outpoint.txid))),
+                "explorer_url": (a.kind == "utxo" && v.coll.as_ref().is_none_or(|c| c.cfg.net == crate::core::collateral::Net::Testnet4)).then(|| format!("https://mempool.space/testnet4/tx/{}", hex::encode(a.outpoint.txid))),
                 "balance": v.balance(&a.owner).map(|b| crate::core::balance_json(&b)),
+                "account": v.collateral_explorer(&a.owner),
                 "position": v.position(&a.owner),
             })).collect::<Vec<_>>()))
         }
@@ -489,6 +507,31 @@ async fn register_draft(app: &App, jb: &Value) -> (u16, Value) {
         _ => return err(400, "owner required"),
     };
     let kind = jb["kind"].as_str().unwrap_or("demo").to_string();
+    let coll = app.venue.lock().await.coll.as_ref().map(|c| c.cfg.clone());
+    if let (Some(cfg), "utxo") = (coll, kind.as_str()) {
+        // --collateral-chain: the outpoint must pay account(owner, B, refund_height), checked on our node.
+        let rh = match jb["refund_height"].as_u64() {
+            Some(h) => h as u32,
+            None => return err(400, "refund_height required (the outpoint pays account(owner, B, refund_height))"),
+        };
+        let (txid, vout) = match (jb["outpoint"]["txid"].as_str().map(parse_key), jb["outpoint"]["vout"].as_u64()) {
+            (Some(Ok(t)), Some(v)) if v <= u32::MAX as u64 => (t, v as u32),
+            _ => return err(400, "outpoint {txid, vout} required"),
+        };
+        match crate::core::collateral::check_outpoint(&cfg, &owner, rh, &txid, vout).await {
+            Ok(seen) => {
+                let mut v = app.venue.lock().await;
+                if let Err(e) = v.collateral_explicit(owner, rh, seen) {
+                    return err(409, e);
+                }
+                return match v.register_draft(owner, "collateral", None, None) {
+                    Ok(x) => (200, x),
+                    Err(e) => err(409, e),
+                };
+            }
+            Err(e) => return err(409, e),
+        }
+    }
     let (outpoint, value) = if kind == "utxo" {
         let txid = match jb["outpoint"]["txid"].as_str().map(parse_key) {
             Some(Ok(t)) => t,

@@ -1,16 +1,15 @@
 // On-chain collateral accounts and epoch settlement packages (docs/SHZ_MVP_COLLATERAL.md).
 // ES module for the browser and Node; no dependencies beyond crypto.js.
 //
-// The trader never signs a sighash the venue hands it: reviewPackage() parses the unsigned
-// settlement, rebuilds the trader's own account scripts from its key, the batcher key and the
-// refund heights, checks its input and outputs, and computes the BIP-341 script-path sighash
-// itself. signPackage() signs only that locally computed message, in sign.wasm.
+// The trader never signs a sighash the venue hands it: reviewEntry() rebuilds the trader's own
+// account scripts from its key, the batcher key and the refund heights, checks its input and its
+// output, and computes the BIP-341 SIGHASH_SINGLE|ANYONECANPAY script-path sighash itself.
+// signEntry() signs only that locally computed message, in sign.wasm.
 import { hex, unhex, concat, sha256, taggedHash, bytesToInt, intToBytes, mul, add, liftX, bip340Sign } from './crypto.js';
 
 export const NUMS = unhex('50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0', 32);
 const N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
 const G = liftX(0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n);
-const HASH_TYPES = new Set([0x00, 0x01, 0x81, 0x83]);
 
 export const compact = (n) => n < 0xfd ? Uint8Array.of(n) : n <= 0xffff ? Uint8Array.of(0xfd, n & 255, n >> 8) : Uint8Array.of(0xfe, n & 255, (n >> 8) & 255, (n >> 16) & 255, n >>> 24);
 const u32 = (n) => Uint8Array.of(n & 255, (n >>> 8) & 255, (n >>> 16) & 255, n >>> 24);
@@ -145,66 +144,77 @@ export function decodeAddress(addr, hrp) {
 }
 
 // ---------- withdrawals ----------
-export async function withdrawDigest(owner, sats, spk, nonceUs) {
-  return taggedHash('LIGHTNINGER/WITHDRAW/V1', unhex(owner, 32), u64(sats), Uint8Array.of(spk.length), spk, u64(nonceUs));
+/** Owner's withdrawal message: tagged("SHZ/WITHDRAW/V1", owner || u32le(len spk) || spk || u64le(time_us)). */
+export async function withdrawMsg(owner, spk, timeUs) {
+  return taggedHash('SHZ/WITHDRAW/V1', unhex(owner, 32), u32(spk.length), spk, u64(timeUs));
 }
-/** Body of POST /api/collateral/withdraw, signed by the owner. */
-export async function signWithdrawal({ owner, sats, address, network, nonceUs = Date.now() * 1000 }, seckey) {
+/** Body of POST /api/settlement/withdraw: the whole account pays out to `address` at the next settlement. */
+export async function signWithdrawal({ owner, address, network, timeUs = Date.now() * 1000 }, seckey) {
   const spk = decodeAddress(address.trim(), HRP[network]);
-  const sig = await bip340Sign(await withdrawDigest(owner, sats, spk, nonceUs), seckey);
-  return { owner, sats, address: address.trim(), nonce_us: nonceUs, signature: hex(sig) };
+  const sig = await bip340Sign(await withdrawMsg(owner, spk, timeUs), seckey);
+  return { owner, spk: hex(spk), address: address.trim(), time_us: timeUs, sig: hex(sig) };
 }
 
-// ---------- settlement packages ----------
+// ---------- settlement packages (co-sign contract v1) ----------
+/** SIGHASH_SINGLE|ANYONECANPAY sighash of one account entry: its own input and its own output only. */
+export async function entrySighash(tx, entry) {
+  const i = entry.input, o = entry.output;
+  const t = { version: tx?.version ?? 2, locktime: tx?.locktime ?? 0, inputs: [{ txid: unhex(i.txid, 32).reverse(), vout: i.vout, sequence: i.sequence ?? 0xfffffffd }], outputs: [{ value: BigInt(o.value), spk: unhex(o.spk) }] };
+  return tapSighash(t, [{ value: BigInt(i.amount), spk: unhex(i.spk) }], 0, 0x83, unhex(i.leaf_hash || hex(await tapleaf(unhex(i.leaf))), 32));
+}
+
 /**
- * Check the settlement package from the trader's side and return what it pays.
- * `expect` (optional): { valueIn, refundHeightIn, withdrawAddress, network } the client already knows.
- * Throws when anything about the trader's own input or outputs differs.
+ * Check the trader's entry of a settlement package (GET /api/settlement/package?owner=) and return
+ * what it pays. `expect`: { batcherKey, account: {outpoint, value, refund_height}, withdrawAddress, network }.
+ * Throws when the input is not the trader's collateral, the output is not its account script or its
+ * withdrawal address, the payout is not input + carry + net, or the venue's sighash differs.
  */
-export async function reviewPackage(pkg, owner, expect = {}) {
-  const a = (pkg.accounts || []).find((x) => x.owner === owner);
-  if (!a) throw new Error('this key has no input in the package');
-  if (!HASH_TYPES.has(a.hash_type)) throw new Error(`hash type ${a.hash_type} is not allowed`);
-  const tx = parseTx(pkg.tx);
+export async function reviewEntry(pkg, owner, expect = {}) {
+  const e = pkg.account;
+  if (!e || e.owner !== owner) throw new Error('this key has no input in the package');
+  if (e.sighash_type !== 0x83) throw new Error('only SIGHASH_SINGLE|ANYONECANPAY entries are signed here');
   const B = pkg.batcher_key;
   if (expect.batcherKey && expect.batcherKey !== B) throw new Error('package batcher key differs from the venue status');
-  const prevouts = pkg.prevouts.map((p) => ({ value: BigInt(p.value), spk: unhex(p.spk) }));
-  const inScript = await accountScript(owner, B, a.refund_height_in);
-  const pin = prevouts[a.input];
-  if (!pin || !eq(pin.spk, inScript.spk)) throw new Error('your input is not your collateral account');
-  if (expect.valueIn !== undefined && pin.value !== BigInt(expect.valueIn)) throw new Error('your input amount differs from your account');
-  if (expect.refundHeightIn !== undefined && a.refund_height_in !== expect.refundHeightIn) throw new Error('your input refund height differs from your account');
-  if (expect.outpoint && (displayTxid(tx.inputs[a.input].txid) !== expect.outpoint.txid || tx.inputs[a.input].vout !== expect.outpoint.vout)) throw new Error('your input spends another outpoint');
-  const mine = a.outputs.map((i) => ({ index: i, ...tx.outputs[i] }));
-  if (mine.some((o) => !o.spk)) throw new Error('output index out of range');
-  if (a.hash_type === 0x83 && !(a.outputs.length === 1 && a.outputs[0] === a.input)) throw new Error('SIGHASH_SINGLE|ACP needs your one output at your input index');
-  const outScript = await accountScript(owner, B, pkg.refund_height);
+  const net = expect.network || pkg.network;
+  const acct = expect.account;
+  const hIn = acct?.refund_height;
+  if (hIn === undefined) throw new Error('your account is not loaded');
+  const sIn = await accountScript(owner, B, hIn);
+  if (e.input.spk !== hex(sIn.spk)) throw new Error('your input is not your collateral account');
+  if (e.input.leaf !== hex(sIn.settle)) throw new Error('the input leaf is not your settle leaf');
+  if (acct.outpoint && (e.input.txid !== acct.outpoint.txid || e.input.vout !== acct.outpoint.vout)) throw new Error('your input spends another outpoint than your collateral');
+  if (acct.value !== undefined && e.input.amount !== acct.value) throw new Error('your input amount differs from your collateral');
+  const o = e.output;
   let rollover = null, withdraw = null;
-  for (const o of mine) {
-    if (eq(o.spk, outScript.spk) && !rollover) rollover = { index: o.index, value: o.value, refundHeight: pkg.refund_height };
-    else if (!withdraw) withdraw = { index: o.index, value: o.value, spk: o.spk };
-    else throw new Error('more than one output of yours is not your collateral account');
-  }
-  if (withdraw && expect.withdrawAddress) {
-    const want = decodeAddress(expect.withdrawAddress, HRP[expect.network || pkg.network]);
-    if (!eq(want, withdraw.spk)) throw new Error('withdrawal output does not pay your withdrawal address');
-  }
-  if (withdraw && !expect.withdrawAddress && a.withdraw?.address === undefined) throw new Error('unexpected payout output');
-  const out = (rollover?.value || 0n) + (withdraw?.value || 0n);
-  if (out !== pin.value + BigInt(a.net_sats)) throw new Error(`outputs ${out} differ from input ${pin.value} plus net ${a.net_sats}`);
-  const sighash = await tapSighash(tx, prevouts, a.input, a.hash_type, inScript.settleLeaf);
-  if (a.sighash && a.sighash !== hex(sighash)) throw new Error('venue sighash differs from the locally computed one');
-  const fee = prevouts.reduce((s, p) => s + p.value, 0n) - tx.outputs.reduce((s, o) => s + o.value, 0n);
+  if (o.kind === 'roll') {
+    if (o.spk !== hex((await accountScript(owner, B, o.refund_height)).spk)) throw new Error('the roll output is not your collateral account');
+    rollover = { value: BigInt(o.value), refundHeight: o.refund_height };
+  } else if (o.kind === 'withdraw') {
+    if (!expect.withdrawAddress) throw new Error('payout to an address you did not ask for');
+    if (o.spk !== hex(decodeAddress(expect.withdrawAddress, HRP[net]))) throw new Error('the payout does not go to your withdrawal address');
+    withdraw = { value: BigInt(o.value), address: expect.withdrawAddress };
+  } else throw new Error('unknown output kind');
+  const carryNet = BigInt(e.carry_in || 0) + BigInt(e.net || 0);
+  if (BigInt(o.value) !== BigInt(e.input.amount) + carryNet) throw new Error(`payout ${o.value} differs from collateral ${e.input.amount} plus net ${carryNet}`);
+  const sighash = await entrySighash(pkg.tx, e);
+  if (e.sighash && e.sighash !== hex(sighash)) throw new Error('package sighash differs from the locally computed one');
+  if (pkg.venue?.sighash && pkg.venue.sighash !== hex(sighash)) throw new Error('venue sighash differs from the locally computed one');
   return {
-    packageId: pkg.package_id, txid: await txid(tx), input: a.input, hashType: a.hash_type, sighash,
-    valueIn: pin.value, net: BigInt(a.net_sats), batches: a.batches, fromBatch: a.from_batch, throughBatch: pkg.through_batch,
-    rollover, withdraw: withdraw && { ...withdraw, address: a.withdraw?.address }, refundHeightIn: a.refund_height_in,
-    coversAllOutputs: a.hash_type !== 0x83, fee, inputs: tx.inputs.length, outputs: tx.outputs.length, eventId: pkg.event_id,
+    epoch: pkg.epoch, segment: pkg.segment, firstSeq: pkg.first_seq, lastSeq: pkg.last_seq, deadlineUs: pkg.deadline_us,
+    valueIn: BigInt(e.input.amount), net: carryNet, rows: e.rows || [], batches: pkg.venue?.batches || (e.rows || []).map((r) => r.seq),
+    rollover, withdraw, sighash, refundHeightIn: hIn, signed: !!e.signed,
   };
 }
-/** Signature of the trader's own input over the locally computed sighash (64 bytes + hash type). */
-export async function signPackage(pkg, owner, seckey, expect = {}) {
-  const r = await reviewPackage(pkg, owner, expect);
+/** The trader's 0x83 signature over the locally computed sighash: body of POST /api/settlement/signature. */
+export async function signEntry(pkg, owner, seckey, expect = {}) {
+  const r = await reviewEntry(pkg, owner, expect);
   const sig = await bip340Sign(r.sighash, seckey);
-  return { review: r, body: { package_id: pkg.package_id, owner, signature: hex(r.hashType === 0 ? sig : concat(sig, Uint8Array.of(r.hashType))) } };
+  return { review: r, body: { epoch: pkg.epoch, segment: pkg.segment, owner, sig: hex(concat(sig, Uint8Array.of(0x83))) } };
+}
+
+/** Single-leaf NUMS-keyed P2TR output of `script` (e.g. the operator's `<O> CHECKSIG` liquidity). */
+export async function scriptOutput(script) {
+  const tw = bytesToInt(await taggedHash('TapTweak', NUMS, await tapleaf(script)));
+  const q = add(liftX(bytesToInt(NUMS)), mul(G, tw));
+  return concat(Uint8Array.of(0x51, 0x20), intToBytes(q[0]));
 }
