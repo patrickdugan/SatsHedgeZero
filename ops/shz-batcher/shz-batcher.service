@@ -1,0 +1,32 @@
+# Lightninger settlement daemon beside a venue. Install:
+#   sudo cp ops/shz-batcher/shz-batcher.service /etc/systemd/system/shz-batcher@.service
+#   sudo useradd --system --home-dir /var/lib/shz-batcher shzbatcher; sudo mkdir -p /etc/shz-batcher
+#   write /etc/shz-batcher/staging.env (see ops/shz-batcher/staging_box.sh start for a full example)
+#   sudo systemctl daemon-reload && sudo systemctl enable --now shz-batcher@staging
+# One instance per venue: /etc/shz-batcher/<instance>.env holds the flags (SHZ_BATCHER_ARGS, split on
+# whitespace) and the bitcoin-cli arguments (SHZ_BATCHER_CLI_ARGS="-testnet4 -datadir=...").
+# The keys file named there (batcher and operator secret keys) is mode 0600, owned by the service user.
+# testnet4 broadcasts only with --broadcast in SHZ_BATCHER_ARGS; without it every settlement is
+# built, signed, checked with testmempoolaccept and written as a staged package.
+[Unit]
+Description=Lightninger settlement daemon (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=shzbatcher
+EnvironmentFile=/etc/shz-batcher/%i.env
+ExecStart=/opt/shz-batcher/bin/shz_batcher run $SHZ_BATCHER_ARGS
+Restart=on-failure
+RestartSec=10
+# state.json is rewritten atomically after every step; a restart resumes a posted package
+StateDirectory=shz-batcher/%i
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/shz-batcher /opt/shz-batcher/receipts
+PrivateTmp=true
+MemoryMax=12G
+
+[Install]
+WantedBy=multi-user.target

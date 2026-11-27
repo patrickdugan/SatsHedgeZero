@@ -1,0 +1,63 @@
+{
+  "epoch_secs": 90,
+  "note": "Venue batches 306..313 (artifacts/venue_batches.json) replayed: epoch 0 opens two pairs and closes one; epoch 1 has an aborted seq 6 (two segments); epoch 2 is unattestable so seq 9 rolls into epoch 3. Inside a segment each batch's cash_before equals the previous cash_after (311 follows 310's cash, so it opens segment 4..5).",
+  "batches": [
+    {
+      "src": 306,
+      "seq": 1,
+      "epoch": 0,
+      "at": 10
+    },
+    {
+      "src": 307,
+      "seq": 2,
+      "epoch": 0,
+      "at": 20
+    },
+    {
+      "src": 310,
+      "seq": 3,
+      "epoch": 0,
+      "at": 30
+    },
+    {
+      "src": 311,
+      "seq": 4,
+      "epoch": 1,
+      "at": 10
+    },
+    {
+      "src": 308,
+      "seq": 5,
+      "epoch": 1,
+      "at": 20
+    },
+    {
+      "seq": 6,
+      "aborted": true,
+      "epoch": 1,
+      "at": 30
+    },
+    {
+      "src": 309,
+      "seq": 7,
+      "epoch": 1,
+      "at": 40
+    },
+    {
+      "src": 312,
+      "seq": 8,
+      "epoch": 1,
+      "at": 50
+    },
+    {
+      "src": 313,
+      "seq": 9,
+      "epoch": 2,
+      "at": 20
+    }
+  ],
+  "unattestable": [
+    2
+  ]
+}
