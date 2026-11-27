@@ -39,6 +39,12 @@ export const INSTRUMENTS = Object.freeze({
     intervals: ['1m', '5m', '15m', '1h'],
     relayOnly: true,
     venues: []
+  }),
+  'SHZ-BTCUSDT-SPOT': Object.freeze({
+    label: 'SHZ BTC/USDT spot (testnet)', base: 'BTC', quote: 'USDT', product: 'spot',
+    intervals: ['1m', '5m', '15m', '1h'],
+    relayOnly: true,
+    venues: []
   })
 });
 

@@ -75,3 +75,19 @@ python options_mm.py run --server http://127.0.0.1:18295          # demo account
 
 Run against the local drill venue: `node ops/venue-bench/options_drill/drill.mjs --mm` starts a
 scripted relay and venue, runs this bot, trades against its quotes and moves the mark.
+
+## Spot maker (`spot_mm.py`)
+
+For a venue started with `--spot` (docs/SHZ_SPOT.md): quotes BTC/USDT bids and asks around the oracle
+mark from its own demo account (BTC funded from the perpetual allocation, USDT through the simulated
+adapter), signs its SpotIntent orders and its spot-batch acknowledgements.
+
+```
+python spot_mm.py --selftest            # ladder on tick and lot, shared SpotIntent vector
+python -m unittest test_spot_mm
+python spot_mm.py run --server http://127.0.0.1:8095
+```
+
+Flags: `--server --state-dir --levels --spread-bps --step-bps --size-sats --requote-bps --refresh-s
+--fund-sats --deposit-usdt --expires-s --poll-s`. Key: `<state-dir>/spot_mm.key` (hex, never printed).
+Local drill: `node ops/venue-bench/spot_drill/drill.mjs` (runs this bot against a local venue).

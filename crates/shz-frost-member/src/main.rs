@@ -86,8 +86,8 @@ fn parse(args: &[String], specs: &[Spec], required: &[&str], sub: bool) -> Vec<(
             };
             out.push((spec.name, Some(v)));
         } else {
-            if inline.is_some() {
-                fail(specs, sub, &format!("argument {}: ignored explicit argument '{}'", spec.name, inline.unwrap()));
+            if let Some(v) = inline {
+                fail(specs, sub, &format!("argument {}: ignored explicit argument '{v}'", spec.name));
             }
             out.push((spec.name, None));
         }

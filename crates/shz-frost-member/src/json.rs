@@ -116,10 +116,10 @@ impl J {
     }
     /// `d.pop(key, None)`.
     pub fn pop(&mut self, key: &str) -> Option<J> {
-        if let J::Obj(v) = self {
-            if let Some(p) = v.iter().position(|(k, _)| k == key) {
-                return Some(v.remove(p).1);
-            }
+        if let J::Obj(v) = self
+            && let Some(p) = v.iter().position(|(k, _)| k == key)
+        {
+            return Some(v.remove(p).1);
         }
         None
     }
@@ -128,6 +128,10 @@ impl J {
     }
     pub fn str_or(&self, what: &str) -> R<&str> {
         self.as_str().ok_or_else(|| PyErr::type_(format!("{what} must be str, not {}", self.type_name())))
+    }
+    /// `not x` for a container.
+    pub fn is_empty(&self) -> R<bool> {
+        Ok(self.len()? == 0)
     }
     /// `len(x)`.
     pub fn len(&self) -> R<usize> {
@@ -178,6 +182,8 @@ pub enum Num {
     F(f64),
 }
 
+// `cmp`/`eq`/`sub` are Python's int/float semantics (partial, mixed types), not the std traits.
+#[allow(clippy::should_implement_trait)]
 impl Num {
     pub fn of(j: &J) -> Option<Num> {
         match j {
@@ -307,11 +313,11 @@ fn py_int_digits(s: &str, base: u32) -> R<(bool, Vec<u8>)> {
     }
     // 0 = start, 1 = after a base prefix, 2 = after a digit, 3 = after an underscore.
     let mut prev = 0u8;
-    if base == 16 {
-        if let Some(r) = rest.strip_prefix("0x").or_else(|| rest.strip_prefix("0X")) {
-            rest = r;
-            prev = 1;
-        }
+    if base == 16
+        && let Some(r) = rest.strip_prefix("0x").or_else(|| rest.strip_prefix("0X"))
+    {
+        rest = r;
+        prev = 1;
     }
     let mut digits = Vec::with_capacity(rest.len());
     for c in rest.chars() {

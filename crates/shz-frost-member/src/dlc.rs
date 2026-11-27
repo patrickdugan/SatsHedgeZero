@@ -337,10 +337,11 @@ impl DlcMember {
         }
         let key = d.to_string();
         let mh = hex(msg);
-        if let Some(prev) = ev.at("signed")?.get(&key)? {
-            if !json::is_str(prev, &mh) && !matches!(prev, J::Null) {
-                return Err(PyErr::value(format!("nonce {d} already signed a different message")));
-            }
+        if let Some(prev) = ev.at("signed")?.get(&key)?
+            && !json::is_str(prev, &mh)
+            && !matches!(prev, J::Null)
+        {
+            return Err(PyErr::value(format!("nonce {d} already signed a different message")));
         }
         ev.at_mut("signed")?.set(&key, J::s(mh));
         let r_x = fromhex_j(py_index(ev.at("R")?, d)?)?;
@@ -376,10 +377,11 @@ impl DlcMember {
             return Err(PyErr::value("event nonce setup is not complete"));
         }
         let nb = py_int(ev.at("num_bits")?)?;
-        if let Some(prev) = ev.get("decision")? {
-            if !matches!(prev, J::Null) && !json::is_str(prev, decision) {
-                return Err(PyErr::value(format!("event is already locked to {}", py_str(prev))));
-            }
+        if let Some(prev) = ev.get("decision")?
+            && !matches!(prev, J::Null)
+            && !json::is_str(prev, decision)
+        {
+            return Err(PyErr::value(format!("event is already locked to {}", py_str(prev))));
         }
         let signed = Self::signed_keys(ev)?;
         if decision == UNATTESTABLE {

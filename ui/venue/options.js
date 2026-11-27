@@ -122,15 +122,22 @@ export async function init(ctx) {
   if (!v.enabled) return false;
   for (const el of document.querySelectorAll('[data-options]')) el.hidden = false;
   $('viewseg').onclick = (e) => { const m = e.target.dataset?.v; if (m) setView(m); };
-  setView(localStorage.getItem('shz.venue.view') === 'options' ? 'options' : 'perps');
+  // A saved Spot view is restored by spot.js once it knows spot is on.
+  setView(savedView() === 'options' ? 'options' : 'perps');
   apply(v);
   setInterval(refresh, 5000);
   return true;
 }
-function setView(m) {
+export function savedView() { try { return localStorage.getItem('shz.venue.view'); } catch { return null; } }
+const viewHooks = {};
+/** Product view: perps, options or spot (spot.js registers its show hook). */
+export function setView(m, hooks = null) {
+  if (hooks) Object.assign(viewHooks, hooks);
   document.querySelector('.shell').classList.toggle('opts', m === 'options');
+  document.querySelector('.shell').classList.toggle('spot', m === 'spot');
   for (const b of $('viewseg').children) b.classList.toggle('on', b.dataset.v === m);
   try { localStorage.setItem('shz.venue.view', m); } catch { /* storage blocked */ }
+  viewHooks[m]?.();
 }
 async function refresh() { try { apply(await o.ctx.api('/api/options/series')); } catch { /* keep the last view */ } }
 function apply(v) {
@@ -146,7 +153,7 @@ function apply(v) {
 /** WS events from venue.js (types starting with "option"). */
 export function onEvent(m) {
   clearTimeout(o.timer); o.timer = setTimeout(refresh, 250);
-  if (m.type === 'option_batch' && m.batch) {
+  if (m.type === 'option_batch' && m.batch && m.batch.kind !== 'spot') {
     const mine = o.ctx?.st.owner && JSON.stringify(m.batch).includes(o.ctx.st.owner);
     if (mine) { setMsg(`Option batch #${m.batch.n} ${m.phase}${m.phase === 'staged' ? ': signing the acknowledgement…' : ''}`, m.phase === 'aborted' ? 'err' : 'ok'); o.ctx.refreshAccount().then(o.ctx.renderBottom); }
   }

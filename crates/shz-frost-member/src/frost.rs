@@ -249,7 +249,7 @@ pub fn partial_sign(share: &Share, d: &Scalar, e: &Scalar, msg: &[u8], commits: 
     }
     let enc = enc.unwrap_or_default();
     let rho = binding_factor(gx, msg, &enc, &index_bytes(&J::Int(i))?);
-    let mut k = d + &(rho * e);
+    let mut k = d + rho * e;
     if ec::y_odd(&r) {
         k = -k;
     }
