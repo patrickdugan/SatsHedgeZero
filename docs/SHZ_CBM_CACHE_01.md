@@ -1,0 +1,29 @@
+# SHZ-CBM-CACHE-01: exact verification reuse for LN/UTXORef clearing
+
+Status: experimental opt-in library seam, not wired into live signing, clearing, or reserve mutation. Inspired by BPD ER39-42 (batch-aware retention intervals, causal admission and exact top-K selection). No financial or production-performance claim.
+
+## Predicate separation
+
+A successful BIP-340 check is a pure relation V(pk, digest, signature) for a fixed verifier implementation. The experimental SchnorrVerificationCache admits only successful checks made by shz-dlc::bip340_verify and keys them by the complete fixed-size tuple (32-byte x-only key, 32-byte recomputed digest, 64-byte signature). It is process-local and bounded; callers cannot supply preverified entries. Cache misses and disabled capacity call the original verifier. Scope is deliberately 32-byte digests. The original packers, signing and settlement book remain unchanged.
+
+The caller must independently reconstruct the canonical sighash from the intended transaction, spend path, input/prevout, amount, script, sequence, locktime and all fields required by its sighash type. A 0x83 signature check may be reused exactly when that digest and full tuple match. It does not authorize changes outside its committed fields; preserve the existing pinned input/output pairing and full 0x00/0x01 authorizations. In particular, do not key by txid, trader, outcome, epoch, or funding outpoint alone.
+
+Always perform live checks against the current trusted state: authoritative active-chain UTXO and confirmation evidence, spent outpoints/nullifiers, consumed obligation IDs, epoch continuity, authenticated fresh oracle and applicable policy, exact payout/fee/route accounting, complete required authorization set, durable compare-and-swap reservation before signer invocation, exact signed transaction binding, and confirmation/reorg handling. The cache is not an authorization token or finality proof. The reservation must be atomic with the required current-state checks; stale or ambiguous states follow the existing freeze/recovery rules. A cached successful signature remains a mathematical fact across a reorg, while the live settlement eligibility can change. Clear the cache at verifier version or semantic changes; do not persist or import entries. Invalid signatures are not admitted.
+
+Do not cache the acceptance of an entire PnlBatchSnapshot, a Nova proof without all public inputs and verifier identity, an oracle freshness decision, a spentness decision, or a reservation head. An eventual pure proof-verification cache needs a separately reviewed canonical key including all proof bytes, public inputs and pinned verifier parameters; proof acceptance remains distinct from state transition acceptance.
+
+## Admission and capital
+
+Let C_i be the measured cold cost of a pure verification leaf, P_i an estimate of reuse before eviction, and M_i its entry size. At a fixed equal-size cache budget, start with LRU and frequency baselines, then rank entries by expected saved cold cost less lookup/admission overhead. ER42 top-K can select retention without fully sorting. Unequal sizes, dependent checks and batch execution costs require a different budgeted optimization; do not transfer BPD weights. Causal admission may alter latency and memory only. A miss must always perform the same deterministic verification, regardless of policy. Never drop a required check to meet a deadline.
+
+Measure clearing critical-path time and collateral occupancy separately. For a locked amount a_i and reuse time r_i, a_i*(r_i-t_i) is capital-time, in sat-seconds; reducing verification delay reduces this measure only to the extent verification is actually on the path to lawful reuse. It does not reduce DLC face-value backing, consensus maturity, dispute reserves, or chain confirmation requirements. A faster signature cache may reduce retries and clearing latency with no change to locked collateral.
+
+## Gate to integration
+
+1. Run cargo test -p shz-utxoref verification_cache, including wrong pubkey, digest, signature, zero capacity and eviction tests. Local Rust toolchain unavailable in the experiment environment; these new Rust tests await CI.
+2. Instrument canonical digest calculation and successful pure BIP-340 checks in n_party_packer and repeated candidate preflight, without skipping live checks. Capture only public signature tuples or pseudonymous local IDs for replay; never cache private scalars, nonces, secrets, or signing calls.
+3. Record repeated verification trace with duplicates, reordered candidate packages, pinned 0x83 pairs, fresh full-transaction signatures, high-churn and invalid workloads. Split by independent settlement episodes. Compare cold verification, equal-byte LRU/frequency, optional-admission oracle (offline upper bound), then causal top-K; measure real verifier calls, hit counts, wall and CPU time, cache allocation, p50/p95/p99 latency and adverse memory load.
+4. Require cold-vs-cached identical accepted/rejected candidates and exact signed bytes/state roots, with mutation tests for every bound digest field, changed live oracle/epoch/head, spent outpoints, concurrent reservation, reorg, and restart. Exercise on regtest before considering any use. Cache or predictor failure falls back to original cold path or rejects as appropriate; never accepts on inference alone.
+5. Use measured verification critical-path savings in the capital-bound model. Report which reservations become reusable earlier and which remain constrained by maturity, confirmation, or dispute paths.
+
+Current module is a linear-search LRU pilot with bounded capacity (4096 maximum). It has no learned admission, no on-chain deployment, and no measured clearing throughput improvement. Optimize the index only after replay demonstrates repeated tuple locality.
