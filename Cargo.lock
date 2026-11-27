@@ -1239,6 +1239,7 @@ dependencies = [
  "hex",
  "k256",
  "serde",
+ "serde_json",
  "sha2",
  "shz-dlc",
  "shz-margin",
