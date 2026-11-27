@@ -1,0 +1,13 @@
+[package]
+name = "lightninger-dlc-batch-relation"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "The DLC batcher's settlement relation: venue V3 batch digests and chain, the account manifest, the N-input settlement transaction check, and the 304-byte statement. Shared by the native verifier and the SP1 guest."
+
+[workspace]
+
+[dependencies]
+sha2 = "=0.10.9"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }

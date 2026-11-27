@@ -1,0 +1,2419 @@
+{
+ "name": "testnet4_batches_306_313",
+ "venue": "https://shz-venue.170-75-168-145.sslip.io",
+ "template": {
+  "authority_key": "ea717bfe557a706406e9f6f0189f0030b586502489539e491e985e0fb9756078",
+  "collar_bps": 200,
+  "entitlement_key": "6c83146ced016e610c2051f2a812cfd9a9740d47da3284d01248622fdbb0614b",
+  "execution_policy": "15efcb240c5cdee99fca2da48063b5e3f229c3a346fa2052e5d19926c97b4493",
+  "group_key": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+  "leverage_bps": {
+   "max": 100000,
+   "min": 1000
+  },
+  "market": "SHZ-BTCUSD-INV",
+  "max_mark_age_us": 15000000,
+  "router": 1,
+  "scope": {
+   "epoch": 1,
+   "network": "c48ee5347fe7d8f52804fb64398b68005b66907981fdb928f0c9e0c67757a4e7",
+   "policy": "99eb90bfbccddf2b60e24b5e308eec4dcaf09579e5bdc946d280d43604c0d07e"
+  },
+  "tariff": {
+   "maker_ppm": [
+    0,
+    0,
+    20
+   ],
+   "taker_ppm": [
+    0,
+    50,
+    200
+   ]
+  },
+  "tariff_version": 1
+ },
+ "qty_usd": 100,
+ "leverage_bps": 100000,
+ "accounts": [
+  {
+   "index": 0,
+   "owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+   "outpoint": {
+    "txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+    "vout": 0
+   },
+   "realized_pnl_sats": -28,
+   "net_usd_after": 0
+  },
+  {
+   "index": 1,
+   "owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+   "outpoint": {
+    "txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+    "vout": 0
+   },
+   "realized_pnl_sats": 28,
+   "net_usd_after": 0
+  },
+  {
+   "index": 2,
+   "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+   "outpoint": {
+    "txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+    "vout": 0
+   },
+   "realized_pnl_sats": -36,
+   "net_usd_after": 0
+  },
+  {
+   "index": 3,
+   "owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+   "outpoint": {
+    "txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+    "vout": 0
+   },
+   "realized_pnl_sats": 36,
+   "net_usd_after": 0
+  },
+  {
+   "index": 4,
+   "owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+   "outpoint": {
+    "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+    "vout": 0
+   },
+   "realized_pnl_sats": -80,
+   "net_usd_after": 0
+  },
+  {
+   "index": 5,
+   "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+   "outpoint": {
+    "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+    "vout": 0
+   },
+   "realized_pnl_sats": 80,
+   "net_usd_after": 0
+  },
+  {
+   "index": 6,
+   "owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+   "outpoint": {
+    "txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+    "vout": 0
+   },
+   "realized_pnl_sats": -80,
+   "net_usd_after": 0
+  },
+  {
+   "index": 7,
+   "owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+   "outpoint": {
+    "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+    "vout": 0
+   },
+   "realized_pnl_sats": 80,
+   "net_usd_after": 0
+  }
+ ],
+ "rounds": {
+  "open": [
+   {
+    "maker": 0,
+    "taker": 1,
+    "maker_side": "long",
+    "limit_usd": 60068,
+    "post": "9007447e84d955da1a8a702a3b279ccc769f9a0757186a4d03b8a3cd45dfea84",
+    "take": "2caceadb3c32ace7a796445cdaf3e02ff8059c6f41592c1cd2247a5690c35d84",
+    "fill": {
+     "batch_seq": 306,
+     "early_window": false,
+     "id": "2caceadb3c32ace7a796445cdaf3e02ff8059c6f41592c1cd2247a5690c35d84",
+     "maker_fee_sats": 0,
+     "maker_id": "9007447e84d955da1a8a702a3b279ccc769f9a0757186a4d03b8a3cd45dfea84",
+     "maker_owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+     "maker_tier": "standard",
+     "packet_digest": "e934551ef3a5d20ce30eba9b8c46ac2d29585793471cb1828f5673e2b23728e7",
+     "packet_seq": 38229,
+     "price_usd": 60068,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+     "taker_side": "short",
+     "taker_tier": "standard",
+     "ts_us": 1795793855202827
+    },
+    "batch_seq": 306
+   },
+   {
+    "maker": 2,
+    "taker": 3,
+    "maker_side": "long",
+    "limit_usd": 60071,
+    "post": "f44a4d5630c0714e3d97e408f822ff498b9de3c2c73fc470877a15dd5e4a5910",
+    "take": "ef971ef3d42479a397dc9aebdfbce35a29cf38d5ad4be920ef6eb6ed84f5ac13",
+    "fill": {
+     "batch_seq": 307,
+     "early_window": false,
+     "id": "ef971ef3d42479a397dc9aebdfbce35a29cf38d5ad4be920ef6eb6ed84f5ac13",
+     "maker_fee_sats": 0,
+     "maker_id": "f44a4d5630c0714e3d97e408f822ff498b9de3c2c73fc470877a15dd5e4a5910",
+     "maker_owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+     "maker_tier": "standard",
+     "packet_digest": "e934551ef3a5d20ce30eba9b8c46ac2d29585793471cb1828f5673e2b23728e7",
+     "packet_seq": 38229,
+     "price_usd": 60071,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+     "taker_side": "short",
+     "taker_tier": "standard",
+     "ts_us": 1795793858002705
+    },
+    "batch_seq": 307
+   },
+   {
+    "maker": 4,
+    "taker": 5,
+    "maker_side": "short",
+    "limit_usd": 60057,
+    "post": "506029db894655297f275825b94201afc9caa5bf6ba5af20b0e9fedc67317b7f",
+    "take": "8fc60a2b662f3f6f173ddc330faa19e01cc643792e0e67d9c0fedd6a22136a6a",
+    "fill": {
+     "batch_seq": 308,
+     "early_window": false,
+     "id": "8fc60a2b662f3f6f173ddc330faa19e01cc643792e0e67d9c0fedd6a22136a6a",
+     "maker_fee_sats": 0,
+     "maker_id": "506029db894655297f275825b94201afc9caa5bf6ba5af20b0e9fedc67317b7f",
+     "maker_owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+     "maker_tier": "standard",
+     "packet_digest": "a3f25a7a9f5d94d4dd4c96099a953333402c4873618bed058907fcdfa8b22c6a",
+     "packet_seq": 38230,
+     "price_usd": 60057,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793860783804
+    },
+    "batch_seq": 308
+   },
+   {
+    "maker": 6,
+    "taker": 7,
+    "maker_side": "short",
+    "limit_usd": 60057,
+    "post": "e4c99d071cb5742f4ffa889b5956f23f2b244e7e6ac1356524d3b44ba1ec2a15",
+    "take": "52ea9cb9afcd42f12223aa3a64f438a7e7614eed55dd6aa6b3a986d7a4058ca6",
+    "fill": {
+     "batch_seq": 309,
+     "early_window": false,
+     "id": "52ea9cb9afcd42f12223aa3a64f438a7e7614eed55dd6aa6b3a986d7a4058ca6",
+     "maker_fee_sats": 0,
+     "maker_id": "e4c99d071cb5742f4ffa889b5956f23f2b244e7e6ac1356524d3b44ba1ec2a15",
+     "maker_owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+     "maker_tier": "standard",
+     "packet_digest": "a3f25a7a9f5d94d4dd4c96099a953333402c4873618bed058907fcdfa8b22c6a",
+     "packet_seq": 38230,
+     "price_usd": 60057,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793863407062
+    },
+    "batch_seq": 309
+   }
+  ],
+  "close": [
+   {
+    "maker": 0,
+    "taker": 3,
+    "maker_side": "short",
+    "limit_usd": 60058,
+    "post": "b47fd2479e664d8019427c45e193abb53ccc51c50ba79992dfa6a0d10a779729",
+    "take": "bc3c3c1b3f29da9b0f776184f4c67bfd677f6901c42521febe29e94f28060000",
+    "fill": {
+     "batch_seq": 310,
+     "early_window": false,
+     "id": "bc3c3c1b3f29da9b0f776184f4c67bfd677f6901c42521febe29e94f28060000",
+     "maker_fee_sats": 0,
+     "maker_id": "b47fd2479e664d8019427c45e193abb53ccc51c50ba79992dfa6a0d10a779729",
+     "maker_owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+     "maker_tier": "standard",
+     "packet_digest": "4c1ae8ca9904e7276fb922a688e56b5118f2290f99b883976df980f63f0f4996",
+     "packet_seq": 38255,
+     "price_usd": 60058,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793987142625
+    },
+    "batch_seq": 310
+   },
+   {
+    "maker": 2,
+    "taker": 1,
+    "maker_side": "short",
+    "limit_usd": 60058,
+    "post": "3282bfcc313d30f63bbe292efd1472ee177dd1fd398711c02165db3a1ac9cb77",
+    "take": "c2714c3b0aa8740f0e9623cf0438d8d5d280e74b3cc9e65d65030db5c725e17e",
+    "fill": {
+     "batch_seq": 311,
+     "early_window": false,
+     "id": "c2714c3b0aa8740f0e9623cf0438d8d5d280e74b3cc9e65d65030db5c725e17e",
+     "maker_fee_sats": 0,
+     "maker_id": "3282bfcc313d30f63bbe292efd1472ee177dd1fd398711c02165db3a1ac9cb77",
+     "maker_owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+     "maker_tier": "standard",
+     "packet_digest": "4c1ae8ca9904e7276fb922a688e56b5118f2290f99b883976df980f63f0f4996",
+     "packet_seq": 38255,
+     "price_usd": 60058,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793989942908
+    },
+    "batch_seq": 311
+   },
+   {
+    "maker": 5,
+    "taker": 6,
+    "maker_side": "short",
+    "limit_usd": 60086,
+    "post": "5b1937d358e4cd80ed234e2df93ee51f23afbb6d01e4d2a43991e5a9a33141c8",
+    "take": "b6efdb97928bdcd816c784702311d515fa5f3aa7cced6149cbbf623ec637a59b",
+    "fill": {
+     "batch_seq": 312,
+     "early_window": false,
+     "id": "b6efdb97928bdcd816c784702311d515fa5f3aa7cced6149cbbf623ec637a59b",
+     "maker_fee_sats": 0,
+     "maker_id": "5b1937d358e4cd80ed234e2df93ee51f23afbb6d01e4d2a43991e5a9a33141c8",
+     "maker_owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+     "maker_tier": "standard",
+     "packet_digest": "0286f83670ee991f04c347f110f1f9318573c663a3cdbbfc2b143030c00bdec2",
+     "packet_seq": 38256,
+     "price_usd": 60086,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793993103040
+    },
+    "batch_seq": 312
+   },
+   {
+    "maker": 7,
+    "taker": 4,
+    "maker_side": "short",
+    "limit_usd": 60086,
+    "post": "e162dceccc570dd41709643379c80a2863a7fc7d4c2058f6730e547177d60977",
+    "take": "c4ed2cef611bb296daa85818cb53487f459fc0a91de43ed760e7210c0ecb4a8a",
+    "fill": {
+     "batch_seq": 313,
+     "early_window": false,
+     "id": "c4ed2cef611bb296daa85818cb53487f459fc0a91de43ed760e7210c0ecb4a8a",
+     "maker_fee_sats": 0,
+     "maker_id": "e162dceccc570dd41709643379c80a2863a7fc7d4c2058f6730e547177d60977",
+     "maker_owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+     "maker_tier": "standard",
+     "packet_digest": "e0f0f0313801faa681042290f6d8635da51b331e1bd60b2631e4b8acf1213f9e",
+     "packet_seq": 38257,
+     "price_usd": 60086,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793995802208
+    },
+    "batch_seq": 313
+   }
+  ]
+ },
+ "open_mark_usd": 60056.99,
+ "status_before": {
+  "accounts": 37,
+  "agents": {
+   "active": 0,
+   "enabled": true,
+   "grants": 2
+  },
+  "clearing": {
+   "book": 112,
+   "carry": 0,
+   "cash": 1000114,
+   "claims": 0,
+   "fund": 1000002,
+   "fund0": 1000000,
+   "identity": 0,
+   "legacy": 1
+  },
+  "closing_loans": true,
+  "group_key": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+  "journal": {
+   "digest": "9cc00589a422070d5d6883d1726bf3e10fda26f3b72bfe610c64447bf8c88db2",
+   "records": 111926
+  },
+  "margin_release": true,
+  "mark": {
+   "age_s": 4.408535,
+   "digest": "12dea8536564f4a7adc55161da94371c07f2c605f4c5849810557b4861b49c29",
+   "median_e8": 6006848500000,
+   "price_usd": 60068.485,
+   "received_us": 1795793850196145,
+   "seq": 38228,
+   "signers": [
+    1,
+    2,
+    3
+   ],
+   "slot_us": 1795793850000000,
+   "status": "VALID",
+   "verified": true
+  },
+  "market": "SHZ-BTCUSD-INV",
+  "network": "testnet4",
+  "options": {
+   "acks": true,
+   "combos": true,
+   "enabled": true,
+   "num_bits": 20,
+   "oracle": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+   "ownerless_expiry": true,
+   "staged": null,
+   "usdt": {
+    "adapter": "simulated (no on-chain transfer)",
+    "code": "USDT",
+    "decimals": 6,
+    "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+    "kind": "stable",
+    "protocol": "rgb",
+    "unit": "base unit"
+   }
+  },
+  "production_ready": false,
+  "relay": "http://127.0.0.1:8091",
+  "router": {
+   "batch_sequence": 305,
+   "clock_us": 1795793850196147,
+   "fills": 305,
+   "resting": 8
+  },
+  "spot": {
+   "base": {
+    "code": "BTC",
+    "kind": "btc",
+    "unit": "sat"
+   },
+   "enabled": true,
+   "lot_sats": 1000,
+   "market": "SHZ-BTCUSDT-SPOT",
+   "pair": "6b7ef4bc3fbd90f177aede130769ce4d51fda975a5d54c9e252921c34a20fbbf",
+   "price_unit": "quote base units per BTC",
+   "quote": {
+    "adapter": "simulated (no on-chain transfer)",
+    "code": "USDT",
+    "decimals": 6,
+    "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+    "kind": "stable",
+    "protocol": "rgb",
+    "unit": "base unit"
+   },
+   "settlement": "venue ledger; USDT is a simulated adapter credit, nothing moves on chain (on-chain path: RGB-02 atomic BTC/RGB swaps, blocked upstream)",
+   "size_unit": "sats",
+   "tick": 100000
+  }
+ },
+ "status_after": {
+  "accounts": 37,
+  "agents": {
+   "active": 0,
+   "enabled": true,
+   "grants": 2
+  },
+  "clearing": {
+   "book": 112,
+   "carry": 0,
+   "cash": 1000114,
+   "claims": 0,
+   "fund": 1000002,
+   "fund0": 1000000,
+   "identity": 0,
+   "legacy": 1
+  },
+  "closing_loans": true,
+  "group_key": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+  "journal": {
+   "digest": "26f5bf8263e80028e3d6c851b52ccf6ee2e389b84d93f73955764489e647fa98",
+   "records": 112147
+  },
+  "margin_release": true,
+  "mark": {
+   "age_s": 3.379741,
+   "digest": "e0f0f0313801faa681042290f6d8635da51b331e1bd60b2631e4b8acf1213f9e",
+   "median_e8": 6005819000000,
+   "price_usd": 60058.19,
+   "received_us": 1795793995281522,
+   "seq": 38257,
+   "signers": [
+    1,
+    2,
+    3
+   ],
+   "slot_us": 1795793995000000,
+   "status": "VALID",
+   "verified": true
+  },
+  "market": "SHZ-BTCUSD-INV",
+  "network": "testnet4",
+  "options": {
+   "acks": true,
+   "combos": true,
+   "enabled": true,
+   "num_bits": 20,
+   "oracle": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+   "ownerless_expiry": true,
+   "staged": null,
+   "usdt": {
+    "adapter": "simulated (no on-chain transfer)",
+    "code": "USDT",
+    "decimals": 6,
+    "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+    "kind": "stable",
+    "protocol": "rgb",
+    "unit": "base unit"
+   }
+  },
+  "production_ready": false,
+  "relay": "http://127.0.0.1:8091",
+  "router": {
+   "batch_sequence": 313,
+   "clock_us": 1795793995902515,
+   "fills": 313,
+   "resting": 8
+  },
+  "spot": {
+   "base": {
+    "code": "BTC",
+    "kind": "btc",
+    "unit": "sat"
+   },
+   "enabled": true,
+   "lot_sats": 1000,
+   "market": "SHZ-BTCUSDT-SPOT",
+   "pair": "6b7ef4bc3fbd90f177aede130769ce4d51fda975a5d54c9e252921c34a20fbbf",
+   "price_unit": "quote base units per BTC",
+   "quote": {
+    "adapter": "simulated (no on-chain transfer)",
+    "code": "USDT",
+    "decimals": 6,
+    "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+    "kind": "stable",
+    "protocol": "rgb",
+    "unit": "base unit"
+   },
+   "settlement": "venue ledger; USDT is a simulated adapter credit, nothing moves on chain (on-chain path: RGB-02 atomic BTC/RGB swaps, blocked upstream)",
+   "size_unit": "sats",
+   "tick": 100000
+  }
+ },
+ "batches": [
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16648,
+      "owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16648,
+      "owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+       "vout": 0
+      },
+      "evidence": "6d202a34b6a302bd2d5400671a0bcd596d34698601e5c262456e2ba4b3afbd40",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "02ea280b106b5789c59e0ec56e67d98bb7c1c7a509cbe733fcfab55b4587016906ce3701dcc606fc8d25710d0b434ce17c44a88d21c2b98bb44c8353e5ab3c4d",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "329d0cbd5d80413d9a88bf1a1807ae6121e67d7701156343944f75f22a077ec1cff5e4cb866d19bf280fa2c2bce1bfe67e1794988261f293df00f8ed893c13c9",
+      "previous_commitment": 0
+     },
+     {
+      "channel": {
+       "txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+       "vout": 0
+      },
+      "evidence": "fc1d40a10252446fe195848c45fa778e9c58cf8444067504da996ceb1078c4bf",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "46032dc1c3f33140da63ea6c14cf03c11af3c24e1fd554684c1c21b5ad42c34a08a521bca0f2012715d54243138913aff92a57957386aabf6be165b663e071bd",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "492629857634321ccff28d832cc745fd52ed3f793c9b14d915bde1d77ff5e5fb6ef527594a22a45c899d5ded0aeb74af1b5028949ad6d19f899b5b675b50f020",
+      "previous_commitment": 0
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000114,
+     "cash_before": 1000114,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "None",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         69,
+         70,
+         36,
+         82,
+         131,
+         167,
+         87,
+         190,
+         153,
+         158,
+         221,
+         7,
+         48,
+         219,
+         72,
+         69,
+         209,
+         38,
+         93,
+         154,
+         137,
+         79,
+         234,
+         145,
+         188,
+         71,
+         56,
+         200,
+         76,
+         52,
+         72,
+         40
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         132,
+         126,
+         138,
+         216,
+         88,
+         204,
+         154,
+         169,
+         211,
+         17,
+         61,
+         81,
+         138,
+         141,
+         43,
+         130,
+         222,
+         121,
+         127,
+         201,
+         94,
+         44,
+         107,
+         31,
+         90,
+         7,
+         247,
+         2,
+         61,
+         39,
+         249,
+         187
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793856946277,
+    "created_us": 1795793855305460,
+    "digest": "8012ad62e073e2a8b9b42cce1948908c41da27e1cd23f0d004a1187304bba714",
+    "ledger_state": "Committed",
+    "legs": [
+     "2caceadb3c32ace7a796445cdaf3e02ff8059c6f41592c1cd2247a5690c35d84"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793856174380,
+    "router_due_sats": 0,
+    "seq": 306,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16648,
+      "net_after_usd": -100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16648,
+      "owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     },
+     {
+      "channel": {
+       "txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16648,
+      "net_after_usd": 100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16648,
+      "owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     }
+    ],
+    "window_us": [
+     1795793855200000,
+     1795793855300000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 306,
+     "early_window": false,
+     "id": "2caceadb3c32ace7a796445cdaf3e02ff8059c6f41592c1cd2247a5690c35d84",
+     "maker_fee_sats": 0,
+     "maker_id": "9007447e84d955da1a8a702a3b279ccc769f9a0757186a4d03b8a3cd45dfea84",
+     "maker_owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+     "maker_tier": "standard",
+     "packet_digest": "e934551ef3a5d20ce30eba9b8c46ac2d29585793471cb1828f5673e2b23728e7",
+     "packet_seq": 38229,
+     "price_usd": 60068,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+     "taker_side": "short",
+     "taker_tier": "standard",
+     "ts_us": 1795793855202827
+    }
+   ]
+  },
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16647,
+      "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16647,
+      "owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+       "vout": 0
+      },
+      "evidence": "cf5921ca3f259c6e28a8618842f6689f1edcd4b66fb16c64c40843968db2bef5",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "610302acf0861e617ddc3a99f0e92ebd6071c6e02be111917c0f67517108857d3a26c6c7f691631539731e5542610d84a624845862d75b339c61debbb9692953",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "81480f58cf279b0a669c6ca20296ebcbdcc23c45399b6dff2782fedc826ef8f32fa50e8d06698684f8fa15e695cb6125874d6e37ebe23ce3981fa1ba639cb200",
+      "previous_commitment": 0
+     },
+     {
+      "channel": {
+       "txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+       "vout": 0
+      },
+      "evidence": "a9d0440110dc64f7647be72b15d8f7c231b725fda8a346f15b9989f9f5864c18",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "230568e003d7dfd9a787635dd49e6a4e0c7e10b826171561454c16a57cabb56a1a1ed71e99d040adf9cd9bbe7ffb56826f3e9342050b48515fbb043360736888",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "7db5b25293498009758c92645d0161699b8b016a1c4b6a9a8606bb2063072c356bab2572fd40c78bf9f1739b74b2545086bec277be999d81448c813492edf5e7",
+      "previous_commitment": 0
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000114,
+     "cash_before": 1000114,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "None",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         170,
+         166,
+         199,
+         183,
+         247,
+         127,
+         172,
+         230,
+         179,
+         55,
+         109,
+         58,
+         128,
+         204,
+         169,
+         119,
+         189,
+         130,
+         51,
+         244,
+         111,
+         207,
+         93,
+         178,
+         52,
+         194,
+         141,
+         243,
+         64,
+         145,
+         203,
+         26
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         248,
+         221,
+         174,
+         127,
+         109,
+         34,
+         67,
+         147,
+         155,
+         124,
+         221,
+         4,
+         141,
+         103,
+         174,
+         17,
+         188,
+         237,
+         102,
+         245,
+         73,
+         13,
+         8,
+         63,
+         114,
+         229,
+         229,
+         155,
+         4,
+         181,
+         40,
+         243
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793859753419,
+    "created_us": 1795793858106020,
+    "digest": "116f2d3e8667b2bbf6c0ea02b57b769248dccb8bfd6c8b1777350f74b346f249",
+    "ledger_state": "Committed",
+    "legs": [
+     "ef971ef3d42479a397dc9aebdfbce35a29cf38d5ad4be920ef6eb6ed84f5ac13"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793858507589,
+    "router_due_sats": 0,
+    "seq": 307,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16647,
+      "net_after_usd": 100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16647,
+      "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     },
+     {
+      "channel": {
+       "txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16647,
+      "net_after_usd": -100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16647,
+      "owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     }
+    ],
+    "window_us": [
+     1795793858000000,
+     1795793858100000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 307,
+     "early_window": false,
+     "id": "ef971ef3d42479a397dc9aebdfbce35a29cf38d5ad4be920ef6eb6ed84f5ac13",
+     "maker_fee_sats": 0,
+     "maker_id": "f44a4d5630c0714e3d97e408f822ff498b9de3c2c73fc470877a15dd5e4a5910",
+     "maker_owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+     "maker_tier": "standard",
+     "packet_digest": "e934551ef3a5d20ce30eba9b8c46ac2d29585793471cb1828f5673e2b23728e7",
+     "packet_seq": 38229,
+     "price_usd": 60071,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+     "taker_side": "short",
+     "taker_tier": "standard",
+     "ts_us": 1795793858002705
+    }
+   ]
+  },
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+       "vout": 0
+      },
+      "evidence": "5eea4aeba9b09ed1a96a2adf86aacdb874b779cb53b53e7735be1d485dbfd17d",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "d034c681c6134de9d5127d3c52cf74bd870659235a17a198daf1bb61d8cba81b6ba24c56aafb43f07ad334a65e17a8c27813d7da234c00c2a83b0f6f363217ad",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "35d13732e27019e0034093795d340d2976120fa031c20cff10e7842c78eec72b0b2ab90e653c58b0d05334977ccf34887dc3c9ef64c7ff43556c3e2d672f334a",
+      "previous_commitment": 0
+     },
+     {
+      "channel": {
+       "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+       "vout": 0
+      },
+      "evidence": "aae57ba7fc0eb3488e60485b12a90934518dd4f389eba515b6fa2900e741ab94",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "47336c76856d305a0cc72f97dc5ab865d46413eff178d0b169e7edd94352169614391b660e40e656add369f7aa52d3878c437ae0fe21f21d084272191b205557",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "ca6a942ec3754789a9a99524fab414321a9eb07b97150a8a4a7bf8a295cb432cda2c7ec38db7d4386fcac7595bc612516ab9c7c857537ee32c0065d13bffc6ba",
+      "previous_commitment": 0
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000114,
+     "cash_before": 1000114,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "None",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         36,
+         160,
+         46,
+         229,
+         134,
+         200,
+         41,
+         96,
+         90,
+         98,
+         97,
+         159,
+         248,
+         230,
+         255,
+         15,
+         192,
+         52,
+         182,
+         229,
+         0,
+         197,
+         25,
+         145,
+         3,
+         26,
+         11,
+         81,
+         121,
+         55,
+         255,
+         96
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         234,
+         184,
+         175,
+         205,
+         218,
+         124,
+         38,
+         159,
+         114,
+         209,
+         142,
+         166,
+         108,
+         245,
+         237,
+         176,
+         147,
+         20,
+         98,
+         249,
+         29,
+         166,
+         154,
+         133,
+         164,
+         6,
+         227,
+         247,
+         215,
+         52,
+         184,
+         183
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793862391125,
+    "created_us": 1795793860804928,
+    "digest": "d700caa37b7882d8f51f95fb19930feffedf6ad0849af9bfe922a2c516a37059",
+    "ledger_state": "Committed",
+    "legs": [
+     "8fc60a2b662f3f6f173ddc330faa19e01cc643792e0e67d9c0fedd6a22136a6a"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793861299579,
+    "router_due_sats": 0,
+    "seq": 308,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16651,
+      "net_after_usd": -100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16651,
+      "owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     },
+     {
+      "channel": {
+       "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16651,
+      "net_after_usd": 100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16651,
+      "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     }
+    ],
+    "window_us": [
+     1795793860700000,
+     1795793860800000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 308,
+     "early_window": false,
+     "id": "8fc60a2b662f3f6f173ddc330faa19e01cc643792e0e67d9c0fedd6a22136a6a",
+     "maker_fee_sats": 0,
+     "maker_id": "506029db894655297f275825b94201afc9caa5bf6ba5af20b0e9fedc67317b7f",
+     "maker_owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+     "maker_tier": "standard",
+     "packet_digest": "a3f25a7a9f5d94d4dd4c96099a953333402c4873618bed058907fcdfa8b22c6a",
+     "packet_seq": 38230,
+     "price_usd": 60057,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793860783804
+    }
+   ]
+  },
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+       "vout": 0
+      },
+      "evidence": "09180ba309427b3f69bb1bd9f7d3f8d3b99c8174949a38af0e8b2d0a08f8152d",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "e8d2a142176f34727d4600a54402844923d79a8290e08faf07b32bcf469d66dd0dc4665546a11c518b53a76fb2065a08da149d2f00cfea7020e27f28f2c9b58e",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "1c13760b6c1e3fade060eac020c50732886602e653a279b947ef451b5a65a4dfb3bafc60bf4ac051bcfe6bc0334771f287bd03a5e1a603e18b55c3011a4f3148",
+      "previous_commitment": 0
+     },
+     {
+      "channel": {
+       "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+       "vout": 0
+      },
+      "evidence": "bf73a438ed1d2f8fd9a2190e93d3a3b2772a27d70c60a73f470c3bb9c56e406e",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "754a5e5790436b5341b07d40106d87ec2ae4060b111106c86e52a779d3118d2aa29e7f142080fdcbf60f36450a4085d3f51159ff64b8ae39cbb3708b48566b48",
+      "next_commitment": 1,
+      "owner_signed": true,
+      "peer_signature": "0a9c5a753b9f9e620d9c92cf8ea568b8373ba4beb08655a2efd95e9207819b2fc280abee30767254cb442d6a7459d9a0c88ec1bb4c264054e56924bd52014316",
+      "previous_commitment": 0
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000114,
+     "cash_before": 1000114,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "None",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         68,
+         135,
+         246,
+         144,
+         79,
+         210,
+         142,
+         128,
+         164,
+         5,
+         129,
+         133,
+         207,
+         171,
+         30,
+         49,
+         227,
+         154,
+         75,
+         141,
+         99,
+         152,
+         166,
+         64,
+         117,
+         58,
+         22,
+         150,
+         124,
+         229,
+         11,
+         115
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         173,
+         75,
+         24,
+         221,
+         91,
+         58,
+         136,
+         30,
+         137,
+         135,
+         101,
+         225,
+         161,
+         59,
+         227,
+         8,
+         189,
+         169,
+         53,
+         197,
+         12,
+         212,
+         150,
+         182,
+         119,
+         115,
+         164,
+         190,
+         100,
+         69,
+         44,
+         165
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 0,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": 0,
+       "released": 0,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793864683895,
+    "created_us": 1795793863505491,
+    "digest": "c88e3bf801e48791378f9a71273c7bf04841601026057b860f99d4b99bd12bdc",
+    "ledger_state": "Committed",
+    "legs": [
+     "52ea9cb9afcd42f12223aa3a64f438a7e7614eed55dd6aa6b3a986d7a4058ca6"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793863920556,
+    "router_due_sats": 0,
+    "seq": 309,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16651,
+      "net_after_usd": -100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16651,
+      "owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     },
+     {
+      "channel": {
+       "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 0,
+      "closed_usd": 0,
+      "margin_after_sats": 16651,
+      "net_after_usd": 100,
+      "net_before_usd": 0,
+      "opened_margin_sats": 16651,
+      "owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+      "payout_sats": 0,
+      "realized_pnl_sats": 0,
+      "released_margin_sats": 0
+     }
+    ],
+    "window_us": [
+     1795793863400000,
+     1795793863500000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 309,
+     "early_window": false,
+     "id": "52ea9cb9afcd42f12223aa3a64f438a7e7614eed55dd6aa6b3a986d7a4058ca6",
+     "maker_fee_sats": 0,
+     "maker_id": "e4c99d071cb5742f4ffa889b5956f23f2b244e7e6ac1356524d3b44ba1ec2a15",
+     "maker_owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+     "maker_tier": "standard",
+     "packet_digest": "a3f25a7a9f5d94d4dd4c96099a953333402c4873618bed058907fcdfa8b22c6a",
+     "packet_seq": 38230,
+     "price_usd": 60057,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793863407062
+    }
+   ]
+  },
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+       "vout": 0
+      },
+      "evidence": "88bc79029d8d27912a3608556500b802a8436b9077ba1cfe4ac1301597cd7c22",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "070f3135a194db7d51a9e0c06e9b5c686aa7ca9ace0d9cf7f26359490e1c6f4671f5bbd8510d3e15fbfe2bf6b559a9e5fa6d929146a88438a9d2933be5c439a5",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "efda0c3a2d61b15a52203df1ec5a7fb692f0d9117374b64d5a11a5ed355230e1a8eb741660db6c3bc59f5698746ae4286b9c9196b5634e6dd44e899d2cd85458",
+      "previous_commitment": 1
+     },
+     {
+      "channel": {
+       "txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+       "vout": 0
+      },
+      "evidence": "e366961878e17ea5522af6289a101a0333168b93e88a2c6feee4a0ac32a24689",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "dca726c34aef4d4387b2b6e85d053cedf66bfd66b1bef1977c1af170c89f781c8b97999316389662d72b13b75a37b5170e647d67e3bd3b5b6d41dedf77e318a5",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "d596f0ff7d9e63b8e360e481dec587ed52f2c022dbee2805e8be051e352d3c279e5d91c84a8b8e52b30d0602f5b10584a3f605ecf7d386ca950e4ed77d12d145",
+      "previous_commitment": 1
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000106,
+     "cash_before": 1000114,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "Margin",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         132,
+         126,
+         138,
+         216,
+         88,
+         204,
+         154,
+         169,
+         211,
+         17,
+         61,
+         81,
+         138,
+         141,
+         43,
+         130,
+         222,
+         121,
+         127,
+         201,
+         94,
+         44,
+         107,
+         31,
+         90,
+         7,
+         247,
+         2,
+         61,
+         39,
+         249,
+         187
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 28,
+       "haircut": 0,
+       "net": -28,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": -28,
+       "released": 16648,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         248,
+         221,
+         174,
+         127,
+         109,
+         34,
+         67,
+         147,
+         155,
+         124,
+         221,
+         4,
+         141,
+         103,
+         174,
+         17,
+         188,
+         237,
+         102,
+         245,
+         73,
+         13,
+         8,
+         63,
+         114,
+         229,
+         229,
+         155,
+         4,
+         181,
+         40,
+         243
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 36,
+       "own_claim_used": 0,
+       "paid": 36,
+       "pnl": 36,
+       "released": 16647,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793988907464,
+    "created_us": 1795793987206593,
+    "digest": "fa8375fcdbf6ffb9e75f86b0df89151d8b8955c9cbe265e3c581c891c90fde7f",
+    "ledger_state": "Committed",
+    "legs": [
+     "bc3c3c1b3f29da9b0f776184f4c67bfd677f6901c42521febe29e94f28060000"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793988128282,
+    "router_due_sats": 0,
+    "seq": 310,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16651,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": 100,
+      "opened_margin_sats": 0,
+      "owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+      "payout_sats": 16620,
+      "realized_pnl_sats": -28,
+      "released_margin_sats": 16648
+     },
+     {
+      "channel": {
+       "txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16651,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": -100,
+      "opened_margin_sats": 0,
+      "owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+      "payout_sats": 16683,
+      "realized_pnl_sats": 36,
+      "released_margin_sats": 16647
+     }
+    ],
+    "window_us": [
+     1795793987100000,
+     1795793987200000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 310,
+     "early_window": false,
+     "id": "bc3c3c1b3f29da9b0f776184f4c67bfd677f6901c42521febe29e94f28060000",
+     "maker_fee_sats": 0,
+     "maker_id": "b47fd2479e664d8019427c45e193abb53ccc51c50ba79992dfa6a0d10a779729",
+     "maker_owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+     "maker_tier": "standard",
+     "packet_digest": "4c1ae8ca9904e7276fb922a688e56b5118f2290f99b883976df980f63f0f4996",
+     "packet_seq": 38255,
+     "price_usd": 60058,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793987142625
+    }
+   ]
+  },
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16651,
+      "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+       "vout": 0
+      },
+      "evidence": "5789834cb4e4ca134396888da69bbb4c10f6b61f3fb3d919ead00e55f0af7d46",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "09334f13e30f5d4c0062633c98128ce9dbd939419460e8213ecb53ae99ecc761a508f762ec9b9a0dfd750b800760d6397334aa7d86837a66c484a6ad2ce02b16",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "6b9bdd2869ff247f1d176063e0597673b7eff93fe5c6bbade4ff861790052b32c18554eb873906403e6108f76f849589a1eda18d09fc5c12d3fe65f21e6a4937",
+      "previous_commitment": 1
+     },
+     {
+      "channel": {
+       "txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+       "vout": 0
+      },
+      "evidence": "5bf2e9faa8a10afbd46af634cdaf8ad1e866ab1485abc17d2d8f661d902f9267",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "55a8ff201df1e109bc56a8913fa50f2f0afebc74664f2a5bc1a366291cca5b9d72fe479a93e3dad46ac3bab29f4f70ba9fea084d012a0d6827a0f65855ed17c3",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "c50bd46389d6c134ab0cee24b474c8c8cc6e666858103417d503b98daa0d00b657b09e40bad96e293d73b576ea59456ae0b70a98a428e9d322d254b047cb86bb",
+      "previous_commitment": 1
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000114,
+     "cash_before": 1000106,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "Margin",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         69,
+         70,
+         36,
+         82,
+         131,
+         167,
+         87,
+         190,
+         153,
+         158,
+         221,
+         7,
+         48,
+         219,
+         72,
+         69,
+         209,
+         38,
+         93,
+         154,
+         137,
+         79,
+         234,
+         145,
+         188,
+         71,
+         56,
+         200,
+         76,
+         52,
+         72,
+         40
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 28,
+       "own_claim_used": 0,
+       "paid": 28,
+       "pnl": 28,
+       "released": 16648,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         170,
+         166,
+         199,
+         183,
+         247,
+         127,
+         172,
+         230,
+         179,
+         55,
+         109,
+         58,
+         128,
+         204,
+         169,
+         119,
+         189,
+         130,
+         51,
+         244,
+         111,
+         207,
+         93,
+         178,
+         52,
+         194,
+         141,
+         243,
+         64,
+         145,
+         203,
+         26
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 36,
+       "haircut": 0,
+       "net": -36,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": -36,
+       "released": 16647,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793992055747,
+    "created_us": 1795793990009462,
+    "digest": "b3ff7636736157e25582133f4f90cec7333934744c9f993df873712aa10185cc",
+    "ledger_state": "Committed",
+    "legs": [
+     "c2714c3b0aa8740f0e9623cf0438d8d5d280e74b3cc9e65d65030db5c725e17e"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793990474985,
+    "router_due_sats": 0,
+    "seq": 311,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16651,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": -100,
+      "opened_margin_sats": 0,
+      "owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+      "payout_sats": 16676,
+      "realized_pnl_sats": 28,
+      "released_margin_sats": 16648
+     },
+     {
+      "channel": {
+       "txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16651,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": 100,
+      "opened_margin_sats": 0,
+      "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+      "payout_sats": 16611,
+      "realized_pnl_sats": -36,
+      "released_margin_sats": 16647
+     }
+    ],
+    "window_us": [
+     1795793989900000,
+     1795793990000000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 311,
+     "early_window": false,
+     "id": "c2714c3b0aa8740f0e9623cf0438d8d5d280e74b3cc9e65d65030db5c725e17e",
+     "maker_fee_sats": 0,
+     "maker_id": "3282bfcc313d30f63bbe292efd1472ee177dd1fd398711c02165db3a1ac9cb77",
+     "maker_owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+     "maker_tier": "standard",
+     "packet_digest": "4c1ae8ca9904e7276fb922a688e56b5118f2290f99b883976df980f63f0f4996",
+     "packet_seq": 38255,
+     "price_usd": 60058,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793989942908
+    }
+   ]
+  },
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16643,
+      "owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16643,
+      "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+       "vout": 0
+      },
+      "evidence": "37c707f050adf0f60d6cc53ef707366b4caf258914868453833de2b4a5dc10ed",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "72e2afe79ce61684a078bf5dd2c666cf0ce1eadcd8b7ffb7c3dc3e31af3dd2b88919d29a0519ae7fc006e72544dc277a7e024d8bfeaa8456fa07eb22958877ce",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "0c62f2092d62b58be54ba038ffe52e78a97997fcfbce717d7b384d49a516ca5c4807050a3a7e2d6118a8fedaad0771247c5fd8a1275dad59aeae40388e3defd1",
+      "previous_commitment": 1
+     },
+     {
+      "channel": {
+       "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+       "vout": 0
+      },
+      "evidence": "a88749a5a3e5418808b67d442aa4db1ede26222de5d1966b0c533eb46440d170",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "400866f77c066c939b27ae364dcfaba3f09bfd1fc50cc85c37eae19d13c3279ff07beef0845562422b33040e73ad09ae57930fd2ab57be110bf0bb555fc99fe2",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "c16ff47a6e116387b9dcf7506a725e39b93f37f0d60a58c8e1caf8f4e62b841b0705f240c262458de94189cd2fe3485d3dfd4bdc39abf6c346e86d18246261ed",
+      "previous_commitment": 1
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000114,
+     "cash_before": 1000114,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "Margin",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         68,
+         135,
+         246,
+         144,
+         79,
+         210,
+         142,
+         128,
+         164,
+         5,
+         129,
+         133,
+         207,
+         171,
+         30,
+         49,
+         227,
+         154,
+         75,
+         141,
+         99,
+         152,
+         166,
+         64,
+         117,
+         58,
+         22,
+         150,
+         124,
+         229,
+         11,
+         115
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 80,
+       "haircut": 0,
+       "net": -80,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": -80,
+       "released": 16651,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         234,
+         184,
+         175,
+         205,
+         218,
+         124,
+         38,
+         159,
+         114,
+         209,
+         142,
+         166,
+         108,
+         245,
+         237,
+         176,
+         147,
+         20,
+         98,
+         249,
+         29,
+         166,
+         154,
+         133,
+         164,
+         6,
+         227,
+         247,
+         215,
+         52,
+         184,
+         183
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 80,
+       "own_claim_used": 0,
+       "paid": 80,
+       "pnl": 80,
+       "released": 16651,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793994744006,
+    "created_us": 1795793993205288,
+    "digest": "99f3b8cc47cd4d16000e3a50a27f66cecd1f5f5300cc6c45e4121dd46864b5c3",
+    "ledger_state": "Committed",
+    "legs": [
+     "b6efdb97928bdcd816c784702311d515fa5f3aa7cced6149cbbf623ec637a59b"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793993929203,
+    "router_due_sats": 0,
+    "seq": 312,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16643,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": -100,
+      "opened_margin_sats": 0,
+      "owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+      "payout_sats": 16571,
+      "realized_pnl_sats": -80,
+      "released_margin_sats": 16651
+     },
+     {
+      "channel": {
+       "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16643,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": 100,
+      "opened_margin_sats": 0,
+      "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+      "payout_sats": 16731,
+      "realized_pnl_sats": 80,
+      "released_margin_sats": 16651
+     }
+    ],
+    "window_us": [
+     1795793993100000,
+     1795793993200000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 312,
+     "early_window": false,
+     "id": "b6efdb97928bdcd816c784702311d515fa5f3aa7cced6149cbbf623ec637a59b",
+     "maker_fee_sats": 0,
+     "maker_id": "5b1937d358e4cd80ed234e2df93ee51f23afbb6d01e4d2a43991e5a9a33141c8",
+     "maker_owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+     "maker_tier": "standard",
+     "packet_digest": "0286f83670ee991f04c347f110f1f9318573c663a3cdbbfc2b143030c00bdec2",
+     "packet_seq": 38256,
+     "price_usd": 60086,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793993103040
+    }
+   ]
+  },
+  {
+   "batch": {
+    "accounts": [
+     {
+      "approved": true,
+      "channel": {
+       "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16643,
+      "owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea"
+     },
+     {
+      "approved": true,
+      "channel": {
+       "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+       "vout": 0
+      },
+      "fee_sats": 0,
+      "margin_sats": 16643,
+      "owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483"
+     }
+    ],
+    "acks": [
+     {
+      "channel": {
+       "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+       "vout": 0
+      },
+      "evidence": "6df4af91915f30a57a0b3ba4f223f45ff14aa666ecaf750e6f0d6b090134302d",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "53a770ab90913eb0f39973ed02087214789e9ee9e616461a534f2b85f71ba03eecb56d2ede4ac18bc5b6cd54fd73142ecad57a61e98857c7a08c864ca850e0f2",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "53695c13ce0a8ff7dde7ae3f366cce8aaf679842a19803a44b43b214226075057fe62c348a57dccb2092a1c424b642348335e6ec4cf9694643d40a6db20f1433",
+      "previous_commitment": 1
+     },
+     {
+      "channel": {
+       "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+       "vout": 0
+      },
+      "evidence": "b149a4cbd4975e6c2d864c8c62a44d3ba7ec5ea2305ea9b97afe473fa038eb39",
+      "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+      "monitor_signature": "f74558d783f30d84255d599ebd695e95223be5ddb38ba7a155a7c89888939d166ee1cd36748714445c061fe98af43659dc310b4c0c0cabacee97cad0f43a5ac7",
+      "next_commitment": 2,
+      "owner_signed": true,
+      "peer_signature": "c515014707eb8ed974ee2a3518bc5456eff3b5bcdd293f6104986f97d8aac600c0a95da8f2de68bcaa6bcc3fa7d787f33b0b90a4279e3c8d2531febaff101a60",
+      "previous_commitment": 1
+     }
+    ],
+    "clearing": {
+     "carry_after": 0,
+     "cash_after": 1000114,
+     "cash_before": 1000114,
+     "claim_haircuts": [],
+     "claims_after": 0,
+     "fund_absorbed": 0,
+     "fund_after": 1000002,
+     "haircut": 0,
+     "layer": "Margin",
+     "rows": [
+      {
+       "channel": {
+        "txid": [
+         36,
+         160,
+         46,
+         229,
+         134,
+         200,
+         41,
+         96,
+         90,
+         98,
+         97,
+         159,
+         248,
+         230,
+         255,
+         15,
+         192,
+         52,
+         182,
+         229,
+         0,
+         197,
+         25,
+         145,
+         3,
+         26,
+         11,
+         81,
+         121,
+         55,
+         255,
+         96
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 80,
+       "haircut": 0,
+       "net": -80,
+       "own_claim_used": 0,
+       "paid": 0,
+       "pnl": -80,
+       "released": 16651,
+       "shortfall": 0
+      },
+      {
+       "channel": {
+        "txid": [
+         173,
+         75,
+         24,
+         221,
+         91,
+         58,
+         136,
+         30,
+         137,
+         135,
+         101,
+         225,
+         161,
+         59,
+         227,
+         8,
+         189,
+         169,
+         53,
+         197,
+         12,
+         212,
+         150,
+         182,
+         119,
+         115,
+         164,
+         190,
+         100,
+         69,
+         44,
+         165
+        ],
+        "vout": 0
+       },
+       "claim_after": 0,
+       "claim_before": 0,
+       "collected": 0,
+       "haircut": 0,
+       "net": 80,
+       "own_claim_used": 0,
+       "paid": 80,
+       "pnl": 80,
+       "released": 16651,
+       "shortfall": 0
+      }
+     ],
+     "shortfall": 0
+    },
+    "committed_us": 1795793997852959,
+    "created_us": 1795793995905649,
+    "digest": "fbb32a2967cb727d9e443a0ffe7b7a456feb2ce1a94b38fe88688191e6fd5c7e",
+    "ledger_state": "Committed",
+    "legs": [
+     "c4ed2cef611bb296daa85818cb53487f459fc0a91de43ed760e7210c0ecb4a8a"
+    ],
+    "oracle_due_sats": 0,
+    "phase": "committed",
+    "prepared_us": 1795793996328679,
+    "router_due_sats": 0,
+    "seq": 313,
+    "settlements": [
+     {
+      "channel": {
+       "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16643,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": -100,
+      "opened_margin_sats": 0,
+      "owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+      "payout_sats": 16571,
+      "realized_pnl_sats": -80,
+      "released_margin_sats": 16651
+     },
+     {
+      "channel": {
+       "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+       "vout": 0
+      },
+      "closed_leg_margin_sats": 16643,
+      "closed_usd": 100,
+      "margin_after_sats": 0,
+      "net_after_usd": 0,
+      "net_before_usd": 100,
+      "opened_margin_sats": 0,
+      "owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+      "payout_sats": 16731,
+      "realized_pnl_sats": 80,
+      "released_margin_sats": 16651
+     }
+    ],
+    "window_us": [
+     1795793995800000,
+     1795793995900000
+    ]
+   },
+   "fills": [
+    {
+     "batch_seq": 313,
+     "early_window": false,
+     "id": "c4ed2cef611bb296daa85818cb53487f459fc0a91de43ed760e7210c0ecb4a8a",
+     "maker_fee_sats": 0,
+     "maker_id": "e162dceccc570dd41709643379c80a2863a7fc7d4c2058f6730e547177d60977",
+     "maker_owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+     "maker_tier": "standard",
+     "packet_digest": "e0f0f0313801faa681042290f6d8635da51b331e1bd60b2631e4b8acf1213f9e",
+     "packet_seq": 38257,
+     "price_usd": 60086,
+     "qty_usd": 100,
+     "taker_fee_sats": 0,
+     "taker_owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+     "taker_side": "long",
+     "taker_tier": "standard",
+     "ts_us": 1795793995802208
+    }
+   ]
+  }
+ ]
+}

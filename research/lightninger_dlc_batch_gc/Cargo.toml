@@ -1,0 +1,28 @@
+[package]
+name = "lightninger-dlc-batch-gc"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "GPL-3.0-only"
+description = "Garbled Groth16 (BN254) verifier instances for the Lightninger DLC batcher's BitVM3 claim graph: garble, commit, evaluate a proof for a claimed 304-byte statement"
+
+[workspace]
+
+[dependencies]
+garbled-snark-verifier = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "f80c364fad9a0d0000426c2f208de03708e6e268", default-features = false }
+ark-bn254 = "0.5.0"
+ark-ff = "0.5.0"
+ark-groth16 = "0.5.0"
+ark-relations = "0.5.1"
+ark-serialize = "0.5.0"
+ark-snark = "0.5.1"
+blake3 = "1.6.1"
+crossbeam = "0.8"
+hex = "0.4"
+rand = "0.8"
+rand_chacha = "0.3"
+serde_json = "1"
+sha2 = "0.10.9"
+
+[profile.release]
+opt-level = 3

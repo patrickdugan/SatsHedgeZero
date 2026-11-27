@@ -1,0 +1,38 @@
+[package]
+name = "lightninger-dlc-batcher"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+description = "Lightninger DLC batcher: N collateral accounts settled in one transaction from real venue V3 batches, Nova clearing + TapSighash/Secq/M17 folds over it, the 304-byte joint statement, and the BitVM3 claim graph that asserts it"
+
+[workspace]
+exclude = ["relation", "sp1"]
+
+[[bin]]
+name = "dlc-batcher"
+path = "src/bin/dlc_batcher.rs"
+
+[dependencies]
+lightninger-bitvm3-clearing = { path = "../lightninger_bitvm3_clearing" }
+lightninger-dlc-batch-relation = { path = "relation" }
+nova-snark = "=0.76.0"
+ff = "0.13"
+halo2curves = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1.3"
+sha2 = { version = "=0.10.9", features = ["compress"] }
+hex = "0.4"
+shz-dex = { path = "../../crates/shz-dex" }
+shz-dlc = { path = "../../crates/shz-dlc" }
+shz-nova-bitvm = { path = "../../crates/shz-nova-bitvm" }
+shz-mnr05-bitvm3-ln-dlc = { path = "../mnr05_bitvm3_ln_dlc" }
+m17-nova-script = { git = "https://github.com/patrickdugan/garbled-snark-verifier", rev = "f80c364fad9a0d0000426c2f208de03708e6e268" }
+k256 = { version = "0.13", features = ["arithmetic", "schnorr", "ecdsa", "sha256"] }
+
+[profile.release]
+panic = "unwind"
+
+[profile.test]
+opt-level = 3
