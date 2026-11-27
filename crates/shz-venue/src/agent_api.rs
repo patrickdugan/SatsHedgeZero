@@ -469,6 +469,16 @@ async fn run(app: &App, method: &str, p: &Value) -> Result<Value, AgentError> {
     }
 }
 
+/// The client address for rate limiting: the TCP peer, or, when the peer is loopback (the local
+/// reverse proxy), the first `X-Forwarded-For` entry or `X-Real-IP` from the request head.
+pub fn client_addr(peer: &str, head: &str) -> String {
+    if peer != "127.0.0.1" && peer != "::1" {
+        return peer.to_string();
+    }
+    let header = |name: &str| head.lines().find_map(|l| l.split_once(':').filter(|(k, _)| k.trim().eq_ignore_ascii_case(name)).map(|(_, v)| v.trim().to_string()));
+    header("x-forwarded-for").and_then(|v| v.split(',').next().map(|s| s.trim().to_string())).filter(|s| !s.is_empty()).or_else(|| header("x-real-ip")).unwrap_or_else(|| peer.to_string())
+}
+
 /// Rate-limit bucket for a call: the grant it names, else the client address.
 fn bucket_key(p: &Value, peer: &str) -> String {
     match p["grant"].as_str() {
@@ -719,6 +729,18 @@ mod tests {
             let s = http_status(c);
             assert!((400..600).contains(&s), "{c}");
         }
+    }
+
+    #[test]
+    fn client_address_behind_a_loopback_proxy() {
+        let head = "POST /agent/v1/orders HTTP/1.1
+X-Forwarded-For: 203.0.113.7, 10.0.0.1
+X-Real-IP: 198.51.100.2";
+        assert_eq!(client_addr("127.0.0.1", head), "203.0.113.7");
+        assert_eq!(client_addr("127.0.0.1", "GET / HTTP/1.1
+X-Real-IP: 198.51.100.2"), "198.51.100.2");
+        assert_eq!(client_addr("127.0.0.1", "GET / HTTP/1.1"), "127.0.0.1");
+        assert_eq!(client_addr("192.0.2.9", head), "192.0.2.9", "a remote peer cannot pick its own bucket");
     }
 
     #[test]

@@ -89,7 +89,8 @@ async fn http(app: Arc<App>, mut s: TcpStream) {
     let (code, ctype, payload) = if method == "OPTIONS" {
         (204, "text/plain", vec![])
     } else if path.starts_with("/agent/v1/") {
-        let r = crate::agent_api::rest(&app, &method, &path, &query, &head, body, &peer).await;
+        let client = crate::agent_api::client_addr(&peer, &head);
+        let r = crate::agent_api::rest(&app, &method, &path, &query, &head, body, &client).await;
         for (k, v) in &r.headers {
             extra.push_str(&format!("{k}: {v}\r\n"));
         }
@@ -544,16 +545,24 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
     let peer = stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
     let mut path = String::new();
     // The callback signature is fixed by tungstenite (its error type is an HTTP response).
+    let mut fwd = String::new();
     #[allow(clippy::result_large_err)]
     let cb = |req: &Request, resp: Response| {
         path = req.uri().to_string();
+        for k in ["x-forwarded-for", "x-real-ip"] {
+            if let Some(v) = req.headers().get(k).and_then(|v| v.to_str().ok()) {
+                fwd.push_str(&format!("{k}: {v}
+"));
+            }
+        }
         Ok(resp)
     };
     let Ok(ws) = tokio_tungstenite::accept_hdr_async(stream, cb).await else { return };
     let (mut tx, mut rx) = ws.split();
     let (p, query) = path.split_once('?').map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((path.clone(), String::new()));
     if p == "/agent/v1/ws" {
-        crate::agent_api::ws(app, tx, rx, peer).await;
+        let client = crate::agent_api::client_addr(&peer, &fwd);
+        crate::agent_api::ws(app, tx, rx, client).await;
         return;
     }
     let mut events = app.events.subscribe();
