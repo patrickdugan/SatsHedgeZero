@@ -32,7 +32,7 @@ changes nothing; success is one `OptionBatch` holding every leg's fills and one 
 |---|---|---|
 | `b2_call_spread_margined_on_the_combined_payoff` | sell 100k call, buy 110k call (1,000 USD) | 90,910 sats (`Q*1e8*(1/100k - 1/110k)`, rounded up), against 904,633 for the naked short call |
 | `b2_covered_call` | buy 50k call (the cover), sell 110k call (2,000 USD) | 0; the 50k call covers up to 4,400 USD of 110k calls, and selling 5,000 in all locks the uncovered worst case |
-| `b2_collar` | buy 50k call, buy 90k put, sell 110k call (1 USD each) | 0; only the net premium moves |
+| `b2_collar` | buy 50k call, buy 90k put, sell 110k call (1 USD each, all BTC) | 0; only the net premium moves (the two-asset collar is `c3`) |
 | `b2_all_or_none` | an unfillable leg, a limit one milli short, a duplicate series, 5 legs | rejected, state unchanged |
 
 The cover in a BTC covered call is either the BTC collateral itself (a single short inverse call
@@ -41,20 +41,34 @@ An inverse put written for BTC locks its worst case at the bottom of the oracle 
 (`1e8*(1/1 - 1/K)` sats per USD, almost a bitcoin per USD of notional), which is why the collar
 test uses 1 USD legs and why puts are USD-settled in C.
 
-## C. Dual collateral
+## C. Hybrid multi-asset clearing
+
+BTC stays the primary asset; a USD stablecoin is a registered settlement asset beside it.
+Inverse perpetuals keep margining and settling in BTC only (nothing in this section touches them).
 
 | Piece | What it is |
 |---|---|
-| Switch | `enable_usd_collateral()` (journaled `EnableUsdCollateral`, once). Before it, `Asset::Usd` series cannot list and USD transfers are refused. |
-| Rails | `shz_margin::CollateralAsset` gains `Rgb{contract_id}` beside `TaprootAsset{asset_id, group_key, script_version}`; both stay refused for v0 channel funding (`RgbAssetDisabledInV0`, `TapAssetDisabledInV0`). An account's first USD deposit fixes its rail; a deposit on the other rail is refused, and `VanillaBtc` is not a USD rail. |
-| Balances | Per asset: `btc_free/btc_locked/realized_btc` (sats) and `usd_free/usd_locked/realized_usd` (micro-USD). `deposit_usd(channel, rail, micro_usd)` and `withdraw_usd(channel, micro_usd)` are journaled `UsdTransfer{channel, rail, micro_usd, deposit}`. |
-| USD puts | `Asset::Usd` series are linear: `qty` in 1e-8 BTC, premium in thousandths of a micro-USD per unit. A written put locks `Q*(K - p_min)` USD, cash-secured (`c1_usd_cash_secured_put`: 0.01 BTC at 90k locks $899.99; expiry at 80k pays $100 through the USD clearing line). |
-| No cross-asset netting | Margin is computed per asset and a combo must stay in one asset. BTC collateral does not secure a USD put (`c2_assets_do_not_net`: a writer holding a whole bitcoin of option collateral and no USD is dropped as an unfunded maker). |
-| `fully_funded` | `OptionsDesk::fully_funded(channel)`: posted collateral in each asset covers the sum of each expiry's worst case. Locked collateral is set to exactly that on every fill and expiry, so every option portfolio is fully funded and the desk has no liquidation path. |
-| BTC put spreads | The no-stablecoin alternative (`c3_btc_put_spread`): selling the 90k put and buying the 80k put (1,000 USD) locks 138,889 sats (`Q*1e8*(1/80k - 1/90k)`), against about 1,000 BTC for the naked 90k put; the buyer of the spread locks nothing. |
-| USD clearing line | USD batches have their own pool line (`cash_before = 0`, `cash_after` = dust kept by the venue); BTC pool cash is untouched by USD batches. |
+| Asset registry | `SettleAsset::{Btc, Stable{protocol: StableProtocol::{Rgb, Tap}, id, decimals}}`. `register_stable(asset)` (journaled `RegisterStable{asset}`, once per asset, decimals 6..=18) opens that asset's clearing pool. USDT on RGB is the first registration; a second stablecoin is another registration (`c2` registers an 8-decimal Taproot Assets one). `SettleAsset::collateral()` maps to `shz_margin::CollateralAsset::{TaprootAsset, Rgb{contract_id}}`, both still refused for v0 channel funding (`TapAssetDisabledInV0`, `RgbAssetDisabledInV0`). |
+| What settles where | Calls settle in BTC (a written call is fully funded at `Q*1e8*(1/K - 1/p_max)` sats). Puts settle in BTC, margined to the bottom of the outcome domain, or in a registered stablecoin, cash-secured: the writer posts `Q*(K - p_min)` USD and is capped there (`c1_usdt_cash_secured_put`: 0.01 BTC at 90k locks 899,990,000 base units = $899.99). Stablecoin calls are refused at listing. |
+| Premium asset | Premium is paid in the leg's settlement asset: sats for BTC series, stablecoin units for stablecoin puts. Paying it in the other asset would need a conversion price at the fill, which is a cross-asset exchange the router does not make; in the leg's own asset the writer's premium lands where its obligation sits. A Take states one net limit per asset: `premium_milli` for the first leg's asset, `other_limits: [AssetLimit{asset, premium_milli}]` for each other asset (exactly once each; serialized only when non-empty, so single-asset intents keep the B1 JSON and digest). |
+| Balances | `OptionAccount::balances: {SettleAsset -> AssetBalance{free, locked, realized}}`. BTC comes from the perpetual allocation (`fund_options`/`defund_options`); stablecoins through `deposit_stable(channel, asset, units)` / `withdraw_stable` (journaled `StableTransfer{channel, asset, units, deposit}`). |
+| Margin | Per asset: `locked` = sum over expiries of `payoff::max_loss` of that asset's legs on that expiry (`required(k, asset)`, `groups(k)`). No netting across assets or across stablecoins: BTC does not secure a USDT put and one stablecoin does not secure another's (`c2_assets_do_not_net`). |
+| Clearing | Per asset inside one batch: `OptionBatch::clearing: [AssetClearing{asset, report: BatchClearing}]`, one net amount per account per asset. BTC clears against the router's clearing ledger; each stablecoin against its own `ClearingState` (fund, waterfall layers, deferred claims, identity `cash - claims - fund + carry == 0`), listed by `OptionsDesk::stable_pools()`. The tests check every pool's identity and `sum(realized) + cash == fund0` per asset after every step. |
+| Collar | `c3_collar_clears_in_two_assets`: one signed intent buys the USDT put (writer cash-secured in USDT) and sells the BTC call (covered by BTC collateral); the batch carries a BTC report and a USDT report, each netting to zero; one expiry settles both assets in one batch. |
+| `fully_funded` | `OptionsDesk::fully_funded(channel)`: locked collateral covers every expiry's worst case in every asset the account settles in. Locked is set to exactly that on every fill and expiry, so every option portfolio is fully funded and exempt from liquidation; BTC perpetual positions keep the existing risk path. |
+| BTC put spreads | The no-stablecoin alternative (`c5_btc_put_spread`): selling the 90k put and buying the 80k put (1,000 USD) locks 138,889 sats, against about 1,000 BTC for the naked 90k put. |
 
-**On-chain TAP and RGB transfers are simulated.** `deposit_usd` and `withdraw_usd` record the operator's credit and debit; nothing here verifies a Taproot Assets proof or an RGB consignment, and no USD moves on chain.
+**On-chain movement of the stablecoin side is simulated.** `deposit_stable` and `withdraw_stable`
+record the adapter's credit and debit; nothing here verifies a Taproot Assets proof or an RGB
+consignment, and no stablecoin moves on chain or in a channel.
+
+Compatibility with `research/shz-rgb-01-utexo-sdk` (withdrawal reservations): its
+`WithdrawalRequest`/`WithdrawalReceiptV1` are BTC-only (`amount_sats`) and bind a perpetual batch
+(`clearing_sequence`, `batch_digest`, `clearing_digest`). A stablecoin withdrawal there would add a
+`SettleAsset` field (absent = BTC) and bind an option batch's per-asset clearing digest. Its
+`Balance` adds `withdrawal_reserved`/`withdrawn`; `fund_options` moves `cap` and `free` together and
+stays conserved under that wider identity. Both branches edit `State::new` and `State::apply` in
+`tiered_durable.rs`, so a merge conflicts there textually.
 
 Not built here: option batches commit inside the router without the sealed/prepared/committed
 channel-acknowledgement round that perpetual batches use (no lane signs an option batch), and the

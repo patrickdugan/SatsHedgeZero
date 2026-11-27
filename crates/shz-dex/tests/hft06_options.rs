@@ -8,7 +8,6 @@ use shz_dex::routing::tiered::*;
 use shz_dex::routing::tiered_durable::*;
 use shz_dlc::{BtcOutPoint,OracleAttestation};
 use shz_margin::payoff::{self,Asset,Leg,OptionKind,PriceDomain};
-use shz_margin::CollateralAsset;
 use shz_oracle::frost::{FrostConfederation,FrostEventNonceState};
 use std::{cell::Cell,fs,path::{Path,PathBuf},sync::atomic::{AtomicU64,Ordering}};
 
@@ -37,6 +36,12 @@ fn lanes()->Vec<Lane>{
 }
 fn recipients()->FeeRecipients{FeeRecipients{oracle:pk(110),router:pk(111)}}
 fn domain()->PriceDomain{PriceDomain::from_bits(BITS)}
+const BTC:SettleAsset=SettleAsset::Btc;
+/// RGB USDT (6 decimals) and a second stablecoin on Taproot Assets with 8 decimals.
+const USDT:SettleAsset=SettleAsset::Stable{protocol:StableProtocol::Rgb,id:[0x52;32],decimals:6};
+const TUSD:SettleAsset=SettleAsset::Stable{protocol:StableProtocol::Tap,id:[0x7a;32],decimals:8};
+/// 0.01 BTC in 1e-8 BTC units, the size of a linear option leg in these tests.
+const CENT:u64=1_000_000;
 
 static COUNTER:AtomicU64=AtomicU64::new(0);
 struct Temp(PathBuf);
@@ -59,9 +64,9 @@ impl Desk{
   Self{d,oracle,events:Vec::new(),seq:Cell::new(0),now:Cell::new(T0)}
  }
  /// List a series on the shared expiry (oracle event 0); returns its id.
- fn list(&mut self,kind:OptionKind,asset:Asset,strike:u64)->Key{self.list_on(0,kind,asset,strike)}
+ fn list(&mut self,kind:OptionKind,asset:SettleAsset,strike:u64)->Key{self.list_on(0,kind,asset,strike)}
  /// List a series on oracle event `ev` (announced on first use).
- fn list_on(&mut self,ev:u8,kind:OptionKind,asset:Asset,strike:u64)->Key{
+ fn list_on(&mut self,ev:u8,kind:OptionKind,asset:SettleAsset,strike:u64)->Key{
   let event=format!("BTCUSD-{ev}");
   if !self.events.iter().any(|e|e.announcement.event_id==event){
    self.events.push(self.oracle.announce_event(&event,1_800_000_000,BITS,&[ev;32]).unwrap());
@@ -77,7 +82,7 @@ impl Desk{
  fn intent(&self,n:u8,action:Action,legs:Vec<LegOrder>,premium_milli:i64)->IntentV7{
   let c=cfg();self.seq.set(self.seq.get()+1);
   IntentV7{version:OPTION_INTENT_VERSION,scope:c.scope,router:1,channel:channel(n),owner:[0;32],sequence:self.seq.get(),
-   expires_us:self.now.get()+5_000_000,action,legs,premium_milli,cancel_target:[0;32],
+   expires_us:self.now.get()+5_000_000,action,legs,premium_milli,other_limits:vec![],cancel_target:[0;32],
    signature:shz_dlc::Bip340Signature{r_x:[0;32],s:[0;32]}}.signed(&sk(n)).unwrap()
  }
  fn send(&mut self,i:IntentV7)->Result<OptionOutcome,TieredDurableError>{self.now.set(self.now.get()+1);let now=self.now.get();self.d.submit_option(i,now)}
@@ -88,27 +93,35 @@ impl Desk{
   match self.send(self.intent(n,Action::Take,legs,limit))?{OptionOutcome::Filled(b)=>Ok(*b),x=>panic!("{x:?}")}
  }
  fn acct(&self,n:u8)->OptionAccount{self.d.options().unwrap().unwrap().account(&op(n)).cloned().unwrap_or_default()}
+ fn btc(&self,n:u8)->AssetBalance{self.acct(n).balance(&BTC)}
+ fn stable(&self,n:u8,a:SettleAsset)->AssetBalance{self.acct(n).balance(&a)}
  fn legs(&self,n:u8)->Vec<Leg>{self.d.options().unwrap().unwrap().legs(&op(n))}
- /// Invariants after every step: locked collateral is exactly the worst-case loss per
- /// asset, every perpetual balance is conserved, the clearing identity holds, and every
- /// sat realized anywhere came out of (or went into) the pool.
+ /// Invariants after every step, per asset: locked collateral is exactly the sum over
+ /// expiries of the worst-case loss, every perpetual balance is conserved, each pool's
+ /// clearing identity holds, and every unit realized came out of (or went into) its pool.
  fn check(&self){
   let desk=self.d.options().unwrap().unwrap();
-  let mut realized=0i128;
+  let mut assets=vec![BTC];assets.extend(desk.stable_pools().map(|(a,_)|*a));
+  let mut realized:Vec<i128>=vec![0;assets.len()];
   for n in 1..=N{
    let a=self.acct(n);
-   // Legs offset only within one expiry.
-   let groups=desk.legs_by_event(&op(n));
-   for (asset,locked) in [(Asset::Btc,a.btc_locked),(Asset::Usd,a.usd_locked)]{
-    assert_eq!(locked as u128,groups.values().map(|g|payoff::max_loss(g,asset,domain())).sum::<u128>(),"{n}");
+   let groups=desk.groups(&op(n));
+   for (i,x) in assets.iter().enumerate(){
+    let want:u128=groups.iter().filter(|((_,g),_)|g==x).map(|(_,l)|payoff::max_loss(l,x.payoff_asset(),domain())*x.scale()).sum();
+    assert_eq!(a.balance(x).locked as u128,want,"{n} {x:?}");
+    realized[i]+=a.balance(x).realized as i128;
    }
    assert!(desk.fully_funded(&op(n)));
    let b=self.d.balance(&channel(n)).unwrap().unwrap();assert!(b.conserved());
-   realized+=b.realized_pnl as i128+a.realized_btc as i128;
+   realized[0]+=b.realized_pnl as i128;
   }
   let s=self.d.clearing_summary().unwrap().unwrap();
   assert_eq!(s.identity,0,"{s:?}");
-  assert_eq!(realized+s.cash as i128,s.fund0 as i128,"{s:?}");
+  assert_eq!(realized[0]+s.cash as i128,s.fund0 as i128,"{s:?}");
+  for (i,(_,pool)) in desk.stable_pools().enumerate(){
+   let p=pool.summary(0);assert_eq!(p.identity,0,"{p:?}");
+   assert_eq!(realized[i+1]+p.cash as i128,p.fund0 as i128,"{p:?}");
+  }
  }
 }
 fn rejected(r:Result<impl std::fmt::Debug,TieredDurableError>,want:TierReject){
@@ -123,10 +136,10 @@ fn call_pays(q:u64,k:u64,p:u64)->i128{payoff::pnl(&[Leg::InverseOption{kind:Opti
 #[test]
 fn b1_call_premium_margin_and_expiry(){
  let t=Temp::new();let mut v=Desk::new(&t.path());
- let call=v.list(OptionKind::Call,Asset::Btc,100_000);
+ let call=v.list(OptionKind::Call,BTC,100_000);
  for n in [1,2]{v.d.fund_options(channel(n),5_000_000).unwrap();}
  let b=v.d.balance(&channel(1)).unwrap().unwrap();
- assert_eq!((b.cap,b.free,v.acct(1).btc_free),(CAP-5_000_000,CAP-5_000_000,5_000_000));
+ assert_eq!((b.cap,b.free,v.btc(1).free),(CAP-5_000_000,CAP-5_000_000,5_000_000));
  // 2 writes 1,000 USD of the call at 40 sats per USD; 1 buys it.
  v.post(2,call,false,1000,40_000);
  let batch=v.take(1,vec![leg(call,true,1000)],40_000_000).unwrap();
@@ -135,26 +148,26 @@ fn b1_call_premium_margin_and_expiry(){
  // Q*1e8*(1/K - 1/p_max), the call at the top of the 20-bit domain.
  assert_eq!(worst as i128,-payoff::pnl(&[Leg::InverseOption{kind:OptionKind::Call,long:false,qty_usd:1000,strike_usd:100_000,premium_sats:0}],Asset::Btc,domain().p_max));
  assert_eq!(worst,904_633);
- let (a1,a2)=(v.acct(1),v.acct(2));
- assert_eq!((a1.btc_free,a1.btc_locked,a1.realized_btc),(5_000_000-40_000,0,-40_000));
- assert_eq!((a2.btc_free,a2.btc_locked as u128,a2.realized_btc),(5_000_000+40_000-worst as u64,worst,40_000));
- let c=&batch.clearing;
+ let (a1,a2)=(v.btc(1),v.btc(2));
+ assert_eq!((a1.free,a1.locked,a1.realized),(5_000_000-40_000,0,-40_000));
+ assert_eq!((a2.free,a2.locked as u128,a2.realized),(5_000_000+40_000-worst as u64,worst,40_000));
+ let c=batch.clearing_of(&BTC).unwrap();
  assert_eq!(c.rows.iter().map(|r|r.net).sum::<i64>()+c.pool_net(),0);assert_eq!(c.pool_net(),0);
  v.check();
  // Expiry at 110,000: the long gets the floor of its payoff, the short pays the ceiling.
  let pays=call_pays(1000,100_000,110_000) as u64;
  let e=v.d.expire_series(call,v.attest(&call,110_000)).unwrap();
  assert!(matches!(e.kind,OptionBatchKind::Expiry{price_usd:110_000,..}));
- let dust=e.clearing.pool_net();assert!((0..=1).contains(&dust),"{dust}");
- let (a1,a2)=(v.acct(1),v.acct(2));
- assert_eq!((a1.btc_free,a1.btc_locked),(5_000_000-40_000+pays,0));
- assert_eq!((a2.btc_free,a2.btc_locked),(5_000_000+40_000-pays-dust as u64,0));
+ let dust=e.clearing_of(&BTC).unwrap().pool_net();assert!((0..=1).contains(&dust),"{dust}");
+ let (a1,a2)=(v.btc(1),v.btc(2));
+ assert_eq!((a1.free,a1.locked),(5_000_000-40_000+pays,0));
+ assert_eq!((a2.free,a2.locked),(5_000_000+40_000-pays-dust as u64,0));
  assert!(v.legs(1).is_empty()&&v.legs(2).is_empty());
  v.check();
  // Collateral goes back to the perpetual allocation.
- v.d.defund_options(channel(1),a1.btc_free).unwrap();
+ v.d.defund_options(channel(1),a1.free).unwrap();
  let b=v.d.balance(&channel(1)).unwrap().unwrap();
- assert_eq!((b.cap,v.acct(1).btc_free),(CAP-5_000_000+a1.btc_free,0));
+ assert_eq!((b.cap,v.btc(1).free),(CAP-5_000_000+a1.free,0));
  // An expired series no longer trades or expires again.
  rejected(v.d.expire_series(call,v.attest(&call,110_000)),TierReject::Expired);
  rejected(v.send(v.intent(2,Action::Post,vec![leg(call,false,1)],1000)),TierReject::Expired);
@@ -165,7 +178,7 @@ fn b1_call_premium_margin_and_expiry(){
 #[test]
 fn b1_expiry_out_of_the_money_frees_collateral(){
  let t=Temp::new();let mut v=Desk::new(&t.path());
- let call=v.list(OptionKind::Call,Asset::Btc,100_000);
+ let call=v.list(OptionKind::Call,BTC,100_000);
  for n in [1,2,3]{v.d.fund_options(channel(n),3_000_000).unwrap();}
  // Two writers at different premiums; the taker sweeps the best first.
  v.post(2,call,false,500,30_000);v.post(3,call,false,1000,35_000);
@@ -174,8 +187,8 @@ fn b1_expiry_out_of_the_money_frees_collateral(){
  assert_eq!(v.d.options().unwrap().unwrap().depth(&call,false)[0].2,700);
  v.check();
  let e=v.d.expire_series(call,v.attest(&call,99_000)).unwrap();
- assert!(e.clearing.rows.iter().all(|r|r.net==0));
- assert_eq!((v.acct(2).btc_free,v.acct(3).btc_free,v.acct(1).btc_free),(3_015_000,3_010_500,3_000_000-25_500));
+ assert!(e.clearing_of(&BTC).unwrap().rows.iter().all(|r|r.net==0));
+ assert_eq!((v.btc(2).free,v.btc(3).free,v.btc(1).free),(3_015_000,3_010_500,3_000_000-25_500));
  assert!(v.d.options().unwrap().unwrap().depth(&call,false).is_empty());
  v.check();
 }
@@ -185,8 +198,8 @@ fn b1_expiry_out_of_the_money_frees_collateral(){
 #[test]
 fn b1_rejections(){
  let t=Temp::new();let mut v=Desk::new(&t.path());
- let call=v.list(OptionKind::Call,Asset::Btc,100_000);
- let other=v.list_on(1,OptionKind::Call,Asset::Btc,105_000);
+ let call=v.list(OptionKind::Call,BTC,100_000);
+ let other=v.list_on(1,OptionKind::Call,BTC,105_000);
  v.d.fund_options(channel(2),2_000_000).unwrap();
  // No collateral for the buyer's premium.
  v.post(2,call,false,1000,40_000);
@@ -228,7 +241,7 @@ fn b1_rejections(){
 fn b1_journal_replays(){
  let t=Temp::new();let path=t.path();
  let mut v=Desk::new(&path);
- let call=v.list(OptionKind::Call,Asset::Btc,100_000);
+ let call=v.list(OptionKind::Call,BTC,100_000);
  for n in [1,2]{v.d.fund_options(channel(n),5_000_000).unwrap();}
  v.post(2,call,false,1000,40_000);
  v.take(1,vec![leg(call,true,600)],1_000_000_000).unwrap();
@@ -243,10 +256,10 @@ fn short_call(q:u64,k:u64)->Leg{Leg::InverseOption{kind:OptionKind::Call,long:fa
 /// Combos desk: series listed, makers funded and quoting every leg.
 fn combo_desk(path:&Path)->(Desk,Key,Key,Key,Key){
  let mut v=Desk::new(path);
- let deep=v.list(OptionKind::Call,Asset::Btc,50_000);
- let c100=v.list(OptionKind::Call,Asset::Btc,100_000);
- let c110=v.list(OptionKind::Call,Asset::Btc,110_000);
- let p90=v.list(OptionKind::Put,Asset::Btc,90_000);
+ let deep=v.list(OptionKind::Call,BTC,50_000);
+ let c100=v.list(OptionKind::Call,BTC,100_000);
+ let c110=v.list(OptionKind::Call,BTC,110_000);
+ let p90=v.list(OptionKind::Put,BTC,90_000);
  for n in [1,2]{v.d.fund_options(channel(n),40_000_000).unwrap();}
  // An inverse put's worst case is at the bottom of the domain: a 1 USD put struck at 90k
  // locks 1e8*(1/1 - 1/90k) sats, almost a whole bitcoin (why puts are USD-settled in C).
@@ -272,15 +285,15 @@ fn b2_call_spread_margined_on_the_combined_payoff(){
  let naked=payoff::max_loss(&[short_call(1000,100_000)],Asset::Btc,domain());
  // Q*1e8*(1/100k - 1/110k) = 90,909.09 sats, rounded up.
  assert_eq!((spread,naked),(90_910,904_633));
- assert_eq!(v.acct(1).btc_locked as u128,spread);
- assert_eq!(v.acct(1).btc_free,40_000_000-40_000-90_910);
+ assert_eq!(v.btc(1).locked as u128,spread);
+ assert_eq!(v.btc(1).free,40_000_000-40_000-90_910);
  v.check();
  // Both legs share one expiry: at 120k the spread pays its full width in one amount.
  assert_eq!(-payoff::pnl(&v.legs(1),Asset::Btc,120_000),90_910);
  let e=v.d.expire_series(c100,v.attest(&c100,120_000)).unwrap();
  assert!(matches!(&e.kind,OptionBatchKind::Expiry{series,..} if series.len()==4));
- let a=v.acct(1);
- assert_eq!((a.btc_locked,a.btc_free,a.realized_btc),(0,40_000_000-40_000-90_910,-40_000-90_910));
+ let a=v.btc(1);
+ assert_eq!((a.locked,a.free,a.realized),(0,40_000_000-40_000-90_910,-40_000-90_910));
  assert!(v.legs(1).is_empty());
  v.check();
 }
@@ -291,13 +304,13 @@ fn b2_call_spread_margined_on_the_combined_payoff(){
 fn b2_covered_call(){
  let t=Temp::new();let (mut v,deep,_,c110,_)=combo_desk(&t.path());
  v.take(1,vec![leg(deep,true,2000),leg(c110,false,2000)],80_000_000).unwrap();
- assert_eq!(v.acct(1).btc_locked,0);
- assert_eq!(v.acct(1).btc_free,40_000_000-(120_000-40_000));
+ assert_eq!(v.btc(1).locked,0);
+ assert_eq!(v.btc(1).free,40_000_000-(120_000-40_000));
  // The 50k call covers up to 4,400 USD of 110k calls (2000/50k = 4400/110k as P grows);
  // selling 3,000 more (5,000 in all) locks the uncovered worst case.
  v.take(1,vec![leg(c110,false,3000)],-60_000_000).unwrap();
- assert_eq!(v.acct(1).btc_locked as u128,payoff::max_loss(&v.legs(1),Asset::Btc,domain()));
- assert!(v.acct(1).btc_locked>0);
+ assert_eq!(v.btc(1).locked as u128,payoff::max_loss(&v.legs(1),Asset::Btc,domain()));
+ assert!(v.btc(1).locked>0);
  v.check();
 }
 
@@ -310,9 +323,9 @@ fn b2_collar(){
  let b=v.take(1,vec![leg(deep,true,1),leg(p90,true,1),leg(c110,false,1)],60_000).unwrap();
  assert_eq!(b.fills.len(),3);
  // Pays 60 + 10, receives 20 sats per USD.
- assert_eq!((v.acct(1).btc_locked,v.acct(1).btc_free),(0,40_000_000-50));
- assert_eq!(v.acct(3).btc_locked,99_998_889);
- let c=&b.clearing;assert_eq!(c.rows.iter().map(|r|r.net).sum::<i64>(),0);
+ assert_eq!((v.btc(1).locked,v.btc(1).free),(0,40_000_000-50));
+ assert_eq!(v.btc(3).locked,99_998_889);
+ let c=b.clearing_of(&BTC).unwrap();assert_eq!(c.rows.iter().map(|r|r.net).sum::<i64>(),0);
  v.check();
 }
 
@@ -323,7 +336,7 @@ fn b2_all_or_none(){
  let t=Temp::new();let (mut v,deep,c100,c110,p90)=combo_desk(&t.path());
  let snap=|v:&Desk|{
   let d=v.d.options().unwrap().unwrap();
-  format!("{:?}|{:?}",(1..=N).map(|n|v.acct(n)).collect::<Vec<_>>(),[deep,c100,c110,p90].iter().map(|s|(d.depth(s,true),d.depth(s,false))).collect::<Vec<_>>())
+  format!("{:?}|{:?}",(1..=N).map(|n|v.btc(n)).collect::<Vec<_>>(),[deep,c100,c110,p90].iter().map(|s|(d.depth(s,true),d.depth(s,false))).collect::<Vec<_>>())
  };
  let before=snap(&v);
  rejected(v.take(1,vec![leg(c100,true,1000),leg(c110,false,6000)],1_000_000_000),TierReject::NoLiquidity);
@@ -334,85 +347,23 @@ fn b2_all_or_none(){
  v.check();
 }
 
-const TAP:CollateralAsset=CollateralAsset::TaprootAsset{asset_id:[0x7a;32],group_key:None,script_version:0};
-const RGB:CollateralAsset=CollateralAsset::Rgb{contract_id:[0x52;32]};
-/// 0.01 BTC in 1e-8 BTC units, the size of a linear option leg in these tests.
-const CENT:u64=1_000_000;
-fn usd_desk(path:&Path)->Desk{
- let mut v=Desk::new(path);
- rejected(v.d.deposit_usd(channel(1),TAP,1),TierReject::Scope);
- assert!(v.d.enable_usd_collateral().unwrap());assert!(!v.d.enable_usd_collateral().unwrap());
- v
-}
-
-/// C. A USD cash-secured put: the writer locks strike times size in USD (micro-USD) on its
-/// RGB rail, the buyer pays USD premium, and expiry pays the put in USD through its own
-/// clearing line; BTC collateral and the BTC pool are untouched.
-#[test]
-fn c1_usd_cash_secured_put(){
- let t=Temp::new();let mut v=usd_desk(&t.path());
- let put=v.list(OptionKind::Put,Asset::Usd,90_000);
- v.d.deposit_usd(channel(2),RGB,2_000_000_000).unwrap();   // $2,000 on RGB
- v.d.deposit_usd(channel(1),TAP,100_000_000).unwrap();     // $100 on Taproot Assets
- // Writer 2: 0.01 BTC put at $90k; premium $25 = 25e6 micro-USD over 1e6 units = 25,000 milli.
- v.post(2,put,false,CENT,25_000);
- let b=v.take(1,vec![leg(put,true,CENT)],25_000_000_000).unwrap();
- assert_eq!((b.asset,b.fills[0].premium),(Asset::Usd,25_000_000));
- // Cash-secured: Q*(K - p_min) = 0.01 * 89,999 USD.
- assert_eq!(v.acct(2).usd_locked,899_990_000);
- assert_eq!((v.acct(2).usd_free,v.acct(1).usd_free),(2_000_000_000+25_000_000-899_990_000,75_000_000));
- assert_eq!((v.acct(1).btc_locked,v.acct(2).btc_locked),(0,0));
- let cash=v.d.clearing_state().unwrap().unwrap().cash;
- v.check();
- // Expiry at $80k pays 0.01 * 10,000 = $100.
- let e=v.d.expire_series(put,v.attest(&put,80_000)).unwrap();
- assert_eq!(e.clearing.rows.iter().map(|r|(r.channel.txid[0],r.net)).collect::<Vec<_>>(),vec![(1,100_000_000),(2,-100_000_000)]);
- assert_eq!((v.acct(1).usd_free,v.acct(2).usd_free,v.acct(2).usd_locked),(175_000_000,1_925_000_000,0));
- assert_eq!(v.d.clearing_state().unwrap().unwrap().cash,cash);
- v.d.withdraw_usd(channel(2),1_925_000_000).unwrap();
- rejected(v.d.withdraw_usd(channel(2),1),TierReject::Capacity);
- v.check();
-}
-
-/// C. Per-asset margin, no cross-asset netting: BTC collateral cannot secure a USD put,
-/// a combo cannot mix assets, and an account keeps one USD rail.
-#[test]
-fn c2_assets_do_not_net(){
- let t=Temp::new();let mut v=usd_desk(&t.path());
- let put=v.list(OptionKind::Put,Asset::Usd,90_000);
- let call=v.list(OptionKind::Call,Asset::Btc,100_000);
- v.d.fund_options(channel(2),CAP).unwrap();
- v.d.deposit_usd(channel(1),TAP,100_000_000).unwrap();
- v.post(2,put,false,CENT,25_000);
- // Writer 2 holds a whole bitcoin of option collateral and no USD: the put is unsecured.
- rejected(v.take(1,vec![leg(put,true,CENT)],25_000_000_000),TierReject::NoLiquidity);
- assert!(v.d.enable_combos().unwrap());
- v.post(3,call,false,10,1_000);v.post(2,put,false,CENT,25_000);
- rejected(v.take(1,vec![leg(put,true,CENT),leg(call,true,10)],1_000_000_000_000),TierReject::Bounds);
- // Rails: one per account; vanilla BTC is not a USD rail.
- rejected(v.d.deposit_usd(channel(1),RGB,1),TierReject::Scope);
- rejected(v.d.deposit_usd(channel(3),CollateralAsset::VanillaBtc,1),TierReject::Bounds);
- assert!(v.d.options().unwrap().unwrap().fully_funded(&([1;32],0)));
- v.check();
-}
-
 /// C. The BTC-only alternative to a USD put: a put spread. Each side's worst case is the
 /// spread's (`Q*1e8*(1/80k - 1/90k)` for the seller, nothing for the buyer), not the naked
 /// put's almost-a-bitcoin per USD, so it trades with ordinary BTC collateral.
 #[test]
-fn c3_btc_put_spread(){
+fn c5_btc_put_spread(){
  let t=Temp::new();let mut v=Desk::new(&t.path());
- let p80=v.list(OptionKind::Put,Asset::Btc,80_000);
- let p90=v.list(OptionKind::Put,Asset::Btc,90_000);
+ let p80=v.list(OptionKind::Put,BTC,80_000);
+ let p90=v.list(OptionKind::Put,BTC,90_000);
  for n in [1,2]{v.d.fund_options(channel(n),2_000_000).unwrap();}
  assert!(v.d.enable_combos().unwrap());
  // 2 quotes the spread's two legs: bids the 90k put, offers the 80k put.
  v.post(2,p90,true,1000,60_000);v.post(2,p80,false,1000,20_000);
  // 1 sells the spread: sells the 90k put, buys the 80k put, for a 40 sats/USD credit.
  v.take(1,vec![leg(p90,false,1000),leg(p80,true,1000)],-40_000_000).unwrap();
- assert_eq!(v.acct(1).btc_locked,138_889);
- assert_eq!(v.acct(2).btc_locked,0);
- assert_eq!(v.acct(1).btc_free,2_000_000+40_000-138_889);
+ assert_eq!(v.btc(1).locked,138_889);
+ assert_eq!(v.btc(2).locked,0);
+ assert_eq!(v.btc(1).free,2_000_000+40_000-138_889);
  let naked=payoff::max_loss(&[Leg::InverseOption{kind:OptionKind::Put,long:false,qty_usd:1000,strike_usd:90_000,premium_sats:0}],Asset::Btc,domain());
  assert!(naked>99_000_000_000,"{naked}");
  v.check();
@@ -420,7 +371,7 @@ fn c3_btc_put_spread(){
  v.d.expire_series(p80,v.attest(&p80,85_000)).unwrap();
  let owed=payoff::pnl(&[Leg::InverseOption{kind:OptionKind::Put,long:true,qty_usd:1000,strike_usd:90_000,premium_sats:0}],Asset::Btc,85_000);
  assert_eq!(owed,65_359);
- assert_eq!((v.acct(1).btc_locked,v.acct(1).btc_free),(0,2_000_000+40_000-65_360));
+ assert_eq!((v.btc(1).locked,v.btc(1).free),(0,2_000_000+40_000-65_360));
  v.check();
 }
 
@@ -430,16 +381,118 @@ fn c3_btc_put_spread(){
 fn c4_legs_offset_only_within_one_expiry(){
  let t=Temp::new();let mut v=Desk::new(&t.path());
  assert!(v.d.enable_combos().unwrap());
- let near=v.list_on(0,OptionKind::Call,Asset::Btc,100_000);
- let far=v.list_on(1,OptionKind::Call,Asset::Btc,100_000);
+ let near=v.list_on(0,OptionKind::Call,BTC,100_000);
+ let far=v.list_on(1,OptionKind::Call,BTC,100_000);
  for n in [1,2]{v.d.fund_options(channel(n),5_000_000).unwrap();}
  v.post(2,near,false,1000,40_000);v.post(2,far,true,1000,30_000);
  v.take(1,vec![leg(near,true,1000),leg(far,false,1000)],10_000_000).unwrap();
- assert_eq!(v.acct(1).btc_locked as u128,payoff::max_loss(&[short_call(1000,100_000)],Asset::Btc,domain()));
+ assert_eq!(v.btc(1).locked as u128,payoff::max_loss(&[short_call(1000,100_000)],Asset::Btc,domain()));
  v.check();
  v.d.expire_series(near,v.attest(&near,120_000)).unwrap();
  v.check();
  v.d.expire_series(far,v.attest(&far,90_000)).unwrap();
- assert_eq!((v.acct(1).btc_locked,v.acct(2).btc_locked),(0,0));
+ assert_eq!((v.btc(1).locked,v.btc(2).locked),(0,0));
+ v.check();
+}
+
+fn stable_desk(path:&Path)->Desk{
+ let mut v=Desk::new(path);
+ rejected(v.d.deposit_stable(channel(1),USDT,1),TierReject::Scope);
+ v.d.register_stable(USDT).unwrap();rejected(v.d.register_stable(USDT),TierReject::Replay);
+ v.d.register_stable(TUSD).unwrap();
+ rejected(v.d.register_stable(SettleAsset::Stable{protocol:StableProtocol::Rgb,id:[1;32],decimals:2}),TierReject::Bounds);
+ v
+}
+
+/// C. A USDT cash-secured put: the writer posts strike x size in USDT and is capped there;
+/// premium is paid in USDT; expiry pays the put in USDT through the USDT pool. BTC
+/// collateral and the BTC pool are untouched.
+#[test]
+fn c1_usdt_cash_secured_put(){
+ let t=Temp::new();let mut v=stable_desk(&t.path());
+ let put=v.list(OptionKind::Put,USDT,90_000);
+ v.d.deposit_stable(channel(2),USDT,2_000_000_000).unwrap();   // $2,000
+ v.d.deposit_stable(channel(1),USDT,100_000_000).unwrap();     // $100
+ // 0.01 BTC put at $90k; premium $25 = 25e6 base units over 1e6 units = 25,000 milli.
+ v.post(2,put,false,CENT,25_000);
+ let b=v.take(1,vec![leg(put,true,CENT)],25_000_000_000).unwrap();
+ assert_eq!((b.fills[0].asset,b.fills[0].premium),(USDT,25_000_000));
+ assert!(b.clearing_of(&BTC).is_none());
+ // Cash-secured: Q*(K - p_min) = 0.01 * 89,999 USD.
+ assert_eq!(v.stable(2,USDT).locked,899_990_000);
+ assert_eq!((v.stable(2,USDT).free,v.stable(1,USDT).free),(2_000_000_000+25_000_000-899_990_000,75_000_000));
+ assert_eq!((v.btc(1).locked,v.btc(2).locked),(0,0));
+ let cash=v.d.clearing_state().unwrap().unwrap().cash;
+ v.check();
+ // Expiry at $80k pays 0.01 * 10,000 = $100.
+ let e=v.d.expire_series(put,v.attest(&put,80_000)).unwrap();
+ let rows:Vec<_>=e.clearing_of(&USDT).unwrap().rows.iter().map(|r|(r.channel.txid[0],r.net)).collect();
+ assert_eq!(rows,vec![(1,100_000_000),(2,-100_000_000)]);
+ assert_eq!((v.stable(1,USDT).free,v.stable(2,USDT).free,v.stable(2,USDT).locked),(175_000_000,1_925_000_000,0));
+ assert_eq!(v.d.clearing_state().unwrap().unwrap().cash,cash);
+ v.d.withdraw_stable(channel(2),USDT,1_925_000_000).unwrap();
+ rejected(v.d.withdraw_stable(channel(2),USDT,1),TierReject::Capacity);
+ v.check();
+}
+
+/// C. Per asset, no netting: BTC collateral does not secure a USDT put, one stablecoin does
+/// not secure another's, calls cannot settle in a stablecoin, and an 8-decimal stablecoin
+/// is margined in its own base units.
+#[test]
+fn c2_assets_do_not_net(){
+ let t=Temp::new();let mut v=stable_desk(&t.path());
+ let put=v.list(OptionKind::Put,USDT,90_000);
+ let tput=v.list(OptionKind::Put,TUSD,90_000);
+ let ann=v.events[0].announcement.clone();
+ rejected(v.d.list_series(Series{kind:OptionKind::Call,asset:USDT,strike_usd:100_000,event_id:"BTCUSD-0".into()},ann.clone()),TierReject::Bounds);
+ let other=SettleAsset::Stable{protocol:StableProtocol::Tap,id:[9;32],decimals:6};
+ rejected(v.d.list_series(Series{kind:OptionKind::Put,asset:other,strike_usd:100_000,event_id:"BTCUSD-0".into()},ann),TierReject::Scope);
+ v.d.fund_options(channel(2),CAP).unwrap();
+ v.d.deposit_stable(channel(2),TUSD,1_000_000_000_000).unwrap();
+ v.d.deposit_stable(channel(1),USDT,100_000_000).unwrap();
+ v.post(2,put,false,CENT,25_000);
+ // Writer 2 holds a bitcoin and $10,000 of the other stablecoin, no USDT: dropped as unfunded.
+ rejected(v.take(1,vec![leg(put,true,CENT)],25_000_000_000),TierReject::NoLiquidity);
+ // The 8-decimal asset: the same put locks 100x the base units.
+ v.d.deposit_stable(channel(1),TUSD,10_000_000_000).unwrap();
+ v.post(2,tput,false,CENT,2_500_000);
+ v.take(1,vec![leg(tput,true,CENT)],2_500_000_000_000).unwrap();
+ assert_eq!(v.stable(2,TUSD).locked,89_999_000_000);
+ assert_eq!(v.btc(2).locked,0);
+ v.check();
+}
+
+/// C. Collar across assets in one batch: buy the USDT put (writer cash-secured in USDT),
+/// sell the BTC call (covered by BTC collateral). One signed intent, one batch, one
+/// clearing report per asset, each netting to zero on its own.
+#[test]
+fn c3_collar_clears_in_two_assets(){
+ let t=Temp::new();let mut v=stable_desk(&t.path());
+ assert!(v.d.enable_combos().unwrap());
+ let put=v.list(OptionKind::Put,USDT,90_000);
+ let call=v.list(OptionKind::Call,BTC,110_000);
+ v.d.deposit_stable(channel(2),USDT,1_000_000_000).unwrap();
+ v.d.deposit_stable(channel(1),USDT,30_000_000).unwrap();
+ for n in [1,3]{v.d.fund_options(channel(n),2_000_000).unwrap();}
+ v.post(2,put,false,CENT,25_000);v.post(3,call,true,1000,20_000);
+ // Limits: pay at most $25 in USDT (first leg's asset), receive at least 20,000 sats.
+ let mut i=v.intent(1,Action::Take,vec![leg(put,true,CENT),leg(call,false,1000)],25_000_000_000);
+ i.other_limits=vec![AssetLimit{asset:BTC,premium_milli:-20_000_000}];
+ let b=match v.send(i.signed(&sk(1)).unwrap()).unwrap(){OptionOutcome::Filled(b)=>*b,x=>panic!("{x:?}")};
+ assert_eq!(b.clearing.iter().map(|c|c.asset).collect::<Vec<_>>(),vec![BTC,USDT]);
+ for c in &b.clearing{assert_eq!(c.report.rows.iter().map(|r|r.net).sum::<i64>(),0);}
+ // Collector 1: short call locked in BTC, the long put needs nothing; writer 2 in USDT.
+ let naked=payoff::max_loss(&[short_call(1000,110_000)],Asset::Btc,domain());
+ assert_eq!((v.btc(1).locked as u128,v.stable(1,USDT).locked),(naked,0));
+ assert_eq!((v.btc(1).free,v.stable(1,USDT).free),(2_000_000+20_000-naked as u64,5_000_000));
+ assert_eq!(v.stable(2,USDT).locked,899_990_000);
+ assert!(v.d.options().unwrap().unwrap().fully_funded(&op(1)));
+ // A missing per-asset limit, or a limit for an asset no leg settles in, is refused.
+ rejected(v.take(1,vec![leg(put,true,1),leg(call,false,1)],1_000_000),TierReject::Bounds);
+ v.check();
+ // One expiry settles both assets in one batch.
+ let e=v.d.expire_series(put,v.attest(&put,120_000)).unwrap();
+ assert_eq!(e.clearing.len(),2);
+ assert_eq!(e.clearing_of(&USDT).unwrap().rows.iter().map(|r|r.net).sum::<i64>(),0);
  v.check();
 }

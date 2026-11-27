@@ -1,32 +1,39 @@
 //! Options desk: listed option series beside the perpetual book (docs/SHZ_OPTIONS_COMBOS.md).
 //!
+//! * Assets. `SettleAsset::Btc` is the primary asset; `SettleAsset::Stable{protocol, id,
+//!   decimals}` is a registered USD stablecoin (RGB or Taproot Assets), journaled once with
+//!   `register_stable`. A second stablecoin is another registration, not code. Inverse
+//!   perpetuals stay BTC-only; nothing here touches them.
 //! * Instruments: the perpetual (the existing books) and option series. A series is a
-//!   kind (call/put), a settlement asset, a strike and the DLC oracle event it expires
-//!   on; its id is a tagged hash of those fields. Each series has its own book.
-//! * Orders are `IntentV7`, a new intent version signed by the account owner. A Post
-//!   rests one leg at a premium per unit; a Take is one leg or an N-leg combo that fills
-//!   all-or-none against resting quotes in one option batch, within one net premium limit.
-//! * Units. `Asset::Btc` series are inverse options (`qty` = USD notional, premium in
-//!   millisats per unit, collateral and payoff in sats). `Asset::Usd` series are linear
-//!   options (`qty` = 1e-8 BTC, premium in thousandths of a micro-USD per unit, collateral
-//!   and payoff in micro-USD).
-//! * Margin is one rule: each account's option collateral per asset is exactly the
-//!   portfolio's worst-case loss over the oracle's price domain (`payoff::max_loss`),
-//!   recomputed on every fill. Legs offset only within one expiry (one oracle event, one
-//!   price): the requirement is the sum over expiries of each expiry's worst case. Premium moves in cash at fill time and is not part of the
-//!   margined payoff. Assets never net against each other. Every option portfolio is
-//!   therefore `fully_funded` and needs no liquidation.
-//! * Cash moves (premium at a fill, payoff at expiry) go through the multilateral
-//!   clearing ledger: each option batch has a `BatchClearing` with one row per account,
-//!   losers' cash collected into the pool and winners paid from it. Premium nets to zero
-//!   exactly; expiry rounds each net winner down and each net loser up and the dust goes to the
-//!   clearing fund, so the clearing identity holds.
+//!   kind, a settlement asset, a strike and the DLC oracle event it expires on; its id is a
+//!   tagged hash of those fields, and each series has its own book. Calls settle in BTC.
+//!   Puts settle in BTC (margined to the bottom of the outcome domain) or in a registered
+//!   stablecoin (cash-secured: the writer posts strike x size and its loss is capped).
+//! * Orders are `IntentV7`, signed by the account owner. A Post rests one leg at a premium
+//!   per unit; a Take is one leg or an N-leg combo that fills all-or-none in one option
+//!   batch. Premium is paid in each leg's settlement asset, so a fill never converts one
+//!   asset into another at a price; the taker states one net premium limit per asset.
+//! * Units. BTC series are inverse options: `qty` USD notional, premium in millisats per
+//!   unit, payoff and collateral in sats. Stable series are linear: `qty` in 1e-8 BTC,
+//!   premium in thousandths of the stablecoin's base unit per unit, payoff and collateral
+//!   in its base units (`10^decimals` per USD).
+//! * Margin is one rule, per asset: collateral locked in an asset is exactly the sum over
+//!   expiries of the worst-case loss (`payoff::max_loss`) of the legs settling in that asset
+//!   on that expiry. Legs offset only within one expiry and one asset; assets never net.
+//!   Every option portfolio is therefore `fully_funded` in every asset and needs no
+//!   liquidation.
+//! * Clearing is per asset inside one batch: each option batch carries one
+//!   `BatchClearing` per asset it moves (BTC through the router's clearing ledger, each
+//!   stablecoin through its own pool with fund, waterfall, deferred claims and identity).
+//!   Premium nets to zero exactly; expiry rounds each net winner down and each net loser up
+//!   and the dust goes to that asset's clearing fund, so every pool's identity holds.
 //! * BTC collateral is moved from the account's perpetual allocation (`fund`/`defund`):
 //!   `Balance::cap` and `free` drop by the amount, the options sub-account gains it.
+//!   Stablecoin collateral is credited and debited by the simulated TAP/RGB adapter.
 use super::*;
 use super::clearing::{BatchClearing,ClearingRow,ClearingState,Waterfall};
 use shz_dlc::{OracleAnnouncement,OracleAttestation};
-use shz_margin::payoff::{self,Asset,Leg,OptionKind,PriceDomain};
+use shz_margin::payoff::{self,Leg,OptionKind,PriceDomain};
 use shz_margin::CollateralAsset;
 
 /// Intent version number of option orders (`IntentV6` is the perpetual intent).
@@ -34,23 +41,53 @@ pub const OPTION_INTENT_VERSION:u32=7;
 /// Most legs one combo intent may carry.
 pub const MAX_LEGS:usize=4;
 
+/// Issuance protocol of a registered stablecoin.
+#[derive(Debug,Clone,Copy,PartialEq,Eq,PartialOrd,Ord,Hash,Serialize,Deserialize)]
+pub enum StableProtocol{Rgb,Tap}
+/// Asset an option leg settles and is margined in.
+#[derive(Debug,Clone,Copy,PartialEq,Eq,PartialOrd,Ord,Hash,Serialize,Deserialize)]
+pub enum SettleAsset{
+ /// Satoshis.
+ Btc,
+ /// A USD stablecoin: RGB contract id or Taproot Assets asset id, `decimals` base-unit
+ /// digits per USD (6 for USDT).
+ Stable{protocol:StableProtocol,id:Key,decimals:u8},
+}
+impl SettleAsset{
+ /// Dimension of the payoff engine this asset is valued in.
+ pub fn payoff_asset(&self)->payoff::Asset{match self{Self::Btc=>payoff::Asset::Btc,Self::Stable{..}=>payoff::Asset::Usd}}
+ /// Base units per payoff unit (`payoff::Asset::Usd` is micro-USD).
+ pub fn scale(&self)->u128{match self{Self::Btc=>1,Self::Stable{decimals,..}=>10u128.pow((*decimals).saturating_sub(6) as u32)}}
+ /// The channel-collateral hook this asset maps to in `shz_margin`.
+ pub fn collateral(&self)->CollateralAsset{
+  match *self{
+   Self::Btc=>CollateralAsset::VanillaBtc,
+   Self::Stable{protocol:StableProtocol::Tap,id,..}=>CollateralAsset::TaprootAsset{asset_id:id,group_key:None,script_version:0},
+   Self::Stable{protocol:StableProtocol::Rgb,id,..}=>CollateralAsset::Rgb{contract_id:id},
+  }
+ }
+ pub(crate) fn put(&self,b:&mut Vec<u8>){
+  match self{Self::Btc=>b.push(1),Self::Stable{protocol,id,decimals}=>{b.push(2);b.push(*protocol as u8);b.extend(id);b.push(*decimals)}}
+ }
+}
+
 /// One listed option series.
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
-pub struct Series{pub kind:OptionKind,pub asset:Asset,pub strike_usd:u64,pub event_id:String}
+pub struct Series{pub kind:OptionKind,pub asset:SettleAsset,pub strike_usd:u64,pub event_id:String}
 impl Series{
  pub fn id(&self)->Key{
   let mut b=Vec::new();
   b.push(match self.kind{OptionKind::Call=>1,OptionKind::Put=>2});
-  b.push(match self.asset{Asset::Btc=>1,Asset::Usd=>2});
+  self.asset.put(&mut b);
   u64b(&mut b,self.strike_usd);u64b(&mut b,self.event_id.len()as u64);b.extend(self.event_id.as_bytes());
-  tagged_hash(b"SHZ/OPTIONS/SERIES/V1",&b)
+  tagged_hash(b"SHZ/OPTIONS/SERIES/V2",&b)
  }
- /// The payoff leg of `net` units (positive long), premium excluded.
+ /// The payoff leg of `net` units (positive long), premium excluded, in payoff units.
  fn leg(&self,net:i64)->Leg{
   let (long,qty)=(net>0,net.unsigned_abs());
   match self.asset{
-   Asset::Btc=>Leg::InverseOption{kind:self.kind,long,qty_usd:qty,strike_usd:self.strike_usd,premium_sats:0},
-   Asset::Usd=>Leg::LinearOption{kind:self.kind,long,qty_btc_e8:qty,strike_usd:self.strike_usd,premium_usd:0},
+   SettleAsset::Btc=>Leg::InverseOption{kind:self.kind,long,qty_usd:qty,strike_usd:self.strike_usd,premium_sats:0},
+   SettleAsset::Stable{..}=>Leg::LinearOption{kind:self.kind,long,qty_btc_e8:qty,strike_usd:self.strike_usd,premium_usd:0},
   }
  }
 }
@@ -65,16 +102,22 @@ impl Instrument{
 /// One leg of an option order: `qty` units of `series`, bought (`long`) or sold.
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub struct LegOrder{pub series:Key,pub long:bool,pub qty:u64}
+/// Net premium limit of a Take in one asset (thousandths of the asset's base unit).
+#[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
+pub struct AssetLimit{pub asset:SettleAsset,pub premium_milli:i64}
 
-/// Signed option order (intent version 7). Post: one leg, `premium_milli` is the
-/// premium per unit in thousandths of the asset unit (positive). Take: one or more legs
-/// in one asset, `premium_milli` is the most the taker pays net for the whole order in
-/// thousandths of the asset unit (negative: the least it must receive). Cancel:
-/// `cancel_target` is the id of the account's resting quote.
+/// Signed option order (intent version 7). Post: one leg, `premium_milli` is the premium
+/// per unit in thousandths of the leg's asset unit (positive). Take: `premium_milli` is the
+/// most the taker pays net, in thousandths of a unit, in the asset of the first leg
+/// (negative: the least it must receive); every other asset among the legs needs exactly
+/// one entry in `other_limits`. Cancel: `cancel_target` is the id of the account's quote.
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
 pub struct IntentV7{
  pub version:u32,pub scope:Scope,pub router:u32,pub channel:BtcOutPoint,pub owner:Key,pub sequence:u64,pub expires_us:u64,
- pub action:Action,pub legs:Vec<LegOrder>,pub premium_milli:i64,pub cancel_target:Key,pub signature:Bip340Signature,
+ pub action:Action,pub legs:Vec<LegOrder>,pub premium_milli:i64,
+ #[serde(default,skip_serializing_if="Vec::is_empty")]
+ pub other_limits:Vec<AssetLimit>,
+ pub cancel_target:Key,pub signature:Bip340Signature,
 }
 impl IntentV7{
  pub fn id(&self)->Key{
@@ -84,31 +127,29 @@ impl IntentV7{
   u64b(&mut b,self.legs.len()as u64);
   for l in &self.legs{b.extend(l.series);b.push(l.long as u8);u64b(&mut b,l.qty);}
   b.extend(self.premium_milli.to_le_bytes());b.extend(self.cancel_target);
+  if !self.other_limits.is_empty(){
+   u64b(&mut b,self.other_limits.len()as u64);
+   for l in &self.other_limits{l.asset.put(&mut b);b.extend(l.premium_milli.to_le_bytes());}
+  }
   tagged_hash(b"SHZ/HFT06/INTENT/V7",&b)
  }
  pub fn signed(mut self,sk:&Key)->R<Self>{self.owner=public(sk);self.signature=sign(sk,&self.id())?;Ok(self)}
 }
 
-/// Options sub-account of one channel. `*_locked` is always the portfolio's worst-case
-/// loss in that asset; `realized_*` is premium and payoff received minus paid.
-#[derive(Debug,Clone,Default,PartialEq,Eq,Serialize,Deserialize)]
+/// One asset of an options sub-account: `locked` is always the worst-case loss of the
+/// legs settling in it; `realized` is premium and payoff received minus paid.
+#[derive(Debug,Clone,Copy,Default,PartialEq,Eq,Serialize,Deserialize)]
+pub struct AssetBalance{pub free:u64,pub locked:u64,pub realized:i64}
+/// Options sub-account of one channel.
+#[derive(Debug,Clone,Default,PartialEq,Eq)]
 pub struct OptionAccount{
- pub btc_free:u64,pub btc_locked:u64,pub realized_btc:i64,
- pub usd_free:u64,pub usd_locked:u64,pub realized_usd:i64,
- /// Rail the account's USD collateral sits on (set by its first deposit).
- pub usd_rail:Option<CollateralAsset>,
+ pub balances:BTreeMap<SettleAsset,AssetBalance>,
  /// Net units per series, positive long.
  pub legs:BTreeMap<Key,i64>,
  pub last_sequence:u64,
 }
 impl OptionAccount{
- fn free(&self,a:Asset)->u64{match a{Asset::Btc=>self.btc_free,Asset::Usd=>self.usd_free}}
- fn locked(&self,a:Asset)->u64{match a{Asset::Btc=>self.btc_locked,Asset::Usd=>self.usd_locked}}
- fn set(&mut self,a:Asset,free:u64,locked:u64,realized:i64){
-  match a{Asset::Btc=>{self.btc_free=free;self.btc_locked=locked;self.realized_btc=realized},
-   Asset::Usd=>{self.usd_free=free;self.usd_locked=locked;self.realized_usd=realized}}
- }
- fn realized(&self,a:Asset)->i64{match a{Asset::Btc=>self.realized_btc,Asset::Usd=>self.realized_usd}}
+ pub fn balance(&self,a:&SettleAsset)->AssetBalance{self.balances.get(a).copied().unwrap_or_default()}
 }
 
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
@@ -117,34 +158,67 @@ struct Quote{intent:IntentV7,remaining:u64}
 struct Listed{series:Series,announcement:OracleAnnouncement,settled:Option<u64>}
 
 /// One option fill: `qty` units of `series` between the long and the short account at
-/// `premium_milli` per unit; `premium` (asset units) moves from long to short.
+/// `premium_milli` per unit; `premium` (base units of the series' asset) moves long to short.
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
-pub struct OptionFill{pub series:Key,pub long:BtcOutPoint,pub short:BtcOutPoint,pub maker:Key,pub taker:Key,pub qty:u64,pub premium_milli:u64,pub premium:u64}
+pub struct OptionFill{pub series:Key,pub asset:SettleAsset,pub long:BtcOutPoint,pub short:BtcOutPoint,pub maker:Key,pub taker:Key,pub qty:u64,pub premium_milli:u64,pub premium:u64}
 
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
 pub enum OptionBatchKind{
  /// One taker intent (single leg or combo), all of its fills.
  Trade{taker:Key},
- /// Expiry of every `series` of one asset on oracle event `event_id` at the attested
- /// `price_usd` (clamped to the domain).
+ /// Expiry of every open `series` on oracle event `event_id`, every asset, at the
+ /// attested `price_usd` (clamped to the domain).
  Expiry{event_id:String,series:Vec<Key>,price_usd:u64},
 }
-/// Atomic unit of option settlement: every fill and cash move of one take or expiry.
+/// Clearing of one asset inside an option batch.
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
-pub struct OptionBatch{pub sequence:u64,pub kind:OptionBatchKind,pub asset:Asset,pub fills:Vec<OptionFill>,pub clearing:BatchClearing}
+pub struct AssetClearing{pub asset:SettleAsset,pub report:BatchClearing}
+/// Atomic unit of option settlement: every fill and cash move of one take or expiry,
+/// with one clearing report per asset it moves (assets in `SettleAsset` order).
+#[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
+pub struct OptionBatch{pub sequence:u64,pub kind:OptionBatchKind,pub fills:Vec<OptionFill>,pub clearing:Vec<AssetClearing>}
+impl OptionBatch{
+ pub fn clearing_of(&self,a:&SettleAsset)->Option<&BatchClearing>{self.clearing.iter().find(|c|c.asset==*a).map(|c|&c.report)}
+ /// Channels with a clearing row in any asset, in key order.
+ pub fn channels(&self)->Vec<BtcOutPoint>{
+  let mut m=BTreeMap::new();
+  for c in &self.clearing{for r in &c.report.rows{m.insert(op(&r.channel),r.channel.clone());}}
+  m.into_values().collect()
+ }
+ /// Digest of the whole batch: kind, fills and every asset's clearing digest.
+ pub fn digest(&self)->Key{
+  let mut b=Vec::new();u64b(&mut b,self.sequence);
+  match &self.kind{
+   OptionBatchKind::Trade{taker}=>{b.push(1);b.extend(taker)},
+   OptionBatchKind::Expiry{event_id,series,price_usd}=>{
+    b.push(2);u64b(&mut b,event_id.len()as u64);b.extend(event_id.as_bytes());u64b(&mut b,series.len()as u64);
+    for s in series{b.extend(s)}
+    u64b(&mut b,*price_usd);
+   }
+  }
+  u64b(&mut b,self.fills.len()as u64);
+  for f in &self.fills{
+   b.extend(f.series);f.asset.put(&mut b);put_op(&mut b,&f.long);put_op(&mut b,&f.short);b.extend(f.maker);b.extend(f.taker);
+   for n in [f.qty,f.premium_milli,f.premium]{u64b(&mut b,n)}
+  }
+  u64b(&mut b,self.clearing.len()as u64);
+  for c in &self.clearing{c.asset.put(&mut b);b.extend(c.report.digest());}
+  tagged_hash(b"SHZ/OPTIONS/BATCH/V1",&b)
+ }
+}
 
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum OptionOutcome{Posted(Key),Cancelled(Key),Filled(Box<OptionBatch>)}
 
-/// Every option book, sub-account and batch. Pure state: callers pass the router's
-/// account owners and the clearing ledger.
+/// Every option book, sub-account, stablecoin pool and batch. Pure state: callers pass
+/// the router's account owners and its (BTC) clearing ledger.
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct OptionsDesk{
  pub oracle:Key,pub domain:PriceDomain,
- /// `Asset::Usd` series and USD collateral accepted (journaled `EnableUsdCollateral`).
- pub usd:bool,
  /// Combos (more than one leg per Take) accepted (journaled `EnableCombos`).
  pub combos:bool,
+ /// Registered stablecoins and their clearing pools.
+ pools:BTreeMap<SettleAsset,ClearingState>,
  series:BTreeMap<Key,Listed>,
  books:BTreeMap<(Key,bool),BTreeMap<(i64,u64),Quote>>,
  locations:BTreeMap<Key,(Key,bool,(i64,u64))>,
@@ -153,14 +227,15 @@ pub struct OptionsDesk{
  arrival:u64,clock:u64,
 }
 
-/// Premium of `qty` units at `milli` per unit, in asset units (floor, same for both sides).
+/// Premium of `qty` units at `milli` per unit, in base units (floor, same for both sides).
 fn premium(qty:u64,milli:u64)->R<u64>{u64::try_from(qty as u128*milli as u128/1000).map_err(|_|Reject::Bounds)}
 fn s64(x:u64)->R<i64>{i64::try_from(x).map_err(|_|Reject::Bounds)}
+fn u(x:u128)->R<u64>{u64::try_from(x).map_err(|_|Reject::Bounds)}
 
 impl OptionsDesk{
  pub fn new(oracle:Key,num_bits:u8)->R<Self>{
   if !(4..=40).contains(&num_bits)||oracle==[0;32]{return Err(Reject::Bounds)}
-  Ok(Self{oracle,domain:PriceDomain::from_bits(num_bits),usd:false,combos:false,series:BTreeMap::new(),books:BTreeMap::new(),
+  Ok(Self{oracle,domain:PriceDomain::from_bits(num_bits),combos:false,pools:BTreeMap::new(),series:BTreeMap::new(),books:BTreeMap::new(),
    locations:BTreeMap::new(),accounts:BTreeMap::new(),batches:Vec::new(),arrival:0,clock:0})
  }
  pub fn account(&self,k:&Outpoint)->Option<&OptionAccount>{self.accounts.get(k)}
@@ -168,74 +243,78 @@ impl OptionsDesk{
  pub fn batch_count(&self)->u64{self.batches.len()as u64}
  pub fn series(&self,id:&Key)->Option<(&Series,Option<u64>)>{self.series.get(id).map(|l|(&l.series,l.settled))}
  pub fn series_ids(&self)->impl Iterator<Item=&Key>{self.series.keys()}
+ /// Registered stablecoins and their clearing pools.
+ pub fn stable_pools(&self)->impl Iterator<Item=(&SettleAsset,&ClearingState)>{self.pools.iter()}
+ pub fn registered(&self,a:&SettleAsset)->bool{*a==SettleAsset::Btc||self.pools.contains_key(a)}
  /// Resting quotes of one side of a series book in priority order: (id, premium_milli, remaining).
  pub fn depth(&self,series:&Key,long:bool)->Vec<(Key,i64,u64)>{
   self.books.get(&(*series,long)).map(|b|b.values().map(|q|(q.intent.id(),q.intent.premium_milli,q.remaining)).collect()).unwrap_or_default()
  }
- /// Payoff legs of an account's open option positions.
- pub fn legs(&self,k:&Outpoint)->Vec<Leg>{
-  self.accounts.get(k).map(|a|a.legs.iter().filter(|(_,n)|**n!=0).filter_map(|(s,n)|self.series.get(s).map(|l|l.series.leg(*n))).collect()).unwrap_or_default()
- }
- /// The account's legs grouped by expiry (oracle event): legs offset only within a group,
- /// since different events settle at different prices.
- pub fn legs_by_event(&self,k:&Outpoint)->BTreeMap<String,Vec<Leg>>{
-  let mut out:BTreeMap<String,Vec<Leg>>=BTreeMap::new();
+ /// Payoff legs of an account's open option positions (payoff units).
+ pub fn legs(&self,k:&Outpoint)->Vec<Leg>{self.groups(k).into_values().flatten().collect()}
+ /// The account's legs grouped by (expiry, settlement asset): legs offset only within a
+ /// group, since different events settle at different prices and assets never net.
+ pub fn groups(&self,k:&Outpoint)->BTreeMap<(String,SettleAsset),Vec<Leg>>{
+  let mut out:BTreeMap<(String,SettleAsset),Vec<Leg>>=BTreeMap::new();
   if let Some(a)=self.accounts.get(k){
    for (s,&n) in &a.legs{
-    if let (true,Some(l))=(n!=0,self.series.get(s)){out.entry(l.series.event_id.clone()).or_default().push(l.series.leg(n));}
+    if let (true,Some(l))=(n!=0,self.series.get(s)){out.entry((l.series.event_id.clone(),l.series.asset)).or_default().push(l.series.leg(n));}
    }
   }
   out
  }
- /// Collateral the account's option portfolio needs in `asset`: the sum over expiries of
- /// each expiry's worst-case loss.
- pub fn required(&self,k:&Outpoint,asset:Asset)->u128{
-  self.legs_by_event(k).values().map(|g|payoff::max_loss(g,asset,self.domain)).sum()
+ /// Collateral the account's options need in `asset` (base units): the sum over expiries
+ /// of each expiry's worst-case loss in that asset.
+ pub fn required(&self,k:&Outpoint,asset:&SettleAsset)->u128{
+  self.groups(k).iter().filter(|((_,a),_)|a==asset).map(|((_,a),g)|payoff::max_loss(g,a.payoff_asset(),self.domain)*a.scale()).sum()
  }
- /// The account's posted option collateral covers every expiry's worst-case loss in every
- /// asset (`payoff::fully_funded` per expiry, collateral split across expiries).
+ /// Posted collateral covers every expiry's worst-case loss in every asset the account
+ /// settles in (`payoff::fully_funded` per asset and expiry): exempt from liquidation.
  pub fn fully_funded(&self,k:&Outpoint)->bool{
   let Some(a)=self.accounts.get(k)else{return true};
-  a.btc_locked as u128>=self.required(k,Asset::Btc)&&a.usd_locked as u128>=self.required(k,Asset::Usd)
+  let assets:BTreeSet<SettleAsset>=self.groups(k).keys().map(|(_,a)|*a).collect();
+  assets.iter().all(|x|a.balance(x).locked as u128>=self.required(k,x))
  }
 
- /// List a series on an oracle announcement of the desk's oracle and domain.
+ /// Register a stablecoin (once): opens its clearing pool with no fund.
+ pub fn register_stable(&mut self,asset:SettleAsset)->R<()>{
+  let SettleAsset::Stable{id,decimals,..}=asset else{return Err(Reject::Bounds)};
+  if !(6..=18).contains(&decimals)||id==[0;32]{return Err(Reject::Bounds)}
+  if self.pools.contains_key(&asset){return Err(Reject::Replay)}
+  self.pools.insert(asset,ClearingState::open(0,std::iter::empty())?);Ok(())
+ }
+ /// List a series on an oracle announcement of the desk's oracle and domain. Calls settle
+ /// in BTC; puts in BTC or a registered stablecoin.
  pub fn list(&mut self,series:Series,announcement:OracleAnnouncement)->R<Key>{
   let id=series.id();
   if self.series.contains_key(&id)||announcement.oracle_pubkey_x!=self.oracle||announcement.event_id!=series.event_id||
-     PriceDomain::from_bits(announcement.num_bits().clamp(1,40))!=self.domain||announcement.num_bits()==0||
+     announcement.num_bits()==0||PriceDomain::from_bits(announcement.num_bits().clamp(1,40))!=self.domain||
      !(self.domain.p_min..=self.domain.p_max).contains(&series.strike_usd){return Err(Reject::Bounds)}
-  if series.asset==Asset::Usd&&!self.usd{return Err(Reject::Scope)}
+  if series.asset!=SettleAsset::Btc&&series.kind!=OptionKind::Put{return Err(Reject::Bounds)}
+  if !self.registered(&series.asset){return Err(Reject::Scope)}
   // Every series of one event settles on one announcement.
   if self.series.values().any(|l|l.series.event_id==series.event_id&&l.announcement!=announcement){return Err(Reject::Bounds)}
   self.series.insert(id,Listed{series,announcement,settled:None});Ok(id)
  }
  /// Move `sats` between the account's perpetual allocation and its options sub-account.
  pub(crate) fn fund(&mut self,k:Outpoint,b:&mut Balance,sats:u64,to_options:bool)->R<()>{
-  let a=self.accounts.entry(k).or_default();
+  let a=self.accounts.entry(k).or_default().balances.entry(SettleAsset::Btc).or_default();
   if to_options{
    if b.free<sats{return Err(Reject::Capacity)}
-   b.free-=sats;b.cap-=sats;a.btc_free=a.btc_free.checked_add(sats).ok_or(Reject::Bounds)?;
+   b.free-=sats;b.cap-=sats;a.free=a.free.checked_add(sats).ok_or(Reject::Bounds)?;
   }else{
-   if a.btc_free<sats{return Err(Reject::Capacity)}
-   a.btc_free-=sats;b.free=b.free.checked_add(sats).ok_or(Reject::Bounds)?;b.cap=b.cap.checked_add(sats).ok_or(Reject::Bounds)?;
+   if a.free<sats{return Err(Reject::Capacity)}
+   a.free-=sats;b.free=b.free.checked_add(sats).ok_or(Reject::Bounds)?;b.cap=b.cap.checked_add(sats).ok_or(Reject::Bounds)?;
   }
   Ok(())
  }
- /// Credit `micro_usd` of USD collateral on `rail` (TAP or RGB; the on-chain transfer is
- /// simulated) or, with `deposit` false, withdraw it from the free USD balance.
- pub fn usd_transfer(&mut self,k:Outpoint,rail:Option<CollateralAsset>,micro_usd:u64,deposit:bool)->R<()>{
-  if !self.usd{return Err(Reject::Scope)}
-  let a=self.accounts.entry(k).or_default();
-  if deposit{
-   let rail=rail.ok_or(Reject::Bounds)?;
-   if matches!(rail,CollateralAsset::VanillaBtc){return Err(Reject::Bounds)}
-   if a.usd_rail.as_ref().is_some_and(|r|*r!=rail){return Err(Reject::Scope)}
-   a.usd_free=a.usd_free.checked_add(micro_usd).ok_or(Reject::Bounds)?;a.usd_rail=Some(rail);
-  }else{
-   if a.usd_free<micro_usd{return Err(Reject::Capacity)}
-   a.usd_free-=micro_usd;
-  }
+ /// Credit (`deposit`) or debit `units` of a registered stablecoin. The TAP/RGB transfer
+ /// itself is the simulated adapter's; this records its effect on the sub-account.
+ pub fn stable_transfer(&mut self,k:Outpoint,asset:SettleAsset,units:u64,deposit:bool)->R<()>{
+  if asset==SettleAsset::Btc||!self.pools.contains_key(&asset){return Err(Reject::Scope)}
+  let a=self.accounts.entry(k).or_default().balances.entry(asset).or_default();
+  if deposit{a.free=a.free.checked_add(units).ok_or(Reject::Bounds)?}
+  else{if a.free<units{return Err(Reject::Capacity)}a.free-=units}
   Ok(())
  }
 
@@ -270,7 +349,7 @@ impl OptionsDesk{
  fn post(&mut self,i:&IntentV7)->R<OptionOutcome>{
   let [leg]=i.legs.as_slice()else{return Err(Reject::Bounds)};
   self.open_series(&leg.series)?;
-  if leg.qty==0||i.premium_milli<=0{return Err(Reject::Bounds)}
+  if leg.qty==0||i.premium_milli<=0||!i.other_limits.is_empty(){return Err(Reject::Bounds)}
   // Post-only: a quote that would cross the best opposite quote is refused.
   if let Some(best)=self.books.get(&(leg.series,!leg.long)).and_then(|b|b.values().next()){
    let p=best.intent.premium_milli;
@@ -288,17 +367,22 @@ impl OptionsDesk{
  /// matching restarts without them; the taker failing to fund rejects the whole intent.
  fn take(&mut self,i:&IntentV7,clearing:&mut ClearingState)->R<OptionOutcome>{
   if i.legs.is_empty()||i.legs.len()>MAX_LEGS||(i.legs.len()>1&&!self.combos){return Err(Reject::Bounds)}
-  let mut seen=BTreeSet::new();let mut asset=None;
+  let mut seen=BTreeSet::new();let mut assets=BTreeSet::new();
   for l in &i.legs{
    let s=&self.open_series(&l.series)?.series;
-   if l.qty==0||!seen.insert(l.series)||asset.is_some_and(|a|a!=s.asset){return Err(Reject::Bounds)}
-   asset=Some(s.asset);
+   if l.qty==0||!seen.insert(l.series){return Err(Reject::Bounds)}
+   assets.insert(s.asset);
   }
-  let asset=asset.unwrap();
+  // One limit per asset among the legs: the first leg's in `premium_milli`, the others in
+  // `other_limits`, each exactly once.
+  let first=self.series[&i.legs[0].series].series.asset;
+  let mut limits=BTreeMap::from([(first,i.premium_milli)]);
+  for l in &i.other_limits{if limits.insert(l.asset,l.premium_milli).is_some(){return Err(Reject::Bounds)}}
+  if limits.keys().copied().collect::<BTreeSet<_>>()!=assets{return Err(Reject::Bounds)}
   let mut base=self.clone();
   loop{
    let mut work=base.clone();
-   match work.try_take(i,asset,clearing)?{
+   match work.try_take(i,&limits,clearing)?{
     Ok((batch,next))=>{
      work.batches.push(batch.clone());*self=work;*clearing=next;
      return Ok(OptionOutcome::Filled(Box::new(batch)));
@@ -315,10 +399,11 @@ impl OptionsDesk{
  /// One matching attempt on `self` (a working copy). `Ok(Err(maker))` names a maker
  /// that cannot fund its side.
  #[allow(clippy::type_complexity)]
- fn try_take(&mut self,i:&IntentV7,asset:Asset,clearing:&ClearingState)->R<Result<(OptionBatch,ClearingState),Outpoint>>{
+ fn try_take(&mut self,i:&IntentV7,limits:&BTreeMap<SettleAsset,i64>,clearing:&ClearingState)->R<Result<(OptionBatch,ClearingState),Outpoint>>{
   let taker=op(&i.channel);
   let mut fills=Vec::new();
   for l in &i.legs{
+   let asset=self.series[&l.series].series.asset;
    let mut need=l.qty;
    let book=self.books.entry((l.series,!l.long)).or_default();
    let mut done=Vec::new();
@@ -328,86 +413,108 @@ impl OptionsDesk{
     let n=need.min(q.remaining);
     let milli=u64::try_from(q.intent.premium_milli).map_err(|_|Reject::Bounds)?;
     let (long,short)=if l.long{(i.channel.clone(),q.intent.channel.clone())}else{(q.intent.channel.clone(),i.channel.clone())};
-    fills.push(OptionFill{series:l.series,long,short,maker:q.intent.id(),taker:i.id(),qty:n,premium_milli:milli,premium:premium(n,milli)?});
+    fills.push(OptionFill{series:l.series,asset,long,short,maker:q.intent.id(),taker:i.id(),qty:n,premium_milli:milli,premium:premium(n,milli)?});
     q.remaining-=n;need-=n;
     if q.remaining==0{done.push((*key,q.intent.id()))}
    }
    if need>0{return Err(Reject::NoLiquidity)}
    for (key,id) in done{book.remove(&key);self.locations.remove(&id);}
   }
-  // Taker's net premium against its limit (thousandths of the asset unit).
-  let mut net:i128=0;
-  for f in &fills{let p=f.premium as i128*1000;if op(&f.long)==taker{net+=p}else{net-=p}}
-  if net>i.premium_milli as i128{return Err(Reject::FeeLimit)}
-  // Cash per account, then legs and margin.
-  let mut cash:BTreeMap<Outpoint,(BtcOutPoint,u64,u64)>=BTreeMap::new();
+  // Taker's net premium per asset against its limits (thousandths of a unit).
+  for (asset,&limit) in limits{
+   let mut net:i128=0;
+   for f in fills.iter().filter(|f|f.asset==*asset){let p=f.premium as i128*1000;if op(&f.long)==taker{net+=p}else{net-=p}}
+   if net>limit as i128{return Err(Reject::FeeLimit)}
+  }
+  // Cash per (account, asset), then legs and margin.
+  let mut cash:BTreeMap<(SettleAsset,Outpoint),(BtcOutPoint,u64,u64)>=BTreeMap::new();
   for f in &fills{
-   cash.entry(op(&f.long)).or_insert((f.long.clone(),0,0)).2+=f.premium;
-   cash.entry(op(&f.short)).or_insert((f.short.clone(),0,0)).1+=f.premium;
+   cash.entry((f.asset,op(&f.long))).or_insert((f.long.clone(),0,0)).2+=f.premium;
+   cash.entry((f.asset,op(&f.short))).or_insert((f.short.clone(),0,0)).1+=f.premium;
    let units=s64(f.qty)?;
    *self.accounts.entry(op(&f.long)).or_default().legs.entry(f.series).or_insert(0)+=units;
    *self.accounts.entry(op(&f.short)).or_default().legs.entry(f.series).or_insert(0)-=units;
   }
-  let mut rows=Vec::new();
-  for (k,(ch,received,paid)) in &cash{
-   let a=self.accounts.get_mut(k).unwrap();a.legs.retain(|_,n|*n!=0);
-   let req=u64::try_from(self.required(k,asset)).map_err(|_|Reject::Bounds)?;
-   let a=&self.accounts[k];
-   let avail=a.free(asset) as i128+a.locked(asset) as i128+*received as i128-*paid as i128-req as i128;
+  let mut rows:BTreeMap<SettleAsset,Vec<ClearingRow>>=BTreeMap::new();
+  for ((asset,k),(ch,received,paid)) in &cash{
+   self.accounts.get_mut(k).unwrap().legs.retain(|_,n|*n!=0);
+   let req=u(self.required(k,asset))?;
+   let b=self.accounts[k].balance(asset);
+   let avail=b.free as i128+b.locked as i128+*received as i128-*paid as i128-req as i128;
    if avail<0{return if *k==taker{Err(Reject::Capacity)}else{Ok(Err(*k))}}
-   let realized=a.realized(asset).checked_add(s64(*received)?-s64(*paid)?).ok_or(Reject::Bounds)?;
-   self.accounts.get_mut(k).unwrap().set(asset,avail as u64,req,realized);
-   rows.push(row(clearing,ch,s64(*received)?-s64(*paid)?,*paid,*received));
+   let realized=b.realized.checked_add(s64(*received)?-s64(*paid)?).ok_or(Reject::Bounds)?;
+   self.accounts.get_mut(k).unwrap().balances.insert(*asset,AssetBalance{free:avail as u64,locked:req,realized});
+   let pool=if *asset==SettleAsset::Btc{clearing}else{&self.pools[asset]};
+   rows.entry(*asset).or_default().push(row(pool,ch,s64(*received)?-s64(*paid)?,*paid,*received));
   }
   let seq=self.batches.len()as u64+1;
-  let (report,next)=settle(clearing,asset,rows,0)?;
-  Ok(Ok((OptionBatch{sequence:seq,kind:OptionBatchKind::Trade{taker:i.id()},asset,fills,clearing:report},next)))
+  let (reports,next)=self.settle_all(clearing,rows,&BTreeMap::new())?;
+  Ok(Ok((OptionBatch{sequence:seq,kind:OptionBatchKind::Trade{taker:i.id()},fills,clearing:reports},next)))
+ }
+ /// Clear every asset's rows: BTC against `clearing`, stablecoins against their pools
+ /// (updated in place on this working copy). Returns the reports and the next BTC ledger.
+ fn settle_all(&mut self,clearing:&ClearingState,rows:BTreeMap<SettleAsset,Vec<ClearingRow>>,dust:&BTreeMap<SettleAsset,u64>)->R<(Vec<AssetClearing>,ClearingState)>{
+  let mut next_btc=clearing.clone();let mut reports=Vec::new();
+  for (asset,rows) in rows{
+   let d=dust.get(&asset).copied().unwrap_or(0);
+   let pool=if asset==SettleAsset::Btc{clearing}else{&self.pools[&asset]};
+   let (report,next)=settle(pool,rows,d)?;
+   if asset==SettleAsset::Btc{next_btc=next}else{self.pools.insert(asset,next);}
+   reports.push(AssetClearing{asset,report});
+  }
+  Ok((reports,next_btc))
  }
 
- /// Expire, at the oracle's attested price, every open series in the asset of `id` on the
- /// same oracle event as `id`: each account's positions in them pay out as one amount,
- /// shorts from their locked collateral, and the collateral they no longer need is freed.
+ /// Expire, at the oracle's attested price, every open series on the oracle event of
+ /// `id`, in every asset: each account's positions pay out as one amount per asset,
+ /// losers from their locked collateral, and the collateral no longer needed is freed.
  pub fn expire(&mut self,id:&Key,attestation:&OracleAttestation,clearing:&mut ClearingState)->R<OptionBatch>{
   let l=self.open_series(id)?;
   attestation.verify_against(&l.announcement).map_err(|_|Reject::Oracle)?;
-  let (event,asset,price)=(l.series.event_id.clone(),l.series.asset,attestation.price_usd.clamp(self.domain.p_min,self.domain.p_max));
-  let ids:Vec<Key>=self.series.iter().filter(|(_,l)|l.settled.is_none()&&l.series.event_id==event&&l.series.asset==asset).map(|(k,_)|*k).collect();
+  let (event,price)=(l.series.event_id.clone(),attestation.price_usd.clamp(self.domain.p_min,self.domain.p_max));
+  let mut work=self.clone();
+  let ids:Vec<Key>=work.series.iter().filter(|(_,l)|l.settled.is_none()&&l.series.event_id==event).map(|(k,_)|*k).collect();
   // Resting quotes of expired series are cancelled.
   for s in &ids{
    for long in [true,false]{
-    if let Some(b)=self.books.remove(&(*s,long)){for q in b.values(){self.locations.remove(&q.intent.id());}}
+    if let Some(b)=work.books.remove(&(*s,long)){for q in b.values(){work.locations.remove(&q.intent.id());}}
    }
   }
-  let mut rows=Vec::new();let (mut gains,mut losses)=(0u64,0u64);
-  let holders:Vec<Outpoint>=self.accounts.iter().filter(|(_,a)|ids.iter().any(|s|a.legs.get(s).is_some_and(|&n|n!=0))).map(|(k,_)|*k).collect();
-  let mut moves=Vec::new();
-  for k in holders{
-   let a=&self.accounts[&k];
-   let legs:Vec<Leg>=ids.iter().filter_map(|s|a.legs.get(s).filter(|&&n|n!=0).map(|&n|self.series[s].series.leg(n))).collect();
-   let v=payoff::pnl(&legs,asset,price);
-   // `pnl` floors: a net winner is paid the floor, a net loser pays the ceiling.
-   let (paid,collected)=if v>=0{(u64::try_from(v).map_err(|_|Reject::Bounds)?,0)}else{(0,u64::try_from(-v).map_err(|_|Reject::Bounds)?)};
-   gains=gains.checked_add(paid).ok_or(Reject::Bounds)?;losses=losses.checked_add(collected).ok_or(Reject::Bounds)?;
-   moves.push((k,paid,collected));
+  let holders:Vec<Outpoint>=work.accounts.iter().filter(|(_,a)|ids.iter().any(|s|a.legs.get(s).is_some_and(|&n|n!=0))).map(|(k,_)|*k).collect();
+  let mut moves=Vec::new();let mut totals:BTreeMap<SettleAsset,(u64,u64)>=BTreeMap::new();
+  for k in &holders{
+   let groups=work.groups(k);
+   for ((ev,asset),legs) in groups{
+    if ev!=event{continue}
+    // `pnl` floors: a net winner is paid the floor, a net loser pays the ceiling.
+    let v=payoff::pnl(&legs,asset.payoff_asset(),price)*asset.scale() as i128;
+    let (paid,collected)=if v>=0{(u(v as u128)?,0)}else{(0,u((-v) as u128)?)};
+    let t=totals.entry(asset).or_default();
+    t.0=t.0.checked_add(paid).ok_or(Reject::Bounds)?;t.1=t.1.checked_add(collected).ok_or(Reject::Bounds)?;
+    moves.push((*k,asset,paid,collected));
+   }
   }
-  if gains>losses{return Err(Reject::Bounds)}
-  for (k,paid,collected) in moves{
-   let a=self.accounts.get_mut(&k).unwrap();for s in &ids{a.legs.remove(s);}
-   let req=u64::try_from(self.required(&k,asset)).map_err(|_|Reject::Bounds)?;
-   let a=&self.accounts[&k];
-   let total=a.free(asset) as i128+a.locked(asset) as i128+paid as i128-collected as i128-req as i128;
+  for k in &holders{let a=work.accounts.get_mut(k).unwrap();for s in &ids{a.legs.remove(s);}}
+  let mut rows:BTreeMap<SettleAsset,Vec<ClearingRow>>=BTreeMap::new();
+  for (k,asset,paid,collected) in moves{
+   let req=u(work.required(&k,&asset))?;
+   let b=work.accounts[&k].balance(&asset);
+   let total=b.free as i128+b.locked as i128+paid as i128-collected as i128-req as i128;
    // Locked collateral covers each expiry's worst case on its own, so this cannot go negative.
    if total<0{return Err(Reject::Bounds)}
-   let realized=a.realized(asset).checked_add(s64(paid)?-s64(collected)?).ok_or(Reject::Bounds)?;
-   self.accounts.get_mut(&k).unwrap().set(asset,total as u64,req,realized);
+   let realized=b.realized.checked_add(s64(paid)?-s64(collected)?).ok_or(Reject::Bounds)?;
+   work.accounts.get_mut(&k).unwrap().balances.insert(asset,AssetBalance{free:total as u64,locked:req,realized});
    let ch=BtcOutPoint{txid:k.0,vout:k.1};
-   rows.push(row(clearing,&ch,s64(paid)?-s64(collected)?,collected,paid));
+   let pool=if asset==SettleAsset::Btc{&*clearing}else{&work.pools[&asset]};
+   rows.entry(asset).or_default().push(row(pool,&ch,s64(paid)?-s64(collected)?,collected,paid));
   }
-  let seq=self.batches.len()as u64+1;
-  let (report,next)=settle(clearing,asset,rows,losses-gains)?;
-  let batch=OptionBatch{sequence:seq,kind:OptionBatchKind::Expiry{event_id:event,series:ids.clone(),price_usd:price},asset,fills:Vec::new(),clearing:report};
-  for s in &ids{self.series.get_mut(s).unwrap().settled=Some(price);}
-  self.batches.push(batch.clone());*clearing=next;
+  let mut dust=BTreeMap::new();
+  for (asset,(g,c)) in totals{if g>c{return Err(Reject::Bounds)}dust.insert(asset,c-g);}
+  let seq=work.batches.len()as u64+1;
+  let (reports,next)=work.settle_all(clearing,rows,&dust)?;
+  let batch=OptionBatch{sequence:seq,kind:OptionBatchKind::Expiry{event_id:event,series:ids.clone(),price_usd:price},fills:Vec::new(),clearing:reports};
+  for s in &ids{work.series.get_mut(s).unwrap().settled=Some(price);}
+  work.batches.push(batch.clone());*self=work;*clearing=next;
   Ok(batch)
  }
 }
@@ -416,22 +523,16 @@ fn row(c:&ClearingState,ch:&BtcOutPoint,pnl:i64,collected:u64,paid:u64)->Clearin
  let claim=c.claim(ch);
  ClearingRow{channel:ch.clone(),pnl,released:0,collected,own_claim_used:0,shortfall:0,haircut:0,claim_before:claim,claim_after:claim,paid,net:paid as i64-collected as i64}
 }
-/// Clearing report of one option batch. BTC batches move the pool's cash (collected in,
-/// paid out, `dust` kept as clearing fund); USD batches have their own pool line that
-/// always nets to zero apart from dust, which stays with the venue.
-fn settle(c:&ClearingState,asset:Asset,rows:Vec<ClearingRow>,dust:u64)->R<(BatchClearing,ClearingState)>{
+/// Clearing report of one asset of an option batch against that asset's pool: losers'
+/// cash collected in, winners paid out, `dust` kept as clearing fund (cash and fund both
+/// rise, so `cash - claims - fund + carry == book` still holds).
+fn settle(c:&ClearingState,rows:Vec<ClearingRow>,dust:u64)->R<(BatchClearing,ClearingState)>{
  let collected:i128=rows.iter().map(|r|r.collected as i128).sum();
  let paid:i128=rows.iter().map(|r|r.paid as i128).sum();
  if collected-paid!=dust as i128{return Err(Reject::Bounds)}
  let mut next=c.clone();
- let (before,after)=match asset{
-  Asset::Btc=>{
-   next.cash=next.cash.checked_add(s64(dust)?).ok_or(Reject::Bounds)?;next.fund=next.fund.checked_add(dust).ok_or(Reject::Bounds)?;
-   (c.cash,next.cash)
-  },
-  Asset::Usd=>(0,s64(dust)?),
- };
+ next.cash=next.cash.checked_add(s64(dust)?).ok_or(Reject::Bounds)?;next.fund=next.fund.checked_add(dust).ok_or(Reject::Bounds)?;
  let layer=if collected>0{Waterfall::Margin}else{Waterfall::None};
- Ok((BatchClearing{rows,claim_haircuts:Vec::new(),shortfall:0,fund_absorbed:0,haircut:0,layer,cash_before:before,cash_after:after,
+ Ok((BatchClearing{rows,claim_haircuts:Vec::new(),shortfall:0,fund_absorbed:0,haircut:0,layer,cash_before:c.cash,cash_after:next.cash,
   fund_after:next.fund,carry_after:next.carry,claims_after:next.claims_total()},next))
 }

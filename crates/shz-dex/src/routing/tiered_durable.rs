@@ -9,9 +9,8 @@ use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,Journal
 use super::positions::{self,Position,Settlement};
 use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
-use super::options::{IntentV7,OptionBatch,OptionOutcome,OptionsDesk,Series};
+use super::options::{IntentV7,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset};
 use shz_dlc::{OracleAnnouncement,OracleAttestation};
-use shz_margin::CollateralAsset;
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
 
@@ -202,10 +201,10 @@ impl State{
     if self.clearing.is_none()||self.options.is_some(){return Err(TierReject::Replay)}
     self.options=Some(OptionsDesk::new(oracle_key,num_bits)?);Ok(Reply::Unit)
    },
-   Event::EnableUsdCollateral=>{let d=self.desk()?;if d.usd{return Err(TierReject::Replay)}d.usd=true;Ok(Reply::Unit)},
-   Event::UsdTransfer{channel,rail,micro_usd,deposit}=>{
+   Event::RegisterStable{asset}=>{self.desk()?.register_stable(asset)?;Ok(Reply::Unit)},
+   Event::StableTransfer{channel,asset,units,deposit}=>{
     let k=op(&channel);if self.router.account_owner(&k).is_none(){return Err(TierReject::Allocation)}
-    self.desk()?.usd_transfer(k,rail,micro_usd,deposit)?;Ok(Reply::Unit)
+    self.desk()?.stable_transfer(k,asset,units,deposit)?;Ok(Reply::Unit)
    },
    Event::EnableCombos=>{let d=self.desk()?;if d.combos{return Err(TierReject::Replay)}d.combos=true;Ok(Reply::Unit)},
    Event::ListSeries{series,announcement}=>Ok(Reply::Key(self.desk()?.list(series,announcement)?)),
@@ -251,10 +250,10 @@ enum Event{
  /// announcements of `num_bits` digits.
  EnableOptions{oracle_key:Key,num_bits:u8},
  ListSeries{series:Series,announcement:OracleAnnouncement},
- /// Accept `Asset::Usd` series and USD collateral on TAP or RGB rails (simulated transfers).
- EnableUsdCollateral,
- /// Credit (`deposit`, on `rail`) or debit free USD collateral, micro-USD.
- UsdTransfer{channel:BtcOutPoint,rail:Option<CollateralAsset>,micro_usd:u64,deposit:bool},
+ /// Register a stablecoin settlement asset (opens its clearing pool).
+ RegisterStable{asset:SettleAsset},
+ /// Credit (`deposit`) or debit `units` of a registered stablecoin (simulated TAP/RGB adapter).
+ StableTransfer{channel:BtcOutPoint,asset:SettleAsset,units:u64,deposit:bool},
  /// Accept Take intents of up to `options::MAX_LEGS` legs (all-or-none, one batch).
  EnableCombos,
  /// Move sats between the perpetual allocation and the options sub-account.
@@ -384,20 +383,18 @@ impl DurableTieredRouter{
   self.ready()?;if self.state.options.as_ref().is_some_and(|d|d.combos){return Ok(false)}
   self.record(Event::EnableCombos)?;Ok(true)
  }
- /// Accept USD-settled series and USD collateral (journaled `EnableUsdCollateral`, once;
- /// options must be on). Returns `false` if already on.
- pub fn enable_usd_collateral(&mut self)->D<bool>{
-  self.ready()?;if self.state.options.as_ref().is_some_and(|d|d.usd){return Ok(false)}
-  self.record(Event::EnableUsdCollateral)?;Ok(true)
+ /// Register a stablecoin settlement asset (journaled `RegisterStable`, once per asset;
+ /// options must be on): `SettleAsset::Stable{protocol, id, decimals}` with decimals in
+ /// 6..=18. Opens the asset's clearing pool; puts may then list in it.
+ pub fn register_stable(&mut self,asset:SettleAsset)->D<()>{self.record(Event::RegisterStable{asset}).map(|_|())}
+ /// Credit `units` of a registered stablecoin. The TAP/RGB transfer is the simulated
+ /// adapter's: nothing here verifies a Taproot Assets proof or an RGB consignment.
+ pub fn deposit_stable(&mut self,channel:BtcOutPoint,asset:SettleAsset,units:u64)->D<()>{
+  self.record(Event::StableTransfer{channel,asset,units,deposit:true}).map(|_|())
  }
- /// Credit `micro_usd` of USD collateral arriving on `rail` (`TaprootAsset` or `Rgb`). The
- /// on-chain TAP/RGB transfer is not verified here: the event records the operator's credit.
- pub fn deposit_usd(&mut self,channel:BtcOutPoint,rail:CollateralAsset,micro_usd:u64)->D<()>{
-  self.record(Event::UsdTransfer{channel,rail:Some(rail),micro_usd,deposit:true}).map(|_|())
- }
- /// Debit `micro_usd` of free USD collateral (a withdrawal on the account's rail).
- pub fn withdraw_usd(&mut self,channel:BtcOutPoint,micro_usd:u64)->D<()>{
-  self.record(Event::UsdTransfer{channel,rail:None,micro_usd,deposit:false}).map(|_|())
+ /// Debit `units` of free stablecoin collateral (a withdrawal through the adapter).
+ pub fn withdraw_stable(&mut self,channel:BtcOutPoint,asset:SettleAsset,units:u64)->D<()>{
+  self.record(Event::StableTransfer{channel,asset,units,deposit:false}).map(|_|())
  }
  /// List an option series; returns its id (`Series::id`).
  pub fn list_series(&mut self,series:Series,announcement:OracleAnnouncement)->D<Key>{
