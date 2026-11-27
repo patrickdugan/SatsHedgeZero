@@ -181,5 +181,5 @@ fn collateral_cfg(a: &BTreeMap<String, String>, chain: &str) -> Result<core::col
     if min_lock == 0 || min_lock > refund_blocks {
         return Err("--min-lock must be in 1..=refund-blocks".into());
     }
-    Ok(core::collateral::ChainCfg { net, rpc_url, rpc_auth, batcher, refund_blocks, min_conf: n("min-conf", 1)?.max(1) as u32, min_lock, poll_ms: n("chain-poll-ms", 15_000)? })
+    Ok(core::collateral::ChainCfg { net, rpc_url, rpc_auth, rpc_auth_file: Some(auth_file.clone()), batcher, refund_blocks, min_conf: n("min-conf", 1)?.max(1) as u32, min_lock, poll_ms: n("chain-poll-ms", 15_000)? })
 }

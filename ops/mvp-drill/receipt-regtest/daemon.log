@@ -1,0 +1,17 @@
+[1795803848.642] shz-batcher regtest venue http://127.0.0.1:8098 last settled seq 0 last maturity 1795803900
+[1795803964.377] account 0658611c: 8f2c86288dcd0a92f02cfe181d1ba3999d8cfb51a8940dc62449a4c584b56f30:0 200000 sats, refund at 171
+[1795803964.483] account 2ea302dc: cf038fe944c1e8d160e2962a38511a647579241973bcd41330ff40764e1f5b33:0 200000 sats, refund at 171
+[1795803964.539] account 71fb26f9: 327ea41f66c948693e3c5c5fe5e46be74297e87b17d277d5f1101c13c2608671:0 200000 sats, refund at 171
+[1795803964.658] SHZ-BTCUSD-20261127T1826Z: 1 segment(s) ["1..2"], aborted seqs []
+[1795803965.948] SHZ-BTCUSD-20261127T1826Z segment 0: signature of 2ea302dc
+[1795803968.028] SHZ-BTCUSD-20261127T1826Z segment 0: signature of 0658611c
+[1795803968.268] SHZ-BTCUSD-20261127T1826Z segment 0: settlement edce3696c73fff5687c9792972d5bbf005602f08178e515098febc29213d17d7, 2 signers, 0 rolled, 477 vB, fee 477, change 999523, fronted 0, testmempoolaccept {"allowed":true,"fees":{"base":4.77e-6,"effective-feerate":0.00001,"effective-includes":["0a61ecc409ce0046034c6a701a3b16a35cf97cee58b9fd54fb814b2a71c709df"]},"txid":"edce3696c73fff5687c9792972d5bbf005602f08178e515098febc29213d17d7","vsize":477,"wtxid":"0a61ecc409ce0046034c6a701a3b16a35cf97cee58b9fd54fb814b2a71c709df"}
+[1795803968.465] SHZ-BTCUSD-20261127T1826Z segment 0 (1..2): settled
+[1795803973.869] SHZ-BTCUSD-20261127T1826Z segment 0: edce3696c73fff5687c9792972d5bbf005602f08178e515098febc29213d17d7 confirmed at 134
+[1795804023.699] SHZ-BTCUSD-20261127T1827Z: 1 segment(s) ["3..4"], aborted seqs []
+[1795804026.765] SHZ-BTCUSD-20261127T1827Z segment 0: signature of 0658611c
+[1795804026.765] SHZ-BTCUSD-20261127T1827Z segment 0: signature of 2ea302dc
+[1795804026.766] SHZ-BTCUSD-20261127T1827Z segment 0: signature of 71fb26f9
+[1795804027.391] SHZ-BTCUSD-20261127T1827Z segment 0: settlement 4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b, 3 signers, 0 rolled, 628 vB, fee 628, change 998895, fronted 0, testmempoolaccept {"allowed":true,"fees":{"base":6.28e-6,"effective-feerate":0.00001,"effective-includes":["4cb90edde61d7cc7f6b08fc0c5b098f0fb4b787b87d6fcb57b3338b5aa18a917"]},"txid":"4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b","vsize":628,"wtxid":"4cb90edde61d7cc7f6b08fc0c5b098f0fb4b787b87d6fcb57b3338b5aa18a917"}
+[1795804027.837] SHZ-BTCUSD-20261127T1827Z segment 0 (3..4): settled
+[1795804033.262] SHZ-BTCUSD-20261127T1827Z segment 0: 4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b confirmed at 145

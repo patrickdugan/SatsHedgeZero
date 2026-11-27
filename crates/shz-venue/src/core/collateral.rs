@@ -76,6 +76,8 @@ pub struct ChainCfg {
     pub rpc_url: String,
     /// `user:password` for HTTP basic auth (read from `--bitcoind-auth-file`, never logged).
     pub rpc_auth: String,
+    /// Re-read before every call when set, so a bitcoind `.cookie` that changes on restart keeps working.
+    pub rpc_auth_file: Option<String>,
     pub batcher: Key,
     /// Refund delay of a fresh account output, in blocks from the tip.
     pub refund_blocks: u32,
@@ -266,7 +268,9 @@ pub struct Tx {
     pub locktime: u32,
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 struct Rd<'a>(&'a [u8], usize);
+#[cfg_attr(not(test), allow(dead_code))]
 impl Rd<'_> {
     fn take(&mut self, n: usize) -> Result<&[u8], String> {
         let s = self.0.get(self.1..self.1 + n).ok_or("transaction truncated")?;
@@ -292,6 +296,7 @@ impl Rd<'_> {
 
 impl Tx {
     /// An unsigned transaction: legacy serialization (no witness), empty scriptSigs.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn parse(b: &[u8]) -> Result<Self, String> {
         let mut r = Rd(b, 0);
         let version = r.u32()?;
@@ -338,6 +343,7 @@ impl Tx {
         v
     }
     /// Display-order txid (witness data does not change it).
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn txid(&self) -> Key {
         let mut t: Key = Sha256::digest(Sha256::digest(self.serialize())).into();
         t.reverse();
@@ -1059,6 +1065,11 @@ impl Venue {
         }
         let mut rec = r.clone();
         rec["received_us"] = json!(now_us());
+        // A staged result's broadcast command may carry bitcoin-cli credentials: never journal them.
+        if let Some(cmd) = rec["broadcast_command"].as_str() {
+            let clean: Vec<&str> = cmd.split_whitespace().filter(|w| !w.starts_with("-rpcpassword") && !w.starts_with("-rpcuser") && !w.starts_with("-rpccookiefile")).collect();
+            rec["broadcast_command"] = json!(clean.join(" "));
+        }
         self.coll_record(json!({"kind": "coll_result", "result": rec, "payouts": payouts}))?;
         self.emit(json!({"type": "settlement", "epoch": k.0, "segment": k.1, "phase": status}));
         Ok(json!({"accepted": true, "awaiting_confirmation": payouts.len()}))
@@ -1266,7 +1277,7 @@ pub async fn rpc(cfg: &ChainCfg, method: &str, params: Value) -> Result<Value, S
     let body = json!({"jsonrpc": "1.0", "id": "shz-venue", "method": method, "params": params}).to_string();
     let req = format!(
         "POST {path} HTTP/1.1\r\nHost: {hostport}\r\nAuthorization: Basic {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        b64(cfg.rpc_auth.as_bytes()),
+        b64(cfg.rpc_auth_file.as_ref().and_then(|f| std::fs::read_to_string(f).ok()).map(|s| s.trim().to_string()).unwrap_or_else(|| cfg.rpc_auth.clone()).as_bytes()),
         body.len()
     );
     let fut = async {
@@ -1411,7 +1422,7 @@ mod tests {
     }
 
     fn cfg(b: Key) -> ChainCfg {
-        ChainCfg { net: Net::Regtest, rpc_url: "http://127.0.0.1:9".into(), rpc_auth: "u:p".into(), batcher: b, refund_blocks: 100, min_conf: 2, min_lock: 50, poll_ms: 1000 }
+        ChainCfg { net: Net::Regtest, rpc_url: "http://127.0.0.1:9".into(), rpc_auth: "u:p".into(), rpc_auth_file: None, batcher: b, refund_blocks: 100, min_conf: 2, min_lock: 50, poll_ms: 1000 }
     }
     fn sigx(k: &Key, m: &Key) -> String {
         hex::encode(bip340_sign(k, m).unwrap().to_bytes())

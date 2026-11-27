@@ -1,0 +1,2 @@
+collateral on: regtest batcher=006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590 refund_blocks=60 min_conf=1 accounts=0
+shz-venue 127.0.0.1:8098 relay=http://170.75.168.145:8091 state=D:/shz/tmp/mvp-drill/venue ui=D:/shz/SatsHedgeZero/ui/venue network=regtest production_ready=false
