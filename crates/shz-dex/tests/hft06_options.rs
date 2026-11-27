@@ -616,3 +616,85 @@ fn d3_staged_batch_survives_restart_and_retries_are_idempotent(){
  assert_eq!(v.btc(1).free,5_000_000-40_000);
  v.check();
 }
+
+/// A desk whose options oracle is the single key `sk(55)` (the unattestable notice is a
+/// plain BIP340 signature by the oracle key), with a hand-built announcement for `event`.
+fn plain_oracle_desk(path:&Path,event:&str)->(Desk,shz_dlc::OracleAnnouncement){
+ let mut d=DurableTieredRouter::create(path,&registry(),cfg(),lanes(),recipients()).unwrap();
+ assert!(d.enable_margin_release().unwrap());assert!(d.enable_clearing(1_000_000).unwrap());
+ assert!(d.enable_options(pk(55),BITS).unwrap());
+ let ann=shz_dlc::OracleAnnouncement{event_id:event.into(),maturity_unix:1_800_000_000,oracle_pubkey_x:pk(55),
+  digit_nonces_x:(0..BITS).map(|j|pk(120+j)).collect()};
+ let oracle=FrostConfederation::keygen_deterministic(2,3,&[0x51;32]).unwrap();
+ (Desk{d,oracle,events:Vec::new(),seq:Cell::new(0),now:Cell::new(T0)},ann)
+}
+
+/// Gap 1. An event the oracle declares unattestable voids its series: legs return to their
+/// pre-trade positions with no payoff, premiums stay paid, collateral is freed.
+#[test]
+fn e1_unattestable_notice_voids_the_event(){
+ let t=Temp::new();let (mut v,ann)=plain_oracle_desk(&t.path(),"BTCUSD-U");
+ let call=v.d.list_series(Series{kind:OptionKind::Call,asset:BTC,strike_usd:100_000,event_id:"BTCUSD-U".into()},ann.clone()).unwrap();
+ let put=v.d.list_series(Series{kind:OptionKind::Put,asset:BTC,strike_usd:90_000,event_id:"BTCUSD-U".into()},ann).unwrap();
+ for n in [1,2]{v.d.fund_options(channel(n),5_000_000).unwrap();}
+ v.post(2,call,false,1000,40_000);v.post(1,put,true,1,5_000);
+ v.take(1,vec![leg(call,true,1000)],40_000_000).unwrap();
+ assert!(v.btc(2).locked>0);
+ let msg=unattestable_message("BTCUSD-U");
+ // Wrong key, wrong event: refused.
+ rejected(v.d.void_event("BTCUSD-U".into(),shz_dlc::bip340_sign(&sk(56),&msg).unwrap()),TierReject::NoMark);
+ rejected(v.d.void_event("BTCUSD-U".into(),shz_dlc::bip340_sign(&sk(55),&unattestable_message("BTCUSD-X")).unwrap()),TierReject::NoMark);
+ rejected(v.d.void_event("BTCUSD-X".into(),shz_dlc::bip340_sign(&sk(55),&unattestable_message("BTCUSD-X")).unwrap()),TierReject::UnknownOrder);
+ let b=v.d.void_event("BTCUSD-U".into(),shz_dlc::bip340_sign(&sk(55),&msg).unwrap()).unwrap();
+ assert!(b.kind.is_void());assert!(matches!(&b.kind,OptionBatchKind::Expiry{series,price_usd:0,..} if series.len()==2));
+ assert!(b.clearing_of(&BTC).unwrap().rows.iter().all(|r|r.net==0));
+ assert_eq!((v.btc(1).free,v.btc(1).locked,v.btc(2).free,v.btc(2).locked),(5_000_000-40_000,0,5_000_000+40_000,0));
+ assert!(v.legs(1).is_empty()&&v.legs(2).is_empty());
+ let desk=v.d.options().unwrap().unwrap();
+ assert_eq!(desk.series(&call).unwrap().1,Some(0));
+ assert!(desk.depth(&put,true).is_empty(),"resting quotes on a void event are cancelled");
+ rejected(v.d.void_event("BTCUSD-U".into(),shz_dlc::bip340_sign(&sk(55),&msg).unwrap()),TierReject::UnknownOrder);
+ v.check();
+}
+
+/// Lane acks with the owner signature of `offline` left all-zero.
+fn acks_without(v:&Desk,offline:&[u8])->OptionAckBundle{
+ let mut b=acks(v,Disposition::Commit,true);
+ for a in &mut b.acks{if offline.contains(&a.channel.txid[0]){a.signatures[0]=ZSIG;}}
+ b
+}
+
+/// Gap 2. With `EnableOwnerlessExpiry`, an expiry batch commits on peer and monitor alone
+/// when a holder is offline; before it, and for trade batches always, owners must sign.
+#[test]
+fn e2_offline_holder_cannot_hold_an_expiry(){
+ let t=Temp::new();let mut v=Desk::new(&t.path());
+ let near=v.list_on(0,OptionKind::Call,BTC,100_000);
+ let far=v.list_on(1,OptionKind::Call,BTC,100_000);
+ for n in [1,2]{v.d.fund_options(channel(n),5_000_000).unwrap();}
+ v.post(2,near,false,1000,40_000);v.post(2,far,false,1000,40_000);
+ assert!(v.d.enable_option_acks().unwrap());
+ staged(&mut v,1,vec![leg(near,true,1000)],40_000_000);
+ assert!(v.d.resolve_option(acks(&v,Disposition::Commit,true),v.now.get()).unwrap());
+ staged(&mut v,1,vec![leg(far,true,1000)],40_000_000);
+ assert!(v.d.resolve_option(acks(&v,Disposition::Commit,true),v.now.get()).unwrap());
+ // Before the switch: an expiry with holder 1 offline is refused.
+ v.d.expire_series(near,v.attest(&near,110_000)).unwrap();
+ rejected(v.d.resolve_option(acks_without(&v,&[1]),v.now.get()),TierReject::Signature);
+ assert!(v.d.resolve_option(acks(&v,Disposition::Commit,true),v.now.get()).unwrap());
+ assert!(v.d.enable_ownerless_expiry().unwrap());assert!(!v.d.enable_ownerless_expiry().unwrap());
+ // A trade batch still needs every owner.
+ v.post(2,far,false,10,40_000);
+ staged(&mut v,1,vec![leg(far,true,10)],1_000_000_000);
+ rejected(v.d.resolve_option(acks_without(&v,&[1]),v.now.get()),TierReject::Signature);
+ rejected(v.d.resolve_option(acks_without(&v,&[2]),v.now.get()),TierReject::Signature);
+ assert!(v.d.resolve_option(acks(&v,Disposition::Commit,true),v.now.get()).unwrap());
+ // The far expiry commits with both holders offline; peer and monitor still must sign.
+ v.d.expire_series(far,v.attest(&far,120_000)).unwrap();
+ let mut bad=acks_without(&v,&[1,2]);bad.acks[0].signatures[1]=ZSIG;
+ rejected(v.d.resolve_option(bad,v.now.get()),TierReject::Signature);
+ assert!(v.d.resolve_option(acks_without(&v,&[1,2]),v.now.get()).unwrap());
+ assert_eq!((v.btc(1).locked,v.btc(2).locked),(0,0));
+ assert!(v.legs(1).is_empty());
+ v.check();
+}

@@ -167,9 +167,20 @@ pub enum OptionBatchKind{
  /// One taker intent (single leg or combo), all of its fills.
  Trade{taker:Key},
  /// Expiry of every open `series` on oracle event `event_id`, every asset, at the
- /// attested `price_usd` (clamped to the domain).
+ /// attested `price_usd` (clamped to the domain). `price_usd == 0`, outside every domain,
+ /// is a void: the oracle declared the event unattestable, no payoff moves, every leg
+ /// returns to its pre-trade position (premiums stay paid) and its collateral is freed.
  Expiry{event_id:String,series:Vec<Key>,price_usd:u64},
 }
+impl OptionBatchKind{
+ /// An expiry on the oracle's unattestable notice (`price_usd == 0`).
+ pub fn is_void(&self)->bool{matches!(self,Self::Expiry{price_usd:0,..})}
+}
+
+/// Domain tag of the oracle's unattestable notice (the FROST members' `UNATTESTABLE_TAG`).
+pub const UNATTESTABLE_TAG:&[u8]=b"SHZ/DLC/UNATTESTABLE/V1";
+/// Message the oracle signs to declare `event_id` unattestable.
+pub fn unattestable_message(event_id:&str)->Key{tagged_hash(UNATTESTABLE_TAG,event_id.as_bytes())}
 /// Clearing of one asset inside an option batch.
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
 pub struct AssetClearing{pub asset:SettleAsset,pub report:BatchClearing}
@@ -512,6 +523,21 @@ impl OptionsDesk{
   let l=self.open_series(id)?;
   attestation.verify_against(&l.announcement).map_err(|_|Reject::Oracle)?;
   let (event,price)=(l.series.event_id.clone(),attestation.price_usd.clamp(self.domain.p_min,self.domain.p_max));
+  self.settle_event(event,Some(price),clearing)
+ }
+ /// Void every open series on `event_id` on the oracle's signed unattestable notice: a
+ /// BIP340 signature by the desk's oracle key over `unattestable_message(event_id)` whose
+ /// nonce is none of the event's digit nonces. Every leg on the event is removed with no
+ /// payoff (premiums stay paid) and the collateral it held is freed. A voided series reads
+ /// `settled == Some(0)` afterwards (0 is outside every price domain).
+ pub fn void(&mut self,event_id:&str,notice:&Bip340Signature,clearing:&mut ClearingState)->R<OptionBatch>{
+  let l=self.series.values().find(|l|l.settled.is_none()&&l.series.event_id==event_id).ok_or(Reject::UnknownOrder)?;
+  if l.announcement.digit_nonces_x.contains(&notice.r_x){return Err(Reject::Oracle)}
+  verify(&self.oracle,&unattestable_message(event_id),notice).map_err(|_|Reject::Oracle)?;
+  self.settle_event(event_id.to_string(),None,clearing)
+ }
+ /// Settle every open series on `event`: at `price`, or void when `None`.
+ fn settle_event(&mut self,event:String,price:Option<u64>,clearing:&mut ClearingState)->R<OptionBatch>{
   let mut work=self.clone();
   let ids:Vec<Key>=work.series.iter().filter(|(_,l)|l.settled.is_none()&&l.series.event_id==event).map(|(k,_)|*k).collect();
   // Resting quotes of expired series are cancelled.
@@ -527,7 +553,7 @@ impl OptionsDesk{
    for ((ev,asset),legs) in groups{
     if ev!=event{continue}
     // `pnl` floors: a net winner is paid the floor, a net loser pays the ceiling.
-    let v=payoff::pnl(&legs,asset.payoff_asset(),price)*asset.scale() as i128;
+    let v=price.map_or(0,|p|payoff::pnl(&legs,asset.payoff_asset(),p)*asset.scale() as i128);
     let (paid,collected)=if v>=0{(u(v as u128)?,0)}else{(0,u((-v) as u128)?)};
     let t=totals.entry(asset).or_default();
     t.0=t.0.checked_add(paid).ok_or(Reject::Bounds)?;t.1=t.1.checked_add(collected).ok_or(Reject::Bounds)?;
@@ -552,8 +578,9 @@ impl OptionsDesk{
   for (asset,(g,c)) in totals{if g>c{return Err(Reject::Bounds)}dust.insert(asset,c-g);}
   let seq=work.batches.len()as u64+1;
   let (reports,next)=work.settle_all(clearing,rows,&dust)?;
-  let batch=OptionBatch{sequence:seq,kind:OptionBatchKind::Expiry{event_id:event,series:ids.clone(),price_usd:price},fills:Vec::new(),clearing:reports};
-  for s in &ids{work.series.get_mut(s).unwrap().settled=Some(price);}
+  let kind=OptionBatchKind::Expiry{event_id:event,series:ids.clone(),price_usd:price.unwrap_or(0)};
+  let batch=OptionBatch{sequence:seq,kind,fills:Vec::new(),clearing:reports};
+  for s in &ids{work.series.get_mut(s).unwrap().settled=Some(price.unwrap_or(0));}
   work.batches.push(batch.clone());*self=work;*clearing=next;
   Ok(batch)
  }

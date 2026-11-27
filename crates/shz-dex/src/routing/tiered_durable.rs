@@ -9,7 +9,7 @@ use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,Journal
 use super::positions::{self,Position,Settlement};
 use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
-use super::options::{IntentV7,OptionAckBundle,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset,option_ack_message};
+use super::options::{OptionBatchKind,IntentV7,OptionAckBundle,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset,option_ack_message};
 use shz_dlc::{OracleAnnouncement,OracleAttestation};
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
@@ -76,6 +76,9 @@ struct State{
  pending_option:Option<PendingOption>,
  /// The bundle that resolved the last option batch (an exact retry is idempotent).
  last_option_resolution:Option<OptionAckBundle>,
+ /// Expiry and void batches commit on peer and monitor signatures, owner optional
+ /// (journaled `EnableOwnerlessExpiry`); trade batches always need every owner.
+ ownerless_expiry:bool,
 }
 /// A staged option batch: the desk as it is after the batch, the BTC pool's dust (its only
 /// effect on the shared BTC ledger, applied as a delta so perpetual resolutions in between
@@ -102,7 +105,7 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT06/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None,option_acks:false,pending_option:None,last_option_resolution:None})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None,option_acks:false,pending_option:None,last_option_resolution:None,ownerless_expiry:false})
  }
  fn tag(&self)->&'static [u8]{if self.clearing.is_some(){TIERED_ACK_TAG_V3}else if self.netting{TIERED_ACK_TAG_V2}else{TIERED_ACK_TAG}}
  fn plan_clearing(&self,batch:&Batch,disposition:Disposition)->R<Option<ClearPlan>>{
@@ -148,6 +151,9 @@ impl State{
   let p=self.pending_option.as_ref().ok_or(Reject::UnknownOrder)?;
   if bundle.sequence!=p.batch.sequence||bundle.batch!=p.batch.digest(){return Err(Reject::Replay)}
   let abort=bundle.disposition==Disposition::FencedAbort;
+  // An expiry or void batch is a deterministic function of the oracle's signature, so
+  // once enabled an offline holder's owner signature is optional for it; never for a trade.
+  let owner_optional=abort||(self.ownerless_expiry&&!matches!(p.batch.kind,OptionBatchKind::Trade{..}));
   if abort&&now<p.staged_us.saturating_add(ABORT_AFTER_US){return Err(Reject::Clock)}
   let channels=p.batch.channels();
   if bundle.acks.len()!=channels.len(){return Err(Reject::Allocation)}
@@ -157,7 +163,7 @@ impl State{
    let owner=self.router.account_owner(&op(c)).ok_or(Reject::Allocation)?;
    let h=option_ack_message(&self.config,&p.batch,bundle.disposition,c)?;
    for (i,(k,sig)) in [owner,lane.peer,lane.monitor].iter().zip(&a.signatures).enumerate(){
-    if i==0&&abort&&sig.r_x==[0;32]&&sig.s==[0;32]{continue}
+    if i==0&&owner_optional&&sig.r_x==[0;32]&&sig.s==[0;32]{continue}
     verify(k,&h,sig)?;
    }
   }
@@ -279,6 +285,14 @@ impl State{
      out=>{self.options=Some(desk);self.clearing=Some(clearing);Ok(Reply::Option(out))},
     }
    },
+   Event::EnableOwnerlessExpiry=>{self.desk()?;if self.ownerless_expiry{return Err(TierReject::Replay)}self.ownerless_expiry=true;Ok(Reply::Unit)},
+   Event::VoidUnattestable{event_id,notice}=>{
+    let mut desk=self.desk()?.clone();let mut clearing=self.clearing.clone().ok_or(TierReject::Scope)?;
+    let b=desk.void(&event_id,&notice,&mut clearing)?;
+    if self.option_acks{let now=desk.clock();self.stage(&b,desk,now,None);}
+    else{self.options=Some(desk);self.clearing=Some(clearing);}
+    Ok(Reply::OptionBatch(Box::new(b)))
+   },
    Event::ExpireSeries{series,attestation}=>{
     let mut desk=self.desk()?.clone();let mut clearing=self.clearing.clone().ok_or(TierReject::Scope)?;
     let b=desk.expire(&series,&attestation,&mut clearing)?;
@@ -327,6 +341,10 @@ enum Event{
  FundOptions{channel:BtcOutPoint,sats:u64,to_options:bool},
  SubmitOption{intent:IntentV7,now:u64},
  ExpireSeries{series:Key,attestation:OracleAttestation},
+ /// Void every open series on `event_id` on the oracle's signed unattestable notice.
+ VoidUnattestable{event_id:String,notice:Bip340Signature},
+ /// Expiry and void batches commit on peer and monitor signatures, owner optional.
+ EnableOwnerlessExpiry,
 }
 #[allow(clippy::large_enum_variant)]
 enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool),Key(Key),Option(OptionOutcome),OptionBatch(Box<OptionBatch>)}
@@ -501,6 +519,21 @@ impl DurableTieredRouter{
   match self.record(Event::SubmitOption{intent,now})?{Reply::Option(x)=>Ok(x),_=>unreachable!()}
  }
  /// Expire a series at the oracle's attestation (one option batch through clearing).
+ /// Void every open series on `event_id` on the oracle's unattestable notice (BIP340 by
+ /// the options oracle key over `options::unattestable_message(event_id)`): legs return to
+ /// their pre-trade positions with no payoff, premiums stay paid, collateral is freed. One
+ /// option batch (`OptionBatchKind::Expiry` with `price_usd == 0`, `is_void()`), staged for acks like an expiry when acks are on.
+ pub fn void_event(&mut self,event_id:String,notice:Bip340Signature)->D<OptionBatch>{
+  match self.record(Event::VoidUnattestable{event_id,notice})?{Reply::OptionBatch(x)=>Ok(*x),_=>unreachable!()}
+ }
+ /// Let expiry and void batches commit on peer and monitor signatures with the owner
+ /// signature optional (journaled `EnableOwnerlessExpiry`, once). Trade batches keep
+ /// needing every owner. Returns `false` if already on.
+ pub fn enable_ownerless_expiry(&mut self)->D<bool>{
+  self.ready()?;if self.state.ownerless_expiry{return Ok(false)}
+  self.record(Event::EnableOwnerlessExpiry)?;Ok(true)
+ }
+ pub fn ownerless_expiry_active(&self)->D<bool>{self.ready()?;Ok(self.state.ownerless_expiry)}
  pub fn expire_series(&mut self,series:Key,attestation:OracleAttestation)->D<OptionBatch>{
   match self.record(Event::ExpireSeries{series,attestation})?{Reply::OptionBatch(x)=>Ok(*x),_=>unreachable!()}
  }

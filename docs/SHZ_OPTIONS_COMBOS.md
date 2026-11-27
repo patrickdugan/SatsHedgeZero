@@ -88,3 +88,18 @@ when they are matched, as in B1/B2; journals without it replay unchanged.
 Option acknowledgements do not advance the lanes' commitment heads: the stablecoin side moves
 through the simulated adapter, and the BTC side of an option batch is not yet a channel state
 update. The venue (`crates/shz-venue`) does not drive this round yet (session lt-venue-options).
+
+## Unattestable events and offline holders
+
+Two gaps found while wiring the venue (docs/SHZ_VENUE_OPTIONS.md), closed in the router:
+
+| Gap | Rule |
+|---|---|
+| An event the oracle declares unattestable had no expiry path, so collateral stayed locked | `void_event(event_id, notice)` (journaled `VoidUnattestable`). The notice is the oracle's BIP340 signature by the options oracle key over `options::unattestable_message(event_id)` = `tagged_hash("SHZ/DLC/UNATTESTABLE/V1", event_id)`, the FROST members' unattestable rule; a notice whose nonce is one of the event's digit nonces is refused. Every open series on the event is void in one batch, an `OptionBatchKind::Expiry` with `price_usd == 0` (outside every price domain; `is_void()`), so existing matches on the kind keep compiling: no payoff moves, every leg returns to its pre-trade position, premiums stay paid, resting quotes are cancelled and the collateral is freed (clearing rows all `net = 0`). A voided series reads `settled == Some(0)`. With option acks on it is staged like an expiry. Test `e1_unattestable_notice_voids_the_event`. |
+| An offline holder fence-aborted every expiry, so funds stayed locked | `enable_ownerless_expiry()` (journaled `EnableOwnerlessExpiry`, once): an expiry or void batch is a deterministic function of the oracle's signature, so it commits on peer and monitor signatures with any owner signature all-zero. Trade batches keep needing every owner. Test `e2_offline_holder_cannot_hold_an_expiry` (refused before the switch, committed with both holders offline after it, trades still refused without an owner, peer and monitor still required). |
+
+The unattestable notice's nonce is not pinned against a pre-committed `unattestable_nonce_x`:
+`shz_dlc::OracleAnnouncement` carries only digit nonces. The router checks the oracle key, the
+message and that the nonce is not a digit nonce; it does not detect an oracle that signs both
+the digits and the notice (the members' rule forbids it), and whichever reaches the journal first
+settles the event.
