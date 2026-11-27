@@ -29,3 +29,14 @@ proof that the captured bytes satisfy those premises. It does not
 prove the Nova relaxed relation or authorize reuse of PP/VK/proofs.
 No production matrix is rewritten. Same fresh setup pins are not
 independently persisted production commitments.
+
+## Capture provenance correction
+
+The original pinned artifact was made from the PR merge checkout
+7b8d60305a8338f9fe26403d031383377bcf3d4c (head e2495d2ed24115675960abd89efb36e53cfeaa35,
+base d367e1c08a472a4b0a6dbf755830f9750f56657c), as recorded by checkout
+in workflow 46042490831. The first ZKL-24 run 46044301146 passed fixtures
+and artifact download but rejected source-commit.txt before any actual
+search because it compared against the PR head. Pin the exact checkout
+commit and retain the separate head, manifest, VK and canonical hashes.
+No digest is regenerated from a new capture or learned from untrusted input.

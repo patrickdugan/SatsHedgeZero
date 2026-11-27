@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           ulimit -v 524288
-          test "$(cat captured/source-commit.txt)" = e2495d2ed24115675960abd89efb36e53cfeaa35
+          test "$(cat captured/source-commit.txt)" = 7b8d60305a8338f9fe26403d031383377bcf3d4c
           echo 'ffb298ecbb4e923beba2ad1ee907588507ddc57c1bd91237156c18d6f8f5684a  captured/capture.json' | sha256sum -c -
           echo '3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6  captured/vk.bin' | sha256sum -c -
           mkdir zkl24-actual

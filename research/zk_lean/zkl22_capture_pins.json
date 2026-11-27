@@ -7,5 +7,7 @@
   "vk_sha256": "3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6",
   "pp_digest": "0x0306bc1d5101fc8fedef05cc5f384d989bfab3a85d2629df3a311520eb87e2c1",
   "primary": "acf5a8b094824d9aac8e8b5a875f931a5e72f06f5333268db98f9199433f5c0e",
-  "secondary": "e3288035b42da6ab7084a8f7397d61ade7c03e1b4c27f8940ccd230c6325f25f"
+  "secondary": "e3288035b42da6ab7084a8f7397d61ade7c03e1b4c27f8940ccd230c6325f25f",
+  "capture_checkout_commit": "7b8d60305a8338f9fe26403d031383377bcf3d4c",
+  "capture_checkout_base": "d367e1c08a472a4b0a6dbf755830f9750f56657c"
 }
