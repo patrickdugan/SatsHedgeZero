@@ -137,7 +137,8 @@ fn prove(dir: &Path, a: usize, r: usize) {
     let txs: Vec<SignedTx> = read(&dir.join("txs.json"));
     let manifest: rel::Manifest = read(&dir.join("manifest.json"));
     let batches: Vec<rel::Batch> = read(&dir.join("batches.json"));
-    let venue: Value = read(&artifacts().join(if manifest.network_code == 1 { "venue_batches.json" } else { "venue_batches.json" }));
+    // the venue trace of the epoch: `$LIGHTNINGER_DLC_BATCH_VENUE` (one settlement daemon segment) or the research epoch
+    let venue: Value = read(&std::env::var("LIGHTNINGER_DLC_BATCH_VENUE").map(PathBuf::from).unwrap_or_else(|_| artifacts().join("venue_batches.json")));
     let c = txs.iter().find(|c| c.label == "settlement").expect("settlement");
     let raw = hex::decode(&c.signed_hex).unwrap();
     let tx = Tx::parse(&raw);
@@ -153,20 +154,30 @@ fn prove(dir: &Path, a: usize, r: usize) {
         let e = rel::check_settlement(raw2, m2, b2).expect_err(name);
         rel_neg.push(json!({"case": name, "rejected": e}));
     };
+    let paid = |r: &rel::Row| manifest.accounts.iter().any(|a| (a.channel_txid, a.channel_vout) == (r.channel_txid, r.channel_vout));
     let mut b2 = batches.clone();
-    let k = b2.iter().position(|b| b.rows.iter().any(|r| r.net != 0)).expect("a batch that moves sats");
-    let ri = b2[k].rows.iter().position(|r| r.net != 0).unwrap();
-    b2[k].rows[ri].net += 1;
-    neg_rel("one batch row's net changed by 1 (payout no longer matches)", &raw, &manifest, &b2);
-    let mut m2 = manifest.clone();
-    m2.accounts.swap(0, 1);
-    neg_rel("manifest accounts in another order", &raw, &m2, &batches);
+    if let Some(k) = b2.iter().position(|b| b.rows.iter().any(|r| r.net != 0 && paid(r))) {
+        let ri = b2[k].rows.iter().position(|r| r.net != 0 && paid(r)).unwrap();
+        b2[k].rows[ri].net += 1;
+        neg_rel("one batch row's net changed by 1 (payout no longer matches)", &raw, &manifest, &b2);
+    }
+    if manifest.accounts.len() >= 2 {
+        let mut m2 = manifest.clone();
+        m2.accounts.swap(0, 1);
+        neg_rel("manifest accounts in another order", &raw, &m2, &batches);
+    }
     let mut m3 = manifest.clone();
     m3.accounts.pop();
     neg_rel("one account left out of the manifest", &raw, &m3, &batches);
     let mut m4 = manifest.clone();
-    m4.accounts[2].payout_spk[5] ^= 1;
-    neg_rel("account 2's payout key changed", &raw, &m4, &batches);
+    let j = 2.min(manifest.accounts.len() - 1);
+    m4.accounts[j].payout_spk[5] ^= 1;
+    neg_rel(&format!("account {j}'s payout key changed"), &raw, &m4, &batches);
+    if let Some(c) = manifest.carried.first() {
+        let mut m5 = manifest.clone();
+        m5.carried[0].net = c.net + 1;
+        neg_rel("a carried channel's net stated 1 sat off", &raw, &m5, &batches);
+    }
     log(&format!("settlement relation holds; {} negative cases rejected", rel_neg.len()));
 
     // 1. M17 per input
@@ -237,8 +248,18 @@ fn prove(dir: &Path, a: usize, r: usize) {
     ht[0].0.hash_type = 0x00;
     neg("trader 0's SINGLE|ACP signature claimed as SIGHASH_DEFAULT", par_with(&ht), acc);
     let mut other_leaf = slots.clone();
-    other_leaf[2].1.as_mut().unwrap().tapleaf[0] ^= 1;
-    neg("trader 1's signature checked for another tapleaf (the refund leaf's)", par_with(&other_leaf), acc);
+    match other_leaf[2].1.as_mut() {
+        // variant A: script-path signatures
+        Some(sp) => {
+            sp.tapleaf[0] ^= 1;
+            neg("signature 2 checked for another tapleaf (the refund leaf's)", par_with(&other_leaf), acc);
+        }
+        // variant B: MuSig2 key-path signatures
+        None => {
+            other_leaf[2].1 = Some(lightninger_bitvm3_clearing::tapsighash_step::ScriptPath { key: spks[other_leaf[2].0.input][2..34].try_into().unwrap(), tapleaf: [0; 32], codesep: u32::MAX });
+            neg("key-path signature 2 claimed as a script-path signature", par_with(&other_leaf), acc);
+        }
+    }
     let mut z = tap_zk.clone();
     z[3] += F::ONE;
     neg("TapSighash fold over another transaction", z, acc);

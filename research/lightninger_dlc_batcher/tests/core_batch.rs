@@ -108,6 +108,7 @@ fn eight_accounts_settle_in_one_transaction() {
                     collateral: COLLATERAL,
                     account_spk: accts[i].0.spk(),
                     payout_spk: payout_outs[i].spk(),
+                    carry_in: 0,
                 }
             })
             .collect(),
@@ -115,6 +116,7 @@ fn eight_accounts_settle_in_one_transaction() {
         operator_vout: liq.2,
         operator_amount: LIQUIDITY,
         operator_spk: liq.0.spk(),
+        carried: vec![],
     };
     let net = rel::net_per_account(&manifest, &batches).unwrap();
     let payouts: Vec<(u64, Vec<u8>)> = (0..8).map(|i| ((COLLATERAL as i64 + net[i]) as u64, payout_outs[i].spk())).collect();
@@ -258,6 +260,7 @@ fn testnet4_package_signed_not_broadcast() {
                     collateral: p.collateral,
                     account_spk: accts[i].0.spk(),
                     payout_spk: payout_outs[i].spk(),
+                    carry_in: 0,
                 }
             })
             .collect(),
@@ -265,6 +268,7 @@ fn testnet4_package_signed_not_broadcast() {
         operator_vout: liq.2,
         operator_amount: p.liquidity,
         operator_spk: liq.0.spk(),
+        carried: vec![],
     };
     let net = rel::net_per_account(&manifest, &batches).unwrap();
     let payouts: Vec<(u64, Vec<u8>)> = (0..8).map(|i| ((p.collateral as i64 + net[i]) as u64, payout_outs[i].spk())).collect();

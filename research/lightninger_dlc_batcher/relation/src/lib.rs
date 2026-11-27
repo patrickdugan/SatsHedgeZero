@@ -4,9 +4,13 @@
 //! A batch epoch settles `N` collateral accounts in one transaction:
 //!
 //! - inputs `0..N` spend the accounts, in manifest order; input `N` is the operator's liquidity;
-//! - outputs `0..N` pay each account's owner `collateral + sum(net)`, where `net` is the account's
-//!   row in every venue V3 batch of the epoch (`ClearingRow::net`, the sats the channel adapter
-//!   moves on the account's lane);
+//! - outputs `0..N` pay each account's owner `collateral + carry_in + sum(net)`, where `net` is the
+//!   account's row in every venue V3 batch of the epoch (`ClearingRow::net`, the sats the channel
+//!   adapter moves on the account's lane) and `carry_in` the nets of earlier epochs the account did
+//!   not sign for;
+//! - every batch row belongs to a manifest account or to a `carried` entry: a channel this
+//!   settlement does not pay (an account that missed the signing deadline, or a venue allocation
+//!   with no on-chain account), whose summed net the manifest states exactly;
 //! - output `N` is `OP_RETURN "SHZB" || manifest_hash`, so the settlement txid commits to the
 //!   manifest; later outputs (operator change, pool return) are the operator's.
 //!
@@ -137,6 +141,18 @@ pub struct Account {
     pub collateral: u64,
     pub account_spk: Vec<u8>,
     pub payout_spk: Vec<u8>,
+    /// Nets of earlier epochs this account did not settle (it missed their signing deadline).
+    #[serde(default)]
+    pub carry_in: i64,
+}
+
+/// A channel whose rows this settlement does not pay, and the exact sum of its nets over the batches.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Carry {
+    pub channel_txid: H32,
+    pub channel_vout: u32,
+    pub owner: H32,
+    pub net: i64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,6 +168,9 @@ pub struct Manifest {
     pub operator_vout: u32,
     pub operator_amount: u64,
     pub operator_spk: Vec<u8>,
+    /// Channels moved by the batches and not paid here (sorted by channel).
+    #[serde(default)]
+    pub carried: Vec<Carry>,
 }
 
 fn put_bytes(b: &mut Vec<u8>, x: &[u8]) {
@@ -181,6 +200,20 @@ impl Manifest {
         b.extend(self.operator_vout.to_le_bytes());
         b.extend(self.operator_amount.to_le_bytes());
         put_bytes(&mut b, &self.operator_spk);
+        // carry section only when something is carried: manifests without carries hash as before
+        if !self.carried.is_empty() || self.accounts.iter().any(|a| a.carry_in != 0) {
+            b.extend(b"CARRY");
+            for a in &self.accounts {
+                b.extend(a.carry_in.to_le_bytes());
+            }
+            b.extend((self.carried.len() as u32).to_le_bytes());
+            for c in &self.carried {
+                b.extend(c.channel_txid);
+                b.extend(c.channel_vout.to_le_bytes());
+                b.extend(c.owner);
+                b.extend(c.net.to_le_bytes());
+            }
+        }
         tagged_hash(b"LIGHTNINGER/DLC-BATCH/MANIFEST/V1", &b)
     }
 
@@ -304,17 +337,32 @@ pub fn marker_script(manifest_hash: &H32) -> Vec<u8> {
 }
 
 /// Net sats per manifest account over the epoch's batches. Every row must belong to a manifest
-/// account: the settlement pays every account that moved.
+/// account or a carried channel (nothing that moved is left out), and every carried channel's rows
+/// must sum to its stated net.
 pub fn net_per_account(m: &Manifest, batches: &[Batch]) -> Result<Vec<i64>, String> {
     let mut net = vec![0i64; m.accounts.len()];
+    let mut carried = vec![0i64; m.carried.len()];
+    for (j, c) in m.carried.iter().enumerate() {
+        if m.accounts.iter().any(|a| (a.channel_txid, a.channel_vout) == (c.channel_txid, c.channel_vout))
+            || m.carried[..j].iter().any(|d| (d.channel_txid, d.channel_vout) == (c.channel_txid, c.channel_vout))
+        {
+            return Err(format!("carried channel {j} is listed twice"));
+        }
+    }
     for b in batches {
         for r in &b.rows {
-            let i = m
-                .accounts
-                .iter()
-                .position(|a| a.channel_txid == r.channel_txid && a.channel_vout == r.channel_vout)
-                .ok_or_else(|| format!("batch {} moves a channel that is not in the manifest", b.seq))?;
-            net[i] = net[i].checked_add(r.net).ok_or("net overflow")?;
+            if let Some(i) = m.accounts.iter().position(|a| a.channel_txid == r.channel_txid && a.channel_vout == r.channel_vout) {
+                net[i] = net[i].checked_add(r.net).ok_or("net overflow")?;
+            } else if let Some(j) = m.carried.iter().position(|c| c.channel_txid == r.channel_txid && c.channel_vout == r.channel_vout) {
+                carried[j] = carried[j].checked_add(r.net).ok_or("net overflow")?;
+            } else {
+                return Err(format!("batch {} moves a channel that is not in the manifest", b.seq));
+            }
+        }
+    }
+    for (j, c) in m.carried.iter().enumerate() {
+        if carried[j] != c.net {
+            return Err(format!("carried channel {j}: the batches net {}, the manifest states {}", carried[j], c.net));
         }
     }
     Ok(net)
@@ -350,7 +398,7 @@ pub fn check_settlement(raw: &[u8], m: &Manifest, batches: &[Batch]) -> Result<S
         if (tx.inputs[i].0, tx.inputs[i].1) != (a.outpoint_txid, a.outpoint_vout) {
             return Err(format!("input {i} does not spend account {i}"));
         }
-        let p = a.collateral as i128 + net[i] as i128;
+        let p = a.collateral as i128 + a.carry_in as i128 + net[i] as i128;
         if p < DUST as i128 {
             return Err(format!("account {i} payout {p} is below dust"));
         }

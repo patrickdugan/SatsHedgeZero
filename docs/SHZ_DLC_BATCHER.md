@@ -246,3 +246,48 @@ single-trade demo's broadcast; `m16` is empty).
   and testnet4 accounts reuse their owner keys and venue channels in the manifest.
 - Cut-and-choose of the garbled verifier, on-chain authentication of input labels, SPV of the settlement
   inside the guest, and the TapSighash/Secq/M17 verifications inside the guest.
+
+## 9. A/B: script leaf (A) vs MuSig2 key path (B)
+
+Both variants are built by [`tests/ab.rs`](../research/lightninger_dlc_batcher/tests/ab.rs) from the same
+venue batches (306..313), the same eight accounts and the same oracle event
+(`SHZ-BTCUSD-20261127T1345Z`, CET 527 of the single-trade demo). One funding transaction creates both
+variants' accounts, liquidity and CET outputs. Every signature a trader contributes is an adaptor
+signature under CET 527's anticipation point, completed with the oracle's attestation scalar.
+
+- **A:** accounts `<T> CHECKSIGVERIFY <B> CHECKSIG` plus the CLTV refund leaf, on the NUMS internal
+  key. The trader signs a BIP-340 adaptor (shz-dlc `adaptor_sign`) and the batcher a plain signature.
+  The CET funding output uses `<pk0> CHECKSIGVERIFY <pk1> CHECKSIG`.
+- **B:** accounts with internal key MuSig2(trader, batcher) (BIP-327, `crates/shz-dlc/src/musig2.rs`),
+  same CLTV refund leaf. One MuSig2 adaptor signature per account input: nonces bound to the
+  sighash, partial signatures verified, then aggregated and completed. The CET funding output is
+  MuSig2(pk0, pk1) plus a refund leaf. The operator's liquidity is a key-path P2TR.
+
+| | A (script leaf) | B (MuSig2 key path) |
+| --- | ---: | ---: |
+| Settlement, N = 8 (9 inputs, 10 outputs) | 1,382 vB (5,528 WU), 17 signatures | **964 vB** (3,856 WU), 9 signatures |
+| Settlement, N = 7 | 1,231 vB | 864 vB |
+| Per-input marginal | 151 vB | **100 vB** |
+| CET (1 input → Bob, Alice, anchor) | 247 vB | **197 vB** |
+| Funding | identical outputs (P2TR, 43 B each); the shared funding is 971 vB for 21 outputs | same |
+| Signing rounds, settlement, per account | 1 (trader → batcher: adaptor signature) | 2 (nonces, then partial signatures) |
+| Bytes exchanged, settlement, per account | 65 | 196 (2 × 66 nonces + 2 × 32 partials) |
+| Signing rounds, CET | 1 | 2 (nonces for every CET can go in one batch ahead of time) |
+| Bytes per CET | 130 (two adaptor signatures) | 196 |
+| All 1,022 CETs of the demo grid: sign and verify | **1.03 s**, 132,860 bytes | 6.68 s, 200,312 bytes |
+| Settlement build and sign (N = 8, this laptop) | 0.012 s | 0.061 s |
+| Regtest (Core 31.1) | settlement, CET mined (height 112); tampered settlement refused; refund `non-final` | same |
+| Testnet4 (`testmempoolaccept`, not broadcast) | settlement `af10ba81…`, CET `16c9f34c…` accepted | settlement `060fa639…`, CET `abf0238f…` accepted |
+| Prover: signatures folded (TapSighash bind + Secq steps) | 17 | 9 |
+| Prover: M17 steps, account input / operator input | 20 / 17 | 17 / 17 |
+| Prover: TapSighash step constraints | 1,304,502 | 1,304,502 |
+| Prover: compress seconds, peak RAM | from the Colab run (`artifacts/ab/A/README.md`) | from the Colab run (`artifacts/ab/B/README.md`) |
+
+Reading: B saves 51 vB per account input (one 65-byte signature on the key path, against two signatures
+plus a 70-byte leaf script and a 65-byte control block) and 50 vB per CET, and folds half the
+signatures. It costs a second signing round and about 6.5× the signing CPU on the CET grid. The
+MuSig2 session recomputes the key aggregation in each signing and verification call (5 times per CET);
+caching it per funding output removes most of that gap, which this run does not do.
+Measured times come from one run on this laptop. Prover inputs for both variants and the commands
+are in [`artifacts/ab/`](../research/lightninger_dlc_batcher/artifacts/ab/). Locally only a K = 2
+smoke check ran (`ab_prover_inputs_smoke`); the full proofs run on Colab.

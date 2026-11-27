@@ -5,7 +5,7 @@
 #![forbid(unsafe_code)]
 
 use k256::{
-    elliptic_curve::{sec1::ToEncodedPoint, PrimeField},
+    elliptic_curve::{point::AffineCoordinates, sec1::ToEncodedPoint, PrimeField},
     schnorr::VerifyingKey,
     ProjectivePoint, Scalar,
 };
@@ -86,9 +86,20 @@ pub fn tweak(p: &[u8; 32], root: &[u8; 32]) -> ([u8; 32], u8) {
     (e.as_bytes()[1..33].try_into().unwrap(), e.as_bytes()[0] & 1)
 }
 
-/// A NUMS-keyed P2TR output with one or two leaves.
+/// BIP-341 tweak of x-only `p` with no script tree (`TapTweak(p)`).
+pub fn tweak_keypath_only(p: &[u8; 32]) -> ([u8; 32], u8) {
+    let vk = VerifyingKey::from_bytes(p).unwrap();
+    let pp: ProjectivePoint = (*vk.as_affine()).into();
+    let t = tagged_hash(b"TapTweak", p);
+    let ts = Option::<Scalar>::from(Scalar::from_repr(t.into())).unwrap();
+    let e = (pp + ProjectivePoint::GENERATOR * ts).to_affine().to_encoded_point(true);
+    (e.as_bytes()[1..33].try_into().unwrap(), e.as_bytes()[0] & 1)
+}
+
+/// A P2TR output: internal key (NUMS unless given) and zero, one or two leaves.
 #[derive(Clone, Debug)]
 pub struct TapOutput {
+    pub internal: [u8; 32],
     pub leaves: Vec<Vec<u8>>,
     pub output_key: [u8; 32],
     parity: u8,
@@ -96,11 +107,34 @@ pub struct TapOutput {
 
 impl TapOutput {
     pub fn new(leaves: Vec<Vec<u8>>) -> Self {
-        assert!(leaves.len() == 1 || leaves.len() == 2);
+        Self::with_internal(NUMS, leaves)
+    }
+    pub fn with_internal(internal: [u8; 32], leaves: Vec<Vec<u8>>) -> Self {
+        assert!(leaves.len() <= 2);
+        let (q, parity) = match Self::root_of(&leaves) {
+            Some(root) => tweak(&internal, &root),
+            None => tweak_keypath_only(&internal),
+        };
+        TapOutput { internal, leaves, output_key: q, parity }
+    }
+    fn root_of(leaves: &[Vec<u8>]) -> Option<[u8; 32]> {
         let hs: Vec<[u8; 32]> = leaves.iter().map(|l| tapleaf(l)).collect();
-        let root = if hs.len() == 1 { hs[0] } else { branch(&hs[0], &hs[1]) };
-        let (q, parity) = tweak(&NUMS, &root);
-        TapOutput { leaves, output_key: q, parity }
+        match hs.len() {
+            0 => None,
+            1 => Some(hs[0]),
+            _ => Some(branch(&hs[0], &hs[1])),
+        }
+    }
+    /// The script tree's merkle root (`None` for a key-path-only output).
+    pub fn merkle_root(&self) -> Option<[u8; 32]> {
+        Self::root_of(&self.leaves)
+    }
+    /// The BIP-341 tweak scalar bytes `TapTweak(internal ‖ root)`.
+    pub fn tweak_bytes(&self) -> [u8; 32] {
+        match self.merkle_root() {
+            Some(r) => tagged_hash(b"TapTweak", &[&self.internal[..], &r[..]].concat()),
+            None => tagged_hash(b"TapTweak", &self.internal),
+        }
     }
     pub fn spk(&self) -> Vec<u8> {
         [vec![0x51, 0x20], self.output_key.to_vec()].concat()
@@ -110,7 +144,7 @@ impl TapOutput {
     }
     pub fn control(&self, i: usize) -> Vec<u8> {
         let mut c = vec![0xc0 | self.parity];
-        c.extend(NUMS);
+        c.extend(self.internal);
         if self.leaves.len() == 2 {
             c.extend(tapleaf(&self.leaves[1 - i]));
         }
@@ -354,6 +388,14 @@ pub struct SettleKeys {
 /// (the result must be refused).
 #[allow(clippy::too_many_arguments)]
 pub fn settlement(p: &SettleKeys, accts: &[(TapOutput, String, u32)], liq: &(TapOutput, String, u32), payouts: &[(u64, Vec<u8>)], marker: Vec<u8>, change: u64, change_spk: &[u8], traders: &[[u8; 32]], tamper: Option<(usize, i64)>) -> Built {
+    settlement_a(p, accts, liq, payouts, marker, change, change_spk, traders, None, tamper)
+}
+
+/// [`settlement`] with each trader's SIGHASH_SINGLE|ANYONECANPAY signature made as an adaptor
+/// signature under the oracle's outcome point and completed with the attestation scalar
+/// (`oracle = Some`), as a DLC CET is.
+#[allow(clippy::too_many_arguments)]
+pub fn settlement_a(p: &SettleKeys, accts: &[(TapOutput, String, u32)], liq: &(TapOutput, String, u32), payouts: &[(u64, Vec<u8>)], marker: Vec<u8>, change: u64, change_spk: &[u8], traders: &[[u8; 32]], oracle: Option<&Oracle>, tamper: Option<(usize, i64)>) -> Built {
     let mut outs: Vec<_> = payouts.iter().map(|(v, s)| out(*v, s.clone())).collect();
     outs.push(out(0, marker));
     outs.push(out(change, change_spk.to_vec()));
@@ -365,7 +407,7 @@ pub fn settlement(p: &SettleKeys, accts: &[(TapOutput, String, u32)], liq: &(Tap
     let mut spks: Vec<Vec<u8>> = accts.iter().map(|(o, _, _)| o.spk()).collect();
     spks.push(liq.0.spk());
     // traders sign SINGLE|ACP over the honest outputs
-    let trader_sigs: Vec<(Vec<u8>, BoundSlot)> = (0..accts.len()).map(|i| sign_leaf(&tx, &amounts, &spks, i, &accts[i].0, 0, &traders[i], SIGHASH_SINGLE_ACP)).collect();
+    let trader_sigs: Vec<(Vec<u8>, BoundSlot)> = (0..accts.len()).map(|i| sign_leaf_oracle(&tx, &amounts, &spks, i, &accts[i].0, 0, &traders[i], SIGHASH_SINGLE_ACP, oracle)).collect();
     if let Some((i, d)) = tamper {
         tx.outputs[i].value = (tx.outputs[i].value as i64 + d) as u64;
         let n = tx.outputs.len() - 1;
@@ -393,3 +435,145 @@ pub fn vsize(tx: &Tx) -> u64 {
     (base * 3 + full).div_ceil(4)
 }
 
+
+// ---------------------------------------------------------------------------------------------
+// DLC oracle adaptor and variant B (MuSig2 key path)
+// ---------------------------------------------------------------------------------------------
+
+/// The attested outcome of a DLC event: its adaptor (anticipation) point and attestation scalar.
+#[derive(Clone, Debug)]
+pub struct Oracle {
+    pub point: ProjectivePoint,
+    pub scalar: [u8; 32],
+}
+
+/// [`sign_leaf`], with the signature made as a BIP-340 adaptor signature under `oracle.point`,
+/// verified as an adaptor, then completed with `oracle.scalar` (plain signature when `None`).
+#[allow(clippy::too_many_arguments)]
+pub fn sign_leaf_oracle(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], i: usize, o: &TapOutput, leaf: usize, signer: &[u8; 32], hash_type: u8, oracle: Option<&Oracle>) -> (Vec<u8>, BoundSlot) {
+    let Some(or) = oracle else { return sign_leaf(tx, amounts, spks, i, o, leaf, signer, hash_type) };
+    let e = ScriptPath { key: xonly(signer), tapleaf: o.leaf_hash(leaf), codesep: u32::MAX };
+    let m = tap_sighash_ext(tx, amounts, spks, i, hash_type, None, Some(&e)).unwrap();
+    let a = shz_dlc::adaptor_sign(signer, &m, &or.point).unwrap();
+    shz_dlc::adaptor_verify(&e.key, &m, &or.point, &a).expect("adaptor verifies");
+    let t = Option::<Scalar>::from(Scalar::from_repr(or.scalar.into())).expect("attestation scalar");
+    let s = shz_dlc::adaptor_complete(&a, &t).unwrap();
+    shz_dlc::bip340_verify(&e.key, &m, &s).expect("completed adaptor verifies");
+    let mut sig = [s.r_x, s.s].concat();
+    if hash_type != 0 {
+        sig.push(hash_type);
+    }
+    (sig, BoundSlot { slot: SigSlot { input: i, hash_type, annex: None, sig_rx: s.r_x, sig_s: s.s }, script_path: Some(e) })
+}
+
+pub fn plain_pk(sk: &[u8; 32]) -> [u8; 33] {
+    shz_dlc::musig2::individual_pk(sk).expect("valid secret key")
+}
+
+/// Variant B collateral account: internal key MuSig2(trader, batcher) (BIP-327 key aggregation of
+/// the sorted plain keys), one leaf `<h> CLTV DROP <T> CHECKSIG`. Returns the output and the sorted
+/// key list the MuSig2 sessions use.
+pub fn account_output_b(trader: &[u8; 33], batcher: &[u8; 33], refund_height: u32) -> (TapOutput, Vec<[u8; 33]>) {
+    let pks = shz_dlc::musig2::key_sort(&[*trader, *batcher]);
+    let agg = shz_dlc::musig2::key_agg(&pks).unwrap().xonly();
+    let tx: [u8; 32] = trader[1..].try_into().unwrap();
+    let refund = [num(refund_height), vec![OP_CLTV, OP_DROP], push32(&tx), vec![OP_CHECKSIG]].concat();
+    (TapOutput::with_internal(agg, vec![refund]), pks)
+}
+
+/// A key-path-only P2TR output of one key (`TapTweak(K)`, no script tree).
+pub fn keypath_output(k: &[u8; 32]) -> TapOutput {
+    TapOutput::with_internal(*k, vec![])
+}
+
+/// Single-key key-path signature of input `i`: the secret tweaked by the output's tweak.
+pub fn sign_keypath(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], i: usize, o: &TapOutput, sk: &[u8; 32], hash_type: u8) -> (Vec<u8>, BoundSlot) {
+    let m = tap_sighash_ext(tx, amounts, spks, i, hash_type, None, None).unwrap();
+    let mut d = Option::<Scalar>::from(Scalar::from_repr((*sk).into())).unwrap();
+    if bool::from((ProjectivePoint::GENERATOR * d).to_affine().y_is_odd()) {
+        d = -d;
+    }
+    let t = Option::<Scalar>::from(Scalar::from_repr(o.tweak_bytes().into())).unwrap();
+    let dt: [u8; 32] = (d + t).to_bytes().into();
+    let s = bip340_sign(&dt, &m).unwrap();
+    shz_dlc::bip340_verify(&o.output_key, &m, &s).expect("key-path signature verifies");
+    let mut sig = [s.r_x, s.s].concat();
+    if hash_type != 0 {
+        sig.push(hash_type);
+    }
+    (sig, BoundSlot { slot: SigSlot { input: i, hash_type, annex: None, sig_rx: s.r_x, sig_s: s.s }, script_path: None })
+}
+
+/// Bytes and rounds one MuSig2 session exchanges between two signers: round 1 public nonces
+/// (66 bytes each way), round 2 partial signatures (32 bytes each way).
+pub const MUSIG2_ROUNDS: u32 = 2;
+pub const MUSIG2_BYTES_2OF2: usize = 2 * 66 + 2 * 32;
+/// A BIP-340 adaptor signature on the wire (`r_eff_x`, negation flag, `s_adapt`).
+pub const ADAPTOR_SIG_BYTES: usize = 65;
+
+/// MuSig2 (BIP-327) key-path signature of input `i` of `o` (internal key = aggregate of `pks`,
+/// Taproot x-only tweak), by the signers `sks` (any order), with `hash_type`; as an adaptor
+/// signature under `oracle.point` completed with `oracle.scalar` when given. Both partial
+/// signatures are verified before aggregation and the result is verified against the output key.
+#[allow(clippy::too_many_arguments)]
+pub fn sign_musig_keypath(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], i: usize, o: &TapOutput, pks: &[[u8; 33]], sks: &[[u8; 32]], hash_type: u8, oracle: Option<&Oracle>) -> (Vec<u8>, BoundSlot) {
+    use shz_dlc::musig2 as mu;
+    let m = tap_sighash_ext(tx, amounts, spks, i, hash_type, None, None).unwrap();
+    let tweak = o.tweak_bytes();
+    let mut secs = Vec::new();
+    let mut pubs = Vec::new();
+    for sk in sks {
+        let (s, p) = mu::nonce_gen(Some(sk), &plain_pk(sk), Some(&o.output_key), Some(&m), None).unwrap();
+        secs.push(s);
+        pubs.push(p);
+    }
+    let session = mu::Session { aggnonce: mu::nonce_agg(&pubs).unwrap(), pubkeys: pks.to_vec(), tweaks: vec![tweak], is_xonly: vec![true], msg: m.to_vec(), adaptor: oracle.map(|x| x.point) };
+    let mut psigs = Vec::new();
+    for (j, sk) in sks.iter().enumerate() {
+        let ps = mu::sign(&mut secs[j], sk, &session).unwrap();
+        assert!(mu::partial_sig_verify_internal(&ps, &pubs[j], &plain_pk(sk), &session).unwrap(), "partial signature {j}");
+        psigs.push(ps);
+    }
+    let agg = mu::partial_sig_agg(&psigs, &session).unwrap();
+    let fin = match oracle {
+        Some(or) => mu::adaptor_complete(&agg, &or.scalar, mu::adaptor_negated(&session).unwrap()).unwrap(),
+        None => agg,
+    };
+    let s = shz_dlc::Bip340Signature { r_x: fin[..32].try_into().unwrap(), s: fin[32..].try_into().unwrap() };
+    shz_dlc::bip340_verify(&o.output_key, &m, &s).expect("MuSig2 key-path signature verifies");
+    let mut sig = fin.to_vec();
+    if hash_type != 0 {
+        sig.push(hash_type);
+    }
+    (sig, BoundSlot { slot: SigSlot { input: i, hash_type, annex: None, sig_rx: s.r_x, sig_s: s.s }, script_path: None })
+}
+
+/// Variant B settlement: account inputs spent by MuSig2(trader, batcher) key-path signatures with
+/// SIGHASH_SINGLE|ANYONECANPAY (adaptor under the oracle point when given), the operator's
+/// key-path liquidity input with SIGHASH_DEFAULT. Same inputs, outputs and `tamper` as variant A.
+#[allow(clippy::too_many_arguments)]
+pub fn settlement_b(p: &SettleKeys, accts: &[(TapOutput, String, u32, Vec<[u8; 33]>)], liq: &(TapOutput, String, u32), payouts: &[(u64, Vec<u8>)], marker: Vec<u8>, change: u64, change_spk: &[u8], traders: &[[u8; 32]], oracle: Option<&Oracle>, tamper: Option<(usize, i64)>) -> Built {
+    let mut outs: Vec<_> = payouts.iter().map(|(v, s)| out(*v, s.clone())).collect();
+    outs.push(out(0, marker));
+    outs.push(out(change, change_spk.to_vec()));
+    let mut ins: Vec<_> = accts.iter().map(|(_, t, v, _)| input(t, *v, 0xffff_fffd)).collect();
+    ins.push(input(&liq.1, liq.2, 0xffff_fffd));
+    let mut tx = Tx { version: 2, inputs: ins, outputs: outs, locktime: 0, witness: vec![] };
+    let mut amounts = vec![p.collateral; accts.len()];
+    amounts.push(p.liquidity);
+    let mut spks: Vec<Vec<u8>> = accts.iter().map(|(o, _, _, _)| o.spk()).collect();
+    spks.push(liq.0.spk());
+    let joint: Vec<(Vec<u8>, BoundSlot)> = (0..accts.len()).map(|i| sign_musig_keypath(&tx, &amounts, &spks, i, &accts[i].0, &accts[i].3, &[traders[i], p.batcher_sk], SIGHASH_SINGLE_ACP, oracle)).collect();
+    if let Some((i, d)) = tamper {
+        tx.outputs[i].value = (tx.outputs[i].value as i64 + d) as u64;
+        let n = tx.outputs.len() - 1;
+        tx.outputs[n].value = (tx.outputs[n].value as i64 - d) as u64;
+    }
+    let mut wit: Vec<Vec<Vec<u8>>> = joint.iter().map(|(s, _)| vec![s.clone()]).collect();
+    let mut slots: Vec<BoundSlot> = joint.into_iter().map(|(_, b)| b).collect();
+    let (so, bo) = sign_keypath(&tx, &amounts, &spks, accts.len(), &liq.0, &p.operator_sk, 0);
+    wit.push(vec![so]);
+    slots.push(bo);
+    tx.witness = wit;
+    Built { tx, slots }
+}
