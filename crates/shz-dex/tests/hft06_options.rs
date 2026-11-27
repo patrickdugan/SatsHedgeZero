@@ -2,7 +2,7 @@
 //! `IntentV7` orders, worst-case-loss margin, premium and expiry through the clearing
 //! ledger, journal replay. Synthetic funds and a deterministic test oracle only.
 use shz_dex::routing::*;
-use shz_dex::routing::durable::{FeeRecipients,Head,Lane};
+use shz_dex::routing::durable::{Disposition,FeeRecipients,Head,Lane};
 use shz_dex::routing::options::*;
 use shz_dex::routing::tiered::*;
 use shz_dex::routing::tiered_durable::*;
@@ -495,4 +495,97 @@ fn c3_collar_clears_in_two_assets(){
  assert_eq!(e.clearing.len(),2);
  assert_eq!(e.clearing_of(&USDT).unwrap().rows.iter().map(|r|r.net).sum::<i64>(),0);
  v.check();
+}
+
+const ZSIG:shz_dlc::Bip340Signature=shz_dlc::Bip340Signature{r_x:[0;32],s:[0;32]};
+/// Every lane of the staged batch signs its V4 message: owner (unless `owner` is false),
+/// peer and monitor.
+fn acks(v:&Desk,disposition:Disposition,owner:bool)->OptionAckBundle{
+ let b=v.d.pending_option().unwrap().unwrap().clone();
+ let acks=b.channels().into_iter().map(|c|{
+  let n=c.txid[0];let h=v.d.option_ack_message(disposition,&c).unwrap();
+  let o=if owner{shz_dlc::bip340_sign(&sk(n),&h).unwrap()}else{ZSIG};
+  OptionAck{channel:c,signatures:[o,shz_dlc::bip340_sign(&sk(70+n),&h).unwrap(),shz_dlc::bip340_sign(&sk(90+n),&h).unwrap()]}
+ }).collect();
+ OptionAckBundle{sequence:b.sequence,batch:b.digest(),disposition,acks}
+}
+fn staged(v:&mut Desk,n:u8,legs:Vec<LegOrder>,limit:i64)->OptionBatch{
+ match v.send(v.intent(n,Action::Take,legs,limit)).unwrap(){OptionOutcome::Staged(b)=>*b,x=>panic!("{x:?}")}
+}
+
+/// C3. With option acknowledgements on, a trade batch and an expiry batch are staged and
+/// move nothing until owner, peer and monitor of every lane sign the lane's V4 message
+/// (its per-asset clearing rows and the batch's clearing digests).
+#[test]
+fn d1_option_batches_commit_only_on_lane_acks(){
+ let t=Temp::new();let mut v=stable_desk(&t.path());
+ assert!(v.d.enable_combos().unwrap());
+ let put=v.list(OptionKind::Put,USDT,90_000);let call=v.list(OptionKind::Call,BTC,110_000);
+ v.d.deposit_stable(channel(2),USDT,1_000_000_000).unwrap();v.d.deposit_stable(channel(1),USDT,30_000_000).unwrap();
+ for n in [1,3]{v.d.fund_options(channel(n),2_000_000).unwrap();}
+ v.post(2,put,false,CENT,25_000);v.post(3,call,true,1000,20_000);
+ assert!(v.d.enable_option_acks().unwrap());assert!(!v.d.enable_option_acks().unwrap());
+ let before=(v.btc(1),v.stable(1,USDT),v.stable(2,USDT),v.btc(3));
+ let mut i=v.intent(1,Action::Take,vec![leg(put,true,CENT),leg(call,false,1000)],25_000_000_000);
+ i.other_limits=vec![AssetLimit{asset:BTC,premium_milli:-20_000_000}];
+ let b=match v.send(i.signed(&sk(1)).unwrap()).unwrap(){OptionOutcome::Staged(b)=>*b,x=>panic!("{x:?}")};
+ assert_eq!(b.channels(),vec![channel(1),channel(2),channel(3)]);
+ assert_eq!((v.btc(1),v.stable(1,USDT),v.stable(2,USDT),v.btc(3)),before,"a staged batch moves nothing");
+ // Every other option event waits.
+ rejected(v.send(v.intent(2,Action::Post,vec![leg(put,false,1)],30_000)),TierReject::Hold);
+ rejected(v.d.fund_options(channel(4),1),TierReject::Hold);
+ rejected(v.d.expire_series(put,v.attest(&put,80_000)),TierReject::Hold);
+ // Bad bundles: a lane missing, an owner signature over another lane's message, an
+ // abort before the deadline, a commit without the owner.
+ let mut bad=acks(&v,Disposition::Commit,true);bad.acks.pop();
+ rejected(v.d.resolve_option(bad,v.now.get()),TierReject::Allocation);
+ let mut bad=acks(&v,Disposition::Commit,true);bad.acks[0].signatures[0]=bad.acks[1].signatures[0];
+ rejected(v.d.resolve_option(bad,v.now.get()),TierReject::Signature);
+ rejected(v.d.resolve_option(acks(&v,Disposition::FencedAbort,false),v.now.get()),TierReject::Clock);
+ rejected(v.d.resolve_option(acks(&v,Disposition::Commit,false),v.now.get()),TierReject::Signature);
+ assert!(v.d.resolve_option(acks(&v,Disposition::Commit,true),v.now.get()).unwrap());
+ assert!(v.d.pending_option().unwrap().is_none());
+ assert_eq!(v.stable(2,USDT).locked,899_990_000);
+ assert_eq!(v.stable(1,USDT).free,5_000_000);
+ v.check();
+ // The expiry batch is staged and acknowledged the same way.
+ let e=v.d.expire_series(put,v.attest(&put,80_000)).unwrap();
+ assert_eq!(v.d.pending_option().unwrap(),Some(&e));
+ assert_eq!(v.stable(2,USDT).locked,899_990_000);
+ assert!(v.d.resolve_option(acks(&v,Disposition::Commit,true),v.now.get()).unwrap());
+ assert_eq!((v.stable(2,USDT).locked,v.stable(1,USDT).free),(0,105_000_000));
+ v.check();
+}
+
+/// C3. A staged batch whose owner never signs is fence-aborted by peer and monitor once
+/// `ABORT_AFTER_US` has passed: nothing moves, the maker's quote is pulled, the taker's
+/// intent cannot be replayed; the journal replays to the same state.
+#[test]
+fn d2_staged_batch_aborts_after_the_deadline_and_replays(){
+ let t=Temp::new();let path=t.path();
+ let mut v=Desk::new(&path);
+ let call=v.list(OptionKind::Call,BTC,100_000);
+ for n in [1,2]{v.d.fund_options(channel(n),5_000_000).unwrap();}
+ v.post(2,call,false,1000,40_000);
+ assert!(v.d.enable_option_acks().unwrap());
+ // An intent that outlives the abort deadline.
+ let mut i=v.intent(1,Action::Take,vec![leg(call,true,1000)],40_000_000);i.expires_us+=60_000_000;
+ let i=i.signed(&sk(1)).unwrap();
+ assert!(matches!(v.send(i.clone()).unwrap(),OptionOutcome::Staged(_)));
+ let since=v.d.pending_option_since().unwrap().unwrap();
+ rejected(v.d.resolve_option(acks(&v,Disposition::FencedAbort,false),since+ABORT_AFTER_US-1),TierReject::Clock);
+ assert!(v.d.resolve_option(acks(&v,Disposition::FencedAbort,false),since+ABORT_AFTER_US).unwrap());
+ assert_eq!((v.btc(1).free,v.btc(2).free,v.btc(2).locked),(5_000_000,5_000_000,0));
+ assert!(v.d.options().unwrap().unwrap().depth(&call,false).is_empty());
+ v.now.set(since+ABORT_AFTER_US);
+ rejected(v.send(i),TierReject::Replay);
+ // A second trade stages and commits.
+ v.post(2,call,false,500,41_000);
+ staged(&mut v,1,vec![leg(call,true,500)],1_000_000_000);
+ assert!(v.d.resolve_option(acks(&v,Disposition::Commit,true),v.now.get()).unwrap());
+ v.check();
+ let snap=|d:&DurableTieredRouter|format!("{:?}|{:?}|{:?}",d.options().unwrap(),d.clearing_state().unwrap(),d.pending_option().unwrap());
+ let before=snap(&v.d);let tip=v.d.tip().unwrap();drop(v);
+ let d=DurableTieredRouter::open(&path,&registry(),cfg(),lanes(),recipients(),Some(tip)).unwrap();
+ assert_eq!(snap(&d),before);
 }

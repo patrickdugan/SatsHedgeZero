@@ -9,7 +9,7 @@ use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,Journal
 use super::positions::{self,Position,Settlement};
 use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
-use super::options::{IntentV7,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset};
+use super::options::{IntentV7,OptionAckBundle,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset,option_ack_message};
 use shz_dlc::{OracleAnnouncement,OracleAttestation};
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
@@ -70,7 +70,15 @@ struct State{
  clearing:Option<ClearingState>,
  /// Options desk (`options`) switched on by a journaled `EnableOptions`.
  options:Option<OptionsDesk>,
+ /// Option batches wait for lane acknowledgements (journaled `EnableOptionAcks`).
+ option_acks:bool,
+ /// The one option batch staged for acknowledgement, if any.
+ pending_option:Option<PendingOption>,
 }
+/// A staged option batch: the desk as it is after the batch, the BTC pool's dust (its only
+/// effect on the shared BTC ledger, applied as a delta so perpetual resolutions in between
+/// are kept), when it was staged, and what an abort must still do.
+struct PendingOption{batch:OptionBatch,desk:OptionsDesk,btc_dust:i64,staged_us:u64,taker:Option<(Outpoint,u64)>,makers:Vec<Key>}
 impl State{
  fn new(registry:&Registry,cfg:TieredConfig,lanes:Vec<Lane>,recipients:FeeRecipients)->D<Self>{
   let router=TieredRouter::new(registry,cfg)?;
@@ -92,7 +100,7 @@ impl State{
   u64b(&mut b,map.len()as u64);
   for (&(txid,vout),l) in &map{b.extend(txid);u32b(&mut b,vout);b.extend(l.peer);b.extend(l.monitor);put_head(&mut b,&l.head);}
   let config=tagged_hash(b"SHZ/HFT06/WAL-CONFIG/V1",&b);
-  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None})
+  Ok(Self{router,lanes:map,recipients,config,batches:BTreeMap::new(),next_resolution:1,oracle_paid:0,router_paid:0,fee_receipts:BTreeSet::new(),netting:false,clearing:None,options:None,option_acks:false,pending_option:None})
  }
  fn tag(&self)->&'static [u8]{if self.clearing.is_some(){TIERED_ACK_TAG_V3}else if self.netting{TIERED_ACK_TAG_V2}else{TIERED_ACK_TAG}}
  fn plan_clearing(&self,batch:&Batch,disposition:Disposition)->R<Option<ClearPlan>>{
@@ -119,7 +127,47 @@ impl State{
   // enabled 2026-11-26 12:50Z, running bf4d556 since 12:56Z) depends on it.
   self.router.set_close_from_lots(true);Ok(())
  }
- fn desk(&mut self)->Result<&mut OptionsDesk,TierReject>{self.options.as_mut().ok_or(TierReject::Scope)}
+ /// The options desk for a mutation: refused (`Hold`) while an option batch is staged,
+ /// since the staged desk replaces the current one when it commits.
+ fn desk(&mut self)->Result<&mut OptionsDesk,TierReject>{
+  if self.pending_option.is_some(){return Err(TierReject::Hold)}
+  self.options.as_mut().ok_or(TierReject::Scope)
+ }
+ fn stage(&mut self,b:&OptionBatch,desk:OptionsDesk,now:u64,taker:Option<(Outpoint,u64)>){
+  let btc_dust=b.clearing_of(&SettleAsset::Btc).map_or(0,|c|c.pool_net());
+  let makers=b.fills.iter().map(|f|f.maker).collect();
+  self.pending_option=Some(PendingOption{batch:b.clone(),desk,btc_dust,staged_us:now,taker,makers});
+ }
+ /// Commit or fence-abort the staged option batch against every lane's V4 acknowledgement.
+ fn resolve_option(&mut self,bundle:OptionAckBundle,now:u64)->R<bool>{
+  let p=self.pending_option.as_ref().ok_or(Reject::UnknownOrder)?;
+  if bundle.sequence!=p.batch.sequence||bundle.batch!=p.batch.digest(){return Err(Reject::Replay)}
+  let abort=bundle.disposition==Disposition::FencedAbort;
+  if abort&&now<p.staged_us.saturating_add(ABORT_AFTER_US){return Err(Reject::Clock)}
+  let channels=p.batch.channels();
+  if bundle.acks.len()!=channels.len(){return Err(Reject::Allocation)}
+  for (c,a) in channels.iter().zip(&bundle.acks){
+   if op(c)!=op(&a.channel){return Err(Reject::Allocation)}
+   let lane=self.lanes.get(&op(c)).ok_or(Reject::Allocation)?;
+   let owner=self.router.account_owner(&op(c)).ok_or(Reject::Allocation)?;
+   let h=option_ack_message(&self.config,&p.batch,bundle.disposition,c)?;
+   for (i,(k,sig)) in [owner,lane.peer,lane.monitor].iter().zip(&a.signatures).enumerate(){
+    if i==0&&abort&&sig.r_x==[0;32]&&sig.s==[0;32]{continue}
+    verify(k,&h,sig)?;
+   }
+  }
+  // No fallible checks past this point.
+  let p=self.pending_option.take().unwrap();
+  let desk=self.options.as_mut().unwrap();
+  if abort{
+   if let Some((k,seq))=p.taker{desk.consume(k,seq)}
+   desk.cancel_quotes(&p.makers);desk.touch(now);
+  }else{
+   let mut next=p.desk;next.touch(now);*desk=next;
+   if let Some(c)=self.clearing.as_mut(){c.cash+=p.btc_dust;c.fund+=p.btc_dust as u64;}
+  }
+  Ok(true)
+ }
  fn enable_closing_loans(&mut self)->R<()>{
   if !self.netting||self.router.close_from_lots(){return Err(Reject::Replay)}
   self.router.set_close_from_lots(true);Ok(())
@@ -201,6 +249,8 @@ impl State{
     if self.clearing.is_none()||self.options.is_some(){return Err(TierReject::Replay)}
     self.options=Some(OptionsDesk::new(oracle_key,num_bits)?);Ok(Reply::Unit)
    },
+   Event::EnableOptionAcks=>{self.desk()?;if self.option_acks{return Err(TierReject::Replay)}self.option_acks=true;Ok(Reply::Unit)},
+   Event::ResolveOption{bundle,now}=>Ok(Reply::Resolved(self.resolve_option(bundle,now)?)),
    Event::RegisterStable{asset}=>{self.desk()?.register_stable(asset)?;Ok(Reply::Unit)},
    Event::StableTransfer{channel,asset,units,deposit}=>{
     let k=op(&channel);if self.router.account_owner(&k).is_none(){return Err(TierReject::Allocation)}
@@ -211,17 +261,24 @@ impl State{
    Event::FundOptions{channel,sats,to_options}=>{
     let k=op(&channel);
     let mut b=self.router.account_balance(&k).ok_or(TierReject::Allocation)?;
-    self.options.as_mut().ok_or(TierReject::Scope)?.fund(k,&mut b,sats,to_options)?;
+    self.desk()?.fund(k,&mut b,sats,to_options)?;
     self.router.set_account_balance(&k,b);Ok(Reply::Unit)
    },
    Event::SubmitOption{intent,now}=>{
-    let (desk,clearing)=(self.options.as_mut().ok_or(TierReject::Scope)?,self.clearing.as_mut().ok_or(TierReject::Scope)?);
+    let mut desk=self.desk()?.clone();let mut clearing=self.clearing.clone().ok_or(TierReject::Scope)?;
     let c=self.router.config();let router=&self.router;
-    Ok(Reply::Option(desk.submit(c.scope,c.router,&|k:&Outpoint|router.account_owner(k),clearing,intent,now)?))
+    let taker=(op(&intent.channel),intent.sequence);
+    match desk.submit(c.scope,c.router,&|k:&Outpoint|router.account_owner(k),&mut clearing,intent,now)?{
+     OptionOutcome::Filled(b) if self.option_acks=>{self.stage(&b,desk,now,Some(taker));Ok(Reply::Option(OptionOutcome::Staged(b)))},
+     out=>{self.options=Some(desk);self.clearing=Some(clearing);Ok(Reply::Option(out))},
+    }
    },
    Event::ExpireSeries{series,attestation}=>{
-    let (desk,clearing)=(self.options.as_mut().ok_or(TierReject::Scope)?,self.clearing.as_mut().ok_or(TierReject::Scope)?);
-    Ok(Reply::OptionBatch(Box::new(desk.expire(&series,&attestation,clearing)?)))
+    let mut desk=self.desk()?.clone();let mut clearing=self.clearing.clone().ok_or(TierReject::Scope)?;
+    let b=desk.expire(&series,&attestation,&mut clearing)?;
+    if self.option_acks{let now=desk.clock();self.stage(&b,desk,now,None);}
+    else{self.options=Some(desk);self.clearing=Some(clearing);}
+    Ok(Reply::OptionBatch(Box::new(b)))
    },
   }
  }
@@ -250,6 +307,10 @@ enum Event{
  /// announcements of `num_bits` digits.
  EnableOptions{oracle_key:Key,num_bits:u8},
  ListSeries{series:Series,announcement:OracleAnnouncement},
+ /// Option trade and expiry batches wait for the lane acknowledgement round (V4).
+ EnableOptionAcks,
+ /// Lane acknowledgements committing or fence-aborting the staged option batch.
+ ResolveOption{bundle:OptionAckBundle,now:u64},
  /// Register a stablecoin settlement asset (opens its clearing pool).
  RegisterStable{asset:SettleAsset},
  /// Credit (`deposit`) or debit `units` of a registered stablecoin (simulated TAP/RGB adapter).
@@ -382,6 +443,32 @@ impl DurableTieredRouter{
  pub fn enable_combos(&mut self)->D<bool>{
   self.ready()?;if self.state.options.as_ref().is_some_and(|d|d.combos){return Ok(false)}
   self.record(Event::EnableCombos)?;Ok(true)
+ }
+ /// Switch on the option acknowledgement round (journaled `EnableOptionAcks`, once;
+ /// options must be on). Every option trade or expiry batch is then staged and commits
+ /// only when the owner, peer and monitor of every lane with a clearing row sign that
+ /// lane's V4 message (`option_ack_message`); one batch is staged at a time and other
+ /// option events return `Hold` meanwhile. Returns `false` if already on.
+ pub fn enable_option_acks(&mut self)->D<bool>{
+  self.ready()?;if self.state.option_acks{return Ok(false)}
+  self.record(Event::EnableOptionAcks)?;Ok(true)
+ }
+ pub fn option_acks_active(&self)->D<bool>{self.ready()?;Ok(self.state.option_acks)}
+ /// The staged option batch awaiting acknowledgement.
+ pub fn pending_option(&self)->D<Option<&OptionBatch>>{self.ready()?;Ok(self.state.pending_option.as_ref().map(|p|&p.batch))}
+ /// When the staged batch was staged (desk clock); a FencedAbort is allowed `ABORT_AFTER_US` later.
+ pub fn pending_option_since(&self)->D<Option<u64>>{self.ready()?;Ok(self.state.pending_option.as_ref().map(|p|p.staged_us))}
+ /// V4 message `channel` signs for the staged option batch.
+ pub fn option_ack_message(&self,disposition:Disposition,channel:&BtcOutPoint)->D<Key>{
+  self.ready()?;
+  let p=self.state.pending_option.as_ref().ok_or(TierReject::UnknownOrder)?;
+  Ok(option_ack_message(&self.state.config,&p.batch,disposition,channel).map_err(TierReject::from)?)
+ }
+ /// Commit (all three signatures per lane) or, `ABORT_AFTER_US` after staging, fence-abort
+ /// (peer and monitor) the staged option batch. An abort keeps the taker's sequence used
+ /// and pulls the makers' quotes.
+ pub fn resolve_option(&mut self,bundle:OptionAckBundle,now:u64)->D<bool>{
+  match self.record(Event::ResolveOption{bundle,now})?{Reply::Resolved(x)=>Ok(x),_=>unreachable!()}
  }
  /// Register a stablecoin settlement asset (journaled `RegisterStable`, once per asset;
  /// options must be on): `SettleAsset::Stable{protocol, id, decimals}` with decimals in

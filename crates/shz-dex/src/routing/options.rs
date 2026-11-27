@@ -208,7 +208,38 @@ impl OptionBatch{
 }
 
 #[derive(Debug,Clone,PartialEq,Eq)]
-pub enum OptionOutcome{Posted(Key),Cancelled(Key),Filled(Box<OptionBatch>)}
+pub enum OptionOutcome{
+ Posted(Key),Cancelled(Key),
+ /// The batch committed (option acknowledgements off).
+ Filled(Box<OptionBatch>),
+ /// The batch is staged until every lane in it acknowledges (`EnableOptionAcks`).
+ Staged(Box<OptionBatch>),
+}
+
+/// Domain tag of option-batch lane acknowledgements: config, batch digest, sequence,
+/// disposition, channel and the lane's clearing row with the clearing digest in every
+/// asset the lane moves in (`AssetClearing`).
+pub const OPTION_ACK_TAG_V4:&[u8]=b"SHZ/HFT06/CHANNEL-ACK/V4";
+/// Owner, peer and monitor signatures of one lane over its V4 acknowledgement message.
+#[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
+pub struct OptionAck{pub channel:BtcOutPoint,pub signatures:[Bip340Signature;3]}
+/// Acknowledgements of the staged option batch, one per lane in `OptionBatch::channels`
+/// order. A Commit needs all three signatures on every lane; a FencedAbort after the
+/// deadline needs peer and monitor only (owner signature all-zero allowed).
+#[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
+pub struct OptionAckBundle{pub sequence:u64,pub batch:Key,pub disposition:super::durable::Disposition,pub acks:Vec<OptionAck>}
+/// V4 acknowledgement message of `channel` for `batch`.
+pub fn option_ack_message(config:&Key,batch:&OptionBatch,disposition:super::durable::Disposition,channel:&BtcOutPoint)->R<Key>{
+ let mut b=Vec::new();b.extend(config);b.extend(batch.digest());u64b(&mut b,batch.sequence);
+ b.push(match disposition{super::durable::Disposition::Commit=>1,super::durable::Disposition::FencedAbort=>2});
+ put_op(&mut b,channel);
+ let mut any=false;
+ for c in &batch.clearing{
+  if c.report.row(channel).is_some(){any=true;c.asset.put(&mut b);c.report.put_row(channel,&mut b)?;}
+ }
+ if !any{return Err(Reject::Allocation)}
+ Ok(tagged_hash(OPTION_ACK_TAG_V4,&b))
+}
 
 /// Every option book, sub-account, stablecoin pool and batch. Pure state: callers pass
 /// the router's account owners and its (BTC) clearing ledger.
@@ -239,6 +270,15 @@ impl OptionsDesk{
    locations:BTreeMap::new(),accounts:BTreeMap::new(),batches:Vec::new(),arrival:0,clock:0})
  }
  pub fn account(&self,k:&Outpoint)->Option<&OptionAccount>{self.accounts.get(k)}
+ /// Latest `now` the desk has seen.
+ pub fn clock(&self)->u64{self.clock}
+ pub(crate) fn touch(&mut self,now:u64){self.clock=self.clock.max(now)}
+ /// Mark an intent sequence used (an aborted staged take cannot be replayed).
+ pub(crate) fn consume(&mut self,k:Outpoint,sequence:u64){let a=self.accounts.entry(k).or_default();a.last_sequence=a.last_sequence.max(sequence)}
+ /// Pull resting quotes by id (makers of an aborted batch are not reactivated).
+ pub(crate) fn cancel_quotes(&mut self,ids:&[Key]){
+  for id in ids{if let Some((s,l,key))=self.locations.remove(id)&&let Some(b)=self.books.get_mut(&(s,l)){b.remove(&key);}}
+ }
  pub fn batch(&self,sequence:u64)->Option<&OptionBatch>{sequence.checked_sub(1).and_then(|i|self.batches.get(i as usize))}
  pub fn batch_count(&self)->u64{self.batches.len()as u64}
  pub fn series(&self,id:&Key)->Option<(&Series,Option<u64>)>{self.series.get(id).map(|l|(&l.series,l.settled))}

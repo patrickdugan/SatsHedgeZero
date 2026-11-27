@@ -70,6 +70,20 @@ Compatibility with `research/shz-rgb-01-utexo-sdk` (withdrawal reservations): it
 stays conserved under that wider identity. Both branches edit `State::new` and `State::apply` in
 `tiered_durable.rs`, so a merge conflicts there textually.
 
-Not built here: option batches commit inside the router without the sealed/prepared/committed
-channel-acknowledgement round that perpetual batches use (no lane signs an option batch), and the
-venue (`crates/shz-venue`) exposes no option endpoints yet.
+## C3. Lane acknowledgements for option batches
+
+`enable_option_acks()` (journaled `EnableOptionAcks`, once) makes option batches wait for the
+same owner/peer/monitor round perpetual batches use. Until it is journaled, option batches apply
+when they are matched, as in B1/B2; journals without it replay unchanged.
+
+| Piece | What it is |
+|---|---|
+| Staging | A Take that fills, and every `expire_series`, produces an `OptionBatch` that is staged (`OptionOutcome::Staged`, `pending_option()`, `pending_option_since()`) and moves nothing. One batch is staged at a time; every other option event returns `Hold` until it resolves. Perpetual batches keep running meanwhile. |
+| Message | `OPTION_ACK_TAG_V4 = "SHZ/HFT06/CHANNEL-ACK/V4"`. `option_ack_message(disposition, channel)` hashes the router config, the batch digest (`OptionBatch::digest`: kind, fills, every asset's clearing digest), sequence, disposition, channel, and, for every asset the lane moves in, the asset id, the lane's `ClearingRow` and that asset's `BatchClearing::digest`. Each lane therefore signs its per-asset net and the whole per-asset net vector. |
+| Commit | `resolve_option(OptionAckBundle{sequence, batch, disposition: Commit, acks: [OptionAck{channel, signatures: [owner, peer, monitor]}]}, now)`, one ack per lane in `OptionBatch::channels()` order (every account with a clearing row in any asset). The staged desk replaces the current one; the BTC pool takes the batch's dust as a delta, so perpetual resolutions in between are kept. |
+| Abort | `ABORT_AFTER_US` after staging, peer and monitor alone (owner signature all-zero) may sign a `FencedAbort`: nothing moves, the makers' quotes are pulled, and the taker's intent sequence stays used. |
+| Tests | `d1_option_batches_commit_only_on_lane_acks` (two-asset collar and its expiry; missing lane, wrong signature, early abort, ownerless commit refused), `d2_staged_batch_aborts_after_the_deadline_and_replays`. |
+
+Option acknowledgements do not advance the lanes' commitment heads: the stablecoin side moves
+through the simulated adapter, and the BTC side of an option batch is not yet a channel state
+update. The venue (`crates/shz-venue`) does not drive this round yet (session lt-venue-options).
