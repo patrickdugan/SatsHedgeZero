@@ -733,12 +733,9 @@ mod tests {
 
     #[test]
     fn client_address_behind_a_loopback_proxy() {
-        let head = "POST /agent/v1/orders HTTP/1.1
-X-Forwarded-For: 203.0.113.7, 10.0.0.1
-X-Real-IP: 198.51.100.2";
+        let head = "POST /agent/v1/orders HTTP/1.1\r\nX-Forwarded-For: 203.0.113.7, 10.0.0.1\r\nX-Real-IP: 198.51.100.2";
         assert_eq!(client_addr("127.0.0.1", head), "203.0.113.7");
-        assert_eq!(client_addr("127.0.0.1", "GET / HTTP/1.1
-X-Real-IP: 198.51.100.2"), "198.51.100.2");
+        assert_eq!(client_addr("127.0.0.1", "GET / HTTP/1.1\r\nX-Real-IP: 198.51.100.2"), "198.51.100.2");
         assert_eq!(client_addr("127.0.0.1", "GET / HTTP/1.1"), "127.0.0.1");
         assert_eq!(client_addr("192.0.2.9", head), "192.0.2.9", "a remote peer cannot pick its own bucket");
     }

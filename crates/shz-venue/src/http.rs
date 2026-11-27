@@ -551,8 +551,7 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
         path = req.uri().to_string();
         for k in ["x-forwarded-for", "x-real-ip"] {
             if let Some(v) = req.headers().get(k).and_then(|v| v.to_str().ok()) {
-                fwd.push_str(&format!("{k}: {v}
-"));
+                fwd.push_str(&format!("{k}: {v}\r\n"));
             }
         }
         Ok(resp)
