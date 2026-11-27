@@ -24,6 +24,7 @@
 // Never talks to anything but 127.0.0.1. State dirs go under --work (default D:/shz/tmp).
 
 import http from 'node:http';
+import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { appendFileSync, writeFileSync, mkdirSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -43,6 +44,38 @@ const PYTHON = arg('python', 'C:/Users/patri/AppData/Local/Programs/Python/Pytho
 const VPORT = Number(arg('port', '18495'));
 const RPORT = Number(arg('relay-port', '18491'));
 const MPORT = Number(arg('mcp-port', '18497'));
+const PPORT = Number(arg('proxy-port', '18499'));
+// A stand-in for Caddy in front of the venue: forwards HTTP and WebSocket upgrades and APPENDS the
+// client address to X-Forwarded-For (any client-sent value stays to its left, as Caddy does). The
+// drill models distinct client addresses with an `x-test-client` header or `__client` query
+// parameter, which the proxy strips and uses as the address it "accepted the connection from".
+function startProxy() {
+  const clientOf = (req) => {
+    const u = new URL(req.url, 'http://x');
+    const c = req.headers['x-test-client'] || u.searchParams.get('__client') || req.socket.remoteAddress;
+    u.searchParams.delete('__client');
+    const headers = { ...req.headers };
+    delete headers['x-test-client'];
+    headers['x-forwarded-for'] = headers['x-forwarded-for'] ? `${headers['x-forwarded-for']}, ${c}` : c;
+    return { path: u.pathname + u.search, headers };
+  };
+  const srv = http.createServer((req, res) => {
+    const { path: p, headers } = clientOf(req);
+    const up = http.request({ host: '127.0.0.1', port: VPORT, method: req.method, path: p, headers }, (r) => { res.writeHead(r.statusCode, r.headers); r.pipe(res); });
+    up.on('error', () => { res.writeHead(502); res.end(); });
+    req.pipe(up);
+  });
+  srv.on('upgrade', (req, sock, head) => {
+    const { path: p, headers } = clientOf(req);
+    const up = net.connect(VPORT, '127.0.0.1', () => {
+      up.write(`${req.method} ${p} HTTP/1.1\r\n` + Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\r\n') + '\r\n\r\n');
+      if (head?.length) up.write(head);
+      up.pipe(sock); sock.pipe(up);
+    });
+    up.on('error', () => sock.destroy()); sock.on('error', () => up.destroy());
+  });
+  srv.listen(PPORT, '127.0.0.1');
+}
 // --demo: stop after the makers quote; keep relay, venue and makers running for a browser session.
 const DEMO = process.argv.includes('--demo');
 const UI_DIR = path.join(ROOT, 'ui', 'venue');
@@ -361,8 +394,8 @@ async function main() {
   check('idempotency: a retried order with the same key returns the first response; a different body is refused (409 idempotency.mismatch)',
     i1.status === 200 && i2.status === 200 && i2.json.idempotent_replay === true && i2.json.id === i1.json.id && i3.status === 409 && i3.json.error.code === 'idempotency.mismatch',
     { first: i1.json?.id?.slice(0, 16), replay: i2.json?.idempotent_replay, mismatch: i3.json?.error?.code });
-  check('rate-limit headers on every response; errors are {code, message, details, retryable}', i1.headers.get('x-ratelimit-limit') === '60' && i1.headers.get('x-ratelimit-remaining') !== null
-    && i3.json.error.retryable === false && typeof i3.json.error.message === 'string', { limit: i1.headers.get('x-ratelimit-limit'), remaining: i1.headers.get('x-ratelimit-remaining') });
+  check('a direct local client is not rate limited (X-RateLimit-Scope: local); errors are {code, message, details, retryable}', i1.headers.get('x-ratelimit-scope') === 'local'
+    && i3.json.error.retryable === false && typeof i3.json.error.message === 'string', { scope: i1.headers.get('x-ratelimit-scope') });
   await A.perpCancel(i1.json.id);
 
   // ---- WebSocket: sequenced notifications, RPC methods, resync
@@ -438,8 +471,8 @@ print(json.dumps({"post": p["id"], "cancel": c["id"], "big": big, "marks": len(g
 `;
   const py = await runOut(PYTHON, ['-c', pyScript], 30_000);
   let pj = null; try { pj = JSON.parse(py.out.trim().split('\n').pop()); } catch { /* below */ }
-  check('Python SDK: posts and cancels under its grant, gets limit.order_notional past it, receives WS marks, reads rate-limit headers',
-    py.code === 0 && pj && pj.big === 'limit.order_notional' && pj.marks >= 1 && pj.rate.limit === 60, pj || py.err.slice(-400));
+  check('Python SDK: posts and cancels under its grant, gets limit.order_notional past it, receives WS marks',
+    py.code === 0 && pj && pj.big === 'limit.order_notional' && pj.marks >= 1, pj || py.err.slice(-400));
   const pyEx = await runOut(PYTHON, ['sdk/python/examples/quote_agent.py', '--venue', VENUE, '--agent-key', b2File, '--grant', g2.id, '--seconds', '5'], 40_000);
   const tsEx = await runOut(NODE, ['sdk/ts/examples/quote_agent.ts', '--venue', VENUE, '--agent-key', b2File, '--grant', g2.id, '--seconds', '5'], 40_000);
   check('example strategies run: Python quotes the perpetual, TypeScript quotes spot, both inside the grant, both exit cleanly',
@@ -447,6 +480,12 @@ print(json.dumps({"post": p["id"], "cancel": c["id"], "big": big, "marks": len(g
     { py: pyEx.out.split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 160), ts: tsEx.out.split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 160), py_err: pyEx.err.slice(-200), ts_err: tsEx.err.slice(-200) });
 
   // ---- revocation mid-session
+  // A's open orders other than the MCP one (cancels are queued, so wait until the venue shows them done).
+  const openOf = async () => (await c.orders(G1)).filter((o) => ['resting', 'queued', 'partially filled'].includes(o.status) && o.id !== mcpOrder && o.intent?.action !== 'cancel');
+  const leftover = await openOf();
+  log('open_before_revocation', { ids: leftover.map((o) => [o.id.slice(0, 16), o.instrument, o.status]) });
+  for (const o of leftover) await (o.instrument === 'spot' ? A.spotCancel(o.id) : A.perpCancel(o.id));
+  await waitFor(async () => (await openOf()).length === 0, 5_000, 'leftover orders cancelled');
   const restP = await A.perpPost('short', 40, 100_800, 50_000); // 24 h: 1,120 + 10 + 20 (MCP) + 40 + 5 (spot) = 1,195
   const restS = await A.spotPost(false, 5_000, usdtBase(100_900));
   const pre = await c.account(O.owner);
@@ -473,11 +512,35 @@ print(json.dumps({"post": p["id"], "cancel": c["id"], "big": big, "marks": len(g
   const e2 = await code(E.perpPost('long', 10, 99_500, 50_000));
   check('a 2-second grant: accepted while live, then grant.expired', e1 === 'accepted' && e2 === 'grant.expired' && (await c.grant(g3.id)).status === 'expired', { e1, e2 });
 
-  // ---- client-address rate limit
-  const burst = await Promise.all(Array.from({ length: 75 }, () => fetchJson(VENUE + '/agent/v1/time')));
+  // ---- through a Caddy-like reverse proxy: per-client buckets on /api, /v1, /agent/v1 and WS upgrades
+  const PX = `http://127.0.0.1:${PPORT}`;
+  startProxy();
+  const via = (p, client, extra = {}) => fetchJson(PX + p, undefined, { 'x-test-client': client, ...extra });
+  const ui = await via('/', '198.51.100.10'), st1 = await via('/api/status', '198.51.100.10');
+  const wsHello = async (p, client) => new Promise((res) => {
+    const ws = new WebSocket(PX.replace('http', 'ws') + p + (p.includes('?') ? '&' : '?') + '__client=' + client);
+    const t = setTimeout(() => { ws.close(); res('timeout'); }, 5_000);
+    ws.onmessage = (ev) => { clearTimeout(t); ws.close(); res(JSON.parse(ev.data).type ?? JSON.parse(ev.data).method); };
+    ws.onerror = () => { clearTimeout(t); res('refused'); };
+  });
+  const uiStream = await wsHello('/api/stream', '198.51.100.10'), agentStream = await wsHello('/agent/v1/ws', '198.51.100.10');
+  check('through the proxy the UI, /api, the UI stream and the agent stream work, charged to the forwarded client (X-RateLimit-Scope: address)',
+    ui.status === 200 && st1.status === 200 && st1.headers.get('x-ratelimit-scope') === 'address' && st1.headers.get('x-ratelimit-limit') === '60' && uiStream === 'status' && agentStream === 'hello',
+    { ui: ui.status, api: st1.status, scope: st1.headers.get('x-ratelimit-scope'), ui_stream: uiStream, agent_stream: agentStream });
+  const burst = await Promise.all(Array.from({ length: 75 }, (_, i) => via(['/agent/v1/time', '/api/status', '/v1/candles?instrument=SHZ-BTCUSD-INV&interval=1m'][i % 3], '203.0.113.50')));
   const limited = burst.filter((x) => x.status === 429);
-  check('API rate limit: a burst past 60 from one address gets 429 rate_limited with Retry-After', limited.length > 0 && limited[0].json.error.code === 'rate_limited' && !!limited[0].headers.get('retry-after'),
-    { limited: limited.length, retry_after: limited[0]?.headers?.get('retry-after') });
+  // The bucket refills at 20/s, so the follow-ups go out as concurrent batches right after the burst:
+  // an honoured spoof would land in a fresh bucket of 60 and pass in full.
+  const [spoofs, wsBatch, other, wsOther] = await Promise.all([
+    Promise.all(Array.from({ length: 20 }, () => via('/api/status', '203.0.113.50', { 'x-forwarded-for': '192.0.2.200' }))),
+    Promise.all(Array.from({ length: 6 }, () => wsHello('/api/stream', '203.0.113.50'))),
+    via('/api/status', '203.0.113.51'), wsHello('/api/stream', '203.0.113.51')]);
+  const spoofRefused = spoofs.filter((x) => x.status === 429).length, wsRefused = wsBatch.filter((x) => x === 'refused').length;
+  const agentLimited = limited.find((x) => x.json?.error?.code === 'rate_limited');
+  check('a client bursting past 60 gets 429 with Retry-After on /api, /v1 and /agent/v1 (structured rate_limited there) and its WS upgrade is refused; another client is untouched',
+    limited.length >= 10 && !!agentLimited && !!limited[0].headers.get('retry-after') && wsRefused >= 4 && other.status === 200 && wsOther === 'status',
+    { limited: limited.length, other: other.status, ws_refused: `${wsRefused}/6`, ws_other: wsOther });
+  check('a client-sent X-Forwarded-For does not move it to another bucket (the proxy-appended right-most hop decides)', spoofRefused >= 15, { refused: `${spoofRefused}/20` });
   await sleep(3_500);
 
   // ---- restart: grants, revocation and usage come back

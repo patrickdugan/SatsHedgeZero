@@ -138,9 +138,19 @@ WebSocket only: `subscribe {channels}`, `unsubscribe`, `resync {channel, since}`
   a retry with the same key and body returns the first response (`idempotent_replay: true`, 24 h);
   the same key with a different body is `idempotency.mismatch` (409). Intents also carry
   per-account sequence numbers; the router refuses a replayed sequence.
-* **Rate limits.** Token bucket per grant when the call names one, else per client address:
-  20/s sustained, burst 60. Every REST response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
-  `X-RateLimit-Reset`; a 429 carries `Retry-After`.
+* **Rate limits.** One token bucket per client address (20/s sustained, burst 60) covers every
+  `/api`, `/v1` and `/agent/v1` request and every WebSocket upgrade (UI stream, candle stream, agent
+  stream); each JSON-RPC request on `/agent/v1/ws` takes a token too. Static files are not charged.
+  The client address is the TCP peer, except when the peer is loopback (the venue's own reverse
+  proxy on the same host): then it is the right-most `X-Forwarded-For` hop, the one the proxy
+  appended; hops to its left are client-supplied and ignored, `X-Real-IP` is never read, and a
+  non-loopback peer's `X-Forwarded-For` is ignored. A loopback peer without
+  `X-Forwarded-For` is a local process on the host (market makers, drills) and is not limited.
+  Responses carry `X-RateLimit-Scope` (`address` or `local`) and, when address-scoped,
+  `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`; a 429 carries `Retry-After`
+  (an over-limit WebSocket upgrade gets an HTTP 429 instead of the handshake). Agents are limited per
+  grant separately by the grant's own `max_orders_per_minute`, counted only for orders signed by the
+  grant's agent key.
 * **Errors.** `{"error":{"code","message","details","retryable"}}` with the HTTP status from
   `x-error-status` in the spec; over JSON-RPC the same object is `error.data` (`error.code` is
   -32602 for invalid params, -32601 unknown method, otherwise -32000 − HTTP status).
@@ -191,8 +201,7 @@ token that IronClaw injects at its egress boundary (the model never sees it); it
 only and rejects non-loopback `Origin` headers. A malicious venue cannot widen a grant: owner clients
 recompute the grant id and compare every field before signing.
 
-**Runaway loops.** Per-minute order cap and open-order cap per grant, 24 h notional, per-client and
-per-grant API rate limits (429 with `Retry-After`), idempotency keys so retries never double-place,
+**Runaway loops.** Per-minute order cap and open-order cap per grant, 24 h notional, per-address API rate limits (429 with `Retry-After`), idempotency keys so retries never double-place,
 and the MCP server's local breaker. Expiry is mandatory (≤ 30 days).
 
 **What it does not cover.** Grant limits bound size, not strategy quality; a capped agent can still

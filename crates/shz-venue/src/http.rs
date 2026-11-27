@@ -86,11 +86,29 @@ async fn http(app: Arc<App>, mut s: TcpStream) {
     let body = &buf[head_end..head_end + content_len];
     let (path, query) = target.split_once('?').map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((target.clone(), String::new()));
     let mut extra = String::new();
+    // One per-address bucket for every API request (REST, relay protocol, agent API); static
+    // files are not charged. The client is the right-most X-Forwarded-For hop only when the peer
+    // is the local reverse proxy (agent_api::client_addr); direct local processes are not limited.
+    let is_api = path.starts_with("/api/") || path.starts_with("/v1/") || path.starts_with("/agent/v1/");
+    let client = crate::agent_api::client_addr(&peer, &crate::agent_api::forwarded_values(&head));
+    let rate = if is_api && method != "OPTIONS" { crate::agent_api::limit(&app, &client) } else { None };
+    if is_api {
+        for (k, v) in crate::agent_api::rate_headers(&rate) {
+            extra.push_str(&format!("{k}: {v}\r\n"));
+        }
+    }
     let (code, ctype, payload) = if method == "OPTIONS" {
         (204, "text/plain", vec![])
+    } else if let Some(r) = rate.as_ref().filter(|r| !r.ok) {
+        let body = if path.starts_with("/agent/v1/") {
+            json!({"error": crate::agent_api::error_json(&crate::agent_api::rate_limited_error(r))})
+        } else {
+            json!({"error": "rate limited", "retry_after_ms": r.reset_ms})
+        };
+        (429, "application/json", body.to_string().into_bytes())
     } else if path.starts_with("/agent/v1/") {
-        let client = crate::agent_api::client_addr(&peer, &head);
-        let r = crate::agent_api::rest(&app, &method, &path, &query, &head, body, &client).await;
+        extra.clear();
+        let r = crate::agent_api::rest(&app, &method, &path, &query, &head, body, &rate).await;
         for (k, v) in &r.headers {
             extra.push_str(&format!("{k}: {v}\r\n"));
         }
@@ -545,22 +563,30 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
     let peer = stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
     let mut path = String::new();
     // The callback signature is fixed by tungstenite (its error type is an HTTP response).
-    let mut fwd = String::new();
+    let mut client = None;
+    // Every upgrade is charged to the client's per-address bucket (same rule as HTTP); a client
+    // over its limit gets 429 instead of the handshake.
     #[allow(clippy::result_large_err)]
     let cb = |req: &Request, resp: Response| {
         path = req.uri().to_string();
-        for k in ["x-forwarded-for", "x-real-ip"] {
-            if let Some(v) = req.headers().get(k).and_then(|v| v.to_str().ok()) {
-                fwd.push_str(&format!("{k}: {v}\r\n"));
+        let fwd: Vec<String> = req.headers().get_all("x-forwarded-for").iter().filter_map(|v| v.to_str().ok().map(String::from)).collect();
+        client = crate::agent_api::client_addr(&peer, &fwd);
+        match crate::agent_api::limit(&app, &client).filter(|r| !r.ok) {
+            None => Ok(resp),
+            Some(r) => {
+                let mut e = tokio_tungstenite::tungstenite::http::Response::new(Some("rate limited".to_string()));
+                *e.status_mut() = tokio_tungstenite::tungstenite::http::StatusCode::TOO_MANY_REQUESTS;
+                if let Ok(v) = r.reset_ms.div_ceil(1000).max(1).to_string().parse() {
+                    e.headers_mut().insert("retry-after", v);
+                }
+                Err(e)
             }
         }
-        Ok(resp)
     };
     let Ok(ws) = tokio_tungstenite::accept_hdr_async(stream, cb).await else { return };
     let (mut tx, mut rx) = ws.split();
     let (p, query) = path.split_once('?').map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((path.clone(), String::new()));
     if p == "/agent/v1/ws" {
-        let client = crate::agent_api::client_addr(&peer, &fwd);
         crate::agent_api::ws(app, tx, rx, client).await;
         return;
     }
@@ -607,5 +633,91 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
             }
             m = rx.next() => if m.is_none() || matches!(m, Some(Err(_)) | Some(Ok(Message::Close(_)))) { break },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Status code of one raw request on a fresh connection (the front end serves one per connection).
+    async fn status(addr: std::net::SocketAddr, req: String) -> (u16, Vec<u8>) {
+        let mut s = TcpStream::connect(addr).await.unwrap();
+        s.write_all(req.as_bytes()).await.unwrap();
+        let mut buf = vec![0u8; 4096];
+        let mut got = Vec::new();
+        // Read the status line and, for a WebSocket, the first frame after the 101 head.
+        while let Ok(Ok(n)) = tokio::time::timeout(Duration::from_millis(1500), s.read(&mut buf)).await {
+            if n == 0 {
+                break;
+            }
+            got.extend_from_slice(&buf[..n]);
+            if let Some(p) = got.windows(4).position(|w| w == b"\r\n\r\n")
+                && (!got.starts_with(b"HTTP/1.1 101") || got.len() > p + 4)
+            {
+                break;
+            }
+        }
+        let code = String::from_utf8_lossy(&got).split_whitespace().nth(1).and_then(|c| c.parse().ok()).unwrap_or(0);
+        (code, got)
+    }
+    fn get(path: &str, xff: Option<&str>) -> String {
+        let f = xff.map(|x| format!("X-Forwarded-For: {x}\r\n")).unwrap_or_default();
+        format!("GET {path} HTTP/1.1\r\nHost: venue\r\n{f}\r\n")
+    }
+    fn upgrade(path: &str, xff: Option<&str>) -> String {
+        let f = xff.map(|x| format!("X-Forwarded-For: {x}\r\n")).unwrap_or_default();
+        format!("GET {path} HTTP/1.1\r\nHost: venue\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n{f}\r\n")
+    }
+
+    /// Behind the loopback proxy each forwarded client has its own bucket across /api, /v1,
+    /// /agent/v1 and WebSocket upgrades; one client exhausting it does not touch another; the
+    /// client-sent part of X-Forwarded-For cannot move a request to another bucket; static files
+    /// and direct local processes are not limited.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn per_address_buckets_through_the_proxy() {
+        let dir = std::env::temp_dir().join(format!("shz-venue-http-rate-{}", crate::core::now_us()));
+        let venue = Venue::open(&dir, [7; 32], "http://127.0.0.1:9".into()).unwrap();
+        let ui = dir.join("ui");
+        std::fs::create_dir_all(&ui).unwrap();
+        std::fs::write(ui.join("index.html"), "<!doctype html>ok").unwrap();
+        let app = Arc::new(App { venue: Arc::new(Mutex::new(venue)), events: broadcast::channel(16).0, ui_dir: ui, mempool_api: String::new(), agent: Default::default() });
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(serve(app.clone(), listener));
+        let (a, b) = (Some("203.0.113.1"), Some("203.0.113.2"));
+        // Client A spends its burst across the API surfaces.
+        let mut codes = vec![];
+        for i in 0..(crate::agent_api::BURST as usize + 10) {
+            let path = ["/api/status", "/v1/candles?instrument=SHZ-BTCUSD-INV&interval=1m", "/agent/v1/time"][i % 3];
+            codes.push(status(addr, get(path, a)).await.0);
+        }
+        assert!(codes.iter().filter(|c| **c == 429).count() >= 9, "A is limited: {codes:?}");
+        assert_eq!(status(addr, upgrade("/api/stream", a)).await.0, 429, "A's WebSocket upgrade is limited too");
+        assert_eq!(status(addr, upgrade("/agent/v1/ws", a)).await.0, 429);
+        // A cannot escape by prepending another address: the proxy's right-most hop decides.
+        assert_eq!(status(addr, get("/api/status", Some("198.51.100.77, 203.0.113.1"))).await.0, 429);
+        let (c, body) = status(addr, get("/agent/v1/time", a)).await;
+        let text = String::from_utf8_lossy(&body).to_ascii_lowercase();
+        assert!(c == 429 && text.contains("retry-after:") && text.contains("rate_limited"), "{text}");
+        // Static files are not charged.
+        assert_eq!(status(addr, get("/", a)).await.0, 200);
+        // Client B is untouched: REST, the UI stream and the agent stream all work.
+        let (c, body) = status(addr, get("/api/status", b)).await;
+        assert_eq!(c, 200);
+        assert!(String::from_utf8_lossy(&body).to_ascii_lowercase().contains("x-ratelimit-scope: address"));
+        let (c, frame) = status(addr, upgrade("/api/stream", b)).await;
+        assert_eq!(c, 101);
+        assert!(String::from_utf8_lossy(&frame).contains("\"type\":\"status\""), "the UI stream sends its status hello");
+        let (c, frame) = status(addr, upgrade("/agent/v1/ws", b)).await;
+        assert!(c == 101 && String::from_utf8_lossy(&frame).contains("\"hello\""));
+        // A direct local process (no X-Forwarded-For) is not limited.
+        for _ in 0..(crate::agent_api::BURST as usize + 10) {
+            assert_eq!(status(addr, get("/api/status", None)).await.0, 200);
+        }
+        let (_, body) = status(addr, get("/agent/v1/time", None)).await;
+        assert!(String::from_utf8_lossy(&body).to_ascii_lowercase().contains("x-ratelimit-scope: local"));
+        assert_eq!(status(addr, upgrade("/api/stream", None)).await.0, 101);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

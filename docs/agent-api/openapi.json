@@ -39,6 +39,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -87,6 +96,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -145,6 +163,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -214,6 +241,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -283,6 +319,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -334,6 +379,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -391,6 +445,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -451,6 +514,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -521,6 +593,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -603,6 +684,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -662,6 +752,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -720,6 +819,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -798,6 +906,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -886,6 +1003,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -954,6 +1080,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -1024,6 +1159,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -1094,6 +1238,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -1162,6 +1315,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -1232,6 +1394,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {
@@ -1302,6 +1473,15 @@
                   "type": "number"
                 },
                 "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              },
+              "X-RateLimit-Scope": {
+                "schema": {
+                  "enum": [
+                    "address",
+                    "local"
+                  ]
+                },
+                "description": "address: charged to the client address (right-most X-Forwarded-For hop behind the local proxy); local: a direct local process, not limited and without the other X-RateLimit headers."
               }
             },
             "content": {

@@ -332,7 +332,7 @@ async fn run(app: &App, method: &str, p: &Value) -> Result<Value, AgentError> {
             Ok(json!({
                 "api_version": API_VERSION, "network": "testnet4", "production_ready": false, "market": MARKET,
                 "agents": v.agents_summary(), "options": v.opts.is_some(), "spot": v.spot.is_some(),
-                "rate_limit": {"per_second": RATE_PER_S, "burst": BURST, "scope": "per grant when the call names one, else per client address"},
+                "rate_limit": {"per_second": RATE_PER_S, "burst": BURST, "scope": "per client address on every /api, /v1, /agent/v1 request and WebSocket upgrade (behind the local proxy: the right-most X-Forwarded-For hop); direct local processes are not limited"},
                 "grant_ceiling": limits_json(&CEILING),
                 "methods": METHODS.iter().map(|d| json!({"method": d.name, "rest": format!("{} {}", d.verb, d.path), "write": d.write})).collect::<Vec<_>>(),
                 "error_codes": ERROR_CODES,
@@ -469,22 +469,61 @@ async fn run(app: &App, method: &str, p: &Value) -> Result<Value, AgentError> {
     }
 }
 
-/// The client address for rate limiting: the TCP peer, or, when the peer is loopback (the local
-/// reverse proxy), the first `X-Forwarded-For` entry or `X-Real-IP` from the request head.
-pub fn client_addr(peer: &str, head: &str) -> String {
-    if peer != "127.0.0.1" && peer != "::1" {
-        return peer.to_string();
-    }
-    let header = |name: &str| head.lines().find_map(|l| l.split_once(':').filter(|(k, _)| k.trim().eq_ignore_ascii_case(name)).map(|(_, v)| v.trim().to_string()));
-    header("x-forwarded-for").and_then(|v| v.split(',').next().map(|s| s.trim().to_string())).filter(|s| !s.is_empty()).or_else(|| header("x-real-ip")).unwrap_or_else(|| peer.to_string())
+fn is_loopback(peer: &str) -> bool {
+    peer.parse::<std::net::IpAddr>().is_ok_and(|ip| match ip {
+        std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.to_ipv4_mapped().is_some_and(|v4| v4.is_loopback()),
+        v4 => v4.is_loopback(),
+    })
 }
 
-/// Rate-limit bucket for a call: the grant it names, else the client address.
-fn bucket_key(p: &Value, peer: &str) -> String {
-    match p["grant"].as_str() {
-        Some(g) if g.len() == 64 => format!("grant:{g}"),
-        _ => format!("ip:{peer}"),
+/// `X-Forwarded-For` values of a request head, in order (one per header line).
+pub fn forwarded_values(head: &str) -> Vec<String> {
+    head.lines()
+        .filter_map(|l| l.split_once(':').filter(|(k, _)| k.trim().eq_ignore_ascii_case("x-forwarded-for")).map(|(_, v)| v.trim().to_string()))
+        .collect()
+}
+
+/// The client a request is charged to, for the per-address rate limit.
+///
+/// * A non-loopback peer is the client; any `X-Forwarded-For` it sends is ignored.
+/// * A loopback peer is the venue's own reverse proxy (Caddy on the same host), which appends the
+///   address it accepted the connection from to `X-Forwarded-For`: the client is the right-most
+///   hop of the last header. Hops to its left are whatever the client sent and are never trusted.
+///   `X-Real-IP` is not read (a client can set it and the proxy passes it through).
+/// * A loopback peer with no `X-Forwarded-For` is a local process talking to the venue directly
+///   (the market makers on the host, drills): `None`, not rate limited.
+pub fn client_addr(peer: &str, forwarded: &[String]) -> Option<String> {
+    if !is_loopback(peer) {
+        return Some(peer.to_string());
     }
+    forwarded.last().and_then(|v| v.rsplit(',').map(str::trim).find(|s| !s.is_empty())).map(str::to_string)
+}
+
+/// Take one request from `client`'s bucket; `None` for an unlimited local client.
+pub fn limit(app: &App, client: &Option<String>) -> Option<RateInfo> {
+    client.as_ref().map(|c| app.agent.take(&format!("ip:{c}")))
+}
+
+/// Rate headers for a reply (scope `address`, or `local` when not limited).
+pub fn rate_headers(rate: &Option<RateInfo>) -> Vec<(String, String)> {
+    match rate {
+        Some(r) => {
+            let mut h = vec![
+                ("X-RateLimit-Limit".to_string(), format!("{}", BURST as u64)),
+                ("X-RateLimit-Remaining".to_string(), r.remaining.to_string()),
+                ("X-RateLimit-Reset".to_string(), format!("{:.3}", r.reset_ms as f64 / 1000.0)),
+                ("X-RateLimit-Scope".to_string(), "address".to_string()),
+            ];
+            if !r.ok {
+                h.push(("Retry-After".to_string(), r.reset_ms.div_ceil(1000).max(1).to_string()));
+            }
+            h
+        }
+        None => vec![("X-RateLimit-Scope".to_string(), "local".to_string())],
+    }
+}
+pub fn rate_limited_error(r: &RateInfo) -> AgentError {
+    AgentError::new("rate_limited", "request rate above the per-client limit").with(json!({"retry_after_ms": r.reset_ms}))
 }
 
 // -------------------------------------------------------------- REST ----
@@ -505,7 +544,9 @@ fn query_params(query: &str) -> serde_json::Map<String, Value> {
     m
 }
 
-pub async fn rest(app: &App, verb: &str, path: &str, query: &str, head: &str, body: &[u8], peer: &str) -> RestReply {
+/// One REST call. `rate` is the per-address bucket result the HTTP front end already took for
+/// this request (a refused one never reaches here).
+pub async fn rest(app: &App, verb: &str, path: &str, query: &str, head: &str, body: &[u8], rate: &Option<RateInfo>) -> RestReply {
     if path == "/agent/v1/openapi.json" && verb == "GET" {
         return RestReply { code: 200, headers: vec![], ctype: "application/json", body: SPEC.as_bytes().to_vec() };
     }
@@ -527,18 +568,8 @@ pub async fn rest(app: &App, verb: &str, path: &str, query: &str, head: &str, bo
     }
     let p = Value::Object(params);
     let idem = head.lines().find_map(|l| l.split_once(':').filter(|(k, _)| k.trim().eq_ignore_ascii_case("idempotency-key")).map(|(_, v)| v.trim().to_string()));
-    let rate = app.agent.take(&bucket_key(&p, peer));
-    let mut headers = vec![
-        ("X-RateLimit-Limit".to_string(), format!("{}", BURST as u64)),
-        ("X-RateLimit-Remaining".to_string(), rate.remaining.to_string()),
-        ("X-RateLimit-Reset".to_string(), format!("{:.3}", rate.reset_ms as f64 / 1000.0)),
-        ("X-Agent-Api".to_string(), API_VERSION.to_string()),
-    ];
-    if !rate.ok {
-        headers.push(("Retry-After".to_string(), (rate.reset_ms.div_ceil(1000)).max(1).to_string()));
-        let e = AgentError::new("rate_limited", "request rate above the per-client limit").with(json!({"retry_after_ms": rate.reset_ms}));
-        return reply(429, headers, json!({"error": error_json(&e)}));
-    }
+    let mut headers = rate_headers(rate);
+    headers.push(("X-Agent-Api".to_string(), API_VERSION.to_string()));
     match call(app, def.name, &p, idem.as_deref()).await {
         Ok(v) => reply(200, headers, v),
         Err(e) => {
@@ -572,7 +603,7 @@ fn snapshot(v: &Venue, ch: &str) -> Value {
 }
 
 /// One JSON-RPC request (or notification, without `id`); `None` for a notification.
-async fn handle(app: &App, req: &Value, subs: &mut BTreeMap<&'static str, ()>, peer: &str) -> Option<Value> {
+async fn handle(app: &App, req: &Value, subs: &mut BTreeMap<&'static str, ()>, client: &Option<String>) -> Option<Value> {
     let id = req.get("id").cloned();
     let reply_id = id.clone().unwrap_or(Value::Null);
     if req["jsonrpc"] != "2.0" || !req["method"].is_string() {
@@ -580,9 +611,10 @@ async fn handle(app: &App, req: &Value, subs: &mut BTreeMap<&'static str, ()>, p
     }
     let method = req["method"].as_str().unwrap();
     let p = if req["params"].is_null() { json!({}) } else { req["params"].clone() };
-    let rate = app.agent.take(&bucket_key(&p, peer));
-    let out: Result<Value, AgentError> = if !rate.ok {
-        Err(AgentError::new("rate_limited", "request rate above the per-client limit").with(json!({"retry_after_ms": rate.reset_ms})))
+    // Every JSON-RPC request is charged to the connection's client, like a REST request.
+    let rate = limit(app, client);
+    let out: Result<Value, AgentError> = if let Some(r) = rate.as_ref().filter(|r| !r.ok) {
+        Err(rate_limited_error(r))
     } else {
         match method {
             "subscribe" | "unsubscribe" => {
@@ -633,7 +665,7 @@ async fn handle(app: &App, req: &Value, subs: &mut BTreeMap<&'static str, ()>, p
     })
 }
 
-pub async fn ws(app: Arc<App>, mut tx: Tx, mut rx: Rx, peer: String) {
+pub async fn ws(app: Arc<App>, mut tx: Tx, mut rx: Rx, client: Option<String>) {
     let mut bus = app.agent.tx.subscribe();
     let mut subs: BTreeMap<&'static str, ()> = BTreeMap::new();
     let hello = json!({"jsonrpc": "2.0", "method": "hello", "params": {"api_version": API_VERSION, "server_us": now_us(),
@@ -674,12 +706,12 @@ pub async fn ws(app: Arc<App>, mut tx: Tx, mut rx: Rx, peer: String) {
                     Ok(Value::Array(reqs)) if !reqs.is_empty() && reqs.len() <= 50 => {
                         let mut out = vec![];
                         for r in &reqs {
-                            if let Some(x) = handle(&app, r, &mut subs, &peer).await { out.push(x) }
+                            if let Some(x) = handle(&app, r, &mut subs, &client).await { out.push(x) }
                         }
                         (!out.is_empty()).then(|| json!(out))
                     }
                     Ok(Value::Array(_)) => Some(json!({"jsonrpc": "2.0", "id": null, "error": {"code": -32600, "message": "batch must hold 1..=50 requests"}})),
-                    Ok(r) => handle(&app, &r, &mut subs, &peer).await,
+                    Ok(r) => handle(&app, &r, &mut subs, &client).await,
                 };
                 if let Some(r) = reply && tx.send(Message::text(r.to_string())).await.is_err() { break }
             }
@@ -733,11 +765,20 @@ mod tests {
 
     #[test]
     fn client_address_behind_a_loopback_proxy() {
-        let head = "POST /agent/v1/orders HTTP/1.1\r\nX-Forwarded-For: 203.0.113.7, 10.0.0.1\r\nX-Real-IP: 198.51.100.2";
-        assert_eq!(client_addr("127.0.0.1", head), "203.0.113.7");
-        assert_eq!(client_addr("127.0.0.1", "GET / HTTP/1.1\r\nX-Real-IP: 198.51.100.2"), "198.51.100.2");
-        assert_eq!(client_addr("127.0.0.1", "GET / HTTP/1.1"), "127.0.0.1");
-        assert_eq!(client_addr("192.0.2.9", head), "192.0.2.9", "a remote peer cannot pick its own bucket");
+        let ca = |peer: &str, head: &str| client_addr(peer, &forwarded_values(head));
+        // Caddy appends the address it accepted the connection from: the right-most hop.
+        let spoofed = "POST /agent/v1/orders HTTP/1.1\r\nX-Forwarded-For: 6.6.6.6, 203.0.113.7\r\nX-Real-IP: 198.51.100.2";
+        assert_eq!(ca("127.0.0.1", spoofed).as_deref(), Some("203.0.113.7"), "client-sent hops to the left are ignored");
+        assert_eq!(ca("::1", spoofed).as_deref(), Some("203.0.113.7"));
+        assert_eq!(ca("::ffff:127.0.0.1", spoofed).as_deref(), Some("203.0.113.7"));
+        // Two header lines: the proxy's is the last.
+        assert_eq!(ca("127.0.0.1", "GET / HTTP/1.1\r\nX-Forwarded-For: 6.6.6.6\r\nX-Forwarded-For: 203.0.113.9").as_deref(), Some("203.0.113.9"));
+        // X-Real-IP is never read; a local process with no forwarding header is not limited.
+        assert_eq!(ca("127.0.0.1", "GET / HTTP/1.1\r\nX-Real-IP: 198.51.100.2"), None);
+        assert_eq!(ca("127.0.0.1", "GET / HTTP/1.1"), None);
+        // A non-loopback peer is its own client whatever it sends.
+        assert_eq!(ca("192.0.2.9", spoofed).as_deref(), Some("192.0.2.9"), "spoofed X-Forwarded-For from a remote peer is ignored");
+        assert_eq!(ca("10.1.2.3", "GET / HTTP/1.1").as_deref(), Some("10.1.2.3"));
     }
 
     #[test]
