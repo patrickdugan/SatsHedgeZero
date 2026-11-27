@@ -909,7 +909,7 @@ impl Daemon {
             "epoch": event, "segment": k, "first_seq": first, "last_seq": last, "batch_count": rb.len(), "txid": txid, "hex": hex::encode(&raw),
             "manifest_hash": hex::encode(manifest.hash()), "statement_sha256": null, "fee": fee, "fee_rate": self.cfg.fee_rate, "vsize": vs,
             "operator_change": change, "fronted": settled.fronted, "height": null,
-            "payouts": signers.iter().map(|e| json!({"owner": e["owner"], "value": e["output"]["value"], "kind": e["output"]["kind"], "net": e["net"], "carry_in": e["carry_in"]})).collect::<Vec<_>>(),
+            "payouts": signers.iter().enumerate().map(|(i, e)| json!({"owner": e["owner"], "vout": i, "value": e["output"]["value"], "kind": e["output"]["kind"], "net": e["net"], "carry_in": e["carry_in"]})).collect::<Vec<_>>(),
             "rolled": rolled, "excluded": excluded.iter().map(|(o, w)| json!({"owner": o, "why": w})).collect::<Vec<_>>(),
             "carried": carried.iter().map(|c| json!({"channel": format!("{}:{}", hex::encode(c.channel_txid), c.channel_vout), "owner": hex::encode(c.owner), "net": c.net})).collect::<Vec<_>>(),
             "testmempoolaccept": accept[0], "tip": tip, "network": self.cfg.network,
@@ -917,7 +917,8 @@ impl Daemon {
         });
         if !self.cfg.broadcast {
             res["status"] = json!("staged");
-            res["broadcast_command"] = json!(format!("bitcoin-cli {} sendrawtransaction {}", self.cfg.cli_args.join(" "), hex::encode(&raw)));
+            // no node arguments here: they carry the RPC credentials and the venue journals results
+            res["broadcast_command"] = json!(format!("bitcoin-cli <node args> sendrawtransaction {}", hex::encode(&raw)));
             write_json(&dir.join("settlement.json"), &res);
             write_readme(&dir, &self.cfg, &res);
             let _ = self.venue.post("/api/settlement/result", &res);
