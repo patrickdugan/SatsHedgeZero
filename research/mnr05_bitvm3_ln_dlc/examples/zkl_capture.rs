@@ -20,6 +20,7 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{self, BufReader, BufWriter, Write},
     path::{Path, PathBuf},
+    rc::Rc,
 };
 
 type S1 = RelaxedR1CSSNARK<B1, EvaluationEngine<B1>>;
@@ -216,27 +217,31 @@ fn main() -> Result<()> {
         return Err("unexpected arguments".into());
     }
     fs::create_dir(&dir)?;
-    let primary = RefCell::new(None);
-    let secondary = RefCell::new(None);
+    let primary = Rc::new(RefCell::new(None));
+    let secondary = Rc::new(RefCell::new(None));
+    let primary_slot = Rc::clone(&primary);
+    let secondary_slot = Rc::clone(&secondary);
+    let primary_dir = dir.clone();
+    let secondary_dir = dir.clone();
     let floor1 = S1::ck_floor();
     let floor2 = S2::ck_floor();
-    let hook1 = |shape: &R1CSShape<B1>| {
+    let hook1 = move |shape: &R1CSShape<B1>| {
         let size = floor1(shape);
-        let value = capture(&dir, "primary", shape, size).expect("primary capture");
-        assert!(primary.replace(Some(value)).is_none(), "primary callback repeated");
+        let value = capture(&primary_dir, "primary", shape, size).expect("primary capture");
+        assert!(primary_slot.replace(Some(value)).is_none(), "primary callback repeated");
         size
     };
-    let hook2 = |shape: &R1CSShape<B2>| {
+    let hook2 = move |shape: &R1CSShape<B2>| {
         let size = floor2(shape);
-        let value = capture(&dir, "secondary", shape, size).expect("secondary capture");
-        assert!(secondary.replace(Some(value)).is_none(), "secondary callback repeated");
+        let value = capture(&secondary_dir, "secondary", shape, size).expect("secondary capture");
+        assert!(secondary_slot.replace(Some(value)).is_none(), "secondary callback repeated");
         size
     };
     let blank = Mnr05UnifiedBatchStep::blank();
     let pp = PublicParams::<B1, B2, Mnr05UnifiedBatchStep>::setup(&blank, &hook1, &hook2)
         .map_err(|e| format!("PublicParams::setup: {e:?}"))?;
-    let p = primary.into_inner().ok_or("missing primary capture")?;
-    let s = secondary.into_inner().ok_or("missing secondary capture")?;
+    let p = primary.borrow_mut().take().ok_or("missing primary capture")?;
+    let s = secondary.borrow_mut().take().ok_or("missing secondary capture")?;
     assert_eq!(pp.num_constraints(), (p.constraints, s.constraints));
     assert_eq!(pp.num_variables(), (p.auxiliary, s.auxiliary));
     let pp_digest = field_hex(&pp.digest());
