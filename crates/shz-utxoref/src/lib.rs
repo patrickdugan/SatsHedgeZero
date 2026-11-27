@@ -9,6 +9,7 @@ pub mod mnr03;
 pub mod n_party_packer;
 pub mod pnl_batch;
 pub mod signing_target;
+pub mod verification_cache;
 pub mod watchtower;
 
 use thiserror::Error;
