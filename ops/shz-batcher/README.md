@@ -124,3 +124,8 @@ batcher `0d947ae42a0f6b841acf8af9375bc6f1e71cf298c87842ec684da7a5944ea806`, oper
    Fee per settlement at the box script's `--fee-rate 1`: 2 accounts 477 vB (477 sats), 4 accounts
    779 vB (779 sats), about 151 vB per further account; CPFP to 5 sat/vB after 3 blocks
    unconfirmed. The operator change also fronts the pool's net for the epoch.
+
+Switched on 2026-11-27: operator liquidity `9c3f2827…:0` broadcast from the laptop node and confirmed
+at 21:57Z; the box daemon runs with `BROADCAST=1` since 21:59Z (`last settled seq 0`). The testnet4
+venue is public over HTTPS at https://lightninger-testnet4.170-75-168-145.sslip.io/ (Caddy site added
+on the box, proxying 127.0.0.1:8099). Settlements start with the first confirmed deposit.
