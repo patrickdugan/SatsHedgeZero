@@ -144,7 +144,7 @@ set_option maxHeartbeats 4000000 in
 theorem indexed_context_delete (globalRows : List Row)
     (hs : wellFormed (withRows contextHeader globalRows))
     (hi : targetGlobal < globalRows.length)
-    (ht : globalRows[targetGlobal] = targetRow)
+    (ht : globalRows[targetGlobal]? = some targetRow)
     (hpos : ∀ q ∈ refs, q.1 ≠ targetGlobal ∧ globalRows[q.1]? = some q.2)
     (x : List Nat) :
     accepts (withRows contextHeader globalRows) x ↔

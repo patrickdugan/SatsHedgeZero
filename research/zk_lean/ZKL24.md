@@ -40,3 +40,11 @@ and artifact download but rejected source-commit.txt before any actual
 search because it compared against the PR head. Pin the exact checkout
 commit and retain the separate head, manifest, VK and canonical hashes.
 No digest is regenerated from a new capture or learned from untrusted input.
+
+## Constructive proof correction
+
+MathCan's initial indexed theorem compiled but its use of the library index
+transport and arithmetic proof introduced Classical.choice. The replacement
+8040c011f2fda4031cc6833a6e6f867d8eaaf095 uses direct list induction for lookups and deletion membership,
+and accepts an explicit optional target lookup. The axiom whitelist remains
+unchanged. Recheck the generated fixtures and actual candidate sources.

@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: patrickdugan/MathCan
-          ref: a04649b9e91e79498f2986791b800273bd5c0c8c
+          ref: 8040c011f2fda4031cc6833a6e6f867d8eaaf095
           path: mathcan
       - uses: leanprover/lean-action@v1
         with:
