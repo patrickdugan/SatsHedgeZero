@@ -90,8 +90,14 @@ admits it.
 | orders per minute (cancels count) | venue intake | `limit.rate` |
 | price collar vs the mark (perp limit, spot price) | venue intake | `limit.collar` |
 
-Notional is whole USD at the mark: perpetual `quantity`; option BTC series `qty`; stable series and
-spot size × mark. Option premiums are bounded by the per-order notional, not the collar. Venue-side
+Notional is the order's worst case, counted exactly in micro-USD and never rounded down; the caps
+are whole USD and an order passes only if `notional <= cap` (the 24 h cap: accepted notional of the
+last 24 h plus this order). Perpetual: `quantity` (the inverse contract's USD notional). Spot, buy
+or sell: sats × the higher of the order's limit price and the mark. Option legs: BTC series `qty`
+(USD notional); stable series `qty` (1e-8 BTC) × the higher of the strike and the mark. The collar
+compares the exact limit price with the exact mark. Option premiums are bounded by the per-order
+notional, not the collar. (Until 2026-11-27 spot and stable-series notional were floored to whole
+USD at the mark, so orders up to just under twice the cap passed.) Venue-side
 checks run before anything reaches the router journal, so a refused order journals nothing. The
 per-minute window is in memory (it restarts empty).
 

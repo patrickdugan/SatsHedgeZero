@@ -27,10 +27,11 @@ pub const MAX_GRANT_US:u64=30*86_400_000_000;
 /// Unrevoked, unexpired grants per account.
 pub const MAX_ACTIVE_GRANTS:usize=4;
 
-/// Venue-enforced limits, signed into the grant. Notionals are whole USD at the venue's
-/// mark (perpetual `quantity`; option BTC-series `qty`; stable-series and spot size times
-/// the mark). `collar_bps` bounds an order's price against the mark (perpetual and spot
-/// limit; option premium is bounded by `max_order_notional_usd` instead).
+/// Venue-enforced limits, signed into the grant, in whole USD. The venue values each order at
+/// its worst case in exact micro-USD (perpetual `quantity`; spot sats × max(limit, mark); option
+/// BTC-series `qty`; stable-series qty × max(strike, mark)) and refuses it if that exceeds the
+/// cap. `collar_bps` bounds an order's price against the mark (perpetual and spot limit; option
+/// premium is bounded by `max_order_notional_usd` instead).
 #[derive(Debug,Clone,Copy,PartialEq,Eq,Serialize,Deserialize)]
 pub struct AgentLimits{
  pub max_order_notional_usd:u64,pub max_daily_notional_usd:u64,pub max_open_orders:u32,

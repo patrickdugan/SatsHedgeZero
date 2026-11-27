@@ -22,6 +22,21 @@ use super::{Key, ROUTER_ID, Venue, h, now_us, outpoint_json, parse_key, parse_si
 
 pub const DAY_US: u64 = 86_400_000_000;
 const MINUTE_US: u64 = 60_000_000;
+/// Notional is counted in micro-USD (exact integers; caps are whole USD × MICRO).
+pub const MICRO: u64 = 1_000_000;
+const SATS_PER_BTC: u128 = 100_000_000;
+
+/// A spot price in quote base units per BTC (`decimals`-digit USD stablecoin) as micro-USD per
+/// BTC, rounded up.
+fn spot_price_micro(price: u64, decimals: u8) -> u128 {
+    (price as u128 * MICRO as u128).div_ceil(10u128.pow(decimals as u32))
+}
+/// Micro-USD as a decimal string with `places` decimals (truncated display; checks use integers).
+fn usd_str(micro: u128, places: u32) -> String {
+    let whole = micro / MICRO as u128;
+    let frac = micro % MICRO as u128 / 10u128.pow(6 - places.min(6));
+    if places == 0 { whole.to_string() } else { format!("{whole}.{frac:0width$}", width = places as usize) }
+}
 /// Limits a grant may ask for at most (the venue refuses a larger grant at draft time).
 pub const CEILING: AgentLimits = AgentLimits {
     max_order_notional_usd: 100_000,
@@ -203,7 +218,9 @@ impl Venue {
             let Ok(g) = parse_key(e["grant"].as_str().unwrap_or("")) else { continue };
             match e["kind"].as_str() {
                 Some("agent_use") => {
-                    let (t, n) = (e["ts_us"].as_u64().unwrap_or(0), e["notional_usd"].as_u64().unwrap_or(0));
+                    // Micro-USD since the exact-notional fix; earlier lines carried whole USD.
+                    let n = e["notional_micro_usd"].as_u64().unwrap_or_else(|| e["notional_usd"].as_u64().unwrap_or(0).saturating_mul(MICRO));
+                    let t = e["ts_us"].as_u64().unwrap_or(0);
                     if t + DAY_US > now {
                         st.usage.entry(g).or_default().day.push_back((t, n));
                     }
@@ -366,7 +383,8 @@ impl Venue {
             "label": self.agents.as_ref().and_then(|a| a.labels.get(id)).cloned().unwrap_or_default(),
             "consent": consent_text(&s.grant),
             "sequences": self.sequences(&s.grant.owner),
-            "usage": {"day_notional_usd": day, "day_remaining_usd": s.grant.limits.max_daily_notional_usd.saturating_sub(day),
+            "usage": {"day_notional_usd": day.div_ceil(MICRO), "day_notional_micro_usd": day,
+                      "day_remaining_usd": s.grant.limits.max_daily_notional_usd.saturating_mul(MICRO).saturating_sub(day) / MICRO,
                       "orders_last_minute": minute, "open_orders": self.agent_open_orders(id), "accepted": usage.map_or(0, |u| u.accepted), "refused": usage.map_or(0, |u| u.refused)},
         }))
     }
@@ -413,20 +431,38 @@ impl Venue {
     }
 
     /// USD notional of an order at the mark (see `AgentLimits`).
-    fn agent_notional(&self, o: &AgentOrder, mark: u64) -> AR<u64> {
+    /// Worst-case USD notional of an order in micro-USD, never rounded down.
+    ///
+    /// * Perpetual: `quantity` is the contract's USD notional (inverse contract), exact.
+    /// * Spot (buy or sell): sats × the higher of the order's limit price and the mark.
+    /// * Option legs: BTC series `qty` is USD notional, exact; stable series `qty` (1e-8 BTC)
+    ///   × the higher of the strike and the mark (the cash-secured collateral basis).
+    fn agent_notional(&self, o: &AgentOrder, mark_e8: u64) -> AR<u128> {
+        let mark_micro = (mark_e8 as u128).div_ceil(100);
         Ok(match o {
-            AgentOrder::Perp(i) => i.quantity,
-            AgentOrder::Spot(i) => (i.qty_sats as u128 * mark as u128 / 100_000_000) as u64,
+            AgentOrder::Perp(i) => i.quantity as u128 * MICRO as u128,
+            AgentOrder::Spot(i) => {
+                let px = spot_price_micro(i.price, self.spot_decimals()).max(mark_micro);
+                (i.qty_sats as u128 * px).div_ceil(SATS_PER_BTC)
+            }
             AgentOrder::Option(i) => {
                 let desk = self.router.options().ok().flatten().ok_or_else(|| AgentError::new("instrument.off", "options are off"))?;
                 let mut n: u128 = 0;
                 for l in &i.legs {
                     let (s, _) = desk.series(&l.series).ok_or_else(|| AgentError::new("order.invalid", "unknown series"))?;
-                    n += if s.asset == SettleAsset::Btc { l.qty as u128 } else { l.qty as u128 * mark as u128 / 100_000_000 };
+                    n += if s.asset == SettleAsset::Btc {
+                        l.qty as u128 * MICRO as u128
+                    } else {
+                        (l.qty as u128 * (s.strike_usd as u128 * MICRO as u128).max(mark_micro)).div_ceil(SATS_PER_BTC)
+                    };
                 }
-                n.min(u64::MAX as u128) as u64
+                n
             }
         })
+    }
+
+    fn spot_decimals(&self) -> u8 {
+        self.spot.as_ref().and_then(|s| match s.pair.quote { SettleAsset::Stable { decimals, .. } => Some(decimals), _ => None }).unwrap_or(6)
     }
 
     /// The limit checks for one agent order, then the router (agent path), then usage.
@@ -456,7 +492,7 @@ impl Venue {
                 u.accepted += 1;
                 if notional > 0 {
                     u.day.push_back((now, notional));
-                    self.persist(json!({"kind": "agent_use", "grant": h(&grant), "ts_us": now, "notional_usd": notional}));
+                    self.persist(json!({"kind": "agent_use", "grant": h(&grant), "ts_us": now, "notional_micro_usd": notional}));
                 }
                 Ok(v)
             }
@@ -498,31 +534,34 @@ impl Venue {
         if open as u64 >= l.max_open_orders as u64 {
             return Err(AgentError::new("limit.open_orders", "open-orders limit reached").with(json!({"limit": l.max_open_orders, "open": open})));
         }
-        let mark = self.mark_usd().ok_or_else(|| AgentError::new("market.no_mark", "no mark yet: the venue cannot evaluate the grant's limits"))?;
-        let collar = |px_usd: u64| -> AR<()> {
-            let dev = (px_usd as i128 - mark as i128).unsigned_abs() * 10_000;
-            if dev > mark as u128 * l.collar_bps as u128 {
-                return Err(AgentError::new("limit.collar", "price is outside the grant's collar around the mark").with(json!({"mark_usd": mark, "price_usd": px_usd, "collar_bps": l.collar_bps})));
+        let mark_e8 = self.mark.as_ref().and_then(|m| m.median_e8).ok_or_else(|| AgentError::new("market.no_mark", "no mark yet: the venue cannot evaluate the grant's limits"))?;
+        // Collar, exact: |price - mark| / mark <= collar_bps / 10^4, with the price as
+        // `num / den` USD per BTC and the mark as mark_e8 / 10^8.
+        let collar = |num: u128, den: u128| -> AR<()> {
+            let (p, m) = (num * 100_000_000, mark_e8 as u128 * den);
+            if p.abs_diff(m) * 10_000 > m * l.collar_bps as u128 {
+                return Err(AgentError::new("limit.collar", "price is outside the grant's collar around the mark")
+                    .with(json!({"mark_usd": usd_str(mark_e8 as u128 / 100, 6), "mark_e8": mark_e8, "price_usd": usd_str(num * MICRO as u128 / den, 6), "collar_bps": l.collar_bps})));
             }
             Ok(())
         };
         match o {
-            AgentOrder::Perp(i) => collar(i.limit_usd)?,
-            AgentOrder::Spot(i) => {
-                let dec = self.spot.as_ref().and_then(|s| match s.pair.quote { SettleAsset::Stable { decimals, .. } => Some(decimals), _ => None }).unwrap_or(6);
-                collar(i.price / 10u64.pow(dec as u32))?
-            }
+            AgentOrder::Perp(i) => collar(i.limit_usd as u128, 1)?,
+            AgentOrder::Spot(i) => collar(i.price as u128, 10u128.pow(self.spot_decimals() as u32))?,
             AgentOrder::Option(_) => {}
         }
-        let n = self.agent_notional(o, mark)?;
-        if n > l.max_order_notional_usd {
-            return Err(AgentError::new("limit.order_notional", "order notional is above the grant's per-order limit").with(json!({"notional_usd": n, "limit": l.max_order_notional_usd})));
+        let n = self.agent_notional(o, mark_e8)?;
+        let cap = l.max_order_notional_usd as u128 * MICRO as u128;
+        if n > cap {
+            return Err(AgentError::new("limit.order_notional", "order notional is above the grant's per-order limit")
+                .with(json!({"notional_usd": usd_str(n, 6), "notional_micro_usd": n as u64, "limit": l.max_order_notional_usd})));
         }
-        let day = u.map_or(0, |u| u.day.iter().filter(|(t, _)| *t + DAY_US > now).map(|(_, n)| *n).sum::<u64>());
-        if day + n > l.max_daily_notional_usd {
-            return Err(AgentError::new("limit.daily_notional", "order would exceed the grant's 24 h notional").with(json!({"day_notional_usd": day, "notional_usd": n, "limit": l.max_daily_notional_usd})));
+        let day = u.map_or(0, |u| u.day.iter().filter(|(t, _)| *t + DAY_US > now).map(|(_, n)| *n as u128).sum::<u128>());
+        if day + n > l.max_daily_notional_usd as u128 * MICRO as u128 {
+            return Err(AgentError::new("limit.daily_notional", "order would exceed the grant's 24 h notional")
+                .with(json!({"day_notional_usd": usd_str(day, 6), "notional_usd": usd_str(n, 6), "limit": l.max_daily_notional_usd})));
         }
-        Ok(n)
+        Ok(n.min(u64::MAX as u128) as u64)
     }
 
     // --------------------------------------------------- delegated acks ----
@@ -784,6 +823,83 @@ mod tests {
             Err(e) => e.code,
             Ok(v) => panic!("accepted: {v}"),
         }
+    }
+
+    /// Caps are exact and priced at the worst case: an order at the cap passes, one micro-USD
+    /// over is refused, for spot, perpetuals, BTC and stable option series and the 24 h cap; spot
+    /// is valued at the higher of its limit and the mark, stable puts at the higher of strike and
+    /// mark; the collar is exact. Includes the live case: 3,000 sats at 61,654 against a $1 cap.
+    #[test]
+    fn caps_are_exact_and_worst_case() {
+        use shz_dex::routing::options::{LegOrder, OPTION_INTENT_VERSION, SPOT_INTENT_VERSION, Series};
+        use shz_margin::payoff::OptionKind;
+        let dir = std::env::temp_dir().join(format!("shz-venue-agent-caps-{}", now_us()));
+        let oracle = public(&[9; 32]);
+        let mut v = Venue::open(&dir, oracle, "http://127.0.0.1:9".into()).unwrap();
+        v.options_enable(Some([0xab; 32])).unwrap();
+        v.spot_enable().unwrap();
+        v.agents_enable().unwrap();
+        let owner = register(&mut v, &OWNER);
+        let ann = shz_dlc::OracleAnnouncement { event_id: "E".into(), maturity_unix: 2_000_000_000, oracle_pubkey_x: oracle, digit_nonces_x: vec![[1; 32]; super::super::options::NUM_BITS as usize] };
+        let usdt = v.opts.as_ref().unwrap().usdt.unwrap();
+        let call = v.router.list_series(Series { kind: OptionKind::Call, asset: SettleAsset::Btc, strike_usd: 100_000, event_id: "E".into() }, ann.clone()).unwrap();
+        let put100 = v.router.list_series(Series { kind: OptionKind::Put, asset: usdt, strike_usd: 100_000, event_id: "E".into() }, ann.clone()).unwrap();
+        let put120 = v.router.list_series(Series { kind: OptionKind::Put, asset: usdt, strike_usd: 120_000, event_id: "E".into() }, ann).unwrap();
+        let d = v.agent_grant_draft(&json!({"owner": h(&owner), "agent": h(&public(&AGENT)), "instruments": ["perps", "options", "spot"], "expires_in_s": 600,
+            "limits": {"max_order_notional_usd": 1, "max_daily_notional_usd": 2, "max_open_orders": 10, "max_orders_per_minute": 600, "collar_bps": 2_000}})).unwrap();
+        let mut gj = d["grant"].clone();
+        gj["signature"] = json!(sig_hex(&bip340_sign(&OWNER, &parse_key(d["id"].as_str().unwrap()).unwrap()).unwrap()));
+        let g = parse_key(v.agent_grant_create(&json!({"grant": gj})).unwrap()["id"].as_str().unwrap()).unwrap();
+        let ch = v.accounts[&owner].outpoint.clone();
+        let pair = v.spot.as_ref().unwrap().id;
+        let mut seq = 0u64;
+        let mut spot = |v: &Venue, buy: bool, sats: u64, price_tenths: u64| {
+            seq += 1;
+            let mut i = SpotIntent { version: SPOT_INTENT_VERSION, scope: v.scope, router: ROUTER_ID, channel: ch.clone(), owner, sequence: seq, expires_us: now_us() + 60_000_000,
+                action: Action::Post, pair, buy, qty_sats: sats, price: price_tenths * 100_000, cancel_target: [0; 32], signature: super::super::ZERO_SIG };
+            i.signature = bip340_sign(&AGENT, &i.id()).unwrap();
+            AgentOrder::Spot(i)
+        };
+        let opt = |v: &Venue, series: Key, qty: u64| {
+            let mut i = IntentV7 { version: OPTION_INTENT_VERSION, scope: v.scope, router: ROUTER_ID, channel: v.accounts[&owner].outpoint.clone(), owner, sequence: 7, expires_us: now_us() + 60_000_000,
+                action: Action::Take, legs: vec![LegOrder { series, long: true, qty }], premium_milli: 1_000_000, other_limits: vec![], cancel_target: [0; 32], signature: super::super::ZERO_SIG };
+            i.signature = bip340_sign(&AGENT, &i.id()).unwrap();
+            AgentOrder::Option(i)
+        };
+        let check = |v: &Venue, o: &AgentOrder| v.agent_check(&g, o, now_us()).map_err(|e| e.code);
+        // The live case, mark 61,654: 3,000 sats at 61,654.0 is $1.84962 > $1.
+        mark(&mut v, 1, 61_654);
+        assert_eq!(check(&v, &spot(&v, true, 3_000, 616_540)), Err("limit.order_notional"));
+        assert_eq!(check(&v, &spot(&v, false, 3_000, 616_540)), Err("limit.order_notional"));
+        // Mark 100,000: 1,000 sats at 100,000.0 is exactly $1; 0.1 USDT more is $1.000001.
+        mark(&mut v, 2, 100_000);
+        assert_eq!(check(&v, &spot(&v, true, 1_000, 1_000_000)), Ok(1_000_000));
+        assert_eq!(check(&v, &spot(&v, true, 1_000, 1_000_001)), Err("limit.order_notional"));
+        // A sell below the mark is valued at the mark; any order above it at its limit.
+        assert_eq!(check(&v, &spot(&v, false, 1_000, 990_000)), Ok(1_000_000));
+        assert_eq!(check(&v, &spot(&v, true, 1_000, 1_150_000)), Err("limit.order_notional"), "a buy far above the mark is valued at its limit");
+        assert_eq!(check(&v, &spot(&v, false, 1_000, 1_150_000)), Err("limit.order_notional"));
+        // Collar, exact: 20 % above the mark passes, 0.1 USDT more does not.
+        assert_eq!(check(&v, &spot(&v, true, 1, 1_200_000)).err(), None);
+        assert_eq!(check(&v, &spot(&v, true, 1, 1_200_001)), Err("limit.collar"));
+        // Perpetual: the USD quantity, exact.
+        let mut s = Seq(100);
+        assert_eq!(check(&v, &AgentOrder::Perp(s.perp(&v, &AGENT, Action::Post, OrderSide::Long, 1, 100_000, [0; 32]))), Ok(1_000_000));
+        assert_eq!(check(&v, &AgentOrder::Perp(s.perp(&v, &AGENT, Action::Post, OrderSide::Long, 2, 100_000, [0; 32]))), Err("limit.order_notional"));
+        // Options: BTC series qty is USD; a stable put is valued at max(strike, mark) per BTC.
+        assert_eq!(check(&v, &opt(&v, call, 1)), Ok(1_000_000));
+        assert_eq!(check(&v, &opt(&v, call, 2)), Err("limit.order_notional"));
+        assert_eq!(check(&v, &opt(&v, put100, 1_000)), Ok(1_000_000));
+        assert_eq!(check(&v, &opt(&v, put100, 1_001)), Err("limit.order_notional"));
+        assert_eq!(check(&v, &opt(&v, put120, 1_000)), Err("limit.order_notional"), "valued at the 120,000 strike, not the mark");
+        // 24 h cap of $2: after $1.000001 accepted, a $1 order would pass it by one micro-USD.
+        v.agents.as_mut().unwrap().usage.entry(g).or_default().day.push_back((now_us(), 1_000_001));
+        assert_eq!(check(&v, &spot(&v, true, 1_000, 1_000_000)), Err("limit.daily_notional"));
+        v.agents.as_mut().unwrap().usage.get_mut(&g).unwrap().day.back_mut().unwrap().1 = 1_000_000;
+        assert_eq!(check(&v, &spot(&v, true, 1_000, 1_000_000)), Ok(1_000_000), "exactly the 24 h cap");
+        assert_eq!(v.agent_grant_view(&g).unwrap()["usage"]["day_notional_micro_usd"], 1_000_000);
+        drop(v);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Every numeric limit, signature, replay, revocation, expiry and restart, at the venue.

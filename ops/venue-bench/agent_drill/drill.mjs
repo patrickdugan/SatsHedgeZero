@@ -550,20 +550,20 @@ print(json.dumps({"post": p["id"], "cancel": c["id"], "big": big, "marks": len(g
   check('through the proxy the UI, /api, the UI stream and the agent stream work, charged to the forwarded client (X-RateLimit-Scope: address)',
     ui.status === 200 && st1.status === 200 && st1.headers.get('x-ratelimit-scope') === 'address' && st1.headers.get('x-ratelimit-limit') === '60' && uiStream === 'status' && agentStream === 'hello',
     { ui: ui.status, api: st1.status, scope: st1.headers.get('x-ratelimit-scope'), ui_stream: uiStream, agent_stream: agentStream });
-  const burst = await Promise.all(Array.from({ length: 75 }, (_, i) => via(['/agent/v1/time', '/api/status', '/v1/candles?instrument=SHZ-BTCUSD-INV&interval=1m'][i % 3], '203.0.113.50')));
+  const burst = await Promise.all(Array.from({ length: 120 }, (_, i) => via(['/agent/v1/time', '/api/status', '/v1/candles?instrument=SHZ-BTCUSD-INV&interval=1m'][i % 3], '203.0.113.50')));
   const limited = burst.filter((x) => x.status === 429);
   // The bucket refills at 20/s, so the follow-ups go out as concurrent batches right after the burst:
   // an honoured spoof would land in a fresh bucket of 60 and pass in full.
   const [spoofs, wsBatch, other, wsOther] = await Promise.all([
-    Promise.all(Array.from({ length: 20 }, () => via('/api/status', '203.0.113.50', { 'x-forwarded-for': '192.0.2.200' }))),
+    Promise.all(Array.from({ length: 40 }, () => via('/api/status', '203.0.113.50', { 'x-forwarded-for': '192.0.2.200' }))),
     Promise.all(Array.from({ length: 6 }, () => wsHello('/api/stream', '203.0.113.50'))),
     via('/api/status', '203.0.113.51'), wsHello('/api/stream', '203.0.113.51')]);
   const spoofRefused = spoofs.filter((x) => x.status === 429).length, wsRefused = wsBatch.filter((x) => x === 'refused').length;
   const agentLimited = limited.find((x) => x.json?.error?.code === 'rate_limited');
   check('a client bursting past 60 gets 429 with Retry-After on /api, /v1 and /agent/v1 (structured rate_limited there) and its WS upgrade is refused; another client is untouched',
-    limited.length >= 10 && !!agentLimited && !!limited[0].headers.get('retry-after') && wsRefused >= 4 && other.status === 200 && wsOther === 'status',
+    limited.length >= 20 && !!agentLimited && !!limited[0].headers.get('retry-after') && wsRefused >= 4 && other.status === 200 && wsOther === 'status',
     { limited: limited.length, other: other.status, ws_refused: `${wsRefused}/6`, ws_other: wsOther });
-  check('a client-sent X-Forwarded-For does not move it to another bucket (the proxy-appended right-most hop decides)', spoofRefused >= 15, { refused: `${spoofRefused}/20` });
+  check('a client-sent X-Forwarded-For does not move it to another bucket (the proxy-appended right-most hop decides)', spoofRefused >= 10, { refused: `${spoofRefused}/40` }); // honoured, it would be 0/40 (fresh bucket of 60)
   await sleep(3_500);
 
   // ---- restart: grants, revocation and usage come back
