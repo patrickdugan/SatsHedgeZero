@@ -172,11 +172,20 @@ impl Venue {
     }
 
     pub fn spot_submit(&mut self, i: SpotIntent) -> Result<Value, String> {
+        self.spot_submit_with(i, None)
+    }
+
+    /// `spot_submit`, signed by the owner or by the agent of `grant`.
+    pub fn spot_submit_with(&mut self, i: SpotIntent, grant: Option<Key>) -> Result<Value, String> {
         self.spot_st()?;
         self.wallet_check(&i.owner)?;
         let id = i.id();
         let now = now_us().max(self.router.options().ok().flatten().map(|d| d.clock()).unwrap_or(0));
-        let out = self.router.submit_spot(i.clone(), now).map_err(spot_err)?;
+        let out = match grant {
+            Some(g) => self.router.submit_spot_agent(i.clone(), now, g),
+            None => self.router.submit_spot(i.clone(), now),
+        }
+        .map_err(spot_err)?;
         let (status, outcome, batch_n, cancelled) = match out {
             OptionOutcome::Posted(_) => ("resting", "posted", None, None),
             OptionOutcome::Cancelled(t) => ("done", "cancelled", None, Some(t)),
@@ -202,7 +211,7 @@ impl Venue {
         Ok(json!({"id": h(&id), "outcome": outcome, "batch": batch_n}))
     }
 
-    fn persist_spot_intent(&mut self, id: &Key) {
+    pub(crate) fn persist_spot_intent(&mut self, id: &Key) {
         let Some(r) = self.spot.as_ref().and_then(|s| s.intents.get(id)) else { return };
         let e = json!({"kind": "opt_spot_intent", "id": h(id), "intent": serde_json::to_value(&r.intent).unwrap_or(Value::Null), "status": r.status,
                        "reason": r.reason, "batch": r.batch, "accepted_us": r.accepted_us, "filled": r.filled});

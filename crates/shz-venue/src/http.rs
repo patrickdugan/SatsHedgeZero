@@ -24,6 +24,8 @@ pub struct App {
     pub events: broadcast::Sender<String>,
     pub ui_dir: PathBuf,
     pub mempool_api: String,
+    /// Agent API v1 state (rate buckets, idempotency cache, sequenced event bus).
+    pub agent: Arc<crate::agent_api::ApiState>,
 }
 
 const INTERVALS: [(&str, u64); 4] = [("1m", 60_000), ("5m", 300_000), ("15m", 900_000), ("1h", 3_600_000)];
@@ -52,6 +54,7 @@ pub async fn serve(app: Arc<App>, listener: TcpListener) {
 // ------------------------------------------------------------------ http ----
 
 async fn http(app: Arc<App>, mut s: TcpStream) {
+    let peer = s.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
     let mut buf = Vec::with_capacity(8192);
     let mut tmp = [0u8; 8192];
     let (head_end, content_len) = loop {
@@ -82,8 +85,15 @@ async fn http(app: Arc<App>, mut s: TcpStream) {
     let target = parts.next().unwrap_or("/").to_string();
     let body = &buf[head_end..head_end + content_len];
     let (path, query) = target.split_once('?').map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((target.clone(), String::new()));
+    let mut extra = String::new();
     let (code, ctype, payload) = if method == "OPTIONS" {
         (204, "text/plain", vec![])
+    } else if path.starts_with("/agent/v1/") {
+        let r = crate::agent_api::rest(&app, &method, &path, &query, &head, body, &peer).await;
+        for (k, v) in &r.headers {
+            extra.push_str(&format!("{k}: {v}\r\n"));
+        }
+        (r.code, r.ctype, r.body)
     } else if path.starts_with("/api/") || path.starts_with("/v1/") {
         let (c, v) = api(&app, &method, &path, &query, body).await;
         (c, "application/json", v.to_string().into_bytes())
@@ -94,12 +104,19 @@ async fn http(app: Arc<App>, mut s: TcpStream) {
         200 => "OK",
         204 => "No Content",
         400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
         404 => "Not Found",
+        405 => "Method Not Allowed",
         409 => "Conflict",
+        422 => "Unprocessable Content",
+        429 => "Too Many Requests",
+        502 => "Bad Gateway",
+        503 => "Service Unavailable",
         _ => "Error",
     };
     let resp = format!(
-        "HTTP/1.1 {code} {reason}\r\nContent-Type: {ctype}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: content-type\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",
+        "HTTP/1.1 {code} {reason}\r\nContent-Type: {ctype}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: content-type, idempotency-key\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Expose-Headers: x-ratelimit-limit, x-ratelimit-remaining, x-ratelimit-reset, retry-after, x-agent-api\r\nCache-Control: no-store\r\n{extra}Connection: close\r\n\r\n",
         payload.len()
     );
     let _ = s.write_all(resp.as_bytes()).await;
@@ -524,6 +541,7 @@ async fn candles(app: &App, query: &str) -> (u16, Value) {
 // -------------------------------------------------------------------- ws ----
 
 async fn ws(app: Arc<App>, stream: TcpStream) {
+    let peer = stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
     let mut path = String::new();
     // The callback signature is fixed by tungstenite (its error type is an HTTP response).
     #[allow(clippy::result_large_err)]
@@ -534,6 +552,10 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
     let Ok(ws) = tokio_tungstenite::accept_hdr_async(stream, cb).await else { return };
     let (mut tx, mut rx) = ws.split();
     let (p, query) = path.split_once('?').map(|(a, b)| (a.to_string(), b.to_string())).unwrap_or((path.clone(), String::new()));
+    if p == "/agent/v1/ws" {
+        crate::agent_api::ws(app, tx, rx, peer).await;
+        return;
+    }
     let mut events = app.events.subscribe();
     let candle_mode = p == "/v1/stream";
     let iv = interval_ms(&query);

@@ -26,6 +26,7 @@ use shz_dex::{
 };
 use shz_dlc::{Bip340Signature, BtcOutPoint, bip340_sign, bip340_verify, tagged_hash};
 
+pub mod agents;
 pub mod options;
 pub mod spot;
 
@@ -171,6 +172,9 @@ pub struct BatchRec {
     /// in `committed_us`, for a deadline abort).
     pub prepared_us: Option<u64>,
     pub committed_us: Option<u64>,
+    /// Channels whose approval / lane-ack owner slot an agent signed, with the grant.
+    pub delegated: BTreeMap<(Key, u32), Key>,
+    pub ack_delegated: BTreeMap<(Key, u32), Key>,
 }
 
 #[derive(Clone)]
@@ -216,6 +220,10 @@ pub struct Venue {
     opt_log: Vec<Value>,
     /// Spot (`--spot`, on top of options): `None` keeps every spot endpoint off.
     pub spot: Option<spot::SpotState>,
+    /// Delegated agent keys (`--agents`): `None` keeps every agent endpoint off.
+    pub agents: Option<agents::AgentState>,
+    /// Agent records of the venue log (`agent_*`), folded in when agents are switched on.
+    agent_log: Vec<Value>,
 }
 
 fn venue_scope(keys: &Keys) -> (Scope, Policy) {
@@ -321,11 +329,17 @@ impl Venue {
             opts: None,
             opt_log: vec![],
             spot: None,
+            agents: None,
+            agent_log: vec![],
         };
         // Account metadata is restored from the venue log; the router replays its own journal.
         for e in prior {
             if e["kind"].as_str().is_some_and(|k| k.starts_with("opt_")) {
                 v.opt_log.push(e);
+                continue;
+            }
+            if e["kind"].as_str().is_some_and(|k| k.starts_with("agent_")) {
+                v.agent_log.push(e);
                 continue;
             }
             if e["kind"] == "wallet_link" {
@@ -676,6 +690,11 @@ impl Venue {
     }
 
     pub fn submit(&mut self, i: IntentV6) -> Result<Value, String> {
+        self.submit_with(i, None)
+    }
+
+    /// `submit`, signed by the owner (`grant == None`) or by the agent of `grant` (router agent path).
+    pub fn submit_with(&mut self, i: IntentV6, grant: Option<Key>) -> Result<Value, String> {
         self.wallet_check(&i.owner)?;
         if i.action != Action::Cancel {
             let lots = self.lots_of(&i.owner);
@@ -692,7 +711,11 @@ impl Venue {
         let id = i.id();
         let ent = (i.tier != FeedTier::Standard).then(|| self.entitlements.get(&i.entitlement_digest).cloned()).flatten();
         let now = now_us().max(self.router.router().map(|r| r.clock_us()).unwrap_or(0));
-        let due = self.router.submit(i.clone(), ent, now).map_err(|e| format!("{e}"))?;
+        let due = match grant {
+            Some(g) => self.router.submit_agent(i.clone(), ent, now, g),
+            None => self.router.submit(i.clone(), ent, now),
+        }
+        .map_err(|e| format!("{e}"))?;
         self.arrival += 1;
         let q = if i.action == Action::Cancel { &mut self.pending_cancels } else { &mut self.pending_queue };
         q.insert((due, self.arrival), id);
@@ -878,6 +901,8 @@ impl Venue {
             created_us: now_us(),
             prepared_us: None,
             committed_us: None,
+            delegated: BTreeMap::new(),
+            ack_delegated: BTreeMap::new(),
         });
         self.emit(json!({"type": "batch", "seq": seq, "phase": "sealed"}));
         self.emit(json!({"type": "account"})); // approvals are now pending
@@ -936,7 +961,15 @@ impl Venue {
                             channel: c.clone(),
                             signature: b.approvals[&(c.txid, c.vout)],
                         }).collect();
-                        self.router.prepare(next, approvals).map_err(|e| format!("prepare: {e}"))?;
+                        let delegated: Vec<(BtcOutPoint, Key)> = b.delegated.iter().map(|(k, g)| (BtcOutPoint { txid: k.0, vout: k.1 }, *g)).collect();
+                        if delegated.is_empty() {
+                            self.router.prepare(next, approvals).map_err(|e| format!("prepare: {e}"))?;
+                        } else if let Err(e) = self.router.prepare_delegated(next, approvals, delegated) {
+                            // The grant lapsed or was revoked after the agent signed: its
+                            // approvals go back to the owner (or the deadline abort).
+                            self.undelegate(next, false, &e.to_string());
+                            continue;
+                        }
                     }
                     let accounts = b.accounts.clone();
                     let digest = b.digest;
@@ -971,7 +1004,14 @@ impl Venue {
                 "prepared" if !b.acks.is_empty() && b.acks.iter().all(|a| a.signatures[0] != ZERO_SIG) => {
                     let bundle = AckBundle { sequence: next, batch: b.digest, disposition: Disposition::Commit, channels: b.acks.clone() };
                     let (phase, end) = (b.phase.clone(), b.window.1);
-                    if let Err(e) = self.router.resolve(bundle.clone()) {
+                    let delegated: Vec<(BtcOutPoint, Key)> = b.ack_delegated.iter().map(|(k, g)| (BtcOutPoint { txid: k.0, vout: k.1 }, *g)).collect();
+                    let res = if delegated.is_empty() { self.router.resolve(bundle.clone()) } else { self.router.resolve_delegated(bundle.clone(), delegated) };
+                    if let (Err(e), false) = (&res, b.ack_delegated.is_empty()) {
+                        let e = e.to_string();
+                        self.undelegate(next, true, &e);
+                        continue;
+                    }
+                    if let Err(e) = res {
                         // A fully signed head batch whose resolve errors must not hold the
                         // venue for ever: past the abort deadline it is aborted like any other.
                         if self.deadline_abort(next, &phase, end, now)? {
@@ -993,6 +1033,43 @@ impl Venue {
                 }
             }
         }
+    }
+
+    /// Delegated signatures of batch `seq` the router refused (grant revoked or expired since):
+    /// clear them and post the owner's pending signatures again.
+    fn undelegate(&mut self, seq: u64, acks: bool, why: &str) {
+        let Some(b) = self.batches.get_mut(&seq) else { return };
+        let keys: Vec<(Key, u32)> = if acks { std::mem::take(&mut b.ack_delegated).into_keys().collect() } else { std::mem::take(&mut b.delegated).into_keys().collect() };
+        let digest = b.digest;
+        let mut repost = vec![];
+        for k in &keys {
+            let c = BtcOutPoint { txid: k.0, vout: k.1 };
+            if acks {
+                if let Some(a) = b.acks.iter_mut().find(|a| (a.channel.txid, a.channel.vout) == *k) {
+                    a.signatures[0] = ZERO_SIG;
+                }
+            } else {
+                b.approvals.remove(k);
+            }
+            let owner = b.accounts.iter().find(|(ch, _, _, _)| (ch.txid, ch.vout) == *k).map(|x| x.1);
+            if let Some(owner) = owner {
+                repost.push((c, owner));
+            }
+        }
+        for (c, owner) in repost {
+            let (id, kind, msg) = if acks {
+                let Some(a) = self.batches[&seq].acks.iter().find(|a| a.channel == c).cloned() else { continue };
+                let Ok(m) = self.router.ack_message(seq, Disposition::Commit, &a) else { continue };
+                (format!("{seq}:ack:{}:{}", h(&c.txid), c.vout), "channel_ack", m)
+            } else {
+                let Ok(Some((batch, _))) = self.router.batch(seq) else { continue };
+                let Some(m) = batch.approval_message(&c) else { continue };
+                (format!("{seq}:approval:{}:{}", h(&c.txid), c.vout), "batch_approval", m)
+            };
+            self.pending.insert(id.clone(), PendingSig { id, owner, kind: kind.into(), message: msg,
+                context: json!({"batch_seq": seq, "batch_digest": h(&digest), "channel": outpoint_json(&c), "agent_refused": why}) });
+        }
+        self.emit(json!({"type": "account"}));
     }
 
     /// The head batch has waited `ABORT_AFTER_US` past its window for approvals or acks:
@@ -1142,6 +1219,7 @@ impl Venue {
             "closing_loans": self.router.closing_loans_active().unwrap_or(false),
             "options": self.options_summary(),
             "spot": self.spot_summary(),
+            "agents": self.agents_summary(),
             "production_ready": false,
             "network": "testnet4",
         })

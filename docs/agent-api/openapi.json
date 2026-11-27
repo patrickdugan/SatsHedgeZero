@@ -1,0 +1,2237 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Lightninger agent API",
+    "version": "1.0.0",
+    "description": "Agent API v1 of the Lightninger testnet venue (testnet4; USDT is a labelled demo asset). REST under /agent/v1 and the same methods as JSON-RPC 2.0 over WebSocket at /agent/v1/ws (`x-rpc-method` names each). Reads are public; writes are authenticated by their own BIP340 signatures: owner-signed grants and revocations, agent-signed intents and acknowledgements. See docs/SHZ_AGENT_API.md."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8095"
+    },
+    {
+      "url": "https://shz-venue.170-75-168-145.sslip.io"
+    }
+  ],
+  "paths": {
+    "/agent/v1/info": {
+      "get": {
+        "x-rpc-method": "server.info",
+        "summary": "API version, enabled features, methods, rate limits, grant ceiling.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Info"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/time": {
+      "get": {
+        "x-rpc-method": "server.time",
+        "summary": "Server time and router clock (grant expiry is judged on the later).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "server_us": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "router_clock_us": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/markets": {
+      "get": {
+        "x-rpc-method": "market.list",
+        "summary": "Instruments and the signing template (scope, router, tariff, execution policy, spot pair).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/book": {
+      "get": {
+        "x-rpc-method": "market.book",
+        "parameters": [
+          {
+            "name": "instrument",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(perp|spot|option(:[0-9a-f]{64})?)$"
+            },
+            "description": "perp (default), spot, option (trades) or option:<series id> (book)"
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/trades": {
+      "get": {
+        "x-rpc-method": "market.trades",
+        "parameters": [
+          {
+            "name": "instrument",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(perp|spot|option(:[0-9a-f]{64})?)$"
+            },
+            "description": "perp (default), spot, option (trades) or option:<series id> (book)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": [
+                    "array",
+                    "object"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/mark": {
+      "get": {
+        "x-rpc-method": "market.mark",
+        "summary": "Latest FROST-signed oracle mark.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mark": {},
+                    "mark_usd": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/options/chain": {
+      "get": {
+        "x-rpc-method": "options.chain",
+        "summary": "Listed option series (calls, BTC and demo-USDT puts) with books and marks.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/account": {
+      "get": {
+        "x-rpc-method": "account.get",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "description": ""
+          }
+        ],
+        "summary": "Balances, positions, risk, clearing claim, open orders, pending signatures, options and spot sub-accounts, grants.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/grants": {
+      "get": {
+        "x-rpc-method": "grant.list",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "description": ""
+          },
+          {
+            "name": "agent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "description": ""
+          }
+        ],
+        "summary": "Grants of an owner or of an agent key.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrantView"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "x-rpc-method": "grant.create",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Retries with the same key and body return the first response (24 h); a different body is idempotency.mismatch."
+          }
+        ],
+        "summary": "Admit an owner-signed grant (journaled).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "grant"
+                ],
+                "properties": {
+                  "grant": {
+                    "$ref": "#/components/schemas/Grant"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/grant": {
+      "get": {
+        "x-rpc-method": "grant.get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/grants/draft": {
+      "post": {
+        "x-rpc-method": "grant.draft",
+        "summary": "Unsigned grant with the next nonce and the consent text to show the owner.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantDraftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantDraft"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/grants/revoke": {
+      "post": {
+        "x-rpc-method": "grant.revoke",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Retries with the same key and body return the first response (24 h); a different body is idempotency.mismatch."
+          }
+        ],
+        "summary": "Owner-signed revocation: pulls the agent's resting and queued orders in the same journal record.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "revocation"
+                ],
+                "properties": {
+                  "revocation": {
+                    "$ref": "#/components/schemas/Revocation"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revoked": {
+                      "$ref": "#/components/schemas/Hex32"
+                    },
+                    "revoked_us": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "orders_pulled": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Hex32"
+                      }
+                    },
+                    "queued_dropped": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/orders": {
+      "get": {
+        "x-rpc-method": "order.list",
+        "parameters": [
+          {
+            "name": "grant",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "description": ""
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "x-rpc-method": "order.place",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Retries with the same key and body return the first response (24 h); a different body is idempotency.mismatch."
+          }
+        ],
+        "summary": "Agent-signed post or take (perp, option incl. combos, spot), checked against the grant.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderAccepted"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/orders/cancel": {
+      "post": {
+        "x-rpc-method": "order.cancel",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Retries with the same key and body return the first response (24 h); a different body is idempotency.mismatch."
+          }
+        ],
+        "summary": "Agent-signed cancel of one of the agent's own orders.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderAccepted"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/orders/replace": {
+      "post": {
+        "x-rpc-method": "order.replace",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Retries with the same key and body return the first response (24 h); a different body is idempotency.mismatch."
+          }
+        ],
+        "summary": "Cancel then place; the place is not sent if the cancel is refused.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cancel": {
+                      "$ref": "#/components/schemas/OrderAccepted"
+                    },
+                    "place": {
+                      "$ref": "#/components/schemas/OrderAccepted"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/acks": {
+      "get": {
+        "x-rpc-method": "ack.pending",
+        "parameters": [
+          {
+            "name": "grant",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "description": ""
+          }
+        ],
+        "summary": "Owner signatures of the account the agent may sign: batches whose every leg on the account is the agent's.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PendingAck"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "x-rpc-method": "ack.submit",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Retries with the same key and body return the first response (24 h); a different body is idempotency.mismatch."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AckSubmit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AckResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/intent-id": {
+      "post": {
+        "x-rpc-method": "intent.id",
+        "summary": "The id the venue computes for an intent (client self-check).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "instrument",
+                  "intent"
+                ],
+                "properties": {
+                  "instrument": {
+                    "$ref": "#/components/schemas/Instrument"
+                  },
+                  "intent": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Bucket size (burst)."
+              },
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Whole requests left in the bucket."
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "number"
+                },
+                "description": "Seconds until the next request is allowed when the bucket is empty, else 0."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id"
+                  ],
+                  "properties": {
+                    "id": {
+                      "$ref": "#/components/schemas/Hex32"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Structured error (HTTP status by code: see x-error-status).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/v1/openapi.json": {
+      "get": {
+        "summary": "This document.",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Hex32": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "Sig64": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{128}$"
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "request.invalid",
+          "method.unknown",
+          "rate_limited",
+          "idempotency.mismatch",
+          "agents.off",
+          "instrument.off",
+          "market.no_mark",
+          "account.unknown",
+          "grant.unknown",
+          "grant.signature",
+          "grant.rejected",
+          "grant.revoked",
+          "grant.expired",
+          "grant.instrument",
+          "grant.account",
+          "grant.limits_too_high",
+          "order.invalid",
+          "order.signature",
+          "limit.rate",
+          "limit.open_orders",
+          "limit.collar",
+          "limit.order_notional",
+          "limit.daily_notional",
+          "ack.unknown",
+          "ack.outside_grant",
+          "ack.signature",
+          "venue.rejected",
+          "channel.unknown"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {},
+              "retryable": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "Outpoint": {
+        "type": "object",
+        "required": [
+          "txid",
+          "vout"
+        ],
+        "properties": {
+          "txid": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "vout": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Instrument": {
+        "type": "string",
+        "enum": [
+          "perp",
+          "option",
+          "spot"
+        ]
+      },
+      "Limits": {
+        "type": "object",
+        "required": [
+          "max_order_notional_usd",
+          "max_daily_notional_usd",
+          "max_open_orders",
+          "max_orders_per_minute",
+          "collar_bps"
+        ],
+        "properties": {
+          "max_order_notional_usd": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_daily_notional_usd": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_open_orders": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_orders_per_minute": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "collar_bps": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          }
+        }
+      },
+      "Grant": {
+        "type": "object",
+        "description": "AgentGrant (crates/shz-dex/src/routing/agents.rs). The owner signs `AgentGrant::id` (tagged hash SHZ/HFT06/AGENT-GRANT/V1) with BIP340.",
+        "required": [
+          "version",
+          "scope",
+          "router",
+          "channel",
+          "owner",
+          "agent",
+          "nonce",
+          "issued_us",
+          "expires_us",
+          "instruments",
+          "may_withdraw",
+          "limits"
+        ],
+        "properties": {
+          "version": {
+            "const": 1
+          },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "network": {
+                "$ref": "#/components/schemas/Hex32"
+              },
+              "epoch": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "policy": {
+                "$ref": "#/components/schemas/Hex32"
+              }
+            }
+          },
+          "router": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "channel": {
+            "$ref": "#/components/schemas/Outpoint"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "nonce": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "issued_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expires_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "instruments": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "perps",
+                "options",
+                "spot"
+              ]
+            },
+            "minItems": 1
+          },
+          "may_withdraw": {
+            "const": false
+          },
+          "limits": {
+            "$ref": "#/components/schemas/Limits"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Sig64"
+          }
+        }
+      },
+      "GrantView": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "grant",
+          "usage",
+          "consent"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "expired",
+              "revoked"
+            ]
+          },
+          "grant": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "admitted_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked_us": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "consent": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "required": [
+              "day_notional_usd",
+              "open_orders"
+            ],
+            "properties": {
+              "day_notional_usd": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "day_remaining_usd": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "orders_last_minute": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "open_orders": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "accepted": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "refused": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "GrantDraftRequest": {
+        "type": "object",
+        "required": [
+          "owner",
+          "agent",
+          "instruments",
+          "limits"
+        ],
+        "properties": {
+          "owner": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "instruments": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "perps",
+                "options",
+                "spot"
+              ]
+            }
+          },
+          "limits": {
+            "$ref": "#/components/schemas/Limits"
+          },
+          "expires_in_s": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2592000
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "GrantDraft": {
+        "type": "object",
+        "required": [
+          "grant",
+          "id",
+          "consent"
+        ],
+        "properties": {
+          "grant": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "consent": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "Revocation": {
+        "type": "object",
+        "description": "AgentRevocation: the owner signs its id (SHZ/HFT06/AGENT-REVOKE/V1).",
+        "required": [
+          "grant",
+          "owner",
+          "issued_us",
+          "signature"
+        ],
+        "properties": {
+          "version": {
+            "const": 1
+          },
+          "router": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "grant": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "issued_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Sig64"
+          }
+        }
+      },
+      "PerpIntent": {
+        "type": "object",
+        "description": "IntentV6 wire form (docs/SHZ_VENUE_API.md). `owner` is the account owner; the agent signs `id`.",
+        "required": [
+          "channel",
+          "owner",
+          "sequence",
+          "expires_us",
+          "action",
+          "side",
+          "tier",
+          "quantity",
+          "limit_usd",
+          "leverage_bps",
+          "max_fee_ppm",
+          "max_fee_sats",
+          "max_mark_age_us",
+          "signature"
+        ],
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/Outpoint"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expires_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "action": {
+            "enum": [
+              "post",
+              "take",
+              "cancel"
+            ]
+          },
+          "side": {
+            "enum": [
+              "long",
+              "short"
+            ]
+          },
+          "tier": {
+            "enum": [
+              "standard",
+              "intermediate",
+              "premium"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit_usd": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "leverage_bps": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_fee_ppm": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_fee_sats": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_mark_age_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "early_window_opt_in": {
+            "type": "boolean"
+          },
+          "cancel_target": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "entitlement_digest": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Sig64"
+          }
+        }
+      },
+      "OptionIntent": {
+        "type": "object",
+        "description": "IntentV7 wire form (docs/SHZ_VENUE_OPTIONS.md); combos carry up to 4 legs.",
+        "required": [
+          "channel",
+          "owner",
+          "sequence",
+          "expires_us",
+          "action",
+          "legs",
+          "premium_milli",
+          "signature"
+        ],
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/Outpoint"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expires_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "action": {
+            "enum": [
+              "post",
+              "take",
+              "cancel"
+            ]
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "series",
+                "long",
+                "qty"
+              ],
+              "properties": {
+                "series": {
+                  "$ref": "#/components/schemas/Hex32"
+                },
+                "long": {
+                  "type": "boolean"
+                },
+                "qty": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "premium_milli": {
+            "type": "integer"
+          },
+          "other_limits": {
+            "type": "array"
+          },
+          "cancel_target": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Sig64"
+          }
+        }
+      },
+      "SpotIntent": {
+        "type": "object",
+        "description": "SpotIntent v8 wire form (docs/SHZ_SPOT.md).",
+        "required": [
+          "channel",
+          "owner",
+          "sequence",
+          "expires_us",
+          "action",
+          "buy",
+          "qty_sats",
+          "price",
+          "signature"
+        ],
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/Outpoint"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expires_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "action": {
+            "enum": [
+              "post",
+              "take",
+              "cancel"
+            ]
+          },
+          "buy": {
+            "type": "boolean"
+          },
+          "qty_sats": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cancel_target": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Sig64"
+          }
+        }
+      },
+      "OrderRequest": {
+        "type": "object",
+        "required": [
+          "grant",
+          "instrument",
+          "intent"
+        ],
+        "properties": {
+          "grant": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "instrument": {
+            "$ref": "#/components/schemas/Instrument"
+          },
+          "intent": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PerpIntent"
+              },
+              {
+                "$ref": "#/components/schemas/OptionIntent"
+              },
+              {
+                "$ref": "#/components/schemas/SpotIntent"
+              }
+            ]
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      },
+      "ReplaceRequest": {
+        "type": "object",
+        "required": [
+          "grant",
+          "instrument",
+          "cancel",
+          "place"
+        ],
+        "properties": {
+          "grant": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "instrument": {
+            "$ref": "#/components/schemas/Instrument"
+          },
+          "cancel": {
+            "type": "object"
+          },
+          "place": {
+            "type": "object"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      },
+      "OrderAccepted": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "due_us": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outcome": {
+            "enum": [
+              "posted",
+              "cancelled",
+              "staged",
+              "filled"
+            ]
+          },
+          "batch": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "idempotent_replay": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PendingAck": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "message",
+          "context"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "batch_approval",
+              "channel_ack",
+              "option_ack"
+            ]
+          },
+          "message": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "context": {
+            "type": "object"
+          }
+        }
+      },
+      "AckSubmit": {
+        "type": "object",
+        "required": [
+          "grant",
+          "items"
+        ],
+        "properties": {
+          "grant": {
+            "$ref": "#/components/schemas/Hex32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "signature"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "signature": {
+                  "$ref": "#/components/schemas/Sig64"
+                }
+              }
+            }
+          }
+        }
+      },
+      "AckResult": {
+        "type": "object",
+        "required": [
+          "accepted",
+          "refused"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "refused": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "$ref": "#/components/schemas/ErrorCode"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Book": {
+        "type": "object",
+        "properties": {
+          "bids": {
+            "type": "array"
+          },
+          "asks": {
+            "type": "array"
+          },
+          "mark": {}
+        }
+      },
+      "Info": {
+        "type": "object",
+        "required": [
+          "api_version",
+          "network",
+          "production_ready",
+          "methods",
+          "error_codes"
+        ],
+        "properties": {
+          "api_version": {
+            "const": "agent/v1"
+          },
+          "network": {
+            "const": "testnet4"
+          },
+          "production_ready": {
+            "const": false
+          },
+          "agents": {
+            "type": "object"
+          },
+          "methods": {
+            "type": "array"
+          },
+          "error_codes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorCode"
+            }
+          },
+          "rate_limit": {
+            "type": "object"
+          },
+          "grant_ceiling": {
+            "$ref": "#/components/schemas/Limits"
+          },
+          "ws": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "x-error-status": {
+    "request.invalid": 400,
+    "order.invalid": 400,
+    "channel.unknown": 400,
+    "order.signature": 401,
+    "grant.signature": 401,
+    "ack.signature": 401,
+    "grant.revoked": 403,
+    "grant.expired": 403,
+    "grant.instrument": 403,
+    "grant.account": 403,
+    "ack.outside_grant": 403,
+    "account.unknown": 404,
+    "grant.unknown": 404,
+    "method.unknown": 404,
+    "ack.unknown": 404,
+    "agents.off": 404,
+    "instrument.off": 404,
+    "idempotency.mismatch": 409,
+    "venue.rejected": 409,
+    "grant.rejected": 409,
+    "rate_limited": 429,
+    "limit.rate": 429,
+    "market.no_mark": 503,
+    "limit.open_orders": 422,
+    "limit.collar": 422,
+    "limit.order_notional": 422,
+    "limit.daily_notional": 422,
+    "grant.limits_too_high": 422
+  },
+  "x-websocket": {
+    "path": "/agent/v1/ws",
+    "protocol": "JSON-RPC 2.0; every REST method by its x-rpc-method name, plus the methods below. Batches of 1..=50 requests.",
+    "methods": [
+      "subscribe",
+      "unsubscribe",
+      "resync"
+    ],
+    "channels": {
+      "book": "perpetual book snapshots (type book)",
+      "trades": "perpetual, spot and option fills (trade, spot_trade, option_fill)",
+      "mark": "oracle marks",
+      "spot.book": "spot book changed (spot_book)",
+      "options.book": "option book or chain changed (option_book, options_series)",
+      "batches": "batch phases (batch, option_batch, spot_batch, option_expiry)",
+      "account": "some account changed (account, risk): re-read account.get",
+      "grants": "grant created or revoked (agent_grant)"
+    },
+    "notification": {
+      "method": "subscription",
+      "params": {
+        "channel": "string",
+        "seq": "integer, +1 per event on that channel",
+        "data": "the venue event"
+      }
+    },
+    "resync": "resync {channel, since?}: the events after `since` if the server still holds all of them (`replay`), else a `snapshot` with the channel's current `seq`. A `gap` notification lists channels to resync after the connection fell behind.",
+    "heartbeat": "every 15 s with server_us and each subscribed channel's seq"
+  }
+}

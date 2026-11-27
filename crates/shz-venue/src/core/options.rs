@@ -66,6 +66,8 @@ pub struct OptBatchRec {
     pub staged_us: u64,
     pub resolved_us: Option<u64>,
     pub acks: Vec<OptionAck>,
+    /// Lanes whose owner slot an agent signed, with the grant (`agents`).
+    pub delegated: BTreeMap<(Key, u32), Key>,
 }
 
 pub struct OptIntentRec {
@@ -313,7 +315,7 @@ impl Venue {
                     let (Some(n), Ok(batch)) = (e["n"].as_u64(), serde_json::from_value::<OptionBatch>(e["batch"].clone())) else { continue };
                     let acks = serde_json::from_value(e["acks"].clone()).unwrap_or_default();
                     recs.insert(n, OptBatchRec { n, batch, phase: e["phase"].as_str().unwrap_or("").into(), staged_us: e["staged_us"].as_u64().unwrap_or(0),
-                                                 resolved_us: e["resolved_us"].as_u64(), acks });
+                                                 resolved_us: e["resolved_us"].as_u64(), acks, delegated: BTreeMap::new() });
                 }
                 _ => rest.push(e.clone()),
             }
@@ -328,7 +330,7 @@ impl Venue {
                 let d = b.digest();
                 if !recs.values().any(|r| r.phase == "committed" && r.batch.digest() == d) {
                     let n = recs.keys().next_back().map_or(0, |k| *k) + 1;
-                    recs.insert(n, OptBatchRec { n, batch: b.clone(), phase: "committed".into(), staged_us: 0, resolved_us: None, acks: vec![] });
+                    recs.insert(n, OptBatchRec { n, batch: b.clone(), phase: "committed".into(), staged_us: 0, resolved_us: None, acks: vec![], delegated: BTreeMap::new() });
                 }
             }
         }
@@ -524,12 +526,21 @@ pub fn intent_v7_from_json(j: &Value, scope: Scope, router: u32) -> Result<Inten
 impl Venue {
 
     pub fn option_submit(&mut self, i: IntentV7) -> Result<Value, String> {
+        self.option_submit_with(i, None)
+    }
+
+    /// `option_submit`, signed by the owner or by the agent of `grant`.
+    pub fn option_submit_with(&mut self, i: IntentV7, grant: Option<Key>) -> Result<Value, String> {
         self.opt()?;
         self.wallet_check(&i.owner)?;
         let id = i.id();
         let now = now_us().max(self.desk_clock());
         let series: Vec<Key> = i.legs.iter().map(|l| l.series).collect();
-        let out = self.router.submit_option(i.clone(), now).map_err(opt_err)?;
+        let out = match grant {
+            Some(g) => self.router.submit_option_agent(i.clone(), now, g),
+            None => self.router.submit_option(i.clone(), now),
+        }
+        .map_err(opt_err)?;
         let cancelled = if let OptionOutcome::Cancelled(t) = &out { Some(*t) } else { None };
         let (status, outcome, batch_n) = match out {
             OptionOutcome::Posted(_) => ("resting", "posted", None),
@@ -624,7 +635,7 @@ impl Venue {
             acks.push(OptionAck { channel: c, signatures: [ZERO_SIG, peer, monitor] });
         }
         let st = self.opt_mut()?;
-        st.batches.push(OptBatchRec { n, batch: b, phase: "staged".into(), staged_us: now, resolved_us: None, acks });
+        st.batches.push(OptBatchRec { n, batch: b, phase: "staged".into(), staged_us: now, resolved_us: None, acks, delegated: BTreeMap::new() });
         st.staged = Some(st.batches.len() - 1);
         let view = self.option_batch_json(self.opt()?.batches.last().unwrap());
         self.emit(json!({"type": "option_batch", "phase": "staged", "batch": view}));
@@ -637,7 +648,7 @@ impl Venue {
     fn record_option_batch(&mut self, b: OptionBatch, phase: &str, now: u64) -> u64 {
         let Some(st) = self.opts.as_mut() else { return 0 };
         let n = st.batches.last().map_or(0, |r| r.n) + 1;
-        st.batches.push(OptBatchRec { n, batch: b, phase: phase.into(), staged_us: now, resolved_us: Some(now), acks: vec![] });
+        st.batches.push(OptBatchRec { n, batch: b, phase: phase.into(), staged_us: now, resolved_us: Some(now), acks: vec![], delegated: BTreeMap::new() });
         let i = st.batches.len() - 1;
         self.after_option_resolution(i, now);
         n
@@ -665,6 +676,20 @@ impl Venue {
         let deadline = now >= rec.staged_us.saturating_add(ABORT_AFTER_US);
         if self.ownerless(&rec.batch) || rec.acks.iter().all(|a| a.signatures[0] != ZERO_SIG) {
             let bundle = OptionAckBundle { sequence: rec.batch.sequence, batch: rec.batch.digest(), disposition: Disposition::Commit, acks: rec.acks.clone() };
+            let delegated: Vec<(BtcOutPoint, Key)> = rec.delegated.iter().map(|(k, g)| (BtcOutPoint { txid: k.0, vout: k.1 }, *g)).collect();
+            if !delegated.is_empty() {
+                match self.router.resolve_option_delegated(bundle, clock, delegated) {
+                    Ok(_) => {
+                        self.finish_option(i, "committed", now);
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        // Grant revoked or expired since the agent signed: the owner signs again.
+                        self.option_undelegate(i, &e.to_string());
+                        return Ok(());
+                    }
+                }
+            }
             match self.router.resolve_option(bundle, clock) {
                 Ok(_) => {
                     self.finish_option(i, "committed", now);
@@ -688,6 +713,25 @@ impl Venue {
         self.router.resolve_option(bundle, clock).map_err(|e| format!("abort option batch: {e}"))?;
         self.finish_option(i, "aborted", now);
         Ok(())
+    }
+
+    /// Clear the agent signatures of staged batch `i` and re-post the owners' pending acks.
+    fn option_undelegate(&mut self, i: usize, why: &str) {
+        let Some(st) = self.opts.as_mut() else { return };
+        let rec = &mut st.batches[i];
+        let keys: Vec<(Key, u32)> = std::mem::take(&mut rec.delegated).into_keys().collect();
+        let (n, digest, kind) = (rec.n, rec.batch.digest(), batch_kind_name(&rec.batch));
+        for a in rec.acks.iter_mut().filter(|a| keys.contains(&(a.channel.txid, a.channel.vout))) {
+            a.signatures[0] = ZERO_SIG;
+        }
+        for k in keys {
+            let c = BtcOutPoint { txid: k.0, vout: k.1 };
+            let (Some(owner), Ok(msg)) = (self.owner_of_channel(&c), self.router.option_ack_message(Disposition::Commit, &c)) else { continue };
+            let id = format!("opt{n}:ack:{}:{}", h(&c.txid), c.vout);
+            self.pending.insert(id.clone(), PendingSig { id, owner, kind: "option_ack".into(), message: msg,
+                context: json!({"option_batch": n, "batch_digest": h(&digest), "channel": outpoint_json(&c), "batch_kind": kind, "agent_refused": why}) });
+        }
+        self.emit(json!({"type": "account"}));
     }
 
     fn finish_option(&mut self, i: usize, phase: &str, now: u64) {
@@ -787,7 +831,7 @@ impl Venue {
         matches!(b.kind, OptionBatchKind::Expiry { .. }) && self.router.ownerless_expiry_active().unwrap_or(false)
     }
 
-    fn persist_intent(&mut self, id: &Key) {
+    pub(crate) fn persist_intent(&mut self, id: &Key) {
         let Some(r) = self.opts.as_ref().and_then(|o| o.intents.get(id)) else { return };
         let e = json!({"kind": "opt_intent", "id": h(id), "intent": serde_json::to_value(&r.intent).unwrap_or(Value::Null), "status": r.status,
                        "reason": r.reason, "batch": r.batch, "accepted_us": r.accepted_us});
