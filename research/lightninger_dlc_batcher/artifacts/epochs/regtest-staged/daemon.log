@@ -1,0 +1,25 @@
+[1795804180.506] shz-batcher regtest venue http://127.0.0.1:8197 last settled seq 0 last maturity 1795804290
+[1795804384.112] account 3cb535cd: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:0 20000 sats, refund at 150
+[1795804384.187] account 47c70a0d: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:2 20000 sats, refund at 150
+[1795804384.259] account 9b87774e: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:3 20000 sats, refund at 150
+[1795804384.329] account 3861b371: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:6 20000 sats, refund at 150
+[1795804384.410] account 65f25fee: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:1 20000 sats, refund at 150
+[1795804384.513] account 070bd95e: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:7 20000 sats, refund at 150
+[1795804384.643] account ec03825f: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:8 20000 sats, refund at 150
+[1795804384.691] account 7ab40261: 2e8826225ffa6b509cc5b9723a1353e06ce18fccbe89190be09ab3e6f6d43b34:9 20000 sats, refund at 150
+[1795804384.855] SHZ-BTCUSD-20261127T183300Z: 1 segment(s) ["1..3"], aborted seqs []
+[1795804388.186] SHZ-BTCUSD-20261127T183300Z segment 0: signature of 3cb535cd
+[1795804388.188] SHZ-BTCUSD-20261127T183300Z segment 0: signature of 47c70a0d
+[1795804388.188] SHZ-BTCUSD-20261127T183300Z segment 0: signature of 9b87774e
+[1795804388.188] SHZ-BTCUSD-20261127T183300Z segment 0: signature of 3861b371
+[1795804388.355] SHZ-BTCUSD-20261127T183300Z segment 0: settlement 0d3dc5e4caadc33a649042bb7bac20014d5f0aa0cd7c122e52155a7508abf82d, 4 signers, 0 rolled, 779 vB, fee 779, change 199213, fronted 8, testmempoolaccept {"allowed":true,"fees":{"base":7.79e-6,"effective-feerate":0.00001,"effective-includes":["440e33f8522519963cf40bd776248dab9cdef3e9cf09b8041198f9235fbb79a7"]},"txid":"0d3dc5e4caadc33a649042bb7bac20014d5f0aa0cd7c122e52155a7508abf82d","vsize":779,"wtxid":"440e33f8522519963cf40bd776248dab9cdef3e9cf09b8041198f9235fbb79a7"}
+[1795804388.644] SHZ-BTCUSD-20261127T183300Z segment 0 (1..3): staged
+[1795804474.663] SHZ-BTCUSD-20261127T183430Z: 2 segment(s) ["1..5", "7..8"], aborted seqs [6]
+[1795804481.531] SHZ-BTCUSD-20261127T183430Z segment 0: signature of 3cb535cd
+[1795804483.789] SHZ-BTCUSD-20261127T183430Z segment 0: signature of 47c70a0d
+[1795804483.791] SHZ-BTCUSD-20261127T183430Z segment 0: signature of 3861b371
+[1795804486.175] SHZ-BTCUSD-20261127T183430Z segment 0: signature of 65f25fee
+[1795804488.564] SHZ-BTCUSD-20261127T183430Z segment 0: signature of 070bd95e
+[1795804500.499] SHZ-BTCUSD-20261127T183430Z segment 0: settlement 55d18be071222a9f4858e54ef4e60edf9bbf44f35b0545cee743fd992f46f82d, 5 signers, 1 rolled, 929 vB, fee 929, change 199035, fronted 36, testmempoolaccept {"allowed":true,"fees":{"base":9.29e-6,"effective-feerate":0.00001,"effective-includes":["90269256d6ed107cb2c21a4a4eecd6de066f42f9d2da988b426452650c9fef21"]},"txid":"55d18be071222a9f4858e54ef4e60edf9bbf44f35b0545cee743fd992f46f82d","vsize":929,"wtxid":"90269256d6ed107cb2c21a4a4eecd6de066f42f9d2da988b426452650c9fef21"}
+[1795804502.036] SHZ-BTCUSD-20261127T183430Z segment 0 (1..5): staged
+[1795804502.087] epochs done; waiting for the prover queue

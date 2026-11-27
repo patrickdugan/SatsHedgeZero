@@ -1,0 +1,237 @@
+{
+ "epochs": [
+  {
+   "aborted_seqs": [],
+   "event": "SHZ-BTCUSD-20261127T175700Z",
+   "maturity_unix": 1795802220,
+   "segments": [
+    {
+     "first_seq": 1,
+     "last_seq": 3,
+     "segment": 0,
+     "status": "settled"
+    }
+   ],
+   "status": "processed"
+  },
+  {
+   "aborted_seqs": [
+    6
+   ],
+   "event": "SHZ-BTCUSD-20261127T175830Z",
+   "maturity_unix": 1795802310,
+   "segments": [
+    {
+     "first_seq": 4,
+     "last_seq": 5,
+     "segment": 0,
+     "status": "settled"
+    },
+    {
+     "first_seq": 7,
+     "last_seq": 8,
+     "segment": 1,
+     "status": "settled"
+    }
+   ],
+   "status": "processed"
+  },
+  {
+   "event": "SHZ-BTCUSD-20261127T180000Z",
+   "maturity_unix": 1795802400,
+   "status": "unattestable",
+   "why": "oracle declared the event unattestable_no_valid_packet"
+  },
+  {
+   "aborted_seqs": [],
+   "event": "SHZ-BTCUSD-20261127T180130Z",
+   "maturity_unix": 1795802490,
+   "segments": [
+    {
+     "first_seq": 9,
+     "last_seq": 9,
+     "segment": 0,
+     "status": "settled"
+    }
+   ],
+   "status": "processed"
+  }
+ ],
+ "segments": [
+  {
+   "segment": "SHZ-BTCUSD-20261127T175700Z/seg0",
+   "status": "broadcast",
+   "txid": "2c2264f56651ef30bdaa41011501742ebf4db9f895506ebd40442f4ffe13e22c",
+   "batches": "1..3",
+   "signers": 4,
+   "rolled": [],
+   "carried": [],
+   "fee": 779,
+   "vsize": 779,
+   "fronted": 8,
+   "payouts": [
+    [
+     "3861b371",
+     "roll",
+     20036,
+     36,
+     0
+    ],
+    [
+     "3cb535cd",
+     "roll",
+     19972,
+     -28,
+     0
+    ],
+    [
+     "47c70a0d",
+     "roll",
+     20000,
+     0,
+     0
+    ],
+    [
+     "9b87774e",
+     "roll",
+     20000,
+     0,
+     0
+    ]
+   ],
+   "statement_sha256": "05c7a3fc86e186dd42240d6a3f89dc2c974fb49abc61118d72d6d0a312a74e4d",
+   "prove_seconds": 975,
+   "cpfp": true
+  },
+  {
+   "segment": "SHZ-BTCUSD-20261127T175830Z/seg0",
+   "status": "broadcast",
+   "txid": "b79dd541696dc59f8b559a907579e906a8a4cef5c59045d551112d1905cb870d",
+   "batches": "4..5",
+   "signers": 3,
+   "rolled": [
+    "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd"
+   ],
+   "carried": [
+    {
+     "channel": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a:0",
+     "net": -36,
+     "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd"
+    }
+   ],
+   "fee": 628,
+   "vsize": 628,
+   "fronted": 28,
+   "payouts": [
+    [
+     "070bd95e",
+     "roll",
+     20000,
+     0,
+     0
+    ],
+    [
+     "47c70a0d",
+     "roll",
+     20028,
+     28,
+     0
+    ],
+    [
+     "65f25fee",
+     "roll",
+     20000,
+     0,
+     0
+    ]
+   ],
+   "statement_sha256": "728c8f9f292836c03402648fb29a5912482b837af698b15c47378bc151aa7eca",
+   "prove_seconds": 232,
+   "cpfp": false
+  },
+  {
+   "segment": "SHZ-BTCUSD-20261127T175830Z/seg1",
+   "status": "broadcast",
+   "txid": "eaf7f147df543f3793508301cd4e5862426b89edbfe2d924bc0e142c682b8ddf",
+   "batches": "7..8",
+   "signers": 3,
+   "rolled": [
+    "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2"
+   ],
+   "carried": [
+    {
+     "channel": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7:0",
+     "net": 80,
+     "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2"
+    }
+   ],
+   "fee": 628,
+   "vsize": 628,
+   "fronted": -116,
+   "payouts": [
+    [
+     "7ab40261",
+     "roll",
+     20000,
+     0,
+     0
+    ],
+    [
+     "9b87774e",
+     "roll",
+     19964,
+     0,
+     -36
+    ],
+    [
+     "ec03825f",
+     "roll",
+     19920,
+     -80,
+     0
+    ]
+   ],
+   "statement_sha256": "df9b4962569c9d6613ecb3793abc23a1007aafdcd149278812db02adc9ca132e",
+   "prove_seconds": 290,
+   "cpfp": false
+  },
+  {
+   "segment": "SHZ-BTCUSD-20261127T180130Z/seg0",
+   "status": "broadcast",
+   "txid": "237f9f2412cfc4015b2c7cbbde6d1f816215f3fb9ec0d4884c92e9d0536b761d",
+   "batches": "9..9",
+   "signers": 3,
+   "rolled": [],
+   "carried": [],
+   "fee": 628,
+   "vsize": 628,
+   "fronted": 80,
+   "payouts": [
+    [
+     "070bd95e",
+     "withdraw",
+     20080,
+     0,
+     80
+    ],
+    [
+     "65f25fee",
+     "roll",
+     19920,
+     -80,
+     0
+    ],
+    [
+     "7ab40261",
+     "roll",
+     20080,
+     80,
+     0
+    ]
+   ],
+   "statement_sha256": "8d71b1d985cec242156fbda1ddc0a1dbf985195baa37a63169e57a9fc4ff26b0",
+   "prove_seconds": 336,
+   "cpfp": false
+  }
+ ]
+}

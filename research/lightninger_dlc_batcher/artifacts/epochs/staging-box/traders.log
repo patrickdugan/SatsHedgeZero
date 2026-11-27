@@ -1,0 +1,19 @@
+1795801852.857869 witness systemd[1]: Started shz-staging-traders.service - [systemd-run] /opt/shz-batcher/bin/shz_batcher traders --venue http://127.0.0.1:8197 --trader-keys /var/lib/shz-batcher/staging-traders.json --refuse 2:2 --withdraw 5:2 --for-secs 960.
+1795802044.265893 witness shz_batcher[1468369]: [1795802044.265] trader 0: signed SHZ-BTCUSD-20261127T1754Z#0 (payout 19972 "roll", net -28): Ok(200)
+1795802044.455038 witness shz_batcher[1468369]: [1795802044.454] trader 1: signed SHZ-BTCUSD-20261127T1754Z#0 (payout 20000 "roll", net 0): Ok(200)
+1795802044.674404 witness shz_batcher[1468369]: [1795802044.673] trader 2: signed SHZ-BTCUSD-20261127T1754Z#0 (payout 20000 "roll", net 0): Ok(200)
+1795802044.888568 witness shz_batcher[1468369]: [1795802044.888] trader 3: signed SHZ-BTCUSD-20261127T1754Z#0 (payout 20036 "roll", net 36): Ok(200)
+1795802165.600051 witness shz_batcher[1468369]: [1795802165.599] trader 1: signed SHZ-BTCUSD-20261127T1756Z#0 (payout 20028 "roll", net 28): Ok(200)
+1795802165.619009 witness shz_batcher[1468369]: [1795802165.618] trader 2: leaving SHZ-BTCUSD-20261127T1756Z#0 unsigned (drill non-signer)
+1795802165.829563 witness shz_batcher[1468369]: [1795802165.828] trader 4: signed SHZ-BTCUSD-20261127T1756Z#0 (payout 20000 "roll", net 0): Ok(200)
+1795802166.010462 witness shz_batcher[1468369]: [1795802166.010] trader 5: signed SHZ-BTCUSD-20261127T1756Z#0 (payout 20000 "roll", net 0): Ok(200)
+1795802196.461929 witness shz_batcher[1468369]: [1795802196.461] trader 2: signed SHZ-BTCUSD-20261127T1756Z#1 (payout 19964 "roll", net 0): Ok(200)
+1795802196.747343 witness shz_batcher[1468369]: [1795802196.746] trader 5: signed SHZ-BTCUSD-20261127T1756Z#1 (payout 20080 "roll", net 80): Ok(200)
+1795802196.908981 witness shz_batcher[1468369]: [1795802196.908] trader 5: asked to withdraw to <T> CHECKSIG: Ok(200)
+1795802197.094247 witness shz_batcher[1468369]: [1795802197.093] trader 6: signed SHZ-BTCUSD-20261127T1756Z#1 (payout 19920 "roll", net -80): Ok(200)
+1795802197.332235 witness shz_batcher[1468369]: [1795802197.332] trader 7: signed SHZ-BTCUSD-20261127T1756Z#1 (payout 20000 "roll", net 0): Ok(200)
+1795802404.826999 witness shz_batcher[1468369]: [1795802404.826] trader 4: signed SHZ-BTCUSD-20261127T1800Z#0 (payout 19920 "roll", net -80): Ok(200)
+1795802405.540930 witness shz_batcher[1468369]: [1795802405.538] trader 5: signed SHZ-BTCUSD-20261127T1800Z#0 (payout 20080 "withdraw", net 0): Ok(200)
+1795802406.534809 witness shz_batcher[1468369]: [1795802406.534] trader 7: signed SHZ-BTCUSD-20261127T1800Z#0 (payout 20080 "roll", net 80): Ok(200)
+1795802814.795782 witness systemd[1]: shz-staging-traders.service: Deactivated successfully.
+1795802814.799868 witness systemd[1]: shz-staging-traders.service: Consumed 53.332s CPU time over 16min 1.938s wall clock time, 11.3M memory peak.

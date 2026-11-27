@@ -93,3 +93,37 @@ key over `tagged_hash("SHZ/BATCHER/POST/V1", body)`.
 What the trader signs: BIP341 tapscript sighash with hash type 0x83 over its own input (outpoint,
 amount, account script, sequence), its own output, `tx.version`, `tx.locktime`, the settle leaf hash,
 key version 0, codesep `0xffffffff`. `shz_batcher vector` prints a worked example.
+
+## testnet4 switch-on
+
+Keys: `D:/shz/tmp/shz-batcher/testnet4-keys.json` (outside the repo): batcher
+`b5392214e769b360949e8f5136305f501ada4b5c4c330c57ccf4c02cb3300fdb`, operator
+`e2ece9f1549f062fac8c2e368a24938ac139ece149ce35920bc5df94d9b97793` (liquidity script
+`5120add1fbcec30263debe5da4839db6008514e77218b499e5ad0bf721b6ae3be19f`,
+`tb1p4hglhnkrqf3aa0ja5jpemdsqs52wwusckjv7ttgt7usmdt3mux0smkfr9p`).
+
+1. Operator liquidity, signed by wallet `lt-dlc-batcher` and accepted by `testmempoolaccept` on the
+   local Core 31.1 node (not broadcast): `f38ec18867b238b7488e4002e48b2d08a030fecbd195266720d0e3949b98d678`,
+   154 vB, output 0 = 300,000 sats to the operator script, output 1 = 199,690 sats wallet change, fee 310
+   (2 sat/vB). It spends `9e657f56…:1` (500,000 sats, unconfirmed incoming).
+   ```
+   bitcoin-cli -datadir=C:\BitcoinTestnet sendrawtransaction $(cat D:/shz/tmp/shz-batcher/testnet4/operator-funding.hex)
+   ```
+2. The venue runs with `--collateral-chain testnet4 --batcher-key b5392214…` (lt-mvp-accounts' flags);
+   traders deposit to `account(T, B, h)` from the venue UI.
+3. State:
+   ```
+   shz_batcher init --network testnet4 --cli C:/Users/patri/bitcoin-core-31.1/bin/bitcoin-cli.exe \
+     --cli-args "-datadir=C:\BitcoinTestnet" --keys D:/shz/tmp/shz-batcher/testnet4-keys.json \
+     --state D:/shz/tmp/shz-batcher/testnet4-state --venue https://shz-venue.170-75-168-145.sslip.io \
+     --operator f38ec18867b238b7488e4002e48b2d08a030fecbd195266720d0e3949b98d678:0 --epoch-secs 900
+   ```
+4. Staged run (every settlement built, signed, `testmempoolaccept`ed, written with its
+   `sendrawtransaction` command to `settlement.json`; batches stay unsettled):
+   ```
+   shz_batcher run <same flags> --epoch-secs 900 --oracle --attest-wait-secs 120 --sign-secs 300 \
+     --refund-delta 432 --fee-rate 2 --bump-rate 5 --bump-after-blocks 3 --prove --table 4 --rows 2
+   ```
+5. Switch-on: the same command with `--broadcast`. Fee per settlement at 2 sat/vB: 2 accounts 477 vB
+   (954 sats), 4 accounts 779 vB (1,558 sats), about 151 vB per further account; the operator change
+   also fronts the pool's net for the epoch (positive when winners outweigh losers).

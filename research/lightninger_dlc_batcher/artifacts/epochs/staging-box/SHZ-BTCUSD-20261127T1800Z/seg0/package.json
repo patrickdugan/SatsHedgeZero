@@ -1,0 +1,116 @@
+{
+  "accounts": [
+    {
+      "carry_in": 0,
+      "channel": {
+        "txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+        "vout": 0
+      },
+      "collateral": 20000,
+      "input": {
+        "amount": 20000,
+        "leaf": "20495f6bef2ffca6fc7d44d2e4ac7f858e8f11bf90324892684b9510de55c594cdad20ebe223c6b8c096f1f7eb719aab4a2c307b04c03808e14155370549e9613bd310ac",
+        "leaf_hash": "dcf1d76b1bb562a835fb57244390d36873ffe2581cef9cc8fb9561cb371c520f",
+        "refund_height": 162,
+        "sequence": 4294967293,
+        "spk": "51204e8794f2dc162814e6c9890b55109a5e18616b383182c99ee031c7783f237e3c",
+        "txid": "740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39",
+        "vout": 0
+      },
+      "net": 80,
+      "output": {
+        "kind": "roll",
+        "refund_height": 169,
+        "spk": "51206186b53c5e51120006242ec9fa4ebb74fe27a7490bc9d811593e0d3ea32da799",
+        "value": 20080,
+        "withdraw_time_us": null
+      },
+      "owner": "495f6bef2ffca6fc7d44d2e4ac7f858e8f11bf90324892684b9510de55c594cd",
+      "rows": [
+        {
+          "net": 80,
+          "seq": 9
+        }
+      ],
+      "sighash": "01f7482783800e1367377548212e945f2dd2b840c32fca3a180c66e764fc2eca",
+      "sighash_type": 131
+    },
+    {
+      "carry_in": 0,
+      "channel": {
+        "txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+        "vout": 0
+      },
+      "collateral": 20080,
+      "input": {
+        "amount": 20080,
+        "leaf": "208d7500bb50c3dc9f87cac8be1322bc9d9bb24f653627bfa0f28eb4db1ffaeba4ad20ebe223c6b8c096f1f7eb719aab4a2c307b04c03808e14155370549e9613bd310ac",
+        "leaf_hash": "e982699870f8c71a43d6236da3743482739851797d06dffcd56900abb2ded380",
+        "refund_height": 162,
+        "sequence": 4294967293,
+        "spk": "51207f8fd99817fb174666d5b7a7a3da3f1a362398994a50d7875067c4e60a73967d",
+        "txid": "740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39",
+        "vout": 1
+      },
+      "net": 0,
+      "output": {
+        "kind": "withdraw",
+        "refund_height": null,
+        "spk": "512021b8ef0d43219fc8435b3adda351c133b71f2d922e1fa78c3725572816bb0a97",
+        "value": 20080,
+        "withdraw_time_us": 1795802196747753
+      },
+      "owner": "8d7500bb50c3dc9f87cac8be1322bc9d9bb24f653627bfa0f28eb4db1ffaeba4",
+      "rows": [],
+      "sighash": "b46a7da7b46d1b5796739d40d24aa56df35d2daba0f87771830c36f9e8f87bd6",
+      "sighash_type": 131
+    },
+    {
+      "carry_in": 0,
+      "channel": {
+        "txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+        "vout": 0
+      },
+      "collateral": 20000,
+      "input": {
+        "amount": 20000,
+        "leaf": "20c581dc67822d13e0ab0b695ee3355a6e8f7dd1c82b2ef65f40b30ff95fa0a894ad20ebe223c6b8c096f1f7eb719aab4a2c307b04c03808e14155370549e9613bd310ac",
+        "leaf_hash": "78d6c74767ecf4c7b2a5fb13c70e66c0b97f3bd58a707a8906169ed96f1f4e0e",
+        "refund_height": 161,
+        "sequence": 4294967293,
+        "spk": "5120d92653f087f8c31fb75c6b8ae9954310537b209a032e6179af0f3297dae2c093",
+        "txid": "a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a",
+        "vout": 2
+      },
+      "net": -80,
+      "output": {
+        "kind": "roll",
+        "refund_height": 169,
+        "spk": "5120befad66a995ac5141c4cb9806f76ad2c26b95d72dced56edca485c102a6033c7",
+        "value": 19920,
+        "withdraw_time_us": null
+      },
+      "owner": "c581dc67822d13e0ab0b695ee3355a6e8f7dd1c82b2ef65f40b30ff95fa0a894",
+      "rows": [
+        {
+          "net": -80,
+          "seq": 9
+        }
+      ],
+      "sighash": "f65b0832f073febd57929f9b15f8db32bd2d48225fa75f58df075e7d061262b3",
+      "sighash_type": 131
+    }
+  ],
+  "batcher": "ebe223c6b8c096f1f7eb719aab4a2c307b04c03808e14155370549e9613bd310",
+  "deadline_us": 1795802433665865,
+  "epoch": "SHZ-BTCUSD-20261127T1800Z",
+  "first_seq": 9,
+  "last_seq": 9,
+  "network": "regtest",
+  "segment": 0,
+  "tx": {
+    "locktime": 0,
+    "version": 2
+  },
+  "version": 1
+}

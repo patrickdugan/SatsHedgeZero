@@ -1,0 +1,32 @@
+{
+  "child_fee": 3761,
+  "child_hex": "020000000001012ce213fe4f2f4440bd6e5095f8b94dbf2e7401150141aabd30ef5166f564222c0500000000fdffffff017cfb0200000000002251206f84521f296eb5f74c4088cd0106fa85223c6666d32715bc0074191c351f34120340a918901f76432b967f27599113e49509534b442eef0faa5e5dda621b76e1cb742762951d327a25bdb7a613836709e566d829da1411b9197a625d96cf778ef35a2220c729d90bbcb406749a34707578dd323452c7b25a56ea0d855d2b8b6b5bb563daac21c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+  "child_txid": "25b82da7138a0f3d117f5bd4ead33ff0f53f5330ca882b987226d3bf7ea8d995",
+  "child_vsize": 129,
+  "parent": "2c2264f56651ef30bdaa41011501742ebf4db9f895506ebd40442f4ffe13e22c",
+  "parent_entry_after": null,
+  "parent_entry_before": {
+    "ancestorcount": 1,
+    "ancestorsize": 779,
+    "bip125-replaceable": true,
+    "chunkweight": 3113,
+    "depends": [],
+    "descendantcount": 1,
+    "descendantsize": 779,
+    "fees": {
+      "ancestor": 7.79e-6,
+      "base": 7.79e-6,
+      "chunk": 7.79e-6,
+      "descendant": 7.79e-6,
+      "modified": 7.79e-6
+    },
+    "height": 116,
+    "spentby": [],
+    "time": 1795802231,
+    "unbroadcast": true,
+    "vsize": 779,
+    "weight": 3113,
+    "wtxid": "5b5fb4559084e3e9918c358d4c8d9afafb5c8d8b168d943c9130e4a9c71a5b56"
+  },
+  "target_rate": 5.0
+}

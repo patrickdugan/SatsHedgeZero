@@ -1,0 +1,236 @@
+{
+  "network": "regtest",
+  "batcher": "ebe223c6b8c096f1f7eb719aab4a2c307b04c03808e14155370549e9613bd310",
+  "operator": {
+    "txid": "4074dce5d7616a19b19744de657e39447e85ad050fe0924fb85f651e54e1567e",
+    "vout": 0,
+    "amount": 183995
+  },
+  "last_settled_seq": 9,
+  "last_maturity_s": 1795802760,
+  "fund_after": 1000002,
+  "carry_after": 0,
+  "accounts": {
+    "39990237d12488731b9bd4fa33bd2be8e254ba4e86538c934eb6a6b2b177de48": {
+      "owner": "39990237d12488731b9bd4fa33bd2be8e254ba4e86538c934eb6a6b2b177de48",
+      "channel_txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+      "channel_vout": 0,
+      "txid": "a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a",
+      "vout": 0,
+      "collateral": 20028,
+      "refund_height": 161,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "495f6bef2ffca6fc7d44d2e4ac7f858e8f11bf90324892684b9510de55c594cd": {
+      "owner": "495f6bef2ffca6fc7d44d2e4ac7f858e8f11bf90324892684b9510de55c594cd",
+      "channel_txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+      "channel_vout": 0,
+      "txid": "419e8e5b21826d3973e7ec3bc3e7ea0c5034f9bc0a29bdedfeeb742052822f6d",
+      "vout": 0,
+      "collateral": 20080,
+      "refund_height": 169,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "589019f9528dd9ee7103aadfb8703d6a8e36acd4bef80d66537d8d301d9e30ea": {
+      "owner": "589019f9528dd9ee7103aadfb8703d6a8e36acd4bef80d66537d8d301d9e30ea",
+      "channel_txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+      "channel_vout": 0,
+      "txid": "ce2c99d71687ef9552bbb0934dd593f8dd620117aca5fb2633820848a0bcee4f",
+      "vout": 1,
+      "collateral": 19972,
+      "refund_height": 157,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "5c9a09bdc85df98441866c8e28a183364564f858a5ea9b20e45f93ab9fe06f19": {
+      "owner": "5c9a09bdc85df98441866c8e28a183364564f858a5ea9b20e45f93ab9fe06f19",
+      "channel_txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+      "channel_vout": 0,
+      "txid": "ce2c99d71687ef9552bbb0934dd593f8dd620117aca5fb2633820848a0bcee4f",
+      "vout": 2,
+      "collateral": 20036,
+      "refund_height": 157,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "8d7500bb50c3dc9f87cac8be1322bc9d9bb24f653627bfa0f28eb4db1ffaeba4": {
+      "owner": "8d7500bb50c3dc9f87cac8be1322bc9d9bb24f653627bfa0f28eb4db1ffaeba4",
+      "channel_txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+      "channel_vout": 0,
+      "txid": "419e8e5b21826d3973e7ec3bc3e7ea0c5034f9bc0a29bdedfeeb742052822f6d",
+      "vout": 1,
+      "collateral": 20080,
+      "refund_height": 162,
+      "carry_in": 0,
+      "status": "withdrawn"
+    },
+    "9814aeac568fbe2936424a9065aa55e25553aee8c15a01a80b49363ff3101a1c": {
+      "owner": "9814aeac568fbe2936424a9065aa55e25553aee8c15a01a80b49363ff3101a1c",
+      "channel_txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+      "channel_vout": 0,
+      "txid": "740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39",
+      "vout": 2,
+      "collateral": 19920,
+      "refund_height": 162,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "c581dc67822d13e0ab0b695ee3355a6e8f7dd1c82b2ef65f40b30ff95fa0a894": {
+      "owner": "c581dc67822d13e0ab0b695ee3355a6e8f7dd1c82b2ef65f40b30ff95fa0a894",
+      "channel_txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+      "channel_vout": 0,
+      "txid": "419e8e5b21826d3973e7ec3bc3e7ea0c5034f9bc0a29bdedfeeb742052822f6d",
+      "vout": 2,
+      "collateral": 19920,
+      "refund_height": 169,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "d224d8e49af6e4b2afdb96873fc3840d575792bd57cae9d31f505ff533197b6a": {
+      "owner": "d224d8e49af6e4b2afdb96873fc3840d575792bd57cae9d31f505ff533197b6a",
+      "channel_txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+      "channel_vout": 0,
+      "txid": "740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39",
+      "vout": 3,
+      "collateral": 19964,
+      "refund_height": 162,
+      "carry_in": 0,
+      "status": "active"
+    }
+  },
+  "pending": [
+    {
+      "event": "SHZ-BTCUSD-20261127T1754Z",
+      "segment": 0,
+      "txid": "ce2c99d71687ef9552bbb0934dd593f8dd620117aca5fb2633820848a0bcee4f",
+      "fee": 779,
+      "vsize": 779,
+      "broadcast_height": 117,
+      "broadcast_us": 1795802045876854,
+      "confirmed_height": 118,
+      "bumped_by": "f287c3a3b98f1e936f74bd6cf5d2d8f7ec520b3149ef82f836e97996051a0058",
+      "receipts": "/opt/shz-batcher/receipts/SHZ-BTCUSD-20261127T1754Z/seg0"
+    },
+    {
+      "event": "SHZ-BTCUSD-20261127T1756Z",
+      "segment": 0,
+      "txid": "a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a",
+      "fee": 628,
+      "vsize": 628,
+      "broadcast_height": 121,
+      "broadcast_us": 1795802194231697,
+      "confirmed_height": 123,
+      "bumped_by": "db233f7589e4d8b33fe76b38d316784db3b57908bb7b3f5d3d5e85742717d283",
+      "receipts": "/opt/shz-batcher/receipts/SHZ-BTCUSD-20261127T1756Z/seg0"
+    },
+    {
+      "event": "SHZ-BTCUSD-20261127T1756Z",
+      "segment": 1,
+      "txid": "740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39",
+      "fee": 779,
+      "vsize": 779,
+      "broadcast_height": 122,
+      "broadcast_us": 1795802198834714,
+      "confirmed_height": 123,
+      "bumped_by": "db233f7589e4d8b33fe76b38d316784db3b57908bb7b3f5d3d5e85742717d283",
+      "receipts": "/opt/shz-batcher/receipts/SHZ-BTCUSD-20261127T1756Z/seg1"
+    },
+    {
+      "event": "SHZ-BTCUSD-20261127T1800Z",
+      "segment": 0,
+      "txid": "419e8e5b21826d3973e7ec3bc3e7ea0c5034f9bc0a29bdedfeeb742052822f6d",
+      "fee": 628,
+      "vsize": 628,
+      "broadcast_height": 129,
+      "broadcast_us": 1795802406670503,
+      "confirmed_height": 130,
+      "bumped_by": "4074dce5d7616a19b19744de657e39447e85ad050fe0924fb85f651e54e1567e",
+      "receipts": "/opt/shz-batcher/receipts/SHZ-BTCUSD-20261127T1800Z/seg0"
+    }
+  ],
+  "collecting": null,
+  "withdrawals_done": [
+    "8d7500bb50c3dc9f87cac8be1322bc9d9bb24f653627bfa0f28eb4db1ffaeba4:1795802196747753"
+  ],
+  "epochs": [
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T1754Z",
+      "maturity_unix": 1795802040,
+      "segments": [
+        {
+          "first_seq": 1,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "settled"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [
+        6
+      ],
+      "event": "SHZ-BTCUSD-20261127T1756Z",
+      "maturity_unix": 1795802160,
+      "segments": [
+        {
+          "first_seq": 4,
+          "last_seq": 5,
+          "segment": 0,
+          "status": "settled"
+        },
+        {
+          "first_seq": 7,
+          "last_seq": 8,
+          "segment": 1,
+          "status": "settled"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "event": "SHZ-BTCUSD-20261127T1758Z",
+      "maturity_unix": 1795802280,
+      "status": "unattestable",
+      "why": "oracle declared the event unattestable_no_valid_packet"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T1800Z",
+      "maturity_unix": 1795802400,
+      "segments": [
+        {
+          "first_seq": 9,
+          "last_seq": 9,
+          "segment": 0,
+          "status": "settled"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T1802Z",
+      "maturity_unix": 1795802520,
+      "segments": [],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T1804Z",
+      "maturity_unix": 1795802640,
+      "segments": [],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T1806Z",
+      "maturity_unix": 1795802760,
+      "segments": [],
+      "status": "processed"
+    }
+  ]
+}

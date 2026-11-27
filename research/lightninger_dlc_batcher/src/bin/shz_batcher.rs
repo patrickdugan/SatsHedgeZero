@@ -113,7 +113,7 @@ struct Cfg {
 fn parse_args(a: &[String]) -> Cfg {
     let mut f = BTreeMap::new();
     let mut i = 0;
-    let bools = ["--broadcast", "--prove", "--oracle"];
+    let bools = ["--broadcast", "--prove", "--oracle", "--stage"];
     while i < a.len() {
         let k = a[i].as_str();
         if bools.contains(&k) {
@@ -150,7 +150,8 @@ fn parse_args(a: &[String]) -> Cfg {
         bump_rate: g("bump-rate", "5").parse().unwrap(),
         bump_after_blocks: g("bump-after-blocks", "3").parse().unwrap(),
         bump_after_secs: g("bump-after-secs", "0").parse().unwrap(),
-        broadcast: regtest || f.contains_key("broadcast"),
+        // regtest broadcasts unless --stage; testnet4 only with --broadcast
+        broadcast: (regtest || f.contains_key("broadcast")) && !f.contains_key("stage"),
         prove: f.contains_key("prove"),
         prover: PathBuf::from(g("prover", &here.join(if cfg!(windows) { "target/release/dlc-batcher.exe" } else { "target/release/dlc-batcher" }).display().to_string())),
         table: g("table", "4").parse().unwrap(),
@@ -1095,6 +1096,12 @@ impl Daemon {
 }
 
 fn write_readme(dir: &Path, cfg: &Cfg, res: &Value) {
+    // the receipt directory as the re-prove commands name it: relative to the crate when inside it
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let norm = |p: &Path| p.display().to_string().replace('\\', "/");
+    let full = norm(dir);
+    let base = norm(crate_dir);
+    let rd = full.strip_prefix(&format!("{base}/")).map(String::from).unwrap_or(full.clone());
     let s = format!(
         "# {epoch} segment {seg}\n\n\
 Settlement `{txid}` ({status}, {network}): batches {first}..{last}, fee {fee} sats at {rate} sat/vB, {vs} vB.\n\n\
@@ -1108,12 +1115,12 @@ Settlement `{txid}` ({status}, {network}): batches {first}..{last}, fee {fee} sa
 Re-prove from a clean checkout (table {a}, {r} rows per batch):\n\n\
 ```\ncd research/lightninger_dlc_batcher\n\
 CARGO_INCREMENTAL=0 cargo build --release --bin dlc-batcher\n\
-LIGHTNINGER_DLC_BATCH_VENUE=artifacts/epochs/{epoch}/seg{seg}/venue_batches.json \\\n\
+LIGHTNINGER_DLC_BATCH_VENUE={rd}/venue_batches.json \\\n\
 LIGHTNINGER_DLC_BATCH_GUEST_DIR=/tmp/guest-{epoch}-{seg} \\\n\
-  target/release/dlc-batcher prove artifacts/epochs/{epoch}/seg{seg} {a} {r}\n```\n\n\
+  target/release/dlc-batcher prove {rd} {a} {r}\n```\n\n\
 The clearing fold alone, through the clearing crate:\n\n\
 ```\ncd research/lightninger_bitvm3_clearing\n\
-cargo run --release -- prove-clearing journal:../lightninger_dlc_batcher/artifacts/epochs/{epoch}/seg{seg}/venue_batches.json {k} {a} {r} {txid}\n```\n",
+cargo run --release -- prove-clearing journal:../lightninger_dlc_batcher/{rd}/venue_batches.json {k} {a} {r} {txid}\n```\n",
         epoch = res["epoch"].as_str().unwrap_or(""),
         seg = res["segment"],
         txid = res["txid"].as_str().unwrap_or(""),
@@ -1127,6 +1134,7 @@ cargo run --release -- prove-clearing journal:../lightninger_dlc_batcher/artifac
         a = cfg.table,
         r = cfg.rows,
         k = res["last_seq"].as_u64().unwrap_or(0) + 1 - res["first_seq"].as_u64().unwrap_or(0),
+        rd = rd,
     );
     std::fs::write(dir.join("README.md"), s).unwrap();
 }
@@ -1273,7 +1281,13 @@ fn cmd_traders(cfg: Cfg) {
                     let mut sig = s.to_bytes().to_vec();
                     sig.push(SIGHASH_SINGLE_ACP);
                     let r = venue.post_plain("/api/settlement/signature", &json!({"epoch": p["epoch"], "segment": p["segment"], "owner": th, "sig": hex::encode(&sig)}));
-                    log(&format!("trader {i}: signed {id} (payout {} {}, net {}): {:?}", e["output"]["value"], e["output"]["kind"], e["net"], r.map(|x| x.0)));
+                    match r {
+                        Ok((200, _)) => log(&format!("trader {i}: signed {id} (payout {} {}, net {})", e["output"]["value"], e["output"]["kind"], e["net"])),
+                        other => {
+                            log(&format!("trader {i}: signature for {id} refused by the venue: {other:?}"));
+                            continue;
+                        }
+                    }
                     let c = { let c = signed.entry(i).or_default(); *c += 1; *c };
                     if withdraw.get(&i) == Some(&c) && asked.insert(i) {
                         let spk = key_output(&t).spk();

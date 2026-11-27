@@ -1,0 +1,60 @@
+{
+  "child_fee": 6273,
+  "child_hex": "02000000000101391ae5352c0b9f62bee4109bb7ce013126a9d42ab104a2fbdbd958e671370e740500000000fdffffff0184dd0200000000002251201cf60fed3a57600f16f249515da3d6ffa3799d654ae78378acfeea7cfc9b0b7103403d03d226f69f02e59cfe4bad56f3769ef2785f8c3b0475bb6c2d5b841102056413cd214eb817675f5617e9d75b00effee34e843eb94c4ecfbc0de718bb95a0bd222073994e9a958507bb77e00e84cb0ee4755f9e6fd4d7b51eadece0fd97e09a1e48ac21c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+  "child_txid": "db233f7589e4d8b33fe76b38d316784db3b57908bb7b3f5d3d5e85742717d283",
+  "child_vsize": 129,
+  "parent": "740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39",
+  "parent_entry_after": {
+    "ancestorcount": 2,
+    "ancestorsize": 1407,
+    "bip125-replaceable": true,
+    "chunkweight": 6136,
+    "depends": [
+      "a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a"
+    ],
+    "descendantcount": 2,
+    "descendantsize": 908,
+    "fees": {
+      "ancestor": 0.00001407,
+      "base": 7.79e-6,
+      "chunk": 0.0000768,
+      "descendant": 0.00007052,
+      "modified": 7.79e-6
+    },
+    "height": 122,
+    "spentby": [
+      "db233f7589e4d8b33fe76b38d316784db3b57908bb7b3f5d3d5e85742717d283"
+    ],
+    "time": 1795802198,
+    "unbroadcast": true,
+    "vsize": 779,
+    "weight": 3113,
+    "wtxid": "641579b1ff33f3d096725f3580230ac53deaaaa4aa7d55b416d553346cbfd2dd"
+  },
+  "parent_entry_before": {
+    "ancestorcount": 2,
+    "ancestorsize": 1407,
+    "bip125-replaceable": true,
+    "chunkweight": 5623,
+    "depends": [
+      "a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a"
+    ],
+    "descendantcount": 1,
+    "descendantsize": 779,
+    "fees": {
+      "ancestor": 0.00001407,
+      "base": 7.79e-6,
+      "chunk": 0.00001407,
+      "descendant": 7.79e-6,
+      "modified": 7.79e-6
+    },
+    "height": 122,
+    "spentby": [],
+    "time": 1795802198,
+    "unbroadcast": true,
+    "vsize": 779,
+    "weight": 3113,
+    "wtxid": "641579b1ff33f3d096725f3580230ac53deaaaa4aa7d55b416d553346cbfd2dd"
+  },
+  "target_rate": 5.0
+}

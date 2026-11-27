@@ -1,0 +1,21 @@
+[0.0s] settlement relation holds; 4 negative cases rejected
+[2.6s] M17 setup 2.6s
+[5.7s] input 0: M17 20 steps folded 3.0s, 2 deferred signatures
+[8.7s] input 1: M17 20 steps folded 2.9s, 2 deferred signatures
+[11.7s] input 2: M17 20 steps folded 2.8s, 2 deferred signatures
+[14.0s] input 3: M17 17 steps folded 2.2s, 1 deferred signatures
+[46.1s] setup 32.1s, primary 893658 / secondary 10538 constraints
+[46.7s] folded step 1/7 at 0.6s
+[47.8s] folded step 2/7 at 1.7s
+[48.8s] folded step 3/7 at 2.7s
+[49.8s] folded step 4/7 at 3.7s
+[51.0s] folded step 5/7 at 4.9s
+[52.2s] folded step 6/7 at 6.1s
+[53.5s] folded step 7/7 at 7.4s
+[159.6s] compressed in 104.5s
+[212.7s] binding verified; 7 negative cases rejected
+[229.5s] setup 16.8s, primary 297967 / secondary 10538 constraints
+[229.9s] folded step 1/1 at 0.4s
+[311.0s] compressed in 80.9s
+[336.7s] wrote D:/shz/SatsHedgeZero/research/lightninger_dlc_batcher/artifacts/epochs/regtest-drill\SHZ-BTCUSD-20261127T180130Z\seg0\guest_input.json
+[336.7s] wrote D:/shz/SatsHedgeZero/research/lightninger_dlc_batcher/artifacts/epochs/regtest-drill\SHZ-BTCUSD-20261127T180130Z\seg0\joint_statement.json

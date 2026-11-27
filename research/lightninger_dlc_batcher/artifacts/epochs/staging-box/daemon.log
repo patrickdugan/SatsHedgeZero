@@ -1,0 +1,56 @@
+1795801852.938013 witness systemd[1]: Started shz-batcher@staging.service - Lightninger settlement daemon (staging).
+1795801853.086098 witness shz_batcher[1468373]: [1795801853.085] shz-batcher regtest venue http://127.0.0.1:8197 last settled seq 0 last maturity 1795801920
+1795802043.418660 witness shz_batcher[1468373]: [1795802043.418] account 589019f9: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:3 20000 sats, refund at 150
+1795802043.428249 witness shz_batcher[1468373]: [1795802043.427] account 39990237: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:4 20000 sats, refund at 150
+1795802043.433833 witness shz_batcher[1468373]: [1795802043.433] account d224d8e4: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:0 20000 sats, refund at 150
+1795802043.438701 witness shz_batcher[1468373]: [1795802043.438] account 5c9a09bd: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:9 20000 sats, refund at 150
+1795802043.443686 witness shz_batcher[1468373]: [1795802043.443] account c581dc67: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:6 20000 sats, refund at 150
+1795802043.447999 witness shz_batcher[1468373]: [1795802043.447] account 8d7500bb: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:7 20000 sats, refund at 150
+1795802043.451895 witness shz_batcher[1468373]: [1795802043.451] account 9814aeac: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:2 20000 sats, refund at 150
+1795802043.455964 witness shz_batcher[1468373]: [1795802043.455] account 495f6bef: 52b26c6e4bc2605d38a54873c11d1eb49e9ec2a5afdc891167203074713dcdb7:5 20000 sats, refund at 150
+1795802043.473966 witness shz_batcher[1468373]: [1795802043.473] SHZ-BTCUSD-20261127T1754Z: 1 segment(s) ["1..3"], aborted seqs []
+1795802045.834639 witness shz_batcher[1468373]: [1795802045.832] SHZ-BTCUSD-20261127T1754Z segment 0: signature of 589019f9
+1795802045.834639 witness shz_batcher[1468373]: [1795802045.833] SHZ-BTCUSD-20261127T1754Z segment 0: signature of 39990237
+1795802045.834639 witness shz_batcher[1468373]: [1795802045.833] SHZ-BTCUSD-20261127T1754Z segment 0: signature of d224d8e4
+1795802045.834639 witness shz_batcher[1468373]: [1795802045.833] SHZ-BTCUSD-20261127T1754Z segment 0: signature of 5c9a09bd
+1795802045.865672 witness shz_batcher[1468373]: [1795802045.864] SHZ-BTCUSD-20261127T1754Z segment 0: settlement ce2c99d71687ef9552bbb0934dd593f8dd620117aca5fb2633820848a0bcee4f, 4 signers, 0 rolled, 779 vB, fee 779, change 199213, fronted 8, testmempoolaccept {"allowed":true,"fees":{"base":7.79e-6,"effective-feerate":0.00001,"effective-includes":["4f2fd1c6c8f309d3888c5fe05ed6b2ded914b6fbc47526ec598135ee8b96ac1d"]},"txid":"ce2c99d71687ef9552bbb0934dd593f8dd620117aca5fb2633820848a0bcee4f","vsize":779,"wtxid":"4f2fd1c6c8f309d3888c5fe05ed6b2ded914b6fbc47526ec598135ee8b96ac1d"}
+1795802046.189333 witness shz_batcher[1468373]: [1795802046.188] SHZ-BTCUSD-20261127T1754Z segment 0 (1..3): settled
+1795802056.257187 witness shz_batcher[1468373]: [1795802056.256] CPFP child f287c3a3b98f1e936f74bd6cf5d2d8f7ec520b3149ef82f836e97996051a0058 at 5 sat/vB
+1795802066.290088 witness shz_batcher[1468373]: [1795802066.289] SHZ-BTCUSD-20261127T1754Z segment 0: ce2c99d71687ef9552bbb0934dd593f8dd620117aca5fb2633820848a0bcee4f confirmed at 118
+1795802163.542952 witness shz_batcher[1468373]: [1795802163.542] SHZ-BTCUSD-20261127T1756Z: 2 segment(s) ["4..5", "7..8"], aborted seqs [6]
+1795802165.830486 witness shz_batcher[1468373]: [1795802165.829] SHZ-BTCUSD-20261127T1756Z segment 0: signature of 39990237
+1795802165.830486 witness shz_batcher[1468373]: [1795802165.830] SHZ-BTCUSD-20261127T1756Z segment 0: signature of c581dc67
+1795802167.845852 witness shz_batcher[1468373]: [1795802167.845] SHZ-BTCUSD-20261127T1756Z segment 0: signature of 8d7500bb
+1795802177.188795 witness systemd[1]: Stopping shz-batcher@staging.service - Lightninger settlement daemon (staging)...
+1795802177.196209 witness systemd[1]: shz-batcher@staging.service: Deactivated successfully.
+1795802177.198293 witness systemd[1]: Stopped shz-batcher@staging.service - Lightninger settlement daemon (staging).
+1795802177.216959 witness systemd[1]: Started shz-batcher@staging.service - Lightninger settlement daemon (staging).
+1795802177.426462 witness shz_batcher[1472613]: [1795802177.426] shz-batcher regtest venue http://127.0.0.1:8197 last settled seq 3 last maturity 1795802040
+1795802177.542657 witness shz_batcher[1472613]: [1795802177.541] SHZ-BTCUSD-20261127T1756Z: 2 segment(s) ["4..5", "7..8"], aborted seqs [6]
+1795802177.677233 witness shz_batcher[1472613]: [1795802177.675] SHZ-BTCUSD-20261127T1756Z segment 0: resuming the posted package (deadline 1795802193592226)
+1795802178.027099 witness shz_batcher[1472613]: [1795802178.026] SHZ-BTCUSD-20261127T1756Z segment 0: signature of 39990237
+1795802178.027099 witness shz_batcher[1472613]: [1795802178.026] SHZ-BTCUSD-20261127T1756Z segment 0: signature of c581dc67
+1795802178.027099 witness shz_batcher[1472613]: [1795802178.027] SHZ-BTCUSD-20261127T1756Z segment 0: signature of 8d7500bb
+1795802194.225659 witness shz_batcher[1472613]: [1795802194.225] SHZ-BTCUSD-20261127T1756Z segment 0: settlement a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a, 3 signers, 1 rolled, 628 vB, fee 628, change 194796, fronted 28, testmempoolaccept {"allowed":true,"fees":{"base":6.28e-6,"effective-feerate":0.00001,"effective-includes":["cd6412c26578059bb99bbf76a0a9f40e09cb416aa1fd9091bddce2fbdb339cf6"]},"txid":"a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a","vsize":628,"wtxid":"cd6412c26578059bb99bbf76a0a9f40e09cb416aa1fd9091bddce2fbdb339cf6"}
+1795802194.398682 witness shz_batcher[1472613]: [1795802194.398] SHZ-BTCUSD-20261127T1756Z segment 0 (4..5): settled
+1795802196.748240 witness shz_batcher[1472613]: [1795802196.747] SHZ-BTCUSD-20261127T1756Z segment 1: signature of d224d8e4
+1795802196.748240 witness shz_batcher[1472613]: [1795802196.748] SHZ-BTCUSD-20261127T1756Z segment 1: signature of 8d7500bb
+1795802198.789272 witness shz_batcher[1472613]: [1795802198.787] SHZ-BTCUSD-20261127T1756Z segment 1: signature of 9814aeac
+1795802198.789272 witness shz_batcher[1472613]: [1795802198.788] SHZ-BTCUSD-20261127T1756Z segment 1: signature of 495f6bef
+1795802198.823669 witness shz_batcher[1472613]: [1795802198.822] SHZ-BTCUSD-20261127T1756Z segment 1: settlement 740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39, 4 signers, 0 rolled, 779 vB, fee 779, change 194053, fronted -36, testmempoolaccept {"allowed":true,"fees":{"base":7.79e-6,"effective-feerate":0.00001,"effective-includes":["641579b1ff33f3d096725f3580230ac53deaaaa4aa7d55b416d553346cbfd2dd"]},"txid":"740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39","vsize":779,"wtxid":"641579b1ff33f3d096725f3580230ac53deaaaa4aa7d55b416d553346cbfd2dd"}
+1795802199.017487 witness shz_batcher[1472613]: [1795802199.016] SHZ-BTCUSD-20261127T1756Z segment 1 (7..8): settled
+1795802209.117801 witness shz_batcher[1472613]: [1795802209.117] CPFP child db233f7589e4d8b33fe76b38d316784db3b57908bb7b3f5d3d5e85742717d283 at 5 sat/vB
+1795802214.128971 witness shz_batcher[1472613]: [1795802214.128] SHZ-BTCUSD-20261127T1756Z segment 0: a100ff684b568d7325bb864ce39f0e4e93c583d6b0221df85e61b17735f0158a confirmed at 123
+1795802214.134591 witness shz_batcher[1472613]: [1795802214.134] SHZ-BTCUSD-20261127T1756Z segment 1: 740e3771e658d9dbfba204b12ad4a9263101ceb79b10e4be629f0b2c35e51a39 confirmed at 123
+1795802283.251185 witness shz_batcher[1472613]: [1795802283.250] SHZ-BTCUSD-20261127T1758Z: not settled, oracle declared the event unattestable_no_valid_packet; its batches roll into the next epoch
+1795802403.573156 witness shz_batcher[1472613]: [1795802403.572] SHZ-BTCUSD-20261127T1800Z: 1 segment(s) ["9..9"], aborted seqs []
+1795802406.540766 witness shz_batcher[1472613]: [1795802406.535] SHZ-BTCUSD-20261127T1800Z segment 0: signature of c581dc67
+1795802406.540766 witness shz_batcher[1472613]: [1795802406.536] SHZ-BTCUSD-20261127T1800Z segment 0: signature of 8d7500bb
+1795802406.540766 witness shz_batcher[1472613]: [1795802406.536] SHZ-BTCUSD-20261127T1800Z segment 0: signature of 495f6bef
+1795802406.633650 witness shz_batcher[1472613]: [1795802406.631] SHZ-BTCUSD-20261127T1800Z segment 0: settlement 419e8e5b21826d3973e7ec3bc3e7ea0c5034f9bc0a29bdedfeeb742052822f6d, 3 signers, 0 rolled, 628 vB, fee 628, change 187152, fronted 0, testmempoolaccept {"allowed":true,"fees":{"base":6.28e-6,"effective-feerate":0.00001,"effective-includes":["715274a2a58e8338f480d1a342dc3fd78baae6e40889bd5d3b52fb48ce82d28f"]},"txid":"419e8e5b21826d3973e7ec3bc3e7ea0c5034f9bc0a29bdedfeeb742052822f6d","vsize":628,"wtxid":"715274a2a58e8338f480d1a342dc3fd78baae6e40889bd5d3b52fb48ce82d28f"}
+1795802407.329659 witness shz_batcher[1472613]: [1795802407.327] SHZ-BTCUSD-20261127T1800Z segment 0 (9..9): settled
+1795802417.440101 witness shz_batcher[1472613]: [1795802417.439] CPFP child 4074dce5d7616a19b19744de657e39447e85ad050fe0924fb85f651e54e1567e at 5 sat/vB
+1795802427.474270 witness shz_batcher[1472613]: [1795802427.473] SHZ-BTCUSD-20261127T1800Z segment 0: 419e8e5b21826d3973e7ec3bc3e7ea0c5034f9bc0a29bdedfeeb742052822f6d confirmed at 130
+1795802523.673170 witness shz_batcher[1472613]: [1795802523.672] SHZ-BTCUSD-20261127T1802Z: 0 segment(s) [], aborted seqs []
+1795802643.919285 witness shz_batcher[1472613]: [1795802643.918] SHZ-BTCUSD-20261127T1804Z: 0 segment(s) [], aborted seqs []
+1795802763.209979 witness shz_batcher[1472613]: [1795802763.209] SHZ-BTCUSD-20261127T1806Z: 0 segment(s) [], aborted seqs []
