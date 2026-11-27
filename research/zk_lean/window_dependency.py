@@ -150,7 +150,7 @@ theorem indexed_context_delete (globalRows : List Row)
     accepts (withRows contextHeader globalRows) x ↔
       accepts (withRows contextHeader (globalRows.eraseIdx targetGlobal)) x := by
   exact checked_indexed_poly_delete (withRows contextHeader globalRows) targetGlobal
-    targetRow refs weights correction hs hi ht hpos (by decide) (by decide) x
+    targetRow refs weights correction hs hi ht hpos (by decide)\n    (by change polyCheck contextHeader.modulus targetRow weights correction = true; decide) x
 
 #print axioms indexed_context_delete
 """
