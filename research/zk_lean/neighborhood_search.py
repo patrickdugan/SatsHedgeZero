@@ -1,4 +1,5 @@
 """ZKL-13: bounded sparse search state; candidate certificates are untrusted."""
+from collections.abc import Mapping
 from itertools import combinations_with_replacement
 
 BN254_FR = 21888242871839275222246405745257275088548364400416034343698204186575808495617
@@ -45,10 +46,40 @@ def mod(poly, p):
     return {k: v % p for k, v in poly.items() if v % p}
 
 
+class LazyColumns(Mapping):
+    """Prepare a column only on first access; membership is allocation-free."""
+
+    def __init__(self, keys, polys, p):
+        self.keys_order = tuple(keys)
+        self.allowed = frozenset(keys)
+        self.polys, self.p = polys, p
+        self.cache = {}
+        self.terms = 0
+
+    def __len__(self):
+        return len(self.keys_order)
+
+    def __iter__(self):
+        return iter(self.keys_order)
+
+    def __contains__(self, key):
+        return key in self.allowed
+
+    def __getitem__(self, key):
+        if key not in self.allowed:
+            raise KeyError(key)
+        if key not in self.cache:
+            i, mon = key
+            value = mod(multiply(self.polys[i], mon), self.p)
+            self.cache[key] = value
+            self.terms += len(value)
+        return self.cache[key]
+
+
 class Problem:
     """Small canonical-shape fixtures only; exact verifier owns acceptance."""
 
-    def __init__(self, original, replacement, target, hashes, degree=2):
+    def __init__(self, original, replacement, target, hashes, degree=2, *, eager=True):
         self.p = int(original["modulus"])
         if self.p not in PRIMES or not 0 <= degree <= 2:
             raise ValueError("unsupported field or degree")
@@ -69,9 +100,19 @@ class Problem:
                      for i in range(len(self.polys))]
         if len(self.keys) > MAX_COLUMNS:
             raise ValueError("candidate pool cap exceeded")
-        self.columns = {key: mod(multiply(self.polys[key[0]], key[1]), self.p) for key in self.keys}
+        self.columns = LazyColumns(self.keys, self.polys, self.p)
         self.target_support = set(mod(self.target_poly, self.p))
-        self.pool_terms = sum(map(len, self.columns.values()))
+        if eager:
+            for key in self.keys:
+                self.columns[key]
+
+    @property
+    def pool_terms(self):
+        return self.columns.terms
+
+    @property
+    def prepared_columns(self):
+        return len(self.columns.cache)
 
 
 class Search:
