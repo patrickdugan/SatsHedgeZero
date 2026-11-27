@@ -21,7 +21,7 @@
 //! `D:/shz/tmp/dlc-batch/regtest-node`) so phase B (`dlc-batcher claim-graph`) runs on the same chain.
 //!
 //! Run: `LIGHTNINGER_BITCOIND=<bitcoind.exe> cargo test --release --test core_batch -- --ignored --nocapture`
-use lightninger_bitvm3_clearing::tapsighash_step::{BoundSlot, Tx};
+use lightninger_bitvm3_clearing::tapsighash_step::Tx;
 use lightninger_dlc_batch_relation as rel;
 use lightninger_dlc_batcher::*;
 use m17_nova_script::sigcheck::flags as mf;
@@ -46,78 +46,7 @@ fn keys() -> Vec<[u8; 32]> {
     v["accounts"].as_array().unwrap().iter().map(|k| hex::decode(k.as_str().unwrap()).unwrap().try_into().unwrap()).collect()
 }
 
-/// `SHZ-BTCUSD-YYYYMMDDTHHMMZ` of the 15-minute oracle maturity at or after `us` (Unix microseconds).
-fn maturity_event(us: u64) -> String {
-    let s = (us / 1_000_000).div_ceil(900) * 900;
-    let (days, rem) = (s / 86_400, s % 86_400);
-    // civil-from-days (Howard Hinnant)
-    let z = days as i64 + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
-    format!("SHZ-BTCUSD-{y:04}{m:02}{d:02}T{:02}{:02}Z", rem / 3600, rem % 3600 / 60)
-}
-
-struct Built {
-    tx: Tx,
-    slots: Vec<BoundSlot>,
-}
-
-/// Amounts and keys of one run (regtest constants, or testnet4 keys from a file outside the repo).
-struct P {
-    collateral: u64,
-    liquidity: u64,
-    batcher_sk: [u8; 32],
-    operator_sk: [u8; 32],
-}
-const REGTEST: P = P { collateral: COLLATERAL, liquidity: LIQUIDITY, batcher_sk: BATCHER_SK, operator_sk: OPERATOR_SK };
-
-/// The settlement with `payouts`, the marker and `change`, signed by every party.
-#[allow(clippy::too_many_arguments)]
-fn settlement(p: &P, accts: &[(TapOutput, String, u32)], liq: &(TapOutput, String, u32), payouts: &[(u64, Vec<u8>)], marker: Vec<u8>, change: u64, change_spk: &[u8], traders: &[[u8; 32]], tamper: Option<(usize, i64)>) -> Built {
-    let mut outs: Vec<_> = payouts.iter().map(|(v, s)| out(*v, s.clone())).collect();
-    outs.push(out(0, marker));
-    outs.push(out(change, change_spk.to_vec()));
-    let mut ins: Vec<_> = accts.iter().map(|(_, t, v)| input(t, *v, 0xffff_fffd)).collect();
-    ins.push(input(&liq.1, liq.2, 0xffff_fffd));
-    let mut tx = Tx { version: 2, inputs: ins, outputs: outs, locktime: 0, witness: vec![] };
-    let mut amounts = vec![p.collateral; accts.len()];
-    amounts.push(p.liquidity);
-    let mut spks: Vec<Vec<u8>> = accts.iter().map(|(o, _, _)| o.spk()).collect();
-    spks.push(liq.0.spk());
-    // traders sign SINGLE|ACP over the honest outputs
-    let trader_sigs: Vec<(Vec<u8>, BoundSlot)> = (0..accts.len()).map(|i| sign_leaf(&tx, &amounts, &spks, i, &accts[i].0, 0, &traders[i], SIGHASH_SINGLE_ACP)).collect();
-    if let Some((i, d)) = tamper {
-        tx.outputs[i].value = (tx.outputs[i].value as i64 + d) as u64;
-        let n = tx.outputs.len() - 1;
-        tx.outputs[n].value = (tx.outputs[n].value as i64 - d) as u64;
-    }
-    let mut slots = Vec::new();
-    let mut wit = Vec::new();
-    for i in 0..accts.len() {
-        let (sb, bs) = sign_leaf(&tx, &amounts, &spks, i, &accts[i].0, 0, &p.batcher_sk, 0);
-        // `<T> CHECKSIGVERIFY <B> CHECKSIG` consumes the trader's signature first (top of stack)
-        wit.push(vec![sb, trader_sigs[i].0.clone(), accts[i].0.leaves[0].clone(), accts[i].0.control(0)]);
-        slots.push(trader_sigs[i].1.clone());
-        slots.push(bs);
-    }
-    let (so, bo) = sign_leaf(&tx, &amounts, &spks, accts.len(), &liq.0, 0, &p.operator_sk, 0);
-    wit.push(vec![so, liq.0.leaves[0].clone(), liq.0.control(0)]);
-    slots.push(bo);
-    tx.witness = wit;
-    Built { tx, slots }
-}
-
-fn vsize(tx: &Tx) -> u64 {
-    let full = serialize_signed(tx).len() as u64;
-    let base = tx.stripped().len() as u64;
-    (base * 3 + full).div_ceil(4)
-}
+const REGTEST: SettleKeys = SettleKeys { collateral: COLLATERAL, liquidity: LIQUIDITY, batcher_sk: BATCHER_SK, operator_sk: OPERATOR_SK };
 
 #[test]
 #[ignore = "needs LIGHTNINGER_BITCOIND (Bitcoin Core 31.1 bitcoind) and the venue keys file"]
@@ -285,7 +214,7 @@ fn testnet4_package_signed_not_broadcast() {
     let traders = keys();
     let owners: Vec<[u8; 32]> = traders.iter().map(xonly).collect();
     let derive = |label: &[u8]| rel::tagged_hash(label, &traders.concat());
-    let p = P { collateral: 1_000, liquidity: 2_000, batcher_sk: derive(b"LIGHTNINGER/DLC-BATCH/TESTNET4/BATCHER"), operator_sk: derive(b"LIGHTNINGER/DLC-BATCH/TESTNET4/OPERATOR") };
+    let p = SettleKeys { collateral: 1_000, liquidity: 2_000, batcher_sk: derive(b"LIGHTNINGER/DLC-BATCH/TESTNET4/BATCHER"), operator_sk: derive(b"LIGHTNINGER/DLC-BATCH/TESTNET4/OPERATOR") };
     let cli = PathBuf::from(std::env::var("LIGHTNINGER_TESTNET4_CLI").unwrap_or_else(|_| "C:/Users/patri/bitcoin-core-31.1/bin/bitcoin-cli.exe".into()));
     let args: Vec<String> = std::env::var("LIGHTNINGER_TESTNET4_ARGS").expect("LIGHTNINGER_TESTNET4_ARGS").split_whitespace().map(String::from).collect();
     let node = Node::existing(cli, args);

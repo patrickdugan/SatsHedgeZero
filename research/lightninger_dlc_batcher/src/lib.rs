@@ -315,3 +315,81 @@ pub fn address(node: &Node, output_key: &[u8; 32]) -> String {
     let d = node.json(&["getdescriptorinfo", &format!("rawtr({})", hex::encode(output_key))]);
     node.json(&["deriveaddresses", d["descriptor"].as_str().unwrap()])[0].as_str().unwrap().to_string()
 }
+
+/// `SHZ-BTCUSD-YYYYMMDDTHHMMZ` of the 15-minute oracle maturity at or after `us` (Unix microseconds).
+pub fn maturity_event(us: u64) -> String {
+    let s = (us / 1_000_000).div_ceil(900) * 900;
+    let (days, rem) = (s / 86_400, s % 86_400);
+    // civil-from-days (Howard Hinnant)
+    let z = days as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
+    format!("SHZ-BTCUSD-{y:04}{m:02}{d:02}T{:02}{:02}Z", rem / 3600, rem % 3600 / 60)
+}
+
+/// A signed settlement and its signature slots (input order, trader before batcher).
+pub struct Built {
+    pub tx: Tx,
+    pub slots: Vec<BoundSlot>,
+}
+
+/// Amounts and keys of one run (regtest constants, or testnet4 keys from a file outside the repo).
+pub struct SettleKeys {
+    pub collateral: u64,
+    pub liquidity: u64,
+    pub batcher_sk: [u8; 32],
+    pub operator_sk: [u8; 32],
+}
+
+/// Variant A settlement (script-leaf accounts): inputs `accts` (account output, display txid, vout)
+/// then the operator's liquidity `liq`; outputs `payouts`, the marker, `change`. Traders sign their
+/// input with SIGHASH_SINGLE|ANYONECANPAY, the batcher every account input with SIGHASH_DEFAULT, the
+/// operator its input. `tamper` moves `d` sats from output `i` to the change after the traders signed
+/// (the result must be refused).
+#[allow(clippy::too_many_arguments)]
+pub fn settlement(p: &SettleKeys, accts: &[(TapOutput, String, u32)], liq: &(TapOutput, String, u32), payouts: &[(u64, Vec<u8>)], marker: Vec<u8>, change: u64, change_spk: &[u8], traders: &[[u8; 32]], tamper: Option<(usize, i64)>) -> Built {
+    let mut outs: Vec<_> = payouts.iter().map(|(v, s)| out(*v, s.clone())).collect();
+    outs.push(out(0, marker));
+    outs.push(out(change, change_spk.to_vec()));
+    let mut ins: Vec<_> = accts.iter().map(|(_, t, v)| input(t, *v, 0xffff_fffd)).collect();
+    ins.push(input(&liq.1, liq.2, 0xffff_fffd));
+    let mut tx = Tx { version: 2, inputs: ins, outputs: outs, locktime: 0, witness: vec![] };
+    let mut amounts = vec![p.collateral; accts.len()];
+    amounts.push(p.liquidity);
+    let mut spks: Vec<Vec<u8>> = accts.iter().map(|(o, _, _)| o.spk()).collect();
+    spks.push(liq.0.spk());
+    // traders sign SINGLE|ACP over the honest outputs
+    let trader_sigs: Vec<(Vec<u8>, BoundSlot)> = (0..accts.len()).map(|i| sign_leaf(&tx, &amounts, &spks, i, &accts[i].0, 0, &traders[i], SIGHASH_SINGLE_ACP)).collect();
+    if let Some((i, d)) = tamper {
+        tx.outputs[i].value = (tx.outputs[i].value as i64 + d) as u64;
+        let n = tx.outputs.len() - 1;
+        tx.outputs[n].value = (tx.outputs[n].value as i64 - d) as u64;
+    }
+    let mut slots = Vec::new();
+    let mut wit = Vec::new();
+    for i in 0..accts.len() {
+        let (sb, bs) = sign_leaf(&tx, &amounts, &spks, i, &accts[i].0, 0, &p.batcher_sk, 0);
+        // `<T> CHECKSIGVERIFY <B> CHECKSIG` consumes the trader's signature first (top of stack)
+        wit.push(vec![sb, trader_sigs[i].0.clone(), accts[i].0.leaves[0].clone(), accts[i].0.control(0)]);
+        slots.push(trader_sigs[i].1.clone());
+        slots.push(bs);
+    }
+    let (so, bo) = sign_leaf(&tx, &amounts, &spks, accts.len(), &liq.0, 0, &p.operator_sk, 0);
+    wit.push(vec![so, liq.0.leaves[0].clone(), liq.0.control(0)]);
+    slots.push(bo);
+    tx.witness = wit;
+    Built { tx, slots }
+}
+
+pub fn vsize(tx: &Tx) -> u64 {
+    let full = serialize_signed(tx).len() as u64;
+    let base = tx.stripped().len() as u64;
+    (base * 3 + full).div_ceil(4)
+}
+
