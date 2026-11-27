@@ -856,6 +856,35 @@ mod tests {
         }
     }
 
+    /// Events fetched read-only from the public relay (GET /v1/dlc/event/{id}, 2026-11-27):
+    /// the announcement check and the attestation parse must accept the relay's real format.
+    #[test]
+    fn live_relay_events_verify() {
+        let group = parse_key("403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8").unwrap();
+        let announced: Value = serde_json::from_str(include_str!("fixtures/live_dlc_announced_20261127T0200Z.json")).unwrap();
+        let attested: Value = serde_json::from_str(include_str!("fixtures/live_dlc_attested_20261127T0100Z.json")).unwrap();
+        let a = verify_announcement(&announced, &group).unwrap();
+        assert_eq!(a.event_id, "SHZ-BTCUSD-20261127T0200Z");
+        assert_eq!(a.num_bits(), NUM_BITS);
+        let b = verify_announcement(&attested, &group).unwrap();
+        let att: OracleAttestation = serde_json::from_value(attested["shz_dlc_attestation"].clone()).unwrap();
+        att.verify_against(&b).unwrap();
+        assert_eq!(att.price_usd, attested["attestation"]["price_usd"].as_u64().unwrap());
+        assert_eq!(att.price_usd, 60_614);
+        // an attestation of one event does not verify against another event's announcement
+        assert!(att.verify_against(&a).is_err());
+        // any edit of the signed core, or another oracle key, is refused
+        let mut bad = announced.clone();
+        bad["core"]["maturity_unix"] = json!(a.maturity_unix + 900);
+        assert!(verify_announcement(&bad, &group).is_err());
+        let mut bad = announced.clone();
+        bad["shz_dlc_announcement"]["digit_nonces_x"][0][0] = json!(0);
+        assert!(verify_announcement(&bad, &group).is_err());
+        assert!(verify_announcement(&announced, &[7; 32]).is_err());
+        // the testnet mark is near 60,600: strikes 59,500 .. 61,500 in steps of 500
+        assert_eq!(strike_grid(60_614, PriceDomain::from_bits(NUM_BITS)), vec![59_500, 60_000, 60_500, 61_000, 61_500]);
+    }
+
     #[test]
     fn strike_grid_centres_on_the_mark() {
         let d = PriceDomain::from_bits(NUM_BITS);
