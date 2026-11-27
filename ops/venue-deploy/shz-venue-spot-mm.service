@@ -1,0 +1,22 @@
+[Unit]
+Description=Lightninger BTC/USDT spot market maker (demo credit account, key generated on this host; demo USDT is a simulated ledger credit)
+After=shz-venue.service
+Requires=shz-venue.service
+
+[Service]
+User=shzvsmm
+Group=shzvsmm
+ExecStart=/usr/bin/python3 /opt/shz-venue/ops/venue-mm/spot_mm.py run --server http://127.0.0.1:8096 --state-dir /var/lib/shz-venue-spot-mm
+StateDirectory=shz-venue-spot-mm
+StateDirectoryMode=0700
+Restart=always
+RestartSec=5
+MemoryMax=80M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+
+[Install]
+WantedBy=multi-user.target
