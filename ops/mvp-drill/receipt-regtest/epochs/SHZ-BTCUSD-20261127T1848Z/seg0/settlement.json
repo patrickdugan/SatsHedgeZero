@@ -1,0 +1,55 @@
+{
+  "batch_count": 2,
+  "carried": [
+    {
+      "channel": "9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17:0",
+      "net": -1687,
+      "owner": "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+    }
+  ],
+  "epoch": "SHZ-BTCUSD-20261127T1848Z",
+  "excluded": [],
+  "fee": 326,
+  "fee_rate": 1.0,
+  "first_seq": 3,
+  "fronted": 1687,
+  "height": null,
+  "hex": "020000000001024121759b7f40f2180388cb4daecb056827f89cd22162e605d27b157d360e098f0000000000fdffffff4121759b7f40f2180388cb4daecb056827f89cd22162e605d27b157d360e098f0300000000fdffffff035f1a030000000000225120451ab204e5b90db293716bfc4e65b537dbd7776e89bf68cd3c041364d15ff3fe0000000000000000266a2453485a424cfdf83a0ef1891f6aefd6775445ec50a5b2a259adff59dc17de62f09072927a86380f0000000000225120777adecb8d25c837b8cf08dc4cc5a8ee183d66bf93675df5065c06145f48111e04403b6a53235ca018f9ca399afd7a3f2e66be056770929947565cdb6a70f79f2e5761f93c405b945545aababb2ee23dccf98c001febd482909e3df89e644ec0c5ae41c4002a954187f79ecb0b3a7984fd0164d6edf00b70133c08053b3785ee952f560b2781bf57271877385e508e540fcdf9ac2d1e43f0d2cb6f4108e3ff346a22408344200658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254cad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac00610f85eb06c4ec295682e7ec7b03434e94a5d2979af5076c0d9c5a8b881845c034046cc1c88514ea58781daf167d97ca55a503e4af479511ea4e35c9dfb0ed2feffdc5475c35d689896ad2fc4740242f9e5f89697cf95445aa1c23f45899e775d45222075f5255112b34a6d434fbb3d1d1313307da4019daf07db330fae38aa7dfeadd7ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+  "last_seq": 4,
+  "manifest_hash": "4cfdf83a0ef1891f6aefd6775445ec50a5b2a259adff59dc17de62f09072927a",
+  "network": "regtest",
+  "operator_change": 997510,
+  "payouts": [
+    {
+      "carry_in": 0,
+      "kind": "roll",
+      "net": 1687,
+      "owner": "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+      "value": 203359
+    }
+  ],
+  "prove_seconds": 186,
+  "receipts": "D:/shz/SatsHedgeZero/ops/mvp-drill/receipt-regtest/epochs/SHZ-BTCUSD-20261127T1848Z/seg0",
+  "rolled": [
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+  ],
+  "segment": 0,
+  "statement_sha256": "eb4744a81a5fd23c254422e6b4f02826b1e962da69343e4e06876e717c1c522e",
+  "status": "broadcast",
+  "testmempoolaccept": {
+    "allowed": true,
+    "fees": {
+      "base": 3.26e-6,
+      "effective-feerate": 0.00001,
+      "effective-includes": [
+        "2503721b1203ce49efeb8c64562340cabf16b8e548fe6a96c0c139d5d5d4b672"
+      ]
+    },
+    "txid": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930",
+    "vsize": 326,
+    "wtxid": "2503721b1203ce49efeb8c64562340cabf16b8e548fe6a96c0c139d5d5d4b672"
+  },
+  "tip": 141,
+  "txid": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930",
+  "vsize": 326
+}

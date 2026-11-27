@@ -1,11 +1,15 @@
-// Lightninger MVP drill, trader side: two browser-less clients deposit real (regtest or testnet4)
-// coins to their collateral addresses, activate after confirmations, trade a round trip against each
-// other on the venue, review and sign every settlement package with ui/venue/settle.js (the same code
-// the browser runs), wait for the venue to roll their accounts on chain, then trader 0 withdraws in
-// full. Writes a receipt with every txid, value and height.
+// Lightninger MVP drill, trader side: three browser-less clients deposit real (regtest or testnet4)
+// coins to their collateral addresses, activate after confirmations, and trade over three epochs,
+// reviewing and signing every settlement entry with ui/venue/settle.js (the browser's code):
+//   A  trader 0 vs 1, both sign;  B  trader 1 vs 2, trader 2 leaves its package unsigned (its net
+//   carries);  C  trader 0 vs 2, then trader 0 withdraws everything; trader 2's carried and new net
+//   settle together.
+// Checks each account's on-chain value against its realized PnL and writes a receipt with every
+// txid, value and height (and, with --await-proofs 1, each segment's statement SHA-256).
 //
 //   node ops/mvp-drill/client.mjs --venue http://127.0.0.1:8098 --cli <bitcoin-cli> --cli-args "<args>"
 //        --keys <keys.json> --out <receipt.json> [--deposit-btc 0.002] [--qty 200] [--spread 300]
+//        [--refuse 2:1] [--epoch-secs 60] [--await-proofs 1 --proof-wait-s 3600]
 //   node ops/mvp-drill/client.mjs opaddr <operator x-only>   (address of the <O> CHECKSIG liquidity leaf)
 //
 // --keys holds the two trader secret keys (created on first run, kept outside the repo).
@@ -59,8 +63,6 @@ while (keyList.length < 3) keyList.push(hex(randomKey()));
 writeFileSync(KEYS, JSON.stringify({ traders: keyList }));
 const T = keyList.map((k, i) => { const sk = unhex(k, 32); return { i, sk, owner: hex(pubkey(sk)), signed: new Set(), seq: 0, reviews: [] }; });
 const receipt = { venue: VENUE, started: new Date().toISOString(), traders: T.map((t) => ({ index: t.i, owner: t.owner })), steps: [] };
-// Trader 2 trades with trader 1 after trader 0's withdrawal request, so the venue keeps producing
-// batches (the daemon settles inside segments of new batches) while trader 0's account pays out.
 const step = (name, data) => { receipt.steps.push({ name, at: new Date().toISOString(), ...data }); log(name, JSON.stringify(data)); writeFileSync(OUT, JSON.stringify(receipt, null, 1)); };
 
 const status = await api('/api/status');
@@ -94,7 +96,9 @@ for (const t of T) {
   if (a.label === 'TESTNET DEMO CREDIT') throw new Error('demo credit on a collateral venue');
 }
 
-// 3. Settlement signer: runs for the rest of the drill.
+// 3. Settlement signer: runs for the rest of the drill. `--refuse i:n` leaves trader i's n-th package
+// unsigned (the daemon drops it; its net carries to the next settlement).
+const refuse = new Map((arg('refuse', '2:1') || '').split(',').filter(Boolean).map((x) => x.split(':').map(Number)));
 let stopSigner = false;
 const signer = (async () => {
   while (!stopSigner) {
@@ -104,6 +108,8 @@ const signer = (async () => {
       const id = `${p.epoch}#${p.segment}`;
       if (p.account.signed || t.signed.has(id)) continue;
       t.signed.add(id);
+      t.packages = (t.packages || 0) + 1;
+      if (refuse.get(t.i) === t.packages) { step('left-unsigned', { trader: t.i, epoch: p.epoch, segment: p.segment, net: (p.account.carry_in || 0) + (p.account.net || 0) }); continue; }
       const acct = (await api('/api/collateral/' + t.owner)).account;
       try {
         const { review, body } = await signEntry(p, t.owner, t.sk, { account: acct, batcherKey: status.collateral.batcher_key, withdrawAddress: t.withdrawAddress });
@@ -119,7 +125,6 @@ const signer = (async () => {
   }
 })();
 
-// 4. Trade a round trip: trader 0 posts, trader 1 takes; then trader 1 posts the close `SPREAD` higher.
 function intent(t, f) {
   t.seq = Math.max(t.seq + 1, Date.now() * 1000);
   return { owner: t.owner, channel: t.channel, sequence: t.seq, expires_us: (Date.now() + 60e3) * 1000, tier: 'standard', quantity: QTY, leverage_bps: LEV,
@@ -155,40 +160,69 @@ async function pair(name, maker, side, taker, limit) {
     if (ph === 'aborted') throw new Error(`${name}: batch ${f.batch_seq} aborted`);
   }
 }
-const mark = await until('oracle mark', async () => (await api('/api/status')).mark?.price_usd, 120e3);
-const p0 = Math.round(mark);
-const open = await pair('open', T[0], 'short', T[1], p0);
-const close = await pair('close', T[1], 'short', T[0], p0 + SPREAD);
-const nets = [];
-for (const t of T) { const a = await api('/api/account/' + t.owner); nets.push({ trader: t.i, realized_pnl: a.balance.realized_pnl, net_usd: a.position.net_usd }); }
-step('traded', { open_batch: open, close_batch: close, open_price: p0, close_price: p0 + SPREAD, accounts: nets });
-
-// 5. Wait until the venue applied a settlement covering the close batch for both accounts (rolled on chain).
-for (const t of T.slice(0, 2)) {
-  const a = await until(`trader ${t.i} settled through ${close}`, async () => { const v = await api('/api/collateral/' + t.owner); return v.account.settled_through >= close && v.account; }, 900e3, 2000);
-  step('rolled', { trader: t.i, outpoint: `${a.outpoint.txid}:${a.outpoint.vout}`, value: a.value, refund_height: a.refund_height, settled_through: a.settled_through });
-  if (MINE) { const o = JSON.parse(cli('gettxout', a.outpoint.txid, String(a.outpoint.vout), 'false')); step('chain', { trader: t.i, outpoint_value_btc: o.value, confirmations: o.confirmations, spk: o.scriptPubKey.hex }); }
+const pnl = async (t) => (await api('/api/account/' + t.owner)).balance.realized_pnl;
+const coll = async (t) => (await api('/api/collateral/' + t.owner)).account;
+// One epoch's trading: `a` opens `side` against `b` at the mark and closes `SPREAD` against itself.
+// Trades start early in an epoch so a round and the withdrawal after it land before one maturity.
+const EPOCH = Number(arg('epoch-secs', '60'));
+async function roundTrip(name, a, b, side) {
+  await until('early in an epoch', async () => { const s = (Date.now() / 1000) % EPOCH; return s > 5 && s < EPOCH / 2; }, EPOCH * 2000, 500);
+  await until('oracle mark', async () => (await api('/api/status')).mark?.price_usd, 120e3);
+  const p = Math.round((await api('/api/status')).mark.price_usd);
+  await pair(name + '-open', a, side, b, p);
+  const close = await pair(name + '-close', b, side, a, side === 'short' ? p + SPREAD : p - SPREAD);
+  step('traded', { round: name, close_batch: close, realized: { [a.i]: await pnl(a), [b.i]: await pnl(b) } });
+  return close;
+}
+async function settledThrough(t, seq, what) {
+  const a = await until(`${what}: trader ${t.i} settled through ${seq}`, async () => { const x = await coll(t); return x.settled_through >= seq && x; }, 900e3, 2000);
+  const o = MINE && !a.closed ? JSON.parse(cli('gettxout', a.outpoint.txid, String(a.outpoint.vout), 'false')) : null;
+  step('settled', { round: what, trader: t.i, outpoint: `${a.outpoint.txid}:${a.outpoint.vout}`, value: a.value, refund_height: a.refund_height, settled_through: a.settled_through,
+    chain: o && { btc: o.value, confirmations: o.confirmations }, closed: a.closed });
+  return a;
 }
 
-// 6. Trader 0 withdraws everything to a fresh wallet address.
+// 4. Epoch A: trader 0 vs trader 1; both sign.
+const closeA = await roundTrip('A', T[0], T[1], 'short');
+for (const t of [T[0], T[1]]) await settledThrough(t, closeA, 'A');
+
+// 5. Epoch B: trader 1 vs trader 2; trader 2 leaves its package unsigned, its net carries.
+const closeB = await roundTrip('B', T[2], T[1], 'long');
+await settledThrough(T[1], closeB, 'B');
+await until('epoch B result', async () => (await api('/api/explorer/settlements')).some((r) => (r.rolled || []).includes(T[2].owner)), 300e3, 2000);
+const t2 = await coll(T[2]);
+const carried = (await api('/api/settlement/epoch')).accounts.find((x) => x.owner === T[2].owner);
+step('carried', { trader: 2, settled_through: t2.settled_through, value: t2.value, venue_net_unsettled: carried.net, realized: await pnl(T[2]) });
+
+// 6. Epoch C: trader 2 vs trader 0; trader 0 then asks to withdraw everything before the maturity.
+const closeC = await roundTrip('C', T[0], T[2], 'long');
 const w = T[0];
 w.withdrawAddress = MINE ? cli('getnewaddress', '', 'bech32m') : arg('withdraw-address');
-const body = await signWithdrawal({ owner: w.owner, address: w.withdrawAddress, network: net }, w.sk);
-const wr = await api('/api/settlement/withdraw', body);
+const wr = await api('/api/settlement/withdraw', await signWithdrawal({ owner: w.owner, address: w.withdrawAddress, network: net }, w.sk));
 step('withdraw-requested', { trader: w.i, address: w.withdrawAddress, router_debit_sats: wr.router_debit_sats });
-try { await send(w, { action: 'post', side: 'long', limit_usd: p0 }); step('gate', { trader: w.i, error: 'order accepted after withdrawal request' }); }
+try { await send(w, { action: 'post', side: 'long', limit_usd: Math.round((await api('/api/status')).mark.price_usd) }); step('gate', { trader: w.i, error: 'order accepted after withdrawal request' }); }
 catch (e) { step('gate', { trader: w.i, refused: e.message.slice(0, 160) }); }
-const p1 = Math.round((await api('/api/status')).mark.price_usd);
-await pair('open-2', T[2], 'long', T[1], p1);
-await pair('close-2', T[1], 'long', T[2], p1 - SPREAD);
-const closed = await until('withdrawal paid', async () => { const v = await api('/api/collateral/' + w.owner); return v.account.closed && v.account; }, 900e3, 2000);
+const a2 = await settledThrough(T[2], closeC, 'C');
+const want2 = 200000 + await pnl(T[2]);
+step('check', { what: 'trader 2 collateral = deposit + realized over epochs B (carried) and C', value: a2.value, want: want2, ok: a2.value === want2 });
+const closed = await until('withdrawal paid', async () => { const v = await coll(w); return v.closed && v; }, 900e3, 2000);
 step('withdrawn', { trader: w.i, txid: closed.withdrawal.txid, closed: closed.closed });
 if (MINE) {
   const scan = JSON.parse(cli('scantxoutset', 'start', JSON.stringify([`addr(${w.withdrawAddress})`])));
-  step('chain-withdrawal', { address: w.withdrawAddress, unspents: scan.unspents.map((u) => ({ txid: u.txid, vout: u.vout, btc: u.amount, height: u.height })) });
+  const got = Math.round((scan.unspents[0]?.amount || 0) * 1e8), want0 = 200000 + await pnl(w);
+  step('chain-withdrawal', { address: w.withdrawAddress, unspents: scan.unspents.map((u) => ({ txid: u.txid, vout: u.vout, btc: u.amount, height: u.height })), sats: got, want: want0, ok: got === want0 });
 }
 stopSigner = true; await signer;
+
+// 7. Proofs: the daemon posts each segment's statement SHA-256 as a second result.
+if (arg('await-proofs', '0') === '1') {
+  await until('statements of every settled segment', async () => {
+    const r = await api('/api/explorer/settlements');
+    return r.filter((x) => x.status === 'broadcast').every((x) => x.statement_sha256);
+  }, Number(arg('proof-wait-s', '3600')) * 1000, 15000).catch((e) => step('proofs', { error: e.message }));
+}
 receipt.settlements = await api('/api/explorer/settlements');
+step('statements', { segments: receipt.settlements.map((x) => ({ epoch: x.epoch, segment: x.segment, txid: x.txid, status: x.status, statement_sha256: x.statement_sha256 || null, rolled: x.rolled })) });
 receipt.finished = new Date().toISOString();
 writeFileSync(OUT, JSON.stringify(receipt, null, 1));
 log('drill complete; receipt', OUT);

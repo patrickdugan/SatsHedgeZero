@@ -635,6 +635,16 @@ impl CollState {
                 }
                 self.results.push(r.clone());
             }
+            "coll_result_update" => {
+                let (ep, seg) = (e["epoch"].as_str().unwrap_or(""), e["segment"].as_u64().unwrap_or(0));
+                if let (Some(x), Some(f)) = (self.results.iter_mut().find(|x| x["epoch"] == ep && x["segment"] == seg), e["fields"].as_object())
+                    && let Some(o) = x.as_object_mut()
+                {
+                    for (key, v) in f {
+                        o.insert(key.clone(), v.clone());
+                    }
+                }
+            }
             "coll_settled" => {
                 let o = owner()?;
                 let txid = parse_key(e["txid"].as_str().unwrap_or(""))?;
@@ -1045,6 +1055,16 @@ impl Venue {
         let c = self.coll()?;
         let k = (r["epoch"].as_str().ok_or("epoch required")?.to_string(), u(&r["segment"], "segment")?);
         let status = r["status"].as_str().ok_or("status required")?.to_string();
+        // A second result for the same segment (the prover's statement after the broadcast) updates
+        // the first one's fields; payouts are taken from the first only.
+        if c.results.iter().any(|x| x["epoch"] == r["epoch"] && x["segment"] == r["segment"]) {
+            let mut rec = r.clone();
+            rec.as_object_mut().ok_or("result must be an object")?.retain(|key, v| !v.is_null() && !matches!(key.as_str(), "payouts" | "rolled" | "broadcast_command"));
+            rec["updated_us"] = json!(now_us());
+            self.coll_record(json!({"kind": "coll_result_update", "epoch": k.0, "segment": k.1, "fields": rec}))?;
+            self.emit(json!({"type": "settlement", "epoch": k.0, "segment": k.1, "phase": "updated"}));
+            return Ok(json!({"accepted": true, "updated": true}));
+        }
         let p = c.packages.get(&k);
         let mut payouts = vec![];
         if matches!(status.as_str(), "broadcast" | "staged") {
@@ -1095,7 +1115,7 @@ impl Venue {
         let a = c.accts.get(owner)?;
         let s = c.script(owner, a.refund_height).ok()?;
         Some(json!({"refund_height": a.refund_height, "spk": h(&s.spk()), "collateral_sats": a.value, "outpoint": {"txid": h(&a.txid), "vout": a.vout},
-                    "funding": {"txid": h(&a.txid), "vout": a.vout}, "settled_through": a.settled_through, "closed": a.closed}))
+                    "funding": {"txid": h(&a.txid), "vout": a.vout}, "settled_through": a.settled_through, "closed": a.closed.is_some(), "closed_reason": a.closed}))
     }
 
     /// The chain shows a reported payout at `--min-conf`: journal it (roll or withdrawal).
@@ -1502,6 +1522,13 @@ mod tests {
             assert!(post(&mut v, "result", &res, &agent_sk).is_err());
             post(&mut v, "result", &res, &bsk).unwrap();
             assert!(v.settlement_package_for(&t).is_err(), "package closed by the result");
+            // The prover's second result for the segment updates the first; payouts are not taken twice.
+            let mut proved = res.clone();
+            proved["statement_sha256"] = json!(h(&[0x5a; 32]));
+            assert_eq!(post(&mut v, "result", &proved, &bsk).unwrap()["updated"], true);
+            assert_eq!(v.settlement_results(10).unwrap().as_array().unwrap().len(), 1);
+            assert_eq!(v.settlement_results(10).unwrap()[0]["statement_sha256"], h(&[0x5a; 32]));
+            assert_eq!(v.coll.as_ref().unwrap().pending.len(), 1);
             // The watcher saw the roll at min-conf.
             let pend = v.coll.as_ref().unwrap().pending[0].clone();
             v.settlement_confirmed(&pend, 0, 205).unwrap();

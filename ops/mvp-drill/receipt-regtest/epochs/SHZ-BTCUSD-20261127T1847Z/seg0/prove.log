@@ -1,0 +1,19 @@
+[0.0s] settlement relation holds; 4 negative cases rejected
+[1.9s] M17 setup 1.9s
+[3.7s] input 0: M17 20 steps folded 1.8s, 2 deferred signatures
+[5.4s] input 1: M17 20 steps folded 1.6s, 2 deferred signatures
+[6.9s] input 2: M17 17 steps folded 1.4s, 1 deferred signatures
+[26.1s] setup 19.2s, primary 762527 / secondary 10538 constraints
+[26.5s] folded step 1/5 at 0.4s
+[27.2s] folded step 2/5 at 1.1s
+[27.9s] folded step 3/5 at 1.8s
+[28.6s] folded step 4/5 at 2.5s
+[29.3s] folded step 5/5 at 3.2s
+[88.3s] compressed in 58.2s
+[116.6s] binding verified; 7 negative cases rejected
+[127.5s] setup 10.9s, primary 297967 / secondary 10538 constraints
+[127.7s] folded step 1/2 at 0.2s
+[128.0s] folded step 2/2 at 0.5s
+[157.7s] compressed in 29.3s
+[171.6s] wrote D:/shz/SatsHedgeZero/ops/mvp-drill/receipt-regtest/epochs\SHZ-BTCUSD-20261127T1847Z\seg0\guest_input.json
+[171.6s] wrote D:/shz/SatsHedgeZero/ops/mvp-drill/receipt-regtest/epochs\SHZ-BTCUSD-20261127T1847Z\seg0\joint_statement.json

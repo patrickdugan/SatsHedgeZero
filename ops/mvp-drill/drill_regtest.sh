@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Lightninger MVP drill on regtest: a regtest node, the venue with --collateral-chain regtest (live
-# FROST marks from the relay), the settlement daemon shz_batcher (60 s epochs), a miner every 5 s,
-# and two browser-less traders (ops/mvp-drill/client.mjs) that deposit, activate, trade a round trip,
-# co-sign every settlement in ui/venue/settle.js, and withdraw.
+# FROST marks from the relay), the settlement daemon shz_batcher (60 s epochs, --prove: each settled
+# segment's joint statement), a miner every 5 s, and three browser-less traders
+# (ops/mvp-drill/client.mjs) that deposit, activate, trade over three epochs, co-sign settlements in
+# ui/venue/settle.js (one trader leaves one package unsigned), and withdraw.
 #
 #   ops/mvp-drill/drill_regtest.sh [WORKDIR]          (default D:/shz/tmp/mvp-drill)
 #
@@ -19,7 +20,7 @@ VPORT="${VPORT:-8098}"; PORT=18743
 OUT="${OUT:-$REPO/ops/mvp-drill/receipt-regtest}"
 NODE="${NODE:-node}"
 
-rm -rf "$W/node" "$W/venue" "$W/daemon" "$W/receipts"; mkdir -p "$W/node" "$W/venue" "$W/daemon" "$W/logs" "$W/receipts" "$OUT"
+rm -rf "$W/node" "$W/venue" "$W/daemon" "$OUT"; mkdir -p "$W/node" "$W/venue" "$W/daemon" "$W/logs" "$OUT/epochs"
 # Local regtest RPC credentials: random per run, kept in the work dir (never printed).
 [ -f "$W/rpcpass" ] || python -c "import secrets;print(secrets.token_hex(16))" > "$W/rpcpass"
 PASS=$(cat "$W/rpcpass"); printf 'drill:%s' "$PASS" > "$W/rpcauth"
@@ -53,22 +54,24 @@ OPTX=$(cli sendtoaddress "$OPADDR" 0.01)
 cli generatetoaddress 1 "$SINK" >/dev/null
 OPVOUT=$(cli getrawtransaction "$OPTX" true | python -c "import json,sys;t=json.load(sys.stdin);a=sys.argv[1];print([o['n'] for o in t['vout'] if o['scriptPubKey'].get('address')==a][0])" "$OPADDR")
 
-COMMON=(--network regtest --cli "$BIN/bitcoin-cli$EXE" --cli-args "$CLI_ARGS" --keys "$KEYS" --state "$W/daemon" --venue "http://127.0.0.1:$VPORT" --receipts "$W/receipts")
+COMMON=(--network regtest --cli "$BIN/bitcoin-cli$EXE" --cli-args "$CLI_ARGS" --keys "$KEYS" --state "$W/daemon" --venue "http://127.0.0.1:$VPORT" --receipts "$OUT/epochs")
 NOW=$(date +%s); T0=$(( (NOW + 60) / 60 * 60 ))
 "$SB" init "${COMMON[@]}" --epoch-secs 60 --operator "$OPTX:$OPVOUT" --start-seq 0 --t0 $T0
 ( while true; do sleep 5; cli generatetoaddress 1 "$SINK" >/dev/null 2>&1 || break; done ) &
 pids+=($!)
 "$SB" run "${COMMON[@]}" --epoch-secs 60 --sign-secs 25 --settle-delay-secs 3 --refund-delta 40 --fee-rate 1 --bump-rate 5 \
-  --bump-after-blocks 3 >"$W/logs/daemon.log" 2>&1 &
+  --bump-after-blocks 3 --prove --table 4 --rows 2 >"$W/logs/daemon.log" 2>&1 &
 pids+=($!)
 echo "venue http://127.0.0.1:$VPORT  batcher $BKEY  operator $OPTX:$OPVOUT  t0 $T0"
 
 "$NODE" "$REPO/ops/mvp-drill/client.mjs" --venue "http://127.0.0.1:$VPORT" --cli "$BIN/bitcoin-cli$EXE" --cli-args "$CLI_ARGS" \
-  --keys "$W/trader-keys.json" --out "$OUT/receipt.json" 2>&1 | tee "$W/logs/client.log"
+  --keys "$W/trader-keys.json" --out "$OUT/receipt.json" --epoch-secs 60 --refuse 2:1 --await-proofs 1 --proof-wait-s "${PROOF_WAIT_S:-1800}" 2>&1 \
+  | tee "$W/logs/client.log" && RC=0 || RC=$?
 
-cp "$W/logs/daemon.log" "$OUT/daemon.log"
+# Receipts are collected whatever the client's outcome.
+cp "$W/logs/daemon.log" "$W/logs/client.log" "$OUT/"
 grep -v -i "rpcpassword" "$W/logs/venue.log" > "$OUT/venue.log" || true
 curl -s "http://127.0.0.1:$VPORT/api/explorer/settlements" > "$OUT/venue_settlements.json"
 curl -s "http://127.0.0.1:$VPORT/api/explorer/accounts" > "$OUT/venue_accounts.json"
-cp -r "$W/receipts/." "$OUT/epochs/" 2>/dev/null || true
 cli getblockchaininfo > "$OUT/chain.json"
+exit $RC

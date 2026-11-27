@@ -1,0 +1,34 @@
+18:45:25 deposit {"trader":0,"address":"bcrt1ptmwxxecxepvpymqka22qem3h0a0h5py2parc7t039fwctvq5k7wq2qddht","refund_height":171,"txid":"eb4ec00521996dd6ebfafa65204992a86cd0bac8d464db6902722080f2bd8cad"}
+18:45:25 deposit {"trader":1,"address":"bcrt1p3w38usnr0qte43tpkm6luvgxuaev79e97jlau9etp35ekpp0dhgqxsvwvf","refund_height":171,"txid":"825d3248d84564638af6503f323641d35db4cfa0de442bc0c68be7d9700e4a80"}
+18:45:25 deposit {"trader":2,"address":"bcrt1pyyztc4yut4sltkgpgdch5qq478dxcympcg72zf55ul2g9q64x8zqp79q6x","refund_height":171,"txid":"9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17"}
+18:45:28 activated {"trader":0,"outpoint":"eb4ec00521996dd6ebfafa65204992a86cd0bac8d464db6902722080f2bd8cad:0","value":200000,"height":112,"confirmations":1}
+18:45:28 activated {"trader":1,"outpoint":"825d3248d84564638af6503f323641d35db4cfa0de442bc0c68be7d9700e4a80:0","value":200000,"height":112,"confirmations":1}
+18:45:28 activated {"trader":2,"outpoint":"9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17:0","value":200000,"height":112,"confirmations":1}
+18:45:28 fill {"name":"A-open","maker":0,"taker":1,"side":"short","limit_usd":59752,"qty_usd":200,"batch":1}
+18:45:28 fill {"name":"A-close","maker":1,"taker":0,"side":"short","limit_usd":60052,"qty_usd":200,"batch":2}
+18:45:28 traded {"round":"A","close_batch":2,"realized":{"0":-1672,"1":1672}}
+18:47:04 signed {"trader":0,"epoch":"SHZ-BTCUSD-20261127T1847Z","segment":0,"batches":[1,2],"value_in":200000,"net":-1672,"roll":{"value":198328,"refund_height":170},"withdraw":null,"sighash":"f0c4c0d6b5f5b9faa895dfc0025c1a4adf1b06fbf4d3847fbf4463b2f49c5485"}
+18:47:04 signed {"trader":1,"epoch":"SHZ-BTCUSD-20261127T1847Z","segment":0,"batches":[1,2],"value_in":200000,"net":1672,"roll":{"value":201672,"refund_height":170},"withdraw":null,"sighash":"9632d3701cd288416ef87541fb7cdb80fe82663b868f7cb42481a61c47a3a71f"}
+18:47:13 settled {"round":"A","trader":0,"outpoint":"8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141:1","value":198328,"refund_height":170,"settled_through":2,"chain":{"btc":0.00198328,"confirmations":1},"closed":null}
+18:47:13 settled {"round":"A","trader":1,"outpoint":"8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141:0","value":201672,"refund_height":170,"settled_through":2,"chain":{"btc":0.00201672,"confirmations":1},"closed":null}
+18:47:13 fill {"name":"B-open","maker":2,"taker":1,"side":"long","limit_usd":59783,"qty_usd":200,"batch":3}
+18:47:13 fill {"name":"B-close","maker":1,"taker":2,"side":"long","limit_usd":59483,"qty_usd":200,"batch":4}
+18:47:13 traded {"round":"B","close_batch":4,"realized":{"1":3359,"2":-1687}}
+18:48:03 signed {"trader":1,"epoch":"SHZ-BTCUSD-20261127T1848Z","segment":0,"batches":[3,4],"value_in":201672,"net":1687,"roll":{"value":203359,"refund_height":181},"withdraw":null,"sighash":"b5e5f1b18ab37954dcb6c20550420b4fda4ce6d5be5321ae99490176a3cb2071"}
+18:48:03 left-unsigned {"trader":2,"epoch":"SHZ-BTCUSD-20261127T1848Z","segment":0,"net":-1687}
+18:48:34 settled {"round":"B","trader":1,"outpoint":"d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930:0","value":203359,"refund_height":181,"settled_through":4,"chain":{"btc":0.00203359,"confirmations":1},"closed":null}
+18:48:34 carried {"trader":2,"settled_through":0,"value":200000,"venue_net_unsettled":-1687,"realized":-1687}
+18:49:04 signed {"trader":0,"epoch":"SHZ-BTCUSD-20261127T1849Z","segment":0,"batches":[],"value_in":198328,"net":0,"roll":{"value":198328,"refund_height":193},"withdraw":null,"sighash":"5f799be0a28f0b5667a1ecc3987a67370c9a7332b4135268917e7ab260218703"}
+18:49:04 signed {"trader":2,"epoch":"SHZ-BTCUSD-20261127T1849Z","segment":0,"batches":[3,4],"value_in":200000,"net":-1687,"roll":{"value":198313,"refund_height":193},"withdraw":null,"sighash":"cfbe539f7a08d60ecc2f621e46b3e6287f2058e443cba72554f1ad7ef79f0904"}
+18:49:05 fill {"name":"C-open","maker":0,"taker":2,"side":"long","limit_usd":59789,"qty_usd":200,"batch":5}
+18:49:05 fill {"name":"C-close","maker":2,"taker":0,"side":"long","limit_usd":59489,"qty_usd":200,"batch":6}
+18:49:05 traded {"round":"C","close_batch":6,"realized":{"0":-3359,"2":0}}
+18:49:05 withdraw-requested {"trader":0,"address":"bcrt1pqz2lv22pxvqxx7ltvavh6lxngvmfpnlznysrf9dulz50qnr5h0vs52mjg5","router_debit_sats":196641}
+18:49:05 gate {"trader":0,"refused":"/api/intents: 409 {\"error\":\"a withdrawal is pending: the account pays out in full at the next settlement\"}"}
+18:50:03 signed {"trader":0,"epoch":"SHZ-BTCUSD-20261127T1850Z","segment":0,"batches":[5,6],"value_in":198328,"net":-1687,"roll":null,"withdraw":{"value":196641,"address":"bcrt1pqz2lv22pxvqxx7ltvavh6lxngvmfpnlznysrf9dulz50qnr5h0vs52mjg5"},"sighash":"b3f9951df7db33c9cdd1a84a82eb459753bdad6584ffc4d6c2565dd2ddac6006"}
+18:50:03 signed {"trader":1,"epoch":"SHZ-BTCUSD-20261127T1850Z","segment":0,"batches":[],"value_in":203359,"net":0,"roll":{"value":203359,"refund_height":204},"withdraw":null,"sighash":"c646cd2a283b02d92da581167af57cc2c582f1311df543b73bfb32cfb8d55d42"}
+18:50:04 signed {"trader":2,"epoch":"SHZ-BTCUSD-20261127T1850Z","segment":0,"batches":[5,6],"value_in":198313,"net":1687,"roll":{"value":200000,"refund_height":204},"withdraw":null,"sighash":"c326d09d9daf1365fa2583ff7ddce440c833331f6d1273da1ed5311b86da3ff8"}
+18:50:08 settled {"round":"C","trader":2,"outpoint":"66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f:2","value":200000,"refund_height":204,"settled_through":6,"chain":{"btc":0.002,"confirmations":1},"closed":null}
+18:50:08 check {"what":"trader 2 collateral = deposit + realized over epochs B (carried) and C","value":200000,"want":200000,"ok":true}
+18:50:08 withdrawn {"trader":0,"txid":"66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f","closed":"withdrawn in full by 66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f"}
+18:50:08 chain-withdrawal {"address":"bcrt1pqz2lv22pxvqxx7ltvavh6lxngvmfpnlznysrf9dulz50qnr5h0vs52mjg5","unspents":[{"txid":"66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f","vout":1,"btc":0.00196641,"height":165}],"sats":196641,"want":196641,"ok":true}

@@ -1,0 +1,94 @@
+{
+  "accounts": [
+    {
+      "carry_in": 0,
+      "channel": {
+        "txid": "825d3248d84564638af6503f323641d35db4cfa0de442bc0c68be7d9700e4a80",
+        "vout": 0
+      },
+      "collateral": 201672,
+      "input": {
+        "amount": 201672,
+        "leaf": "200658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254cad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac",
+        "leaf_hash": "9c565cf232a337129a82354854619a388e76a481b92c3143dc32f3edb301c29d",
+        "refund_height": 170,
+        "sequence": 4294967293,
+        "spk": "5120934c25f01bb5d7364ac523782abe1735c368251b626e93ae9053326656099ba1",
+        "txid": "8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141",
+        "vout": 0
+      },
+      "net": 1687,
+      "output": {
+        "kind": "roll",
+        "refund_height": 181,
+        "spk": "5120451ab204e5b90db293716bfc4e65b537dbd7776e89bf68cd3c041364d15ff3fe",
+        "value": 203359,
+        "withdraw_time_us": null
+      },
+      "owner": "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+      "rows": [
+        {
+          "net": 0,
+          "seq": 3
+        },
+        {
+          "net": 1687,
+          "seq": 4
+        }
+      ],
+      "sighash": "b5e5f1b18ab37954dcb6c20550420b4fda4ce6d5be5321ae99490176a3cb2071",
+      "sighash_type": 131
+    },
+    {
+      "carry_in": 0,
+      "channel": {
+        "txid": "9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17",
+        "vout": 0
+      },
+      "collateral": 200000,
+      "input": {
+        "amount": 200000,
+        "leaf": "2071fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728ad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac",
+        "leaf_hash": "1336f598d8407a9d489e1f5400d9834265ba35e6ebded3fd6a03939ac18edcca",
+        "refund_height": 171,
+        "sequence": 4294967293,
+        "spk": "51202104bc549c5d61f5d90143717a0015f1da6c1361c23ca12694e7d482835531c4",
+        "txid": "9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17",
+        "vout": 0
+      },
+      "net": -1687,
+      "output": {
+        "kind": "roll",
+        "refund_height": 181,
+        "spk": "51209030ef92018a83275f3c547b371e7c2c4384fc0c8e093173451846bfd2a74211",
+        "value": 198313,
+        "withdraw_time_us": null
+      },
+      "owner": "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728",
+      "rows": [
+        {
+          "net": 0,
+          "seq": 3
+        },
+        {
+          "net": -1687,
+          "seq": 4
+        }
+      ],
+      "sighash": "44aee27d8a706f42cf43434706dd0254e5ee86fcddee36d59f0b641ea437162a",
+      "sighash_type": 131
+    }
+  ],
+  "batcher": "006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590",
+  "deadline_us": 1795805308599965,
+  "epoch": "SHZ-BTCUSD-20261127T1848Z",
+  "first_seq": 3,
+  "last_seq": 4,
+  "network": "regtest",
+  "segment": 0,
+  "tx": {
+    "locktime": 0,
+    "version": 2
+  },
+  "version": 1
+}

@@ -1,0 +1,481 @@
+{
+  "auth_accumulator": "136baeb711d0dbbc4f658448b3b582e458a38e5d4c2c3a1f73c99b6315320544",
+  "binding_negatives": [
+    {
+      "case": "trader and batcher signatures of input 0 swapped",
+      "rejected": "parameter accumulator differs from M17's deferred signatures"
+    },
+    {
+      "case": "operator's signature dropped",
+      "rejected": "TapSighash fold has another signature count than the 3 M17 relies on"
+    },
+    {
+      "case": "trader 0's SINGLE|ACP signature claimed as SIGHASH_DEFAULT",
+      "rejected": "parameter accumulator differs from M17's deferred signatures"
+    },
+    {
+      "case": "signature 2 checked for another tapleaf (the refund leaf's)",
+      "rejected": "parameter accumulator differs from M17's deferred signatures"
+    },
+    {
+      "case": "TapSighash fold over another transaction",
+      "rejected": "TapSighash fold is over another transaction"
+    },
+    {
+      "case": "TapSighash fold over other spent outputs (collateral)",
+      "rejected": "TapSighash fold commits to other spent outputs"
+    },
+    {
+      "case": "Secq fold ending in another accumulator",
+      "rejected": "TapSighash and Secq folds end in different authorization accumulators"
+    }
+  ],
+  "bitvm3_public_limbs_be": [
+    "312738624608758004618687586792329193510",
+    "236485165402408394714648232257847579182"
+  ],
+  "bitvm3_statement_hex": "5554584f5245465f4c325f534554544c454d454e545f47524f544831365f5630000000000f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e22066b28db15606dbd87bbe49890c248fbfee361c699f3c085073f5a9fe305a88dd58369608648400d409f97dbc850ebfc2384f28087fed29dbb07db2603d654e3970000000000000000000000000000000000000000000000000000000000000000d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930dca0807ddf1f7ee4bc2a39ccd5e72bde12ca15ea268f2f6341901ee26d7db92f94a506de162899352eee7ed9c18a66eb98bacc9b126ee0d74de2f7ae12e8f0ce4cfdf83a0ef1891f6aefd6775445ec50a5b2a259adff59dc17de62f09072927a040000000000000000000000",
+  "bitvm3_statement_sha256": "eb4744a81a5fd23c254422e6b4f02826b1e962da69343e4e06876e717c1c522e",
+  "clearing": {
+    "accounts": 2,
+    "batches": 2,
+    "fold": {
+      "arity": 23,
+      "compress_seconds": 34.3281294,
+      "curve_cycle": "Bn256EngineIPA / GrumpkinEngine, Spartan RelaxedR1CSSNARK + IPA (no trusted setup)",
+      "flipped_proof_rejected": true,
+      "fold_seconds": 0.9368768,
+      "fold_seconds_per_step": 0.4684384,
+      "mutated_z0_rejected": true,
+      "output_matches_expected": true,
+      "primary_constraints": 297967,
+      "proof_bytes": 12856,
+      "proof_sha256": "9bf3a01bae2a9486d9d251f0490303f414b80c7a85ce941b2f81d745f01de4ec",
+      "relation": "lightninger/v3-clearing-batch-fold/v1",
+      "secondary_constraints": 10538,
+      "setup_seconds": 11.540907,
+      "steps": 2,
+      "verify_seconds": 0.730065,
+      "vk_sha256": "94a506de162899352eee7ed9c18a66eb98bacc9b126ee0d74de2f7ae12e8f0ce",
+      "wrong_step_count_rejected": true,
+      "z0": [
+        "0000000000000000000000000000000000000000000000000000000000000003",
+        "00000000000000000000000000000000000000000000000000000000000f4240",
+        "00000000000000000000000000000000000000000000000000000000000f4240",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000825d3248d84564638af6503f",
+        "0000000000000000000000000000000000000000323641d35db4cfa0de442bc0",
+        "0000000000000000000000000000000000000000c68be7d9700e4a8000000000",
+        "00000000000000000000000000000000000000009acd7751171bc28542f18eda",
+        "0000000000000000000000000000000000000000123250dcfff171d724d431b5",
+        "000000000000000000000000000000000000000097aecd6f40fc7c1700000000",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffff00000000",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffff00000001",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "zk": [
+        "0000000000000000000000000000000000000000000000000000000000000005",
+        "00000000000000000000000000000000000000000000000000000000000f4240",
+        "00000000000000000000000000000000000000000000000000000000000f4240",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0000000000000000000000000000000000000000825d3248d84564638af6503f",
+        "0000000000000000000000000000000000000000323641d35db4cfa0de442bc0",
+        "0000000000000000000000000000000000000000c68be7d9700e4a8000000000",
+        "00000000000000000000000000000000000000009acd7751171bc28542f18eda",
+        "0000000000000000000000000000000000000000123250dcfff171d724d431b5",
+        "000000000000000000000000000000000000000097aecd6f40fc7c1700000000",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffff00000000",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffffffffffff",
+        "0000000000000000000000000000000000000000ffffffffffffffff00000001",
+        "000000000000000000000000000000000b3ec5354bfd78640f45aa87f592301f",
+        "00000000000000000000000000000000a0308b7e233ad901beb57babd56e4598"
+      ]
+    },
+    "layers": [
+      "None",
+      "Margin"
+    ],
+    "rows": 2,
+    "table": 4,
+    "trace": "SHZ-BTCUSD-20261127T1848Z-seg0"
+  },
+  "m17": [
+    {
+      "claims": 3,
+      "deferred_signatures": 2,
+      "input": 0,
+      "prove_seconds": 1.8958127,
+      "steps": 20,
+      "verify_seconds": 0.0784826
+    },
+    {
+      "claims": 2,
+      "deferred_signatures": 1,
+      "input": 1,
+      "prove_seconds": 1.648046,
+      "steps": 17,
+      "verify_seconds": 0.0773291
+    }
+  ],
+  "params_accumulator": "be709eb324e56b27483b92f21789cfd4376e8b54ea1b389a0ec107cdf43f19b4",
+  "relation_negatives": [
+    {
+      "case": "one batch row's net changed by 1 (payout no longer matches)",
+      "rejected": "output 0 pays 203359 sats, the clearing gives account 0 203360"
+    },
+    {
+      "case": "one account left out of the manifest",
+      "rejected": "empty manifest"
+    },
+    {
+      "case": "account 0's payout key changed",
+      "rejected": "output 0 pays another script than account 0's payout key"
+    },
+    {
+      "case": "a carried channel's net stated 1 sat off",
+      "rejected": "carried channel 0: the batches net -1687, the manifest states -1686"
+    }
+  ],
+  "secq_fold": {
+    "auth_accumulator": "136baeb711d0dbbc4f658448b3b582e458a38e5d4c2c3a1f73c99b6315320544",
+    "compress_seconds": 20.5175073,
+    "fold_seconds": 0.9914931,
+    "mutated_z0_rejected": true,
+    "primary_constraints": 144959,
+    "proof_bytes": 11980,
+    "relation": "shz/mnr05-secq256k1-bip340-batch-auth/v1",
+    "secondary_constraints": 10787,
+    "setup_seconds": 5.1428387,
+    "steps": 3
+  },
+  "settlement": {
+    "fronted": 1687,
+    "inputs": 2,
+    "net": [
+      1687
+    ],
+    "outputs": 3,
+    "payouts": [
+      203359
+    ],
+    "shape": {
+      "annex_max": 0,
+      "bind": true,
+      "out_spk_lens": [
+        34,
+        38,
+        34
+      ],
+      "prevout_spk_lens": [
+        34,
+        34
+      ],
+      "script_sig_lens": [
+        0,
+        0
+      ]
+    },
+    "slots": [
+      {
+        "hash_type": 131,
+        "input": 0,
+        "script_path": {
+          "codesep": 4294967295,
+          "key": [
+            6,
+            88,
+            97,
+            28,
+            48,
+            243,
+            78,
+            174,
+            216,
+            217,
+            86,
+            75,
+            211,
+            154,
+            43,
+            52,
+            213,
+            167,
+            198,
+            145,
+            221,
+            146,
+            191,
+            170,
+            241,
+            32,
+            99,
+            66,
+            133,
+            5,
+            37,
+            76
+          ],
+          "tapleaf": [
+            156,
+            86,
+            92,
+            242,
+            50,
+            163,
+            55,
+            18,
+            154,
+            130,
+            53,
+            72,
+            84,
+            97,
+            154,
+            56,
+            142,
+            118,
+            164,
+            129,
+            185,
+            44,
+            49,
+            67,
+            220,
+            50,
+            243,
+            237,
+            179,
+            1,
+            194,
+            157
+          ]
+        }
+      },
+      {
+        "hash_type": 0,
+        "input": 0,
+        "script_path": {
+          "codesep": 4294967295,
+          "key": [
+            0,
+            111,
+            35,
+            54,
+            224,
+            181,
+            198,
+            92,
+            129,
+            14,
+            19,
+            26,
+            176,
+            164,
+            186,
+            221,
+            246,
+            197,
+            225,
+            194,
+            167,
+            249,
+            8,
+            188,
+            194,
+            137,
+            98,
+            100,
+            132,
+            191,
+            245,
+            144
+          ],
+          "tapleaf": [
+            156,
+            86,
+            92,
+            242,
+            50,
+            163,
+            55,
+            18,
+            154,
+            130,
+            53,
+            72,
+            84,
+            97,
+            154,
+            56,
+            142,
+            118,
+            164,
+            129,
+            185,
+            44,
+            49,
+            67,
+            220,
+            50,
+            243,
+            237,
+            179,
+            1,
+            194,
+            157
+          ]
+        }
+      },
+      {
+        "hash_type": 0,
+        "input": 1,
+        "script_path": {
+          "codesep": 4294967295,
+          "key": [
+            117,
+            245,
+            37,
+            81,
+            18,
+            179,
+            74,
+            109,
+            67,
+            79,
+            187,
+            61,
+            29,
+            19,
+            19,
+            48,
+            125,
+            164,
+            1,
+            157,
+            175,
+            7,
+            219,
+            51,
+            15,
+            174,
+            56,
+            170,
+            125,
+            254,
+            173,
+            215
+          ],
+          "tapleaf": [
+            8,
+            15,
+            179,
+            129,
+            131,
+            146,
+            82,
+            226,
+            91,
+            236,
+            168,
+            50,
+            34,
+            97,
+            128,
+            29,
+            85,
+            173,
+            140,
+            133,
+            47,
+            199,
+            239,
+            243,
+            230,
+            246,
+            165,
+            84,
+            11,
+            200,
+            65,
+            73
+          ]
+        }
+      }
+    ],
+    "txid": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930"
+  },
+  "statement": {
+    "commitment_hash": "8369608648400d409f97dbc850ebfc2384f28087fed29dbb07db2603d654e397",
+    "contract_id": "6b28db15606dbd87bbe49890c248fbfee361c699f3c085073f5a9fe305a88dd5",
+    "epoch_id": 4,
+    "event_id": "SHZ-BTCUSD-20261127T1848Z",
+    "network": "regtest",
+    "policy_hash (manifest)": "4cfdf83a0ef1891f6aefd6775445ec50a5b2a259adff59dc17de62f09072927a",
+    "program": "lightninger/dlc-batch/v1: lightninger/v3-clearing-batch-fold/v1 + lightninger/bip341-tapsighash-step/v1 bind + shz/mnr05-secq256k1-bip340-batch-auth/v1 + m17-nova-script@f80c364 + lightninger-dlc-batch-relation/v1",
+    "program_hash": "dca0807ddf1f7ee4bc2a39ccd5e72bde12ca15ea268f2f6341901ee26d7db92f",
+    "settlement_txid": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930",
+    "verifying_key_hash": "94a506de162899352eee7ed9c18a66eb98bacc9b126ee0d74de2f7ae12e8f0ce"
+  },
+  "tapsighash_fold": {
+    "arity": 10,
+    "compress_seconds": 63.7602809,
+    "curve_cycle": "Bn256EngineIPA / GrumpkinEngine, Spartan RelaxedR1CSSNARK + IPA (no trusted setup)",
+    "flipped_proof_rejected": true,
+    "fold_seconds": 2.5901525,
+    "fold_seconds_per_step": 0.8633841666666666,
+    "mutated_z0_rejected": true,
+    "output_matches_expected": true,
+    "primary_constraints": 732180,
+    "proof_bytes": 12752,
+    "proof_sha256": "73ae1a7d6faa9da6fb6c8994ddca98d6a8dafcfe39abd7f2d1c534db57d0e64d",
+    "relation": "lightninger/bip341-keypath-tapsighash-fold/v1",
+    "secondary_constraints": 10538,
+    "setup_seconds": 21.2691547,
+    "steps": 3,
+    "verify_seconds": 1.0869015,
+    "vk_sha256": "f8f80d4168f119a5da036c636ee9c355aec5557c099c2db8aa9bb708d28f2f95",
+    "wrong_step_count_rejected": true,
+    "z0": [
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0000000000000000000000000000000021b05a3adddf5c3175f6533df8c63bd4",
+      "0000000000000000000000000000000030e9e4f2ea9994b98b65596bc7db1484",
+      "000000000000000000000000000000002720c91915b9484c4497335e3c244b4e",
+      "0000000000000000000000000000000070e142eb70ac1fafd712cdefad0b8f28",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0000000000000000000000000000000000000000000000000000000000000000"
+    ],
+    "zk": [
+      "0000000000000000000000000000000000000000000000000000000000000003",
+      "00000000000000000000000000000000e482b5b34884654fbcdbd011b7ae6b13",
+      "0000000000000000000000000000000044053215639bc9731f3a2c4c5d8ea358",
+      "0000000000000000000000000000000021b05a3adddf5c3175f6533df8c63bd4",
+      "0000000000000000000000000000000030e9e4f2ea9994b98b65596bc7db1484",
+      "000000000000000000000000000000002720c91915b9484c4497335e3c244b4e",
+      "0000000000000000000000000000000070e142eb70ac1fafd712cdefad0b8f28",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "00000000000000000000000000000000d4cf8917f2923b48276be524b39e70be",
+      "00000000000000000000000000000000b4193ff4cd07c10e9a381bea548b6e37"
+    ]
+  }
+}

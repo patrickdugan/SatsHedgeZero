@@ -1,6 +1,6 @@
 {
  "venue": "http://127.0.0.1:8098",
- "started": "2026-11-27T18:24:09.019Z",
+ "started": "2026-11-27T18:45:25.525Z",
  "traders": [
   {
    "index": 0,
@@ -18,320 +18,726 @@
  "steps": [
   {
    "name": "deposit",
-   "at": "2026-11-27T18:24:09.353Z",
+   "at": "2026-11-27T18:45:25.806Z",
    "trader": 0,
    "address": "bcrt1ptmwxxecxepvpymqka22qem3h0a0h5py2parc7t039fwctvq5k7wq2qddht",
    "refund_height": 171,
-   "txid": "cf038fe944c1e8d160e2962a38511a647579241973bcd41330ff40764e1f5b33"
+   "txid": "eb4ec00521996dd6ebfafa65204992a86cd0bac8d464db6902722080f2bd8cad"
   },
   {
    "name": "deposit",
-   "at": "2026-11-27T18:24:09.539Z",
+   "at": "2026-11-27T18:45:25.882Z",
    "trader": 1,
    "address": "bcrt1p3w38usnr0qte43tpkm6luvgxuaev79e97jlau9etp35ekpp0dhgqxsvwvf",
    "refund_height": 171,
-   "txid": "8f2c86288dcd0a92f02cfe181d1ba3999d8cfb51a8940dc62449a4c584b56f30"
+   "txid": "825d3248d84564638af6503f323641d35db4cfa0de442bc0c68be7d9700e4a80"
   },
   {
    "name": "deposit",
-   "at": "2026-11-27T18:24:09.697Z",
+   "at": "2026-11-27T18:45:25.956Z",
    "trader": 2,
    "address": "bcrt1pyyztc4yut4sltkgpgdch5qq478dxcympcg72zf55ul2g9q64x8zqp79q6x",
    "refund_height": 171,
-   "txid": "327ea41f66c948693e3c5c5fe5e46be74297e87b17d277d5f1101c13c2608671"
+   "txid": "9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17"
   },
   {
    "name": "activated",
-   "at": "2026-11-27T18:24:11.885Z",
+   "at": "2026-11-27T18:45:28.052Z",
    "trader": 0,
-   "outpoint": "cf038fe944c1e8d160e2962a38511a647579241973bcd41330ff40764e1f5b33:0",
+   "outpoint": "eb4ec00521996dd6ebfafa65204992a86cd0bac8d464db6902722080f2bd8cad:0",
    "value": 200000,
    "height": 112,
    "confirmations": 1
   },
   {
    "name": "activated",
-   "at": "2026-11-27T18:24:11.925Z",
+   "at": "2026-11-27T18:45:28.075Z",
    "trader": 1,
-   "outpoint": "8f2c86288dcd0a92f02cfe181d1ba3999d8cfb51a8940dc62449a4c584b56f30:0",
+   "outpoint": "825d3248d84564638af6503f323641d35db4cfa0de442bc0c68be7d9700e4a80:0",
    "value": 200000,
    "height": 112,
    "confirmations": 1
   },
   {
    "name": "activated",
-   "at": "2026-11-27T18:24:11.971Z",
+   "at": "2026-11-27T18:45:28.104Z",
    "trader": 2,
-   "outpoint": "327ea41f66c948693e3c5c5fe5e46be74297e87b17d277d5f1101c13c2608671:0",
+   "outpoint": "9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17:0",
    "value": 200000,
    "height": 112,
    "confirmations": 1
   },
   {
-   "name": "open",
-   "at": "2026-11-27T18:24:12.238Z",
+   "name": "A-open",
+   "at": "2026-11-27T18:45:28.274Z",
    "maker": 0,
    "taker": 1,
    "side": "short",
-   "limit_usd": 59822,
+   "limit_usd": 59752,
    "qty_usd": 200,
    "batch": 1
   },
   {
-   "name": "close",
-   "at": "2026-11-27T18:24:12.527Z",
+   "name": "A-close",
+   "at": "2026-11-27T18:45:28.479Z",
    "maker": 1,
    "taker": 0,
    "side": "short",
-   "limit_usd": 60122,
+   "limit_usd": 60052,
    "qty_usd": 200,
    "batch": 2
   },
   {
    "name": "traded",
-   "at": "2026-11-27T18:24:12.549Z",
-   "open_batch": 1,
+   "at": "2026-11-27T18:45:28.488Z",
+   "round": "A",
    "close_batch": 2,
-   "open_price": 59822,
-   "close_price": 60122,
-   "accounts": [
-    {
-     "trader": 0,
-     "realized_pnl": -1669,
-     "net_usd": 0
-    },
-    {
-     "trader": 1,
-     "realized_pnl": 1669,
-     "net_usd": 0
-    },
-    {
-     "trader": 2,
-     "realized_pnl": 0,
-     "net_usd": 0
-    }
-   ]
+   "realized": {
+    "0": -1672,
+    "1": 1672
+   }
   },
   {
    "name": "signed",
-   "at": "2026-11-27T18:26:05.883Z",
+   "at": "2026-11-27T18:47:04.172Z",
    "trader": 0,
-   "epoch": "SHZ-BTCUSD-20261127T1826Z",
+   "epoch": "SHZ-BTCUSD-20261127T1847Z",
    "segment": 0,
    "batches": [
     1,
     2
    ],
    "value_in": 200000,
-   "net": -1669,
+   "net": -1672,
    "roll": {
-    "value": 198331,
-    "refund_height": 173
+    "value": 198328,
+    "refund_height": 170
    },
    "withdraw": null,
-   "sighash": "d363c01caec2f9d3a636fcbe16ccf2888f507137034cf5f25f5987c183cea832"
+   "sighash": "f0c4c0d6b5f5b9faa895dfc0025c1a4adf1b06fbf4d3847fbf4463b2f49c5485"
   },
   {
    "name": "signed",
-   "at": "2026-11-27T18:26:05.961Z",
+   "at": "2026-11-27T18:47:04.197Z",
    "trader": 1,
-   "epoch": "SHZ-BTCUSD-20261127T1826Z",
+   "epoch": "SHZ-BTCUSD-20261127T1847Z",
    "segment": 0,
    "batches": [
     1,
     2
    ],
    "value_in": 200000,
-   "net": 1669,
+   "net": 1672,
    "roll": {
-    "value": 201669,
-    "refund_height": 173
+    "value": 201672,
+    "refund_height": 170
    },
    "withdraw": null,
-   "sighash": "b1f5815438d8dac79ed3d689e4a19fc30782fae5b4a3086bf63efbac9ab08573"
+   "sighash": "9632d3701cd288416ef87541fb7cdb80fe82663b868f7cb42481a61c47a3a71f"
   },
   {
-   "name": "rolled",
-   "at": "2026-11-27T18:26:11.239Z",
+   "name": "settled",
+   "at": "2026-11-27T18:47:13.110Z",
+   "round": "A",
    "trader": 0,
-   "outpoint": "edce3696c73fff5687c9792972d5bbf005602f08178e515098febc29213d17d7:1",
-   "value": 198331,
-   "refund_height": 173,
-   "settled_through": 2
+   "outpoint": "8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141:1",
+   "value": 198328,
+   "refund_height": 170,
+   "settled_through": 2,
+   "chain": {
+    "btc": 0.00198328,
+    "confirmations": 1
+   },
+   "closed": null
   },
   {
-   "name": "chain",
-   "at": "2026-11-27T18:26:11.422Z",
-   "trader": 0,
-   "outpoint_value_btc": 0.00198331,
-   "confirmations": 1,
-   "spk": "5120485fba5354a4e142ff35bfe73833caab96eef9c2815b8e9da7862604dc51a7ba"
-  },
-  {
-   "name": "rolled",
-   "at": "2026-11-27T18:26:11.434Z",
+   "name": "settled",
+   "at": "2026-11-27T18:47:13.190Z",
+   "round": "A",
    "trader": 1,
-   "outpoint": "edce3696c73fff5687c9792972d5bbf005602f08178e515098febc29213d17d7:0",
-   "value": 201669,
-   "refund_height": 173,
-   "settled_through": 2
+   "outpoint": "8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141:0",
+   "value": 201672,
+   "refund_height": 170,
+   "settled_through": 2,
+   "chain": {
+    "btc": 0.00201672,
+    "confirmations": 1
+   },
+   "closed": null
   },
   {
-   "name": "chain",
-   "at": "2026-11-27T18:26:11.605Z",
-   "trader": 1,
-   "outpoint_value_btc": 0.00201669,
-   "confirmations": 1,
-   "spk": "51204e97fcb10f49a99d33b6de7996d5cd6285e7c1eacf027b8027aa2c648af8b85f"
-  },
-  {
-   "name": "withdraw-requested",
-   "at": "2026-11-27T18:26:11.786Z",
-   "trader": 0,
-   "address": "bcrt1pkjkucdljmhw4zecnkrfh2nle0mhykurtkgslsf4ya9la5sqtvptqcsuehv",
-   "router_debit_sats": 198331
-  },
-  {
-   "name": "gate",
-   "at": "2026-11-27T18:26:11.846Z",
-   "trader": 0,
-   "refused": "/api/intents: 409 {\"error\":\"a withdrawal is pending: the account pays out in full at the next settlement\"}"
-  },
-  {
-   "name": "open-2",
-   "at": "2026-11-27T18:26:12.138Z",
+   "name": "B-open",
+   "at": "2026-11-27T18:47:13.386Z",
    "maker": 2,
    "taker": 1,
    "side": "long",
-   "limit_usd": 59773,
+   "limit_usd": 59783,
    "qty_usd": 200,
    "batch": 3
   },
   {
-   "name": "close-2",
-   "at": "2026-11-27T18:26:12.443Z",
+   "name": "B-close",
+   "at": "2026-11-27T18:47:13.586Z",
    "maker": 1,
    "taker": 2,
    "side": "long",
-   "limit_usd": 59473,
+   "limit_usd": 59483,
    "qty_usd": 200,
    "batch": 4
   },
   {
-   "name": "signed",
-   "at": "2026-11-27T18:27:04.787Z",
-   "trader": 0,
-   "epoch": "SHZ-BTCUSD-20261127T1827Z",
-   "segment": 0,
-   "batches": [],
-   "value_in": 198331,
-   "net": 0,
-   "roll": null,
-   "withdraw": {
-    "value": 198331,
-    "address": "bcrt1pkjkucdljmhw4zecnkrfh2nle0mhykurtkgslsf4ya9la5sqtvptqcsuehv"
-   },
-   "sighash": "87da7472f0debd05c868db2cdbd95d0f89c8f8c3a3dc34cf1377b3fde68f2731"
+   "name": "traded",
+   "at": "2026-11-27T18:47:13.595Z",
+   "round": "B",
+   "close_batch": 4,
+   "realized": {
+    "1": 3359,
+    "2": -1687
+   }
   },
   {
    "name": "signed",
-   "at": "2026-11-27T18:27:04.855Z",
+   "at": "2026-11-27T18:48:03.889Z",
    "trader": 1,
-   "epoch": "SHZ-BTCUSD-20261127T1827Z",
+   "epoch": "SHZ-BTCUSD-20261127T1848Z",
    "segment": 0,
    "batches": [
     3,
     4
    ],
-   "value_in": 201669,
-   "net": 1688,
+   "value_in": 201672,
+   "net": 1687,
    "roll": {
-    "value": 203357,
-    "refund_height": 183
+    "value": 203359,
+    "refund_height": 181
    },
    "withdraw": null,
-   "sighash": "84766959a832e010e6d24ba26343c6b2da362ebdeb5467441872b3dbbc6e3f4d"
+   "sighash": "b5e5f1b18ab37954dcb6c20550420b4fda4ce6d5be5321ae99490176a3cb2071"
+  },
+  {
+   "name": "left-unsigned",
+   "at": "2026-11-27T18:48:03.900Z",
+   "trader": 2,
+   "epoch": "SHZ-BTCUSD-20261127T1848Z",
+   "segment": 0,
+   "net": -1687
+  },
+  {
+   "name": "settled",
+   "at": "2026-11-27T18:48:34.154Z",
+   "round": "B",
+   "trader": 1,
+   "outpoint": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930:0",
+   "value": 203359,
+   "refund_height": 181,
+   "settled_through": 4,
+   "chain": {
+    "btc": 0.00203359,
+    "confirmations": 1
+   },
+   "closed": null
+  },
+  {
+   "name": "carried",
+   "at": "2026-11-27T18:48:34.168Z",
+   "trader": 2,
+   "settled_through": 0,
+   "value": 200000,
+   "venue_net_unsettled": -1687,
+   "realized": -1687
   },
   {
    "name": "signed",
-   "at": "2026-11-27T18:27:04.910Z",
+   "at": "2026-11-27T18:49:04.197Z",
+   "trader": 0,
+   "epoch": "SHZ-BTCUSD-20261127T1849Z",
+   "segment": 0,
+   "batches": [],
+   "value_in": 198328,
+   "net": 0,
+   "roll": {
+    "value": 198328,
+    "refund_height": 193
+   },
+   "withdraw": null,
+   "sighash": "5f799be0a28f0b5667a1ecc3987a67370c9a7332b4135268917e7ab260218703"
+  },
+  {
+   "name": "signed",
+   "at": "2026-11-27T18:49:04.227Z",
    "trader": 2,
-   "epoch": "SHZ-BTCUSD-20261127T1827Z",
+   "epoch": "SHZ-BTCUSD-20261127T1849Z",
    "segment": 0,
    "batches": [
     3,
     4
    ],
    "value_in": 200000,
-   "net": -1688,
+   "net": -1687,
    "roll": {
-    "value": 198312,
-    "refund_height": 183
+    "value": 198313,
+    "refund_height": 193
    },
    "withdraw": null,
-   "sighash": "ba15c3296b349785d25c80c9a8d1508edc204ff3ae8341703e1a4dcb3053c8c9"
+   "sighash": "cfbe539f7a08d60ecc2f621e46b3e6287f2058e443cba72554f1ad7ef79f0904"
+  },
+  {
+   "name": "C-open",
+   "at": "2026-11-27T18:49:05.396Z",
+   "maker": 0,
+   "taker": 2,
+   "side": "long",
+   "limit_usd": 59789,
+   "qty_usd": 200,
+   "batch": 5
+  },
+  {
+   "name": "C-close",
+   "at": "2026-11-27T18:49:05.602Z",
+   "maker": 2,
+   "taker": 0,
+   "side": "long",
+   "limit_usd": 59489,
+   "qty_usd": 200,
+   "batch": 6
+  },
+  {
+   "name": "traded",
+   "at": "2026-11-27T18:49:05.609Z",
+   "round": "C",
+   "close_batch": 6,
+   "realized": {
+    "0": -3359,
+    "2": 0
+   }
+  },
+  {
+   "name": "withdraw-requested",
+   "at": "2026-11-27T18:49:05.738Z",
+   "trader": 0,
+   "address": "bcrt1pqz2lv22pxvqxx7ltvavh6lxngvmfpnlznysrf9dulz50qnr5h0vs52mjg5",
+   "router_debit_sats": 196641
+  },
+  {
+   "name": "gate",
+   "at": "2026-11-27T18:49:05.757Z",
+   "trader": 0,
+   "refused": "/api/intents: 409 {\"error\":\"a withdrawal is pending: the account pays out in full at the next settlement\"}"
+  },
+  {
+   "name": "signed",
+   "at": "2026-11-27T18:50:03.960Z",
+   "trader": 0,
+   "epoch": "SHZ-BTCUSD-20261127T1850Z",
+   "segment": 0,
+   "batches": [
+    5,
+    6
+   ],
+   "value_in": 198328,
+   "net": -1687,
+   "roll": null,
+   "withdraw": {
+    "value": 196641,
+    "address": "bcrt1pqz2lv22pxvqxx7ltvavh6lxngvmfpnlznysrf9dulz50qnr5h0vs52mjg5"
+   },
+   "sighash": "b3f9951df7db33c9cdd1a84a82eb459753bdad6584ffc4d6c2565dd2ddac6006"
+  },
+  {
+   "name": "signed",
+   "at": "2026-11-27T18:50:03.991Z",
+   "trader": 1,
+   "epoch": "SHZ-BTCUSD-20261127T1850Z",
+   "segment": 0,
+   "batches": [],
+   "value_in": 203359,
+   "net": 0,
+   "roll": {
+    "value": 203359,
+    "refund_height": 204
+   },
+   "withdraw": null,
+   "sighash": "c646cd2a283b02d92da581167af57cc2c582f1311df543b73bfb32cfb8d55d42"
+  },
+  {
+   "name": "signed",
+   "at": "2026-11-27T18:50:04.022Z",
+   "trader": 2,
+   "epoch": "SHZ-BTCUSD-20261127T1850Z",
+   "segment": 0,
+   "batches": [
+    5,
+    6
+   ],
+   "value_in": 198313,
+   "net": 1687,
+   "roll": {
+    "value": 200000,
+    "refund_height": 204
+   },
+   "withdraw": null,
+   "sighash": "c326d09d9daf1365fa2583ff7ddce440c833331f6d1273da1ed5311b86da3ff8"
+  },
+  {
+   "name": "settled",
+   "at": "2026-11-27T18:50:08.199Z",
+   "round": "C",
+   "trader": 2,
+   "outpoint": "66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f:2",
+   "value": 200000,
+   "refund_height": 204,
+   "settled_through": 6,
+   "chain": {
+    "btc": 0.002,
+    "confirmations": 1
+   },
+   "closed": null
+  },
+  {
+   "name": "check",
+   "at": "2026-11-27T18:50:08.204Z",
+   "what": "trader 2 collateral = deposit + realized over epochs B (carried) and C",
+   "value": 200000,
+   "want": 200000,
+   "ok": true
   },
   {
    "name": "withdrawn",
-   "at": "2026-11-27T18:27:14.947Z",
+   "at": "2026-11-27T18:50:08.207Z",
    "trader": 0,
-   "txid": "4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b",
-   "closed": "withdrawn in full by 4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b"
+   "txid": "66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f",
+   "closed": "withdrawn in full by 66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f"
   },
   {
    "name": "chain-withdrawal",
-   "at": "2026-11-27T18:27:15.067Z",
-   "address": "bcrt1pkjkucdljmhw4zecnkrfh2nle0mhykurtkgslsf4ya9la5sqtvptqcsuehv",
+   "at": "2026-11-27T18:50:08.293Z",
+   "address": "bcrt1pqz2lv22pxvqxx7ltvavh6lxngvmfpnlznysrf9dulz50qnr5h0vs52mjg5",
    "unspents": [
     {
-     "txid": "4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b",
+     "txid": "66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f",
      "vout": 1,
-     "btc": 0.00198331,
-     "height": 145
+     "btc": 0.00196641,
+     "height": 165
+    }
+   ],
+   "sats": 196641,
+   "want": 196641,
+   "ok": true
+  },
+  {
+   "name": "statements",
+   "note": "collected from the venue journal after the client was stopped; the daemon queued no proof for the carry-only settlement of SHZ-BTCUSD-20261127T1849Z (segment 4..4)",
+   "segments": [
+    {
+     "epoch": "SHZ-BTCUSD-20261127T1850Z",
+     "segment": 0,
+     "txid": "66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f",
+     "status": "broadcast",
+     "statement_sha256": "df9c98e79e4744fc171b00bbfdc45b6c4eca6447c20d554afabb7d7424ab3f72",
+     "rolled": []
+    },
+    {
+     "epoch": "SHZ-BTCUSD-20261127T1849Z",
+     "segment": 0,
+     "txid": "6a36da39e3b38813968aa6914b827b4515e0299712de3ffa502c13468ec286fd",
+     "status": "broadcast",
+     "statement_sha256": null,
+     "rolled": []
+    },
+    {
+     "epoch": "SHZ-BTCUSD-20261127T1848Z",
+     "segment": 0,
+     "txid": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930",
+     "status": "broadcast",
+     "statement_sha256": "eb4744a81a5fd23c254422e6b4f02826b1e962da69343e4e06876e717c1c522e",
+     "rolled": [
+      "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+     ]
+    },
+    {
+     "epoch": "SHZ-BTCUSD-20261127T1847Z",
+     "segment": 0,
+     "txid": "8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141",
+     "status": "broadcast",
+     "statement_sha256": "3ae60cf925a49666083047464478f7ba6f91693071ff6bdfba1a77983295d467",
+     "rolled": []
     }
    ]
   }
  ],
  "settlements": [
   {
+   "epoch": "SHZ-BTCUSD-20261127T1907Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806449781730,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1906Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806390727309,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1905Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806330404457,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1904Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806270339602,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1903Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806210119444,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1902Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806149902694,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1901Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806089864931,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1900Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795806029773159,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1859Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805970689795,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1858Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805910556312,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1857Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805850281083,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1856Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805790858239,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1855Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805730726033,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1854Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805670898592,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1853Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805610854195,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "epoch": "SHZ-BTCUSD-20261127T1852Z",
+   "error": "no account signed by the deadline",
+   "received_us": 1795805550925458,
+   "rolled": [
+    "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "status": "rolled"
+  },
+  {
+   "batch_count": 2,
    "carried": [],
-   "epoch": "SHZ-BTCUSD-20261127T1827Z",
+   "epoch": "SHZ-BTCUSD-20261127T1850Z",
    "excluded": [],
    "fee": 628,
-   "fee_rate": 1,
-   "first_seq": 3,
+   "fee_rate": 1.0,
+   "first_seq": 5,
    "fronted": 0,
    "height": null,
-   "hex": "02000000000104d7173d2129bcfe9850518e17082f6005f0bbd5722979c98756ff3fc79636ceed0000000000fdffffffd7173d2129bcfe9850518e17082f6005f0bbd5722979c98756ff3fc79636ceed0100000000fdffffff718660c2131c10f1d577d2177be89742e76be4e55f5c3c3e6948c9661fa47e320000000000fdffffffd7173d2129bcfe9850518e17082f6005f0bbd5722979c98756ff3fc79636ceed0300000000fdffffff055d1a030000000000225120de4571d27a0d903e556a6c8166aad8da4072f94a41dd023d5c5295d962d03376bb06030000000000225120b4adcc37f2dddd516713b0d3754ff97eee4b706bb221f826a4e97fda400b6056a80603000000000022512048cfe4097fa1c9e3d56e36cdce4b77cd124038746d87e20489f99d98f038732a0000000000000000266a2453485a42ab60607732d066bac4101c9514f269834d326511413016b404dd5572fe7f8f4aef3d0f0000000000225120777adecb8d25c837b8cf08dc4cc5a8ee183d66bf93675df5065c06145f48111e0440ef57de11bea4afdb499e741721377e59f86ef6ce9df94a89bc12b7027a6e77eef8ffd603349e9061a80aca38e4cd7986177057da70490e6de2c8afd8e7728ac44160f8a7d8c013a1290b6502b179553b86e72d2d0b201bf3b80c06b304936b3dd6b43eb5d32f9f62f4efdc0ce6d98d7cdf74d6b9de91b244253e9ff2b896d29ccc8344200658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254cad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac002275c329ff3ed0cf5cb083c19eb0abeb1aed5a86a2135191312af13e0d1f6640440720822aaa54c98fe62eafeeb9469557f6dc49e618d77b51e5feeacb958aa16976fb9644960069db3130b5f2957bc88de66cfe2235ed826a27b14cd3f8dbb613c413c60ac2dd92ba76f6e2c9193b878c7afe75f580c9c108ca26c07fe86953182fbe803f75abad11553228080bb59dea6b697582d98eba0d3dcddfb5c51154acb828344202ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fead20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac071979f3c2746fd51521b44fa626aabeb426010c4b6fd9a55f151ab6a32546a45044034bfd0a709389379edd00165d8ec77407193b067bdb4fac693eb3d47c70befe25a41c3b9e999b62a9a3a7b16bc615cbe39f4d2a18ab140b6191e7393e027ed4a412e62a7f5c58659b6a64ad57b85db9c23d88226c83aff441b68cbe9a9aec97792ffae22af3b36bfd4b3c46243deef70bdd0c1c355d2da8212d06fd3ab65fbcee283442071fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728ad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0cd512d4615dc1d748cc519695c454196a27b11d9eb881e316eaf3326c23bd04f03406abb24125a9ab1cc8814d6dbb52361d2c0c99f510ad3a874f3acfc63f1af269eee8f388fc02cad77d1c8450ec93dddfa50c1bd4d10bbe45be2db24d1c547cff5222075f5255112b34a6d434fbb3d1d1313307da4019daf07db330fae38aa7dfeadd7ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
-   "last_seq": 4,
-   "manifest_hash": "ab60607732d066bac4101c9514f269834d326511413016b404dd5572fe7f8f4a",
+   "hex": "0200000000010430e9e4f2ea9994b98b65596bc7db148421b05a3adddf5c3175f6533df8c63bd40000000000fdfffffffd86c28e46132c50fa3fde129729e015457b824b91a68a961388b3e339da366a0000000000fdfffffffd86c28e46132c50fa3fde129729e015457b824b91a68a961388b3e339da366a0100000000fdfffffffd86c28e46132c50fa3fde129729e015457b824b91a68a961388b3e339da366a0300000000fdffffff055f1a03000000000022512088e6cbf0a3b0d585e4d351d374a0402080b5c08c8ca895aa05fb4c134d79bd1f21000300000000002251200095f629413300637beb67597d7cd3433690cfe299203495bcf8a8f04c74bbd9400d0300000000002251204b52d41e26678d649c9d26b56de1f67e55d2acbdc7511257322a06f14b95b66b0000000000000000266a2453485a423227041f32f1c87ce0cc827644f34d17471e7f398ce02358b8fa0824f596178dcc3a0f0000000000225120777adecb8d25c837b8cf08dc4cc5a8ee183d66bf93675df5065c06145f48111e0440e5a81362312ba8a94d1b5b41e9a129f03c9cd8db31953c00cb9985c28ffde7625ede35716c503235156d97bf33872b2bc41cbc7990bc1240ba2ebf92f9f03c4941b8e223f7da59396487313fea9976b015fb6a035bfc5f8efe3607453fc0fedadc2d9d5c4d7d2a5dc417b9c0609c62e30e22fa976f3e818b5c9c30f715e4d420a88344200658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254cad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0f174d3c545b2905d4690f4d9579908451925dbdb1beb55079625bdc4c4efb1ee0440a1f6390f7af17d791588d870d8ca48109c2af282c3c5b72435988118ff5874421d3849f7a84dc4159e054555ca03d609547a9b4e4fda7f5a783383177adf40544186225e2810a899a1e6f97775924b788ed321924875bdcace5c043f405292daf98341dc12d63abd460e499f4853bbf9c25d8b447538538cfa1f9d107e271c2bcb8344202ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fead20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac03a0873583b0fbef979e4a33305d669824c2b6e42d21e06f56c4d8de02640343e0440de98a2f939854a08a293d1432984eaa5600ce4661e077160b3996e7ab63867c7e8a4fcc2dbfe95c768bba56dce2945c93885ce7645c06000984ef224aa7cd2df41647247bd2b939015f5c7441d2baa71c3e0acb3fda23ee1e617fc959dadb11fbcba58a1cb25213c45871c17464c5dcfae74e60028da08e23799b1f58c3dc7506e83442071fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728ad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac04ba1a8d849524a89bdeaa17b703c9dab333cbb3d138efa990fc43929fcb6d90e0340729b015ca5fd61df7c32988a35c10940c938bf8dd6070d819a61570b2bd0481821c78bedad12a87e10191af01b7a13ff9552f56ed803336b2563e841ef426279222075f5255112b34a6d434fbb3d1d1313307da4019daf07db330fae38aa7dfeadd7ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+   "last_seq": 6,
+   "manifest_hash": "3227041f32f1c87ce0cc827644f34d17471e7f398ce02358b8fa0824f596178d",
    "network": "regtest",
-   "operator_change": 998895,
+   "operator_change": 998092,
    "payouts": [
     {
      "carry_in": 0,
      "kind": "roll",
-     "net": 1688,
+     "net": 0,
      "owner": "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
-     "value": 203357
+     "value": 203359
     },
     {
      "carry_in": 0,
      "kind": "withdraw",
-     "net": 0,
+     "net": -1687,
      "owner": "2ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fe",
-     "value": 198331
+     "value": 196641
     },
     {
      "carry_in": 0,
      "kind": "roll",
-     "net": -1688,
+     "net": 1687,
      "owner": "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728",
-     "value": 198312
+     "value": 200000
     }
    ],
-   "receipts": "D:/shz/tmp/mvp-drill/receipts/SHZ-BTCUSD-20261127T1827Z/seg0",
-   "received_us": 1795804027762314,
+   "receipts": "D:/shz/SatsHedgeZero/ops/mvp-drill/receipt-regtest/epochs/SHZ-BTCUSD-20261127T1850Z/seg0",
+   "received_us": 1795805405762714,
+   "rolled": [],
+   "segment": 0,
+   "statement_sha256": "df9c98e79e4744fc171b00bbfdc45b6c4eca6447c20d554afabb7d7424ab3f72",
+   "status": "broadcast",
+   "testmempoolaccept": {
+    "allowed": true,
+    "fees": {
+     "base": 6.28e-06,
+     "effective-feerate": 1e-05,
+     "effective-includes": [
+      "fd2b0e4b2d89841d641a644971f287b591b1c8cf6ce46086dae9e87641629f1a"
+     ]
+    },
+    "txid": "66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f",
+    "vsize": 628,
+    "wtxid": "fd2b0e4b2d89841d641a644971f287b591b1c8cf6ce46086dae9e87641629f1a"
+   },
+   "tip": 164,
+   "txid": "66e4042141953cb6baf098c0c8c98a81b48d3aac246b1abdbb29bc3e8cfa195f",
+   "vsize": 628,
+   "prove_seconds": 232,
+   "updated_us": 1795805817225418
+  },
+  {
+   "batch_count": 0,
+   "carried": [],
+   "epoch": "SHZ-BTCUSD-20261127T1849Z",
+   "excluded": [],
+   "fee": 477,
+   "fee_rate": 1.0,
+   "first_seq": 4,
+   "fronted": -1687,
+   "height": null,
+   "hex": "020000000001034121759b7f40f2180388cb4daecb056827f89cd22162e605d27b157d360e098f0100000000fdffffff177cfc406fcdae97b531d424d771f1ffdc503212da8ef14285c21b175177cd9a0000000000fdffffff30e9e4f2ea9994b98b65596bc7db148421b05a3adddf5c3175f6533df8c63bd40200000000fdffffff04b8060300000000002251203805542df639bce437e5e9a34b2a278e61975fd9e6cd22e0c55a668c81407dc3a906030000000000225120a8bf3ada48570072d19ccbfd52f9cda3bbcc3f89abfe776a753aea1cf49b51470000000000000000266a2453485a42c8d07b7079fc6903a003773f593faba857e3b6435662c1c6faaf0980e402cbb2403d0f0000000000225120777adecb8d25c837b8cf08dc4cc5a8ee183d66bf93675df5065c06145f48111e044066decb0e10b3f76c379815399a42dc18c479b2241b74b6f98a9f8902fa65a8bff70703e7f312ac9327862b7265adc4f626629e0a4c1863be1cd31c82243518b6411592800c8c027a0b4848308464580c5c90a15ede674085a7e154c2cc64dd92d8213bd805b1719391457dc29614850a3ecec1e9fcc66303a0890e2950af4ff8b08344202ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fead20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac068498c5ab0928c290331fd16da660b892dbee08f9a6a8956d404ab0c6581422c044071b5dd6bcca5ace20613cb88817deb8501de610c223c3acd957a20b1c13b9e3a73c30b3f79528d6f37a6b3304388bd3628ba9190ef856ddebf530d228f3149a8410a29547a024c6c7a67e10f1b71666ebecf3593d3f02bc1d8d8df0225346c537b580db12eb2420fbaf2e43346ed89ba2b89f29202ebd828640863f8635b1e528c83442071fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728ad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0cd512d4615dc1d748cc519695c454196a27b11d9eb881e316eaf3326c23bd04f03407fb91ad13d073ecd8c77bd64d1fbc954192518ef05273a6ef6ab2388647cfae6069e96ebda4492a820394ac663942e2e4a4c609879f8edacc59c24185083338a222075f5255112b34a6d434fbb3d1d1313307da4019daf07db330fae38aa7dfeadd7ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+   "last_seq": 4,
+   "manifest_hash": "c8d07b7079fc6903a003773f593faba857e3b6435662c1c6faaf0980e402cbb2",
+   "network": "regtest",
+   "operator_change": 998720,
+   "payouts": [
+    {
+     "carry_in": 0,
+     "kind": "roll",
+     "net": 0,
+     "owner": "2ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fe",
+     "value": 198328
+    },
+    {
+     "carry_in": -1687,
+     "kind": "roll",
+     "net": 0,
+     "owner": "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728",
+     "value": 198313
+    }
+   ],
+   "receipts": "D:/shz/SatsHedgeZero/ops/mvp-drill/receipt-regtest/epochs/SHZ-BTCUSD-20261127T1849Z/seg0",
+   "received_us": 1795805346113754,
    "rolled": [],
    "segment": 0,
    "statement_sha256": null,
@@ -339,73 +745,132 @@
    "testmempoolaccept": {
     "allowed": true,
     "fees": {
-     "base": 0.00000628,
-     "effective-feerate": 0.00001,
+     "base": 4.77e-06,
+     "effective-feerate": 1e-05,
      "effective-includes": [
-      "4cb90edde61d7cc7f6b08fc0c5b098f0fb4b787b87d6fcb57b3338b5aa18a917"
+      "a03ebb1a099338143d7e2038e89b2de18a3ed8a66982b92327e3dc0114070d70"
      ]
     },
-    "txid": "4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b",
-    "vsize": 628,
-    "wtxid": "4cb90edde61d7cc7f6b08fc0c5b098f0fb4b787b87d6fcb57b3338b5aa18a917"
+    "txid": "6a36da39e3b38813968aa6914b827b4515e0299712de3ffa502c13468ec286fd",
+    "vsize": 477,
+    "wtxid": "a03ebb1a099338143d7e2038e89b2de18a3ed8a66982b92327e3dc0114070d70"
    },
-   "tip": 143,
-   "txid": "4bab58b8f2a8f2c3f1e182134c1a6b614bbcc2e2e9648bac47979cef9f9a828b",
-   "vsize": 628
+   "tip": 153,
+   "txid": "6a36da39e3b38813968aa6914b827b4515e0299712de3ffa502c13468ec286fd",
+   "vsize": 477
   },
   {
+   "batch_count": 2,
+   "carried": [
+    {
+     "channel": "9acd7751171bc28542f18eda123250dcfff171d724d431b597aecd6f40fc7c17:0",
+     "net": -1687,
+     "owner": "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+    }
+   ],
+   "epoch": "SHZ-BTCUSD-20261127T1848Z",
+   "excluded": [],
+   "fee": 326,
+   "fee_rate": 1.0,
+   "first_seq": 3,
+   "fronted": 1687,
+   "height": null,
+   "hex": "020000000001024121759b7f40f2180388cb4daecb056827f89cd22162e605d27b157d360e098f0000000000fdffffff4121759b7f40f2180388cb4daecb056827f89cd22162e605d27b157d360e098f0300000000fdffffff035f1a030000000000225120451ab204e5b90db293716bfc4e65b537dbd7776e89bf68cd3c041364d15ff3fe0000000000000000266a2453485a424cfdf83a0ef1891f6aefd6775445ec50a5b2a259adff59dc17de62f09072927a86380f0000000000225120777adecb8d25c837b8cf08dc4cc5a8ee183d66bf93675df5065c06145f48111e04403b6a53235ca018f9ca399afd7a3f2e66be056770929947565cdb6a70f79f2e5761f93c405b945545aababb2ee23dccf98c001febd482909e3df89e644ec0c5ae41c4002a954187f79ecb0b3a7984fd0164d6edf00b70133c08053b3785ee952f560b2781bf57271877385e508e540fcdf9ac2d1e43f0d2cb6f4108e3ff346a22408344200658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254cad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac00610f85eb06c4ec295682e7ec7b03434e94a5d2979af5076c0d9c5a8b881845c034046cc1c88514ea58781daf167d97ca55a503e4af479511ea4e35c9dfb0ed2feffdc5475c35d689896ad2fc4740242f9e5f89697cf95445aa1c23f45899e775d45222075f5255112b34a6d434fbb3d1d1313307da4019daf07db330fae38aa7dfeadd7ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+   "last_seq": 4,
+   "manifest_hash": "4cfdf83a0ef1891f6aefd6775445ec50a5b2a259adff59dc17de62f09072927a",
+   "network": "regtest",
+   "operator_change": 997510,
+   "payouts": [
+    {
+     "carry_in": 0,
+     "kind": "roll",
+     "net": 1687,
+     "owner": "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
+     "value": 203359
+    }
+   ],
+   "receipts": "D:/shz/SatsHedgeZero/ops/mvp-drill/receipt-regtest/epochs/SHZ-BTCUSD-20261127T1848Z/seg0",
+   "received_us": 1795805310710635,
+   "rolled": [
+    "71fb26f9397f21d66074602529ee7f014299f8c57dc835df63f492c79e0df728"
+   ],
+   "segment": 0,
+   "statement_sha256": "eb4744a81a5fd23c254422e6b4f02826b1e962da69343e4e06876e717c1c522e",
+   "status": "broadcast",
+   "testmempoolaccept": {
+    "allowed": true,
+    "fees": {
+     "base": 3.26e-06,
+     "effective-feerate": 1e-05,
+     "effective-includes": [
+      "2503721b1203ce49efeb8c64562340cabf16b8e548fe6a96c0c139d5d5d4b672"
+     ]
+    },
+    "txid": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930",
+    "vsize": 326,
+    "wtxid": "2503721b1203ce49efeb8c64562340cabf16b8e548fe6a96c0c139d5d5d4b672"
+   },
+   "tip": 141,
+   "txid": "d43bc6f83d53f675315cdfdd3a5ab0218414dbc76b59658bb99499eaf2e4e930",
+   "vsize": 326,
+   "prove_seconds": 186,
+   "updated_us": 1795805584286275
+  },
+  {
+   "batch_count": 2,
    "carried": [],
-   "epoch": "SHZ-BTCUSD-20261127T1826Z",
+   "epoch": "SHZ-BTCUSD-20261127T1847Z",
    "excluded": [],
    "fee": 477,
-   "fee_rate": 1,
+   "fee_rate": 1.0,
    "first_seq": 1,
    "fronted": 0,
    "height": null,
-   "hex": "02000000000103306fb584c5a44924c60d94a851fb8c9d99a31b1d18fe2cf0920acd8d28862c8f0000000000fdffffff335b1f4e7640ff3013d4bc7319247975641a51382a96e260d1e8c144e98f03cf0000000000fdffffff9d9a21ac538416c44ebc146d70716786da3c1bf0b004bace416b28618859f9250000000000fdffffff04c5130300000000002251204e97fcb10f49a99d33b6de7996d5cd6285e7c1eacf027b8027aa2c648af8b85fbb06030000000000225120485fba5354a4e142ff35bfe73833caab96eef9c2815b8e9da7862604dc51a7ba0000000000000000266a2453485a4200428bf28b7a5ac304574db6a9f505a2f6089f1131bb04f42702ed14331f8bb463400f0000000000225120777adecb8d25c837b8cf08dc4cc5a8ee183d66bf93675df5065c06145f48111e0440482533b26d11d26cb3d235be78c0bab95b159872fc20b7eea0eb446c3ecc960d07e9324aabebe352d350bb3708daa160235d95e6cb0b1ab955f030a650ad45e5414d0d28a0be14309105e7f66b634c916437262ceac35b397d1e4ae41a1d2c2ad2996fc0b5c6b89bb9fc902adc7225f14e123959edf0e6f2b5d76712c72c0f79308344200658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254cad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac045b5f75729d2e5210e85cae38ad8c7a67dd5b3c9fa768c368fb3e16710d0a1dc04404118f76c9104ea73264a4d0f6624f384e70dd38e25a31631a0b118128d308bc464a6ae3cbb474aa6173d49f489d053fbd3beffda908053724233e0dba57a931641341349df3d84e9c7cc7a9c4b5aad2e0d210e92f9e04a0263b8151b63327ace45821a6e0c63edde1ccef7f1c608b059ec3c6eb8b9a9fb6132f0aa8e0bed018b138344202ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fead20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac09ef94754c257490efeed442ffca3a78c37d31fedb56d471b3ca14e47bb9955920340a1e268f3c38d18177263eceb40db4151a2d0dfc7235398905fa79675a9add5513fbd84c157623796f0b7251c101dc988018bb96c406f6de71683a9e8bc538b33222075f5255112b34a6d434fbb3d1d1313307da4019daf07db330fae38aa7dfeadd7ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
+   "hex": "02000000000103804a0e70d9e78bc6c02b44dea0cfb45dd34136323f50f68a636445d848325d820000000000fdffffffad8cbdf28020720269db64d4c8bad06ca892492065fafaebd66d992105c04eeb0000000000fdffffff7ebc37d27ffd135c9f1f35b4e85f7625304de7895459d0e42c409fd1dceb6c270000000000fdffffff04c813030000000000225120934c25f01bb5d7364ac523782abe1735c368251b626e93ae9053326656099ba1b80603000000000022512072f62aaa97cad059b615056ad05167fc45858e4b281f2209d67be3546614dadd0000000000000000266a2453485a42b739cab7a535541e01d7e74ed8faaba2ec7609a935edade28c9abc5c344fcd5563400f0000000000225120777adecb8d25c837b8cf08dc4cc5a8ee183d66bf93675df5065c06145f48111e0440c8f5cab7e1ab5c6717d63e8bc399467a667785675a6bd96ee05a8076e76e1f270cfbbbe2495bcd9557785417d37b93e06b3d5cc12f12d392d303261cf7491476417e1ac956b9fefbcd4eee2e55b8af74d36dd4733db4cbc199d9467568d2f40a7c971f93d1ba26180b21d6c618594e1d9255cb075fd04b90d27e63566387bc94bd8344200658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254cad20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c050929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac045b5f75729d2e5210e85cae38ad8c7a67dd5b3c9fa768c368fb3e16710d0a1dc0440e355adeec32845f35605130f87d6a5cf56995c3232e1fc5c8179f69f0764a21cf5c27bab5871006b7f70d1bb6db6c76b4616fedcb36bf9102797482bc90bbaae414d48674d8eb0bfcb6114553d2f0e0c84fdf5fd277a4e51f40724829d0f084f79736bb7d866d9480c20ec8c244cbba8349c79e4e67182d2419c7556984b6aebba8344202ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fead20006f2336e0b5c65c810e131ab0a4baddf6c5e1c2a7f908bcc289626484bff590ac41c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac09ef94754c257490efeed442ffca3a78c37d31fedb56d471b3ca14e47bb9955920340485820da630ce1689779e98aa4b828d0762f72445a9fa92c7e2e4d8ab976b53acb40b0b5b80e0a5e1f13e96cfac3b42dc57f28f747ff34c0e79c5eb601d59768222075f5255112b34a6d434fbb3d1d1313307da4019daf07db330fae38aa7dfeadd7ac21c150929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac000000000",
    "last_seq": 2,
-   "manifest_hash": "00428bf28b7a5ac304574db6a9f505a2f6089f1131bb04f42702ed14331f8bb4",
+   "manifest_hash": "b739cab7a535541e01d7e74ed8faaba2ec7609a935edade28c9abc5c344fcd55",
    "network": "regtest",
    "operator_change": 999523,
    "payouts": [
     {
      "carry_in": 0,
      "kind": "roll",
-     "net": 1669,
+     "net": 1672,
      "owner": "0658611c30f34eaed8d9564bd39a2b34d5a7c691dd92bfaaf12063428505254c",
-     "value": 201669
+     "value": 201672
     },
     {
      "carry_in": 0,
      "kind": "roll",
-     "net": -1669,
+     "net": -1672,
      "owner": "2ea302dcb1a8405b88c963cd6e8a82a4362ab0ebb247795f4e336d9ea4b327fe",
-     "value": 198331
+     "value": 198328
     }
    ],
-   "receipts": "D:/shz/tmp/mvp-drill/receipts/SHZ-BTCUSD-20261127T1826Z/seg0",
-   "received_us": 1795803968436320,
+   "receipts": "D:/shz/SatsHedgeZero/ops/mvp-drill/receipt-regtest/epochs/SHZ-BTCUSD-20261127T1847Z/seg0",
+   "received_us": 1795805226235501,
    "rolled": [],
    "segment": 0,
-   "statement_sha256": null,
+   "statement_sha256": "3ae60cf925a49666083047464478f7ba6f91693071ff6bdfba1a77983295d467",
    "status": "broadcast",
    "testmempoolaccept": {
     "allowed": true,
     "fees": {
-     "base": 0.00000477,
-     "effective-feerate": 0.00001,
+     "base": 4.77e-06,
+     "effective-feerate": 1e-05,
      "effective-includes": [
-      "0a61ecc409ce0046034c6a701a3b16a35cf97cee58b9fd54fb814b2a71c709df"
+      "fe9c34f719bbf05bf98a08c8e599362b08ead85e1363d211bfbce5a0d15d7aef"
      ]
     },
-    "txid": "edce3696c73fff5687c9792972d5bbf005602f08178e515098febc29213d17d7",
+    "txid": "8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141",
     "vsize": 477,
-    "wtxid": "0a61ecc409ce0046034c6a701a3b16a35cf97cee58b9fd54fb814b2a71c709df"
+    "wtxid": "fe9c34f719bbf05bf98a08c8e599362b08ead85e1363d211bfbce5a0d15d7aef"
    },
-   "tip": 133,
-   "txid": "edce3696c73fff5687c9792972d5bbf005602f08178e515098febc29213d17d7",
-   "vsize": 477
+   "tip": 130,
+   "txid": "8f090e367d157bd205e66221d29cf8276805cbae4dcb880318f2407f9b752141",
+   "vsize": 477,
+   "prove_seconds": 171,
+   "updated_us": 1795805398044707
   }
- ],
- "finished": "2026-11-27T18:27:15.073Z"
+ ]
 }

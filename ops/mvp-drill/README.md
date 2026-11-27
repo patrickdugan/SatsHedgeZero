@@ -5,27 +5,29 @@ the settlement daemon `shz_batcher` ([`ops/shz-batcher/README.md`](../shz-batche
 
 | File | |
 | --- | --- |
-| `client.mjs` | three browser-less traders: deposit to their collateral addresses, activate, trade round trips, review and sign every settlement entry with `ui/venue/settle.js` (the browser's code), withdraw |
-| `drill_regtest.sh` | regtest node + `shz-venue --collateral-chain regtest` (live FROST marks from the relay) + `shz_batcher run` (60 s epochs) + miner + `client.mjs`; receipt in `receipt-regtest/` |
+| `client.mjs` | three browser-less traders over three epochs: deposit, activate, trade, review and sign every settlement entry with `ui/venue/settle.js` (the browser's code), leave one package unsigned (`--refuse 2:1`), withdraw, wait for statements |
+| `drill_regtest.sh` | regtest node + `shz-venue --collateral-chain regtest` (live FROST marks from the relay) + `shz_batcher run --prove` (60 s epochs) + miner + `client.mjs`; receipt in `receipt-regtest/` |
 | `staging_box.sh` | the same stack on the witness box beside the live units: `NET=regtest` on port 8098, `NET=testnet4` (read-only venue on the box's pruned node) on port 8099 |
 
-## Regtest drill receipt (`receipt-regtest/`, 2026-11-27 18:24-18:27 UTC)
+## Regtest drill receipt (`receipt-regtest/`, 2026-11-27 18:45-18:54 UTC)
 
-Venue b3105fc + this commit, daemon `shz_batcher` from `research/lightninger_dlc_batcher` (60 s
-epochs, 25 s signing window), Bitcoin Core 31.1 regtest, marks from the live FROST relay.
+Venue at this commit, daemon `shz_batcher` 02a861b (60 s epochs, 25 s signing window, `--prove
+--table 4 --rows 2`), Bitcoin Core 31.1 regtest, marks from the live FROST relay. Traders 0, 1, 2
+deposited 200,000 sats each to `account(T, B, 171)`; the venue credited each at 1 confirmation and
+the owners signed `collateral` registrations. $200 round trips at 10x, closed $300 away.
 
-| Step | Result |
-| --- | --- |
-| Deposits | three traders, 200,000 sats each to `account(T, B, 171)`; the venue watcher saw each at 1 confirmation; owners signed `collateral` registrations (label `regtest collateral`, channel = deposit outpoint) |
-| Trades | trader 0 short / trader 1 long $200 at 10x, closed $300 higher (batches 1-2): trader 0 −1,669, trader 1 +1,669 realized |
-| Epoch `SHZ-BTCUSD-20261127T1826Z` | settlement `edce3696…17d7`, both traders signed their entries (0x83, sighash recomputed by `settle.js` and the venue); the venue rolled trader 0 to `edce3696…:1` 198,331 sats and trader 1 to `:0` 201,669 sats, refund height 173, at 1 confirmation |
-| Withdrawal | trader 0 (flat) signed a withdrawal to a fresh wallet address; the router debited its 198,331 free sats; its next order was refused (`a withdrawal is pending`) |
-| Trades | trader 2 long / trader 1 short $200, closed $300 lower (batches 3-4): trader 1 +1,688, trader 2 −1,688 |
-| Epoch `SHZ-BTCUSD-20261127T1827Z` | settlement `4bab58b8…828b`, 3 signers, 628 vB, mined at 145: trader 0's 198,331 sats to its address (`4bab58b8…:1`, seen by `scantxoutset`), trader 1 rolled to 203,357, trader 2 to 198,312; the venue closed trader 0's account (`withdrawn in full by 4bab58b8…`) |
+| Epoch | Trades | Settlement | Result |
+| --- | --- | --- | --- |
+| `1847Z` | A: 0 vs 1, batches 1-2 (0: −1,672, 1: +1,672) | `8f090e36…2141`, 2 signers | rolled to 198,328 / 201,672; statement `3ae60cf9…d467` (171 s) |
+| `1848Z` | B: 2 vs 1, batches 3-4 (1: +1,687, 2: −1,687) | `d43bc6f8…e930`, 1 signer; trader 2 left its package unsigned and was dropped (`rolled`), fronted 1,687 | trader 1 rolled to 203,359; trader 2 untouched; statement `eb4744a8…522e` (186 s) |
+| `1849Z` | none | `6a36da39…86fd`, 2 signers (no-batch settlement: trader 2's carried net, trader 0 near its refund height) | trader 2 rolled to 198,313 (−1,687 carried), trader 0 to 198,328; no proof queued by the daemon |
+| `1850Z` | C: 0 vs 2, batches 5-6 (0: −1,687, 2: +1,687); then trader 0 asked to withdraw, and its next order was refused | `66e40421…195f`, 3 signers, mined at 165 | trader 0 paid 196,641 sats to its address (`66e40421…:1`, = 200,000 + realized), account closed; trader 2 rolled to 200,000 (= 200,000 + realized); trader 1 refreshed; statement `df9c98e7…3f72` (232 s) |
 
-What the drill found in the daemon (reported to its session): a withdrawal requested after an
-account's last trade waits for the next segment of new batches, because the daemon builds
-settlements only from segments; the drill keeps trader 1 and 2 trading so the next epoch has one.
+Every signature was over a sighash the client computed itself with `ui/venue/settle.js` and the
+venue recomputed before accepting the package. The client's checks (`check`, `chain-withdrawal`
+steps) compare each account's on-chain value with its realized PnL: both hold. The daemon queued
+no proof for the carry-only settlement of `1849Z`; the client was stopped after the three other
+statements arrived, and `venue_settlements.json` was rebuilt from the venue's journal.
 
 ## Staging on the witness box
 
