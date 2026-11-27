@@ -1,0 +1,149 @@
+{
+  "description": "Shared agent vectors (crates/shz-venue/src/core/agents.rs shared_agent_vectors). Ids are exact; signatures are the Rust signer's (deterministic nonce, not BIP340 aux) and must verify.",
+  "grant": {
+    "id": "14404f9f76d7a1f0f9b10f59f49907c4afa27f8204fff6d383ebb99656ee2477",
+    "wire": {
+      "agent": "8d7500dd4c12685d1f568b4c2b5048e8534b873319f3a8daa612b469132ec7f7",
+      "channel": {
+        "txid": "4444444444444444444444444444444444444444444444444444444444444444",
+        "vout": 1
+      },
+      "expires_us": 1764288000000000,
+      "instruments": [
+        "perps",
+        "spot"
+      ],
+      "issued_us": 1764201600000000,
+      "limits": {
+        "collar_bps": 150,
+        "max_daily_notional_usd": 5000,
+        "max_open_orders": 8,
+        "max_order_notional_usd": 250,
+        "max_orders_per_minute": 30
+      },
+      "may_withdraw": false,
+      "nonce": 3,
+      "owner": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "router": 1,
+      "scope": {
+        "epoch": 7,
+        "network": "1111111111111111111111111111111111111111111111111111111111111111",
+        "policy": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "signature": "b02bc8f6c4a8ac684ef7f84ddfe9460aa5c08d940236751870cd78eca456d073b4d8c0cf582b87cc3ba4618f5487b18a9885c2a6f44a825280357409e12d61cf",
+      "version": 1
+    }
+  },
+  "keys": {
+    "agent_pk": "8d7500dd4c12685d1f568b4c2b5048e8534b873319f3a8daa612b469132ec7f7",
+    "agent_sk": "2121212121212121212121212121212121212121212121212121212121212121",
+    "owner_pk": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+    "owner_sk": "0303030303030303030303030303030303030303030303030303030303030303"
+  },
+  "option": {
+    "id": "feaf7810a1d8b97177261fe2d4a6491204e1f646619a26dc07b234ad90ce3f45",
+    "intent": {
+      "action": "take",
+      "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+      "channel": {
+        "txid": "4444444444444444444444444444444444444444444444444444444444444444",
+        "vout": 1
+      },
+      "expires_us": 1764201660000000,
+      "legs": [
+        {
+          "long": true,
+          "qty": 100,
+          "series": "8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        {
+          "long": false,
+          "qty": 100,
+          "series": "9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ],
+      "other_limits": [
+        {
+          "asset": {
+            "decimals": 6,
+            "id": "7777777777777777777777777777777777777777777777777777777777777777",
+            "kind": "stable",
+            "protocol": "rgb"
+          },
+          "premium_milli": 2000000
+        }
+      ],
+      "owner": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "premium_milli": -1500,
+      "sequence": 43,
+      "signature": "13a9fb4227862f0cf6e34078329b3389fe038bd400df485c5bf40e1700e9176eba0434481a1c5da64b47767b09e87eaff12650c4a7790a47eda5c0de94302893",
+      "version": 7
+    }
+  },
+  "perp": {
+    "id": "5c730c16096459c061ac6dfd8e4083c2dbbf66ce8d117cfffc958948673f25e5",
+    "intent": {
+      "action": "post",
+      "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+      "channel": {
+        "txid": "4444444444444444444444444444444444444444444444444444444444444444",
+        "vout": 1
+      },
+      "early_window_opt_in": false,
+      "expires_us": 1764201660000000,
+      "leverage_bps": 50000,
+      "limit_usd": 91250,
+      "max_fee_ppm": 20,
+      "max_fee_sats": 1000,
+      "max_mark_age_us": 20000000,
+      "owner": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "quantity": 150,
+      "sequence": 42,
+      "side": "short",
+      "signature": "478ddef8f1962d2399fb8c0665ee308dd5b3bd62beef7da86ab835ba04919932749325181f52ad2a6d406cdda527104fa06165b4b600c567c7875971202ef947",
+      "tier": "standard"
+    }
+  },
+  "revocation": {
+    "id": "625ccdc783808c79a54522cb143dd3e57ec2c42d2490b29e0d5a44f5d9f594f7",
+    "wire": {
+      "grant": "14404f9f76d7a1f0f9b10f59f49907c4afa27f8204fff6d383ebb99656ee2477",
+      "issued_us": 1764210000123456,
+      "owner": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "router": 1,
+      "signature": "e51b7f37749e1137956b88afd8546472f07457deee5d61dbf9064f5ce83ed611f7e7c554689336e6fef2fd800966c26f964a43ab8e87b88259ac89847aef016b",
+      "version": 1
+    }
+  },
+  "spot": {
+    "id": "364c8cb51e8869af18668b9dc9b6b1a4a5199bee96041851727452b29b9c8c63",
+    "intent": {
+      "action": "post",
+      "buy": true,
+      "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+      "channel": {
+        "txid": "4444444444444444444444444444444444444444444444444444444444444444",
+        "vout": 1
+      },
+      "expires_us": 1764201660000000,
+      "owner": "531fe6068134503d2723133227c867ac8fa6c83c537e9a44c3c5bdbdcb1fe337",
+      "pair": "6666666666666666666666666666666666666666666666666666666666666666",
+      "price": 90100000000,
+      "qty_sats": 25000,
+      "sequence": 44,
+      "signature": "a8c7f78af1887845d57fde0fefc48a53403a29c12d8f0767a8110b833ef8c43d4d106df0ae8118760ab0ff0ad0c51454cb2e5f30b1c3e8d8b0755ac19326ca61",
+      "version": 8
+    }
+  },
+  "template": {
+    "execution_policy": "5555555555555555555555555555555555555555555555555555555555555555",
+    "router": 1,
+    "scope": {
+      "epoch": 7,
+      "network": "1111111111111111111111111111111111111111111111111111111111111111",
+      "policy": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "spot_pair": "6666666666666666666666666666666666666666666666666666666666666666",
+    "tariff_version": 1
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "lightninger-agent-sdk",
+  "version": "1.0.0",
+  "description": "Agent SDK for the Lightninger testnet venue: delegated agent keys, agent API v1 (REST + JSON-RPC/WebSocket). No dependencies.",
+  "type": "module",
+  "license": "MIT OR Apache-2.0",
+  "engines": { "node": ">=22.18" },
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src", "sign.wasm"],
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
+    "example": "node examples/quote_agent.ts"
+  }
+}

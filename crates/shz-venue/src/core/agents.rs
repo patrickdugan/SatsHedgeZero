@@ -661,6 +661,82 @@ mod tests {
     const OWNER: Key = [3; 32];
     const AGENT: Key = [33; 32];
 
+    /// sdk/vectors/agent_vectors.json: grant and revocation ids and the agent-signed intent ids
+    /// (perpetual, two-leg option combo with a stable limit, spot) the Python and TypeScript
+    /// SDKs must reproduce, with this signer's signatures for their verifiers.
+    /// `SHZ_WRITE_VECTORS=1` rewrites the file; otherwise it must match.
+    #[test]
+    fn shared_agent_vectors() {
+        use shz_dex::routing::{
+            Scope,
+            options::{AssetLimit, LegOrder, OPTION_INTENT_VERSION, SPOT_INTENT_VERSION, StableProtocol},
+        };
+        let scope = Scope { network: [0x11; 32], epoch: 7, policy: [0x22; 32] };
+        let (owner, agent) = (public(&OWNER), public(&AGENT));
+        let channel = BtcOutPoint { txid: [0x44; 32], vout: 1 };
+        let (tariff_version, policy, pair) = (1u32, [0x55u8; 32], [0x66u8; 32]);
+        let tpl = json!({"scope": {"network": h(&scope.network), "epoch": scope.epoch, "policy": h(&scope.policy)}, "router": ROUTER_ID,
+                         "tariff_version": tariff_version, "execution_policy": h(&policy), "spot_pair": h(&pair)});
+        let g = AgentGrant {
+            version: AGENT_GRANT_VERSION, scope, router: ROUTER_ID, channel: channel.clone(), owner: [0; 32], agent, nonce: 3, issued_us: 1_764_201_600_000_000,
+            expires_us: 1_764_288_000_000_000, instruments: INSTRUMENT_PERPS | INSTRUMENT_SPOT, may_withdraw: false,
+            limits: AgentLimits { max_order_notional_usd: 250, max_daily_notional_usd: 5_000, max_open_orders: 8, max_orders_per_minute: 30, collar_bps: 150 },
+            signature: super::super::ZERO_SIG,
+        }
+        .signed(&OWNER)
+        .unwrap();
+        let r = AgentRevocation { version: AGENT_GRANT_VERSION, scope, router: ROUTER_ID, grant: g.id(), owner: [0; 32], issued_us: 1_764_210_000_123_456, signature: super::super::ZERO_SIG }
+            .signed(&OWNER)
+            .unwrap();
+        let mut perp = IntentV6 {
+            scope, router: ROUTER_ID, channel: channel.clone(), owner, sequence: 42, expires_us: 1_764_201_660_000_000, action: Action::Post, side: OrderSide::Short,
+            tier: FeedTier::Standard, tariff_version, entitlement_digest: [0; 32], execution_policy: policy, quantity: 150, limit_usd: 91_250, leverage_bps: 50_000,
+            max_fee_ppm: 20, max_fee_sats: 1_000, max_mark_age_us: 20_000_000, early_window_opt_in: false, cancel_target: [0; 32], signature: super::super::ZERO_SIG,
+        };
+        perp.signature = bip340_sign(&AGENT, &perp.id()).unwrap();
+        let usdt = SettleAsset::Stable { protocol: StableProtocol::Rgb, id: [0x77; 32], decimals: 6 };
+        let mut opt = IntentV7 {
+            version: OPTION_INTENT_VERSION, scope, router: ROUTER_ID, channel: channel.clone(), owner, sequence: 43, expires_us: 1_764_201_660_000_000, action: Action::Take,
+            legs: vec![LegOrder { series: [0x88; 32], long: true, qty: 100 }, LegOrder { series: [0x99; 32], long: false, qty: 100 }],
+            premium_milli: -1_500, other_limits: vec![AssetLimit { asset: usdt, premium_milli: 2_000_000 }], cancel_target: [0; 32], signature: super::super::ZERO_SIG,
+        };
+        opt.signature = bip340_sign(&AGENT, &opt.id()).unwrap();
+        let mut spot = SpotIntent {
+            version: SPOT_INTENT_VERSION, scope, router: ROUTER_ID, channel: channel.clone(), owner, sequence: 44, expires_us: 1_764_201_660_000_000, action: Action::Post,
+            pair, buy: true, qty_sats: 25_000, price: 90_100_000_000, cancel_target: [0; 32], signature: super::super::ZERO_SIG,
+        };
+        spot.signature = bip340_sign(&AGENT, &spot.id()).unwrap();
+        let ch = outpoint_json(&channel);
+        let v = json!({
+            "description": "Shared agent vectors (crates/shz-venue/src/core/agents.rs shared_agent_vectors). Ids are exact; signatures are the Rust signer's (deterministic nonce, not BIP340 aux) and must verify.",
+            "keys": {"owner_sk": h(&OWNER), "owner_pk": h(&owner), "agent_sk": h(&AGENT), "agent_pk": h(&agent)},
+            "template": tpl,
+            "grant": {"wire": grant_json(&g), "id": h(&g.id())},
+            "revocation": {"wire": {"version": r.version, "router": r.router, "grant": h(&r.grant), "owner": h(&r.owner), "issued_us": r.issued_us, "signature": sig_hex(&r.signature)}, "id": h(&r.id())},
+            "perp": {"intent": {"channel": ch, "owner": h(&owner), "sequence": 42, "expires_us": perp.expires_us, "action": "post", "side": "short", "tier": "standard",
+                                "quantity": 150, "limit_usd": 91_250, "leverage_bps": 50_000, "max_fee_ppm": 20, "max_fee_sats": 1_000, "max_mark_age_us": 20_000_000,
+                                "early_window_opt_in": false, "cancel_target": h(&[0; 32]), "signature": sig_hex(&perp.signature)}, "id": h(&perp.id())},
+            "option": {"intent": {"version": 7, "channel": ch, "owner": h(&owner), "sequence": 43, "expires_us": opt.expires_us, "action": "take",
+                                  "legs": [{"series": h(&[0x88; 32]), "long": true, "qty": 100}, {"series": h(&[0x99; 32]), "long": false, "qty": 100}],
+                                  "premium_milli": -1_500, "other_limits": [{"asset": {"kind": "stable", "protocol": "rgb", "id": h(&[0x77; 32]), "decimals": 6}, "premium_milli": 2_000_000}],
+                                  "cancel_target": h(&[0; 32]), "signature": sig_hex(&opt.signature)}, "id": h(&opt.id())},
+            "spot": {"intent": {"version": 8, "channel": ch, "owner": h(&owner), "sequence": 44, "expires_us": spot.expires_us, "action": "post", "pair": h(&pair), "buy": true,
+                                "qty_sats": 25_000, "price": 90_100_000_000u64, "cancel_target": h(&[0; 32]), "signature": sig_hex(&spot.signature)}, "id": h(&spot.id())},
+        });
+        // The wire forms decode back to the same structures (venue decoders).
+        assert_eq!(grant_from_json(&v["grant"]["wire"], scope).unwrap(), g);
+        assert_eq!(super::super::options::intent_v7_from_json(&v["option"]["intent"], scope, ROUTER_ID).unwrap(), opt);
+        assert_eq!(super::super::spot::spot_intent_from_json(&v["spot"]["intent"], scope, ROUTER_ID, &pair).unwrap(), spot);
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sdk/vectors/agent_vectors.json");
+        let text = serde_json::to_string_pretty(&v).unwrap() + "\n";
+        if std::env::var("SHZ_WRITE_VECTORS").is_ok() {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, &text).unwrap();
+        }
+        let on_disk: Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sdk/vectors/agent_vectors.json (SHZ_WRITE_VECTORS=1 writes it)")).unwrap();
+        assert_eq!(on_disk, v, "sdk/vectors/agent_vectors.json is stale");
+    }
+
     fn mark(v: &mut Venue, seq: u64, usd: u64) {
         let now = now_us();
         v.ingest_packet(PacketRec { seq, slot_us: now - 2_000_000, status: "VALID".into(), median_e8: Some(usd * 100_000_000), digest: [seq as u8; 32], signers: json!([]), verified: true, received_us: now }).unwrap();
