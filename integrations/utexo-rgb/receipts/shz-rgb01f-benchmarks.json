@@ -1,0 +1,122 @@
+{
+  "schema": "SHZ-RGB-01F/BENCHMARK/V1",
+  "timestamp": "2026-11-27T00:11:24.980Z",
+  "environment": {
+    "nodeVersion": "v18.19.1",
+    "platform": "linux",
+    "arch": "x64",
+    "indexerUrl": "http://127.0.0.1:29302",
+    "strictExternalSigner": true,
+    "permissiveSignerPolicy": false,
+    "fixtureScope": "NIA/IFA regtest via published @utexo/rgb-lightning-node-nodejs@0.2.0-beta.5 SdkNode issuer (upstream source-built RLN HTTP daemon blocked by private BFA ORG_READ_TOKEN)"
+  },
+  "provenance": {
+    "wdkPackage": "@utexo/wdk-rgb-lightning@0.2.0-beta.5",
+    "wdkGitHead": "608937d849412a4c25e9b9a66a7571b561396ae0",
+    "nativePackage": "@utexo/rgb-lightning-node-nodejs@0.2.0-beta.5",
+    "nativeGitHead": "8b78387df4c33140a52c19c6de6fcc8d4aa7595c",
+    "rlnCommit": "ecc69f20308231400561f6f060fea88acfa40cc4",
+    "lightningCommit": "79b9eb5166546c62692d3a672986f385c7fe047d",
+    "adapterSha256": "6d46717b80ffba8ed8af2de023a536af242aadcacbbb799fb9bb89f8933e4ca5",
+    "linuxX64AddonSha256": "e35974417bf4658ebe87f35da8d8e14628f7a65e8054c43d225c2f6b77fbb45a"
+  },
+  "mainnetRefusal": {
+    "blocked": true,
+    "mainnetSpecific": false,
+    "stage": "unlock",
+    "errorName": "Error",
+    "message": "Rln(Conflict): Invalid indexer: resolver is for another chain-network pair"
+  },
+  "setup": {
+    "status": "passed-btc-only-issuance-refused",
+    "setupOverheadMs": 24132.78,
+    "niaAssetId": null,
+    "ifaAssetId": null,
+    "btcChannelOpenTxid": "b3168a4695c0ba77e1d555fb795cd68b3410bbfdeeac5b09b12fe5f957e44a8f",
+    "btcChannelOpenFeeSats": 1081,
+    "rgbChannelOpenTxid": null,
+    "rgbChannelOpenFeeSats": null,
+    "aliceInitialRgbSettled": null,
+    "btcOpenTempId": "b9b00eb4c63390d9fd4ca9b15131c1692937d5e24c4b4ea36fe0c96afb295e4c"
+  },
+  "smoke": {
+    "btcLn": {
+      "status": "ambiguous-or-failed",
+      "error": "Timed out: btc-ln settled #0; last=false; observed={\"sent\":{\"payment_id\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_hash\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_secret\":\"713cbe318c0d28d4c3f3b79fe50730ebe963d91c9e92251949efbad6b1fe4909\",\"status\":\"Pending\"},\"o\":{\"amt_msat\":3000000,\"asset_amount\":null,\"asset_id\":null,\"payment_hash\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_type\":\"Outbound\",\"status\":\"Pending\",\"created_at\":1795738309,\"updated_at\":1795738309,\"payee_pubkey\":\"036dcb9b582e52524374fba9ea153cdab74230294432ef83c9975613eec51cddae\",\"preimage\":null,\"description\":null,\"description_hash\":null},\"p\":{\"amt_msat\":3000000,\"asset_amount\":null,\"asset_id\":null,\"payment_hash\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_type\":\"InboundAutoClaim\",\"status\":\"Pending\",\"created_at\":1795738309,\"updated_at\":1795738309,\"payee_pubkey\":\"036dcb9b582e52524374fba9ea153cdab74230294432ef83c9975613eec51cddae\",\"preimage\":null,\"description\":null,\"description_hash\":null}}",
+      "elapsedMs": null
+    }
+  },
+  "rails": {
+    "btcLn": {
+      "summary": {
+        "targetAttempts": 100,
+        "executedAttempts": 1,
+        "observedSuccess": 0,
+        "ambiguousOrFailed": 1,
+        "unexecuted": 99,
+        "successRateOverTarget": 0,
+        "failureOrUnexecutedRate": 1,
+        "p50Ms": null,
+        "p95Ms": null,
+        "p99Ms": null,
+        "meanMs": null,
+        "minMs": null,
+        "maxMs": null
+      },
+      "haltedAtSmoke": true
+    },
+    "rgbLn": {
+      "summary": {
+        "targetAttempts": 100,
+        "executedAttempts": 0,
+        "observedSuccess": 0,
+        "ambiguousOrFailed": 0,
+        "unexecuted": 100,
+        "successRateOverTarget": 0,
+        "failureOrUnexecutedRate": 1,
+        "p50Ms": null,
+        "p95Ms": null,
+        "p99Ms": null,
+        "meanMs": null,
+        "minMs": null,
+        "maxMs": null
+      },
+      "blockedBy": {
+        "method": "issueAssetNia",
+        "strictExternalSigner": true,
+        "message": "Rln(UnsupportedInExternalSignerMode): Unsupported in external signer mode: asset issuance is not supported in external signer mode"
+      }
+    },
+    "rgbChain": {
+      "summary": {
+        "targetAttempts": 100,
+        "executedAttempts": 0,
+        "observedSuccess": 0,
+        "ambiguousOrFailed": 0,
+        "unexecuted": 100,
+        "successRateOverTarget": 0,
+        "failureOrUnexecutedRate": 1,
+        "p50Ms": null,
+        "p95Ms": null,
+        "p99Ms": null,
+        "meanMs": null,
+        "minMs": null,
+        "maxMs": null
+      },
+      "blockedBy": {
+        "method": "issueAssetNia",
+        "strictExternalSigner": true,
+        "message": "Rln(UnsupportedInExternalSignerMode): Unsupported in external signer mode: asset issuance is not supported in external signer mode"
+      }
+    }
+  },
+  "recovery": {},
+  "issuanceRefusal": {
+    "method": "issueAssetNia",
+    "strictExternalSigner": true,
+    "message": "Rln(UnsupportedInExternalSignerMode): Unsupported in external signer mode: asset issuance is not supported in external signer mode"
+  },
+  "fatal": {
+    "message": "Timed out: btc-ln settled #0; last=false; observed={\"sent\":{\"payment_id\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_hash\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_secret\":\"713cbe318c0d28d4c3f3b79fe50730ebe963d91c9e92251949efbad6b1fe4909\",\"status\":\"Pending\"},\"o\":{\"amt_msat\":3000000,\"asset_amount\":null,\"asset_id\":null,\"payment_hash\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_type\":\"Outbound\",\"status\":\"Pending\",\"created_at\":1795738309,\"updated_at\":1795738309,\"payee_pubkey\":\"036dcb9b582e52524374fba9ea153cdab74230294432ef83c9975613eec51cddae\",\"preimage\":null,\"description\":null,\"description_hash\":null},\"p\":{\"amt_msat\":3000000,\"asset_amount\":null,\"asset_id\":null,\"payment_hash\":\"a26d741f546565f3324beee2be9f62706a9936c3fc83af30b4cc0d1f5325a12e\",\"payment_type\":\"InboundAutoClaim\",\"status\":\"Pending\",\"created_at\":1795738309,\"updated_at\":1795738309,\"payee_pubkey\":\"036dcb9b582e52524374fba9ea153cdab74230294432ef83c9975613eec51cddae\",\"preimage\":null,\"description\":null,\"description_hash\":null}}"
+  }
+}

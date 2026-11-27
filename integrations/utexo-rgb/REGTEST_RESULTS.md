@@ -53,6 +53,30 @@ Two distinct blockers prevented executing the live funded regtest payment loops 
      ```
    - Subsequent WSL2 invocations returned `Catastrophic failure / Error code: Wsl/Service/E_UNEXPECTED`, leaving `Ubuntu-24.04` in `Stopped` state until host disk space is freed and the Windows `WslService` is restarted with host administrator privileges.
    - Consequently, **0 / 100** live funded benchmark attempts, **0 / 12** live native regtest adversarial scenarios, and **0 / 5** live `SHZ-RGB-02` atomic swap regtest cases executed on-chain in this session. All denominators preserve `0 observedSuccess / 100 unexecuted` in [receipts/qualification-matrix.json](./receipts/qualification-matrix.json).
+   - **Correction (2026-11-27)**: the WSL ext4 disk is `D:\wsl\ext4.vhdx` (non-sparse, 662 GiB), so the read-only fault came from **D:** being full (0.81 GB free at recovery), not C:. WSL restarted without an admin `WslService` restart. The 2026-11-27 live run kept all regtest data (bitcoind, electrs, RLN nodes) on an ext4 loop image backed by a sparse file on C:, so the vhdx did not grow.
+
+### 2.3 Live Native Regtest Run (2026-11-27, strict external signer)
+
+Receipts: [receipts/shz-rgb01f-live-run-20261127.json](./receipts/shz-rgb01f-live-run-20261127.json), [receipts/shz-rgb01f-benchmarks.json](./receipts/shz-rgb01f-benchmarks.json). Host: WSL2 Ubuntu-24.04, Node `v18.19.1`, Bitcoin Core `v31.1.0`, electrs and rgb-proxy-server at the pinned digests, addon SHA-256 `e3597441...`, `permissiveSignerPolicy: false`.
+
+| Suite | Target | Executed | Passed | Where it stopped |
+| --- | --- | --- | --- | --- |
+| `btc-ln` | 100 | 1 | 0 | Smoke attempt: HTLC added, then LDK `Commitment update awaiting signer: setting signer_pending_commitment_update`; `Outbound` and `InboundAutoClaim` stay `Pending` for 120 s (B2) |
+| `rgb-ln` | 100 | 0 | 0 | `issueAssetNia` refused (B1) |
+| `rgb-chain` | 100 | 0 | 0 | `issueAssetNia` refused (B1) |
+| `RGB-01c` adversarial recovery | 12 | 0 | 0 | `adversarial-recovery.mjs:204` `issueAssetNia` refused (B1) |
+| `SHZ-RGB-02` atomic swap | 5 | 0 | 0 | `shz-rgb02-atomic-swap.mjs:185` `issueAssetNia` refused (B1) |
+
+What did run live: three strict-signer `SdkNode` workers initialized and unlocked, funded from the miner, `createUtxos` confirmed, and a 1,000,000 sat BTC channel opened (miner fee 1,081 sat) and became usable on both peers.
+
+Blockers, both in the published `@utexo/rgb-lightning-node-nodejs@0.2.0-beta.5` under the strict external signer:
+
+- **B1, issuance**: `Rln(UnsupportedInExternalSignerMode): Unsupported in external signer mode: asset issuance is not supported in external signer mode`. The section 2.2 mitigation (NIA/IFA issued from the published `SdkNode`) does not hold. The `@utexo/wdk-rgb-lightning` README directs issuance to a separate on-chain rgb-lib wallet (`@utexo/wdk-wallet-rgb`); `npm view @utexo/wdk-wallet-rgb` returns E404 (2026-11-27).
+- **B2, strict outgoing signing (S01)**: every outgoing commitment update waits on the signer and never completes. The native package README ("Migration and Release Restrictions") states that strict outgoing signing still blocks production. Permissive signer policy was not used; the gate stays recorded as a known failure.
+
+Mainnet check: `mainnet-lightning-rejection-v1` is present in runtime capabilities. Offline, a mainnet `SdkNode` creates and initializes, and unlock stops at `Rln(Conflict): Invalid indexer: resolver is for another chain-network pair`; the lightning rejection itself is not exercised offline. The previous check accepted an unrelated constructor error (`WalletAccountRgbLightning requires a BareRgbLightningBinding`) as a mainnet refusal and has been replaced.
+
+Harness fixes made to reach these stop points: 32-byte native seeds; `SdkNode.create` request uses `storage_dir_path` and lowercase `network` as in upstream `src/node-binding.js`; `mine()` waits for esplora to serve the tip block hash; `listChannels` read through a shape-tolerant helper; the benchmark writes the issuance refusal and smoke failure into its receipt.
 
 ---
 
@@ -64,9 +88,9 @@ Two distinct blockers prevented executing the live funded regtest payment loops 
 | Rust <-> JS canonical receipt (`SHZ/WITHDRAWAL-RECEIPT/V1`) & quote binding | Cross-language (`shz-dex` + `integrations/utexo-rgb`) | **PASSED** | 3 golden vectors verified byte-for-byte in Rust and pure-JS BIP340 (`withdrawal-bridge.test.mjs`), 26/26 JS tests pass, explorer/simulated-ack refusal verified | None |
 | `SHZ-RGB-01B/C` local durable journal + checkpoint CAS `SIGKILL` tests | Real POSIX process death (local FS) | **PASSED** | 3 actual child `SIGKILL` crash tests pass (journal append, before-CAS, after-CAS) | Separate trusted remote CAS service for production |
 | `RGB-01a` Package provenance & Linux x64 native runtime load | Native artifact provenance | **PASSED (NIA/IFA public packages)** | Exact npm shasum/SHA-512/SLSA v1, addon SHA-256 `e3597441...`, `rln_commit` `ecc69f20...`, `mainnet-lightning-rejection-v1` verified | Private BFA `ORG_READ_TOKEN` required for upstream source-built RLN HTTP daemon / LSP |
-| `RGB-01b` / `RGB-01e` Native regtest benchmarks (`btc-ln`, `rgb-ln`, `rgb-chain`, 100 attempts each) | Live native regtest | **UNEXECUTED (0/100 per rail)** | Harness implemented (`regtest-nia-benchmark.mjs` + `native-worker.mjs`), syntax checked; `0/100` executed | Host WSL2 `Wsl/Service/E_UNEXPECTED` + low C: disk space (`10.95 GB`) |
-| `RGB-01c` / Section 4 Adversarial crash & recovery (6 kill boundaries + reorg/P03 + P02 + signer restart + RGB force-close/S01) | Live native regtest + Rust WAL CLI | **UNEXECUTED (0/12 live native)** | Harness implemented (`adversarial-recovery.mjs` + `shz_withdrawal_cli.rs`); local JS `SIGKILL` (3/3) and Rust WAL crash replay (1/1) verified separately | Host WSL2 recovery; upstream `P02`, `P03`, `P04`, `S01`, `D01` remain open production gates |
-| `SHZ-RGB-02` Native atomic BTC/RGB Lightning swap | Source audit + gated regtest harness | **SOURCE-VERIFIED; REGTEST UNEXECUTED (0/5)** | RLN `routes.rs` + `ldk.rs` circular HTLC swap protocol audited; gated harness (`shz-rgb02-atomic-swap.mjs`) ready | Host WSL2 recovery; unilateral recovery blocked by upstream strict-signer `S01` |
+| `RGB-01b` / `RGB-01e` Native regtest benchmarks (`btc-ln`, `rgb-ln`, `rgb-chain`, 100 attempts each) | Live native regtest | **BLOCKED (btc-ln 1 executed / 0 passed; rgb-ln 0/100; rgb-chain 0/100)** | 2026-11-27 live run (section 2.3): strict-signer nodes funded, BTC channel opened (fee 1,081 sat); btc-ln HTLC stalls at `signer_pending_commitment_update` | B1 issuance refused in external-signer mode; B2/S01 strict outgoing signing |
+| `RGB-01c` / Section 4 Adversarial crash & recovery (6 kill boundaries + reorg/P03 + P02 + signer restart + RGB force-close/S01) | Live native regtest + Rust WAL CLI | **BLOCKED (0/12 live native)** | 2026-11-27 live run stopped at `issueAssetNia` before scenario 1; local JS `SIGKILL` (3/3) and Rust WAL crash replay (1/1) verified separately | B1 issuance; upstream `P02`, `P03`, `P04`, `S01`, `D01` remain open production gates |
+| `SHZ-RGB-02` Native atomic BTC/RGB Lightning swap | Source audit + gated regtest harness | **SOURCE-VERIFIED; REGTEST BLOCKED (0/5)** | RLN `routes.rs` + `ldk.rs` circular HTLC swap protocol audited; 2026-11-27 gated run stopped at `issueAssetNia` before case 1 | B1 issuance; B2/S01 stalls every strict-signer HTLC (cooperative and abort-before-reveal cases), and unilateral recovery is blocked by `S01` |
 | Section 5 CI audit (`shz-rust-and-core-regtest` & `shz-mnr05-bitvm3-ln-dlc`) | Repository CI | **AUDITED** | `shz-rust-and-core-regtest` clippy fixed by `d63596e` on `main` (merged); `shz-mnr05-bitvm3-ln-dlc` root cause confirmed as stale standalone `research/mnr05_bitvm3_ln_dlc/Cargo.lock` reproducing on `main` `d63596e` | Separate PR needed to regenerate `research/mnr05_bitvm3_ln_dlc/Cargo.lock` |
 | `RGB-01f` Mainnet RGB Lightning | Production gate | **DISABLED / BLOCKED** | Upstream `mainnet-lightning-rejection-v1` enforced; never bypassed | Requires upstream mainnet support, public audit (`D01`), `P02`/`P03`/`P04`/`S01` closure |
 

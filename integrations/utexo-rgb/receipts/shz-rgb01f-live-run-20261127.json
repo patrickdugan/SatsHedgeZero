@@ -1,0 +1,64 @@
+{
+  "schema": "SHZ-RGB-01EF/LIVE-REGTEST-RUN/V1",
+  "runAt": "2026-11-27T00:11:24Z",
+  "host": {
+    "kernel": "Linux 6.18.58.1-microsoft-standard-WSL2 x86_64 (Ubuntu-24.04)",
+    "node": "v18.19.1",
+    "bitcoind": "Bitcoin Core v31.1.0, /root/opt/bitcoin-31.1/bin/bitcoind sha256 986e63b3c8770f08d0059820ad3dd085d1ab9e1bea23946c243f858a06888a08",
+    "esplora": "mempool/electrs@sha256:de9dd2f5a328d5f464936dc4128d848f9b8bf72221ab3c9b8e2949df50899b74",
+    "rgbProxy": "ghcr.io/rgb-tools/rgb-proxy-server@sha256:b06fe0f234c53030d54fe1e704daf4bc6ff2879a335124353175130a5112d313 (server.info version 0.3.0)",
+    "nativeAddonSha256": "e35974417bf4658ebe87f35da8d8e14628f7a65e8054c43d225c2f6b77fbb45a",
+    "rlnCommit": "ecc69f20308231400561f6f060fea88acfa40cc4",
+    "signerPolicy": "strict (permissiveSignerPolicy: false)"
+  },
+  "runs": {
+    "benchmarks": {
+      "command": "node integrations/utexo-rgb/regtest-nia-benchmark.mjs 100 100 integrations/utexo-rgb/receipts/shz-rgb01f-benchmarks.json",
+      "receipt": "shz-rgb01f-benchmarks.json",
+      "reached": "3 strict-signer nodes initialized, funded, createUtxos confirmed; BTC channel opened (fee 1081 sat) and usable on both sides",
+      "btcLn": { "targetAttempts": 100, "executedAttempts": 1, "observedSuccess": 0, "ambiguousOrFailed": 1, "unexecuted": 99 },
+      "rgbLn": { "targetAttempts": 100, "executedAttempts": 0, "observedSuccess": 0, "unexecuted": 100 },
+      "rgbChain": { "targetAttempts": 100, "executedAttempts": 0, "observedSuccess": 0, "unexecuted": 100 }
+    },
+    "adversarialRecovery": {
+      "command": "node integrations/utexo-rgb/adversarial-recovery.mjs",
+      "targetScenarios": 12,
+      "executedScenarios": 0,
+      "stoppedAt": "adversarial-recovery.mjs:204 issueAssetNia",
+      "error": "Rln(UnsupportedInExternalSignerMode): Unsupported in external signer mode: asset issuance is not supported in external signer mode"
+    },
+    "shzRgb02AtomicSwap": {
+      "command": "SHZ_RGB02_EXPERIMENT=YES node integrations/utexo-rgb/shz-rgb02-atomic-swap.mjs",
+      "targetCases": 5,
+      "executedCases": 0,
+      "stoppedAt": "shz-rgb02-atomic-swap.mjs:185 issueAssetNia",
+      "error": "Rln(UnsupportedInExternalSignerMode): Unsupported in external signer mode: asset issuance is not supported in external signer mode"
+    }
+  },
+  "blockers": {
+    "B1-issuance-external-signer": {
+      "scope": "rgb-ln, rgb-chain, all 12 adversarial scenarios, all 5 SHZ-RGB-02 cases",
+      "evidence": "issueAssetNia returns Rln(UnsupportedInExternalSignerMode) on the published @utexo/rgb-lightning-node-nodejs@0.2.0-beta.5 SdkNode",
+      "upstreamStatement": "@utexo/wdk-rgb-lightning README: issuance calls forward the released UnsupportedInExternalSignerMode error; issue from a separate on-chain rgb-lib wallet (@utexo/wdk-wallet-rgb)",
+      "registryCheck": "npm view @utexo/wdk-wallet-rgb -> E404 on 2026-11-27"
+    },
+    "B2-strict-outgoing-signing-S01": {
+      "scope": "btc-ln (and every LN rail, including RGB-02 swaps)",
+      "evidence": "LDK log after update_add_htlc: 'Commitment update awaiting signer: setting signer_pending_commitment_update'; sendPayment returns Pending and both Outbound and InboundAutoClaim stay Pending for 120 s",
+      "upstreamStatement": "@utexo/rgb-lightning-node-nodejs README 'Migration and Release Restrictions': strict outgoing signing and same-process reopen still block production",
+      "notBypassed": "permissiveSignerPolicy stays false; the permissive non-mainnet option was not used"
+    }
+  },
+  "mainnetCheck": {
+    "runtimeCapability": "mainnet-lightning-rejection-v1 present in getRuntimeInfo().capabilities",
+    "offlineNodeCheck": "mainnet SdkNode create and initWithNativeExternalSigner succeed; unlock stops with 'Rln(Conflict): Invalid indexer: resolver is for another chain-network pair' (regtest indexer); the lightning rejection itself is not exercised offline",
+    "previousCheckWasVacuous": "the 83f83a7 check accepted 'WalletAccountRgbLightning requires a BareRgbLightningBinding' as a mainnet refusal"
+  },
+  "harnessFixesInThisRun": [
+    "native seeds are 32 bytes (createWithStorage requires a 64-char hex seed); was randomBytes(64)",
+    "native-worker SdkNode.create uses storage_dir_path and lowercase network as in wdk-rgb-lightning src/node-binding.js; Rln(Conflict) on init is the already-initialized signal",
+    "mine() waits until esplora serves the tip block hash, removing 404 'Block not found' during TransactionSync",
+    "listChannels results read through a shape-tolerant helper",
+    "benchmark records issuance refusal and smoke failure in its receipt instead of exiting without data"
+  ]
+}

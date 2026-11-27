@@ -68,7 +68,7 @@ class NativeProc {
   constructor(root, name) {
     this.directory = path.join(root, name);
     fs.mkdirSync(this.directory, { recursive: true, mode: 0o700 });
-    this.seed = randomBytes(64).toString('hex');
+    this.seed = randomBytes(32).toString('hex');
     this.seq = 0;
     this.spawn();
   }
@@ -144,7 +144,7 @@ class NativeProc {
 // Assert mainnet Lightning remains disabled (never bypass WDK restriction)
 let mainnetDisabled = false;
 try {
-  const mw = new wdk.WalletAccountRgbLightning(randomBytes(64).toString('hex'), '0/0', {
+  const mw = new wdk.WalletAccountRgbLightning(randomBytes(32).toString('hex'), '0/0', {
     network: 'mainnet', dataDir: path.join(workBase, 'rgb02-mainnet-check'),
     daemonListeningPort: 0, ldkPeerListeningPort: 29597,
   });

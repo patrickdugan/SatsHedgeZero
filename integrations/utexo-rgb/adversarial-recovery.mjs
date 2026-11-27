@@ -76,7 +76,7 @@ class NativeProc {
   constructor(root, name) {
     this.directory = path.join(root, name);
     fs.mkdirSync(this.directory, { recursive: true, mode: 0o700 });
-    this.seed = randomBytes(64).toString('hex');
+    this.seed = randomBytes(32).toString('hex');
     this.seq = 0;
     this.spawn();
   }

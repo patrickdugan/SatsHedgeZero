@@ -1,6 +1,6 @@
 {
   "schema": "SHZ-RGB-01EF/QUALIFICATION-MATRIX/V1",
-  "checkedAt": "2026-11-26T20:55:00Z",
+  "checkedAt": "2026-11-27T00:14:22Z",
   "branch": "research/shz-rgb-01-utexo-sdk",
   "reconciledMainCommit": "d63596e8b76bd2fa155db8654b452d7f53ef37b8",
   "mainnetEnabled": false,
@@ -23,20 +23,31 @@
     "jsRecoveryModel": { "assertions": 124, "validSequences": 29, "rejectedSequences": 3877 },
     "crossLanguageGoldenVectors": { "count": 3, "rustVerified": true, "jsBip340Verified": true }
   },
+  "liveRegtestRun": {
+    "runAt": "2026-11-27T00:11:24Z",
+    "receipt": "shz-rgb01f-live-run-20261127.json",
+    "node": "v18.19.1",
+    "bitcoind": "v31.1.0",
+    "signerPolicy": "strict",
+    "hostIssueResolved": "the 2026-11-26 read-only filesystem came from D: (holding the WSL ext4.vhdx) being full, not C:; this run kept regtest data on a C:-backed loop image"
+  },
   "nativeRegtestBenchmarks": {
-    "executed": false,
+    "executed": true,
+    "receipt": "shz-rgb01f-benchmarks.json",
     "blockers": [
-      "Upstream tests/regtest/setup.mjs requires ORG_READ_TOKEN for three private BFA repositories (mitigated for NIA/IFA via published @utexo/rgb-lightning-node-nodejs@0.2.0-beta.5 SdkNode issuer).",
-      "Host WSL2 VHDX encountered read-only filesystem during Docker BuildKit unpack with 10.92 GB free on Windows C:, leaving Ubuntu-24.04 in Wsl/Service/E_UNEXPECTED."
+      "B1: issueAssetNia -> Rln(UnsupportedInExternalSignerMode) on the published SdkNode under the strict external signer; the NIA/IFA SdkNode-issuer mitigation does not hold. Upstream directs issuance to a separate on-chain rgb-lib wallet (@utexo/wdk-wallet-rgb, not on npm as of 2026-11-27).",
+      "B2 (S01): outgoing LN commitment signing stalls under the strict signer (LDK signer_pending_commitment_update; payment Pending for 120 s); upstream README lists strict outgoing signing as an open production blocker. Not bypassed with permissive policy.",
+      "Upstream tests/regtest/setup.mjs requires ORG_READ_TOKEN for three private BFA repositories."
     ],
     "rails": {
-      "btcLn": { "targetAttempts": 100, "executedAttempts": 0, "observedSuccess": 0, "ambiguousOrFailed": 0, "unexecuted": 100, "p50Ms": null, "p95Ms": null, "p99Ms": null },
-      "rgbLn": { "targetAttempts": 100, "executedAttempts": 0, "observedSuccess": 0, "ambiguousOrFailed": 0, "unexecuted": 100, "p50Ms": null, "p95Ms": null, "p99Ms": null },
-      "rgbChain": { "targetAttempts": 100, "executedAttempts": 0, "observedSuccess": 0, "ambiguousOrFailed": 0, "unexecuted": 100, "p50Ms": null, "p95Ms": null, "p99Ms": null }
-    }
+      "btcLn": { "targetAttempts": 100, "executedAttempts": 1, "observedSuccess": 0, "ambiguousOrFailed": 1, "unexecuted": 99, "p50Ms": null, "p95Ms": null, "p99Ms": null, "blocker": "B2" },
+      "rgbLn": { "targetAttempts": 100, "executedAttempts": 0, "observedSuccess": 0, "ambiguousOrFailed": 0, "unexecuted": 100, "p50Ms": null, "p95Ms": null, "p99Ms": null, "blocker": "B1" },
+      "rgbChain": { "targetAttempts": 100, "executedAttempts": 0, "observedSuccess": 0, "ambiguousOrFailed": 0, "unexecuted": 100, "p50Ms": null, "p95Ms": null, "p99Ms": null, "blocker": "B1" }
+    },
+    "btcChannelOpenFeeSats": 1081
   },
   "adversarialRecoveryLiveRegtest": {
-    "executed": false,
+    "executed": "attempted 2026-11-27; stopped at issueAssetNia (B1) before scenario 1",
     "targetScenarios": 12,
     "executedScenarios": 0,
     "unexecutedScenarios": 12,
@@ -51,10 +62,11 @@
     "sourceAudited": true,
     "rlnCommit": "ecc69f20308231400561f6f060fea88acfa40cc4",
     "mechanism": "Circular self-payment HTLC loop (Maker -> Taker -> Maker with IS_SWAP_SCID) sharing single payment_preimage",
-    "regtestExecuted": false,
+    "regtestExecuted": "attempted 2026-11-27 with SHZ_RGB02_EXPERIMENT=YES; stopped at issueAssetNia (B1) before case 1",
     "targetCases": 5,
     "executedCases": 0,
     "unexecutedCases": 5,
+    "knownFailures": ["B1 issuance refused in external-signer mode", "B2/S01 strict outgoing signing stalls every LN HTLC, so cooperative and abort-before-reveal swaps cannot run under the strict signer"],
     "unilateralSafetyBlocker": "Upstream strict-signer gate S01 (RGB force-close commitment acceptance and mature sweep unqualified)"
   },
   "ciAudit": {

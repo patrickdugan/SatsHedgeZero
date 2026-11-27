@@ -36,18 +36,20 @@ async function dispatch({ target, method, args = [] }) {
       fs.mkdirSync(rlnDir, { recursive: true, mode: 0o700 });
       const permissive = cfg.permissiveSignerPolicy === true;
       signer = native.NativeExternalSigner.createWithStorage(seedHex, 'regtest', signerDir, permissive);
+      // Request shape mirrors @utexo/wdk-rgb-lightning src/node-binding.js (storage_dir_path, lowercase network).
       node = native.SdkNode.create({
-        data_dir: rlnDir,
-        network: 'Regtest',
+        storage_dir_path: rlnDir,
+        network: 'regtest',
         daemon_listening_port: 0,
         ldk_peer_listening_port: cfg.ldkPeerListeningPort,
-        disable_authentication: true,
-        permissive_signer_policy: permissive,
+        max_media_upload_size_mb: 5,
+        enable_virtual_channels_v0: false,
       });
-      const initializedMarker = path.join(rlnDir, 'initialized.marker');
-      if (!fs.existsSync(initializedMarker)) {
+      try {
         node.initWithNativeExternalSigner(signer);
-        fs.writeFileSync(initializedMarker, '1', { mode: 0o600 });
+      } catch (e) {
+        // An existing data directory reports Rln(Conflict): the expected already-initialized signal on restart.
+        if (!String(e?.message ?? e).startsWith('Rln(Conflict):')) throw e;
       }
       node.unlockWithNativeExternalSigner(signer, unlockReq);
       return {
