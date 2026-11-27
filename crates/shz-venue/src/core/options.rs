@@ -282,15 +282,48 @@ impl Venue {
             self.persist(json!({"kind": "options_enabled", "oracle": h(&self.group_key), "num_bits": NUM_BITS,
                                 "usdt_rgb_contract": usdt_contract.map(|k| h(&k)), "ts_us": now_us()}));
         }
-        {
-            let desk = self.router.options().map_err(|e| e.to_string())?.ok_or("options desk missing")?;
-            for seq in 1..=desk.batch_count() {
-                if let Some(b) = desk.batch(seq) {
-                    st.batches.push(OptBatchRec { n: seq, batch: b.clone(), phase: "committed".into(), staged_us: 0, resolved_us: None, acks: vec![] });
-                    for f in &b.fills {
-                        st.last_premium.insert(f.series, f.premium_milli);
+        // Venue log: transfer nonces, option intents (the last record per id wins) and every
+        // resolved option batch, committed or aborted, under its venue number.
+        let mut recs: BTreeMap<u64, OptBatchRec> = BTreeMap::new();
+        for e in std::mem::take(&mut self.opt_log) {
+            match e["kind"].as_str() {
+                Some("opt_nonce") => {
+                    if let (Some(Ok(o)), Some(x)) = (e["owner"].as_str().map(parse_key), e["expires_us"].as_u64()) {
+                        let n = st.nonces.entry(o).or_insert(0);
+                        *n = (*n).max(x);
                     }
                 }
+                Some("opt_intent") => {
+                    let (Some(Ok(id)), Ok(intent)) = (e["id"].as_str().map(parse_key), serde_json::from_value::<IntentV7>(e["intent"].clone())) else { continue };
+                    st.intents.insert(id, OptIntentRec { intent, status: e["status"].as_str().unwrap_or("").into(), accepted_us: e["accepted_us"].as_u64().unwrap_or(0),
+                                                         reason: e["reason"].as_str().map(str::to_string), batch: e["batch"].as_u64() });
+                }
+                Some("opt_batch") => {
+                    let (Some(n), Ok(batch)) = (e["n"].as_u64(), serde_json::from_value::<OptionBatch>(e["batch"].clone())) else { continue };
+                    let acks = serde_json::from_value(e["acks"].clone()).unwrap_or_default();
+                    recs.insert(n, OptBatchRec { n, batch, phase: e["phase"].as_str().unwrap_or("").into(), staged_us: e["staged_us"].as_u64().unwrap_or(0),
+                                                 resolved_us: e["resolved_us"].as_u64(), acks });
+                }
+                _ => {}
+            }
+        }
+        {
+            // A batch the router committed without a venue record (a journal from before these
+            // records, or a crash between the commit and its record) is appended.
+            let desk = self.router.options().map_err(|e| e.to_string())?.ok_or("options desk missing")?;
+            for seq in 1..=desk.batch_count() {
+                let Some(b) = desk.batch(seq) else { continue };
+                let d = b.digest();
+                if !recs.values().any(|r| r.phase == "committed" && r.batch.digest() == d) {
+                    let n = recs.keys().next_back().map_or(0, |k| *k) + 1;
+                    recs.insert(n, OptBatchRec { n, batch: b.clone(), phase: "committed".into(), staged_us: 0, resolved_us: None, acks: vec![] });
+                }
+            }
+        }
+        st.batches = recs.into_values().collect();
+        for r in st.batches.iter().filter(|r| r.phase == "committed") {
+            for f in &r.batch.fills {
+                st.last_premium.insert(f.series, f.premium_milli);
             }
         }
         self.opts = Some(st);
@@ -473,6 +506,7 @@ impl Venue {
         let now = now_us().max(self.desk_clock());
         let series: Vec<Key> = i.legs.iter().map(|l| l.series).collect();
         let out = self.router.submit_option(i.clone(), now).map_err(opt_err)?;
+        let cancelled = if let OptionOutcome::Cancelled(t) = &out { Some(*t) } else { None };
         let (status, outcome, batch_n) = match out {
             OptionOutcome::Posted(_) => ("resting", "posted", None),
             OptionOutcome::Cancelled(t) => {
@@ -491,6 +525,10 @@ impl Venue {
             }
         };
         self.opt_mut()?.intents.insert(id, OptIntentRec { intent: i, status: status.into(), accepted_us: now, reason: None, batch: batch_n });
+        self.persist_intent(&id);
+        if let Some(t) = cancelled {
+            self.persist_intent(&t);
+        }
         for s in series {
             self.emit(json!({"type": "option_book", "series": h(&s)}));
         }
@@ -523,6 +561,10 @@ impl Venue {
         bip340_verify(&owner, &digest, &sig).map_err(|_| "transfer signature does not verify")?;
         self.wallet_check(&owner)?;
         let ch = self.accounts.get(&owner).ok_or("no such account")?.outpoint.clone();
+        // The nonce is durable (fsync) before the move: a crash after it can only burn the
+        // nonce, never let the same signed transfer run twice.
+        self.persist(json!({"kind": "opt_nonce", "owner": h(&owner), "expires_us": expires}));
+        self.opt_mut()?.nonces.insert(owner, expires);
         match op {
             1 => self.router.fund_options(ch, amount),
             2 => self.router.defund_options(ch, amount),
@@ -530,7 +572,6 @@ impl Venue {
             _ => self.router.withdraw_stable(ch, asset, amount),
         }
         .map_err(opt_err)?;
-        self.opt_mut()?.nonces.insert(owner, expires);
         self.emit(json!({"type": "account"}));
         Ok(json!({"accepted": op_name, "amount": amount, "asset": self.asset_json(&asset), "options": self.options_account(&owner)}))
     }
@@ -634,26 +675,45 @@ impl Venue {
     }
 
     fn after_option_resolution(&mut self, i: usize, now: u64) {
-        let Some(st) = self.opts.as_mut() else { return };
+        let Some(st) = self.opts.as_ref() else { return };
         let (n, phase, batch) = {
             let r = &st.batches[i];
             (r.n, r.phase.clone(), r.batch.clone())
         };
         let committed = phase == "committed";
+        // Makers whose quote still rests after the batch (partially filled).
+        let resting: std::collections::BTreeSet<Key> = match self.router.options() {
+            Ok(Some(d)) => batch
+                .fills
+                .iter()
+                .filter(|f| st.intents.get(&f.maker).and_then(|r| r.intent.legs.first()).is_some_and(|l| d.depth(&f.series, l.long).iter().any(|q| q.0 == f.maker)))
+                .map(|f| f.maker)
+                .collect(),
+            _ => Default::default(),
+        };
+        let st = self.opts.as_mut().unwrap();
+        let mut changed: Vec<Key> = vec![];
         match &batch.kind {
             OptionBatchKind::Trade { taker } => {
                 if let Some(r) = st.intents.get_mut(taker) {
                     r.status = if committed { "filled".into() } else { "aborted".into() };
                     r.batch = Some(n);
+                    changed.push(*taker);
                 }
                 // An abort pulls every maker quote of the batch (the router cancels them).
                 for f in &batch.fills {
                     if committed {
                         st.last_premium.insert(f.series, f.premium_milli);
-                    } else if let Some(r) = st.intents.get_mut(&f.maker).filter(|r| r.status == "resting") {
+                    }
+                    let Some(r) = st.intents.get_mut(&f.maker).filter(|r| r.status == "resting" || r.status == "partially filled") else { continue };
+                    if committed {
+                        r.status = if resting.contains(&f.maker) { "partially filled".into() } else { "filled".into() };
+                    } else {
                         r.status = "cancelled".into();
                         r.reason = Some("pulled: its fill was in an aborted option batch".into());
                     }
+                    r.batch = Some(n);
+                    changed.push(f.maker);
                 }
             }
             OptionBatchKind::Expiry { event_id, price_usd, .. } => {
@@ -666,6 +726,12 @@ impl Venue {
                     }
                 }
             }
+            #[allow(unreachable_patterns)]
+            _ => {}
+        }
+        self.persist_batch(i);
+        for id in changed {
+            self.persist_intent(&id);
         }
         let view = self.option_batch_json(&self.opts.as_ref().unwrap().batches[i]);
         self.emit(json!({"type": "option_batch", "phase": phase, "batch": view.clone()}));
@@ -685,6 +751,19 @@ impl Venue {
         self.emit(json!({"type": "account"}));
     }
 
+    fn persist_intent(&mut self, id: &Key) {
+        let Some(r) = self.opts.as_ref().and_then(|o| o.intents.get(id)) else { return };
+        let e = json!({"kind": "opt_intent", "id": h(id), "intent": serde_json::to_value(&r.intent).unwrap_or(Value::Null), "status": r.status,
+                       "reason": r.reason, "batch": r.batch, "accepted_us": r.accepted_us});
+        self.persist(e);
+    }
+    fn persist_batch(&mut self, i: usize) {
+        let Some(r) = self.opts.as_ref().and_then(|o| o.batches.get(i)) else { return };
+        let e = json!({"kind": "opt_batch", "n": r.n, "phase": r.phase, "staged_us": r.staged_us, "resolved_us": r.resolved_us,
+                       "batch": serde_json::to_value(&r.batch).unwrap_or(Value::Null), "acks": serde_json::to_value(&r.acks).unwrap_or(Value::Null)});
+        self.persist(e);
+    }
+
     // ------------------------------------------------------------- views ----
 
     pub fn option_batch_json(&self, r: &OptBatchRec) -> Value {
@@ -693,6 +772,9 @@ impl Venue {
         let (kind, extra) = match &b.kind {
             OptionBatchKind::Trade { taker } => ("trade", json!({"taker": h(taker)})),
             OptionBatchKind::Expiry { event_id, series, price_usd } => ("expiry", json!({"event_id": event_id, "price_usd": price_usd, "series": series.iter().map(|s| h(s)).collect::<Vec<_>>()})),
+            // Batch kinds added to the router later (a void on an unattestable notice) keep their serde form.
+            #[allow(unreachable_patterns)]
+            other => (batch_kind_name(b), serde_json::to_value(other).unwrap_or(Value::Null)),
         };
         json!({
             "n": r.n, "seq": b.sequence, "kind": kind, "detail": extra, "phase": r.phase, "digest": h(&b.digest()),
@@ -829,6 +911,8 @@ fn batch_kind_name(b: &OptionBatch) -> &'static str {
     match b.kind {
         OptionBatchKind::Trade { .. } => "trade",
         OptionBatchKind::Expiry { .. } => "expiry",
+        #[allow(unreachable_patterns)]
+        _ => "void",
     }
 }
 
@@ -883,6 +967,100 @@ mod tests {
         assert!(verify_announcement(&announced, &[7; 32]).is_err());
         // the testnet mark is near 60,600: strikes 59,500 .. 61,500 in steps of 500
         assert_eq!(strike_grid(60_614, PriceDomain::from_bits(NUM_BITS)), vec![59_500, 60_000, 60_500, 61_000, 61_500]);
+    }
+
+    /// Restart: transfer nonces (fsync'd before the move), aborted and committed option batches
+    /// with their venue numbers, and the option intent history all come back from the venue log.
+    #[test]
+    fn restart_restores_nonces_aborted_batches_and_intents() {
+        use shz_dex::routing::public;
+        let dir = std::env::temp_dir().join(format!("shz-venue-opt-persist-{}", now_us()));
+        let oracle = public(&[9; 32]);
+        let usdt = [0xab; 32];
+        let (msk, tsk) = ([3u8; 32], [4u8; 32]);
+        let reg = |v: &mut Venue, sk: &Key| {
+            let owner = public(sk);
+            let d = v.register_draft(owner, "demo", None, None).unwrap();
+            let dig = parse_key(d["allocation_digest"].as_str().unwrap()).unwrap();
+            v.register(d["draft_id"].as_str().unwrap(), bip340_sign(sk, &dig).unwrap()).unwrap();
+            owner
+        };
+        let xfer = |v: &mut Venue, sk: &Key, amount: u64, expires: u64| {
+            let owner = public(sk);
+            let d = transfer_digest(1, &owner, &SettleAsset::Btc, amount, expires);
+            v.option_transfer("fund", &json!({"owner": h(&owner), "amount": amount, "expires_us": expires, "signature": sig_hex(&bip340_sign(sk, &d).unwrap())}))
+        };
+        let mut seq = 1_000u64;
+        let mut intent = |v: &Venue, sk: &Key, action: Action, series: Key, long: bool, qty: u64, premium: i64| {
+            seq += 1;
+            let a = &v.accounts[&public(sk)];
+            IntentV7 { version: OPTION_INTENT_VERSION, scope: v.scope, router: ROUTER_ID, channel: a.outpoint.clone(), owner: [0; 32], sequence: seq,
+                       expires_us: now_us() + 600_000_000, action, legs: vec![LegOrder { series, long, qty }], premium_milli: premium,
+                       other_limits: vec![], cancel_target: [0; 32], signature: ZERO_SIG }
+                .signed(sk)
+                .unwrap()
+        };
+        let sign_acks = |v: &mut Venue, sks: &[Key]| {
+            for sk in sks {
+                let owner = public(sk);
+                let items: Vec<(String, shz_dlc::Bip340Signature)> = v.pending.values().filter(|p| p.owner == owner && p.kind == "option_ack")
+                    .map(|p| (p.id.clone(), bip340_sign(sk, &p.message).unwrap())).collect();
+                v.add_signatures(owner, &items).unwrap();
+            }
+        };
+        let (n1, n2, used_nonce, post1, take1, post2, take2);
+        {
+            let mut v = Venue::open(&dir, oracle, "http://127.0.0.1:9".into()).unwrap();
+            v.options_enable(Some(usdt)).unwrap();
+            let (m, t) = (reg(&mut v, &msk), reg(&mut v, &tsk));
+            let ann = OracleAnnouncement { event_id: "E".into(), maturity_unix: 2_000_000_000, oracle_pubkey_x: oracle, digit_nonces_x: vec![[1; 32]; NUM_BITS as usize] };
+            let call = v.router.list_series(Series { kind: OptionKind::Call, asset: SettleAsset::Btc, strike_usd: 100_000, event_id: "E".into() }, ann).unwrap();
+            used_nonce = now_us() + 300_000_000;
+            xfer(&mut v, &msk, 150_000, used_nonce).unwrap();
+            xfer(&mut v, &tsk, 40_000, used_nonce).unwrap();
+            // 1: the taker never signs: fence-aborted at the deadline
+            let p1 = intent(&v, &msk, Action::Post, call, false, 100, 3000);
+            post1 = p1.id();
+            v.option_submit(p1).unwrap();
+            let t1 = intent(&v, &tsk, Action::Take, call, true, 100, 300_000);
+            take1 = t1.id();
+            assert_eq!(v.option_submit(t1).unwrap()["outcome"], "staged");
+            sign_acks(&mut v, &[msk]);
+            v.options_advance(now_us() + ABORT_AFTER_US + 1).unwrap();
+            // 2: both sign: committed
+            let p2 = intent(&v, &msk, Action::Post, call, false, 100, 3000);
+            post2 = p2.id();
+            v.option_submit(p2).unwrap();
+            let t2 = intent(&v, &tsk, Action::Take, call, true, 60, 300_000);
+            take2 = t2.id();
+            assert_eq!(v.option_submit(t2).unwrap()["outcome"], "staged");
+            sign_acks(&mut v, &[msk, tsk]);
+            let st = v.opts.as_ref().unwrap();
+            assert_eq!(st.batches.iter().map(|r| (r.n, r.phase.as_str())).collect::<Vec<_>>(), vec![(1, "aborted"), (2, "committed")]);
+            n1 = st.batches[0].batch.digest();
+            n2 = st.batches[1].batch.digest();
+            assert_eq!(st.intents[&post2].status, "partially filled");
+            let _ = (m, t);
+        }
+        let mut v = Venue::open(&dir, oracle, "http://127.0.0.1:9".into()).unwrap();
+        v.options_enable(Some(usdt)).unwrap();
+        let st = v.opts.as_ref().unwrap();
+        let got: Vec<(u64, &str, Key)> = st.batches.iter().map(|r| (r.n, r.phase.as_str(), r.batch.digest())).collect();
+        assert_eq!(got, vec![(1, "aborted", n1), (2, "committed", n2)]);
+        assert!(st.batches[0].acks.iter().any(|a| a.signatures[0] == ZERO_SIG), "aborted batch keeps its unsigned lane");
+        assert!(st.batches[1].acks.iter().all(|a| a.signatures[0] != ZERO_SIG));
+        let status = |id: &Key| st.intents[id].status.clone();
+        assert_eq!((status(&post1), status(&take1), status(&post2), status(&take2)), ("cancelled".into(), "aborted".into(), "partially filled".into(), "filled".into()));
+        assert_eq!(st.intents[&take2].batch, Some(2));
+        // the account view lists the restored history newest first
+        let view = v.options_account(&public(&tsk));
+        assert_eq!(view["intents"][0]["id"], h(&take2));
+        // a signed transfer cannot be replayed after the restart
+        let e = xfer(&mut v, &msk, 150_000, used_nonce).unwrap_err();
+        assert!(e.contains("replay"), "{e}");
+        xfer(&mut v, &msk, 1, used_nonce + 1).unwrap();
+        drop(v);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

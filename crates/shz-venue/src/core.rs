@@ -211,6 +211,8 @@ pub struct Venue {
     risk_state: BTreeMap<Key, (crate::risk::State, Option<u64>)>,
     /// Options (`--options`): `None` keeps every option endpoint off.
     pub opts: Option<options::OptState>,
+    /// Option records of the venue log (`opt_*`), folded in when options are switched on.
+    opt_log: Vec<Value>,
 }
 
 fn venue_scope(keys: &Keys) -> (Scope, Policy) {
@@ -314,9 +316,14 @@ impl Venue {
             wallets: Default::default(),
             risk_state: BTreeMap::new(),
             opts: None,
+            opt_log: vec![],
         };
         // Account metadata is restored from the venue log; the router replays its own journal.
         for e in prior {
+            if e["kind"].as_str().is_some_and(|k| k.starts_with("opt_")) {
+                v.opt_log.push(e);
+                continue;
+            }
             if e["kind"] == "wallet_link" {
                 v.restore_link(&e);
             }
