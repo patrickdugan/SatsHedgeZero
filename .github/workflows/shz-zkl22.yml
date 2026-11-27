@@ -1,0 +1,52 @@
+name: ZKL-22 actual augmented Nova shape capture
+on:
+  pull_request:
+    paths:
+      - 'research/mnr05_bitvm3_ln_dlc/examples/zkl_capture.rs'
+      - 'research/zk_lean/audit_capture.py'
+      - 'research/zk_lean/test_audit_capture.py'
+      - '.github/workflows/shz-zkl22.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      RAYON_NUM_THREADS: '2'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate independent streaming checker
+        run: |
+          cd research/zk_lean
+          python -m unittest test_audit_capture -v
+      - name: Compile and test capture bridge
+        run: |
+          cargo clippy --locked --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --example zkl_capture -- -D warnings
+          cargo test --locked --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --example zkl_capture
+          cargo build --locked --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --example zkl_capture
+      - name: Capture actual setup matrices and verification key
+        run: |
+          set -euo pipefail
+          ulimit -v 6291456
+          /usr/bin/time -v research/mnr05_bitvm3_ln_dlc/target/release/examples/zkl_capture zkl22-capture
+          /usr/bin/time -v python research/zk_lean/audit_capture.py zkl22-capture
+          git rev-parse HEAD > zkl22-capture/source-commit.txt
+          sha256sum research/mnr05_bitvm3_ln_dlc/Cargo.lock > zkl22-capture/cargo-lock.sha256
+          du -sh zkl22-capture
+          gzip -1 zkl22-capture/*.shape.bin zkl22-capture/*.rows.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl22-nova-setup-capture
+          path: zkl22-capture
+          compression-level: 0
+          if-no-files-found: warn
