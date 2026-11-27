@@ -6,7 +6,7 @@ Requires=shz-venue.service
 [Service]
 User=shzvomm
 Group=shzvomm
-ExecStart=/usr/bin/python3 /opt/shz-venue/ops/venue-mm/options_mm.py run --server http://127.0.0.1:8096 --state-dir /var/lib/shz-venue-options-mm
+ExecStart=/usr/bin/python3 /opt/shz-venue/ops/venue-mm/options_mm.py run --server http://127.0.0.1:8096 --state-dir /var/lib/shz-venue-options-mm --fund-sats 195000
 StateDirectory=shz-venue-options-mm
 StateDirectoryMode=0700
 Restart=always
