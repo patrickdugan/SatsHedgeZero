@@ -86,6 +86,12 @@ pub struct OptState {
     nonces: BTreeMap<Key, u64>,
     pub last_premium: BTreeMap<Key, u64>,
 }
+impl OptState {
+    /// Venue number of the batch (option or spot) staged for acknowledgement.
+    pub fn staged_n(&self) -> Option<u64> {
+        self.staged.map(|i| self.batches[i].n)
+    }
+}
 
 // ------------------------------------------------------------- encodings ----
 
@@ -288,6 +294,8 @@ impl Venue {
         // Venue log: transfer nonces, option intents (the last record per id wins) and every
         // resolved option batch, committed or aborted, under its venue number.
         let mut recs: BTreeMap<u64, OptBatchRec> = BTreeMap::new();
+        // Records of other desks on the options desk (spot) stay for their own enable step.
+        let mut rest = vec![];
         for e in std::mem::take(&mut self.opt_log) {
             match e["kind"].as_str() {
                 Some("opt_nonce") => {
@@ -307,9 +315,10 @@ impl Venue {
                     recs.insert(n, OptBatchRec { n, batch, phase: e["phase"].as_str().unwrap_or("").into(), staged_us: e["staged_us"].as_u64().unwrap_or(0),
                                                  resolved_us: e["resolved_us"].as_u64(), acks });
                 }
-                _ => {}
+                _ => rest.push(e.clone()),
             }
         }
+        self.opt_log = rest;
         {
             // A batch the router committed without a venue record (a journal from before these
             // records, or a crash between the commit and its record) is appended.
@@ -595,7 +604,7 @@ impl Venue {
 
     /// The router staged `b`: post one pending owner signature per lane over its V4 Commit
     /// message and hold the adapter's peer and monitor signatures. Returns the batch number.
-    fn on_option_staged(&mut self, b: OptionBatch, now: u64) -> Result<u64, String> {
+    pub(crate) fn on_option_staged(&mut self, b: OptionBatch, now: u64) -> Result<u64, String> {
         let n = self.opt()?.batches.last().map_or(0, |r| r.n) + 1;
         let digest = b.digest();
         let ownerless = self.ownerless(&b);
@@ -734,6 +743,8 @@ impl Venue {
                     changed.push(f.maker);
                 }
             }
+            // Spot intents are the spot module's (`spot_resolved`, below).
+            OptionBatchKind::Spot { .. } => {}
             OptionBatchKind::Expiry { event_id, price_usd, .. } => {
                 if let Some(r) = st.events.get_mut(event_id) {
                     if committed {
@@ -760,6 +771,9 @@ impl Venue {
                                  "batch": n, "clearing": view["clearing"].clone()}));
             }
         }
+        if matches!(batch.kind, OptionBatchKind::Spot { .. }) {
+            self.spot_resolved(n, &batch, committed, now);
+        }
         let touched: std::collections::BTreeSet<Key> = batch.fills.iter().map(|f| f.series).collect();
         for s in touched {
             self.emit(json!({"type": "option_book", "series": h(&s)}));
@@ -767,9 +781,10 @@ impl Venue {
         self.emit(json!({"type": "account"}));
     }
 
-    /// Expiry and void batches commit without owner signatures once ownerless expiry is on.
+    /// Expiry and void batches commit without owner signatures once ownerless expiry is on;
+    /// trade and spot batches never do.
     fn ownerless(&self, b: &OptionBatch) -> bool {
-        !matches!(b.kind, OptionBatchKind::Trade { .. }) && self.router.ownerless_expiry_active().unwrap_or(false)
+        matches!(b.kind, OptionBatchKind::Expiry { .. }) && self.router.ownerless_expiry_active().unwrap_or(false)
     }
 
     fn persist_intent(&mut self, id: &Key) {
@@ -792,6 +807,7 @@ impl Venue {
         let side = |c: &BtcOutPoint| json!({"channel": outpoint_json(c), "owner": self.owner_of_channel(c).map(|k| h(&k))});
         let (kind, extra) = match &b.kind {
             OptionBatchKind::Trade { taker } => ("trade", json!({"taker": h(taker)})),
+            OptionBatchKind::Spot { taker } => ("spot", json!({"taker": h(taker)})),
             OptionBatchKind::Expiry { event_id, series, price_usd } => (batch_kind_name(b), json!({"event_id": event_id, "price_usd": price_usd, "series": series.iter().map(|s| h(s)).collect::<Vec<_>>()})),
         };
         json!({
@@ -799,6 +815,8 @@ impl Venue {
             "staged_us": r.staged_us, "resolved_us": r.resolved_us,
             "fills": b.fills.iter().map(|f| json!({"series": h(&f.series), "asset": self.asset_code(&f.asset), "long": side(&f.long), "short": side(&f.short),
                 "maker": h(&f.maker), "taker": h(&f.taker), "qty": f.qty, "premium_milli": f.premium_milli, "premium": f.premium})).collect::<Vec<_>>(),
+            "spot": b.spot.iter().map(|f| json!({"seller": side(&f.seller), "buyer": side(&f.buyer), "maker": h(&f.maker), "taker": h(&f.taker),
+                "taker_side": if f.taker_buys { "buy" } else { "sell" }, "sats": f.sats, "price": f.price, "quote_units": f.quote_units})).collect::<Vec<_>>(),
             "clearing": b.clearing.iter().map(|c| json!({"asset": self.asset_code(&c.asset), "digest": h(&c.report.digest()),
                 "rows": c.report.rows.iter().map(|x| json!({"channel": outpoint_json(&x.channel), "owner": self.owner_of_channel(&x.channel).map(|k| h(&k)),
                     "pnl": x.pnl, "collected": x.collected, "paid": x.paid, "net": x.net})).collect::<Vec<_>>(),
@@ -928,6 +946,7 @@ impl Venue {
 fn batch_kind_name(b: &OptionBatch) -> &'static str {
     match b.kind {
         OptionBatchKind::Trade { .. } => "trade",
+        OptionBatchKind::Spot { .. } => "spot",
         _ if b.kind.is_void() => "void",
         OptionBatchKind::Expiry { .. } => "expiry",
     }

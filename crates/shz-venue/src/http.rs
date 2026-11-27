@@ -17,7 +17,7 @@ use tokio_tungstenite::tungstenite::{
     handshake::server::{Request, Response},
 };
 
-use crate::core::{MARKET, Venue, now_us, packet_json, parse_key, parse_sig, parse_tier, trade_json};
+use crate::core::{MARKET, Venue, now_us, packet_json, parse_key, parse_sig, parse_tier, spot::SPOT_MARKET, trade_json};
 
 pub struct App {
     pub venue: Arc<Mutex<Venue>>,
@@ -308,6 +308,45 @@ async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (
                 Err(e) => err(409, e),
             }
         }
+        (true, _, "/api/spot/book") => {
+            let depth = q(query, "depth").and_then(|d| d.parse().ok()).unwrap_or(25usize).min(200);
+            match app.venue.lock().await.spot_book(depth) {
+                Ok(x) => (200, x),
+                Err(e) => err(404, e),
+            }
+        }
+        (true, _, "/api/spot/trades") => {
+            let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(60usize).min(500);
+            let v = app.venue.lock().await;
+            if v.spot.is_none() { err(404, "spot is off on this venue") } else { (200, json!(v.spot_trades(limit))) }
+        }
+        (true, _, p) if p.starts_with("/api/spot/account/") => match parse_key(&p["/api/spot/account/".len()..]) {
+            Ok(k) => {
+                let x = app.venue.lock().await.spot_account(&k);
+                if x.is_null() { err(404, "no such account, or spot is off") } else { (200, x) }
+            }
+            Err(e) => err(400, e),
+        },
+        (_, true, "/api/spot/intent-id") => {
+            let v = app.venue.lock().await;
+            match v.spot_intent_from_json(&jb["intent"]) {
+                Ok(i) => (200, json!({"id": hex::encode(i.id())})),
+                Err(e) => err(400, e),
+            }
+        }
+        (_, true, "/api/spot/intents") => {
+            let mut v = app.venue.lock().await;
+            if v.spot.is_none() {
+                return err(404, "spot is off on this venue");
+            }
+            match v.spot_intent_from_json(&jb["intent"]) {
+                Ok(i) => match v.spot_submit(i) {
+                    Ok(x) => (200, x),
+                    Err(e) => err(409, e),
+                },
+                Err(e) => err(400, e),
+            }
+        }
         (true, _, "/v1/candles") => candles(app, query).await,
         (true, _, "/api/explorer/packets") => {
             let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(50usize).min(600);
@@ -443,9 +482,20 @@ fn interval_ms(query: &str) -> Option<(String, u64)> {
     INTERVALS.iter().find(|(n, _)| *n == iv).map(|(n, ms)| (n.to_string(), *ms))
 }
 
-fn candles_for(v: &Venue, ms: u64, limit: usize) -> Vec<Value> {
+/// Chart instruments this relay serves: the perpetual (oracle marks and fills) and, with
+/// `--spot`, the BTC/USDT spot pair (committed spot fills).
+fn instrument_ok(v: &Venue, instrument: Option<&str>) -> Option<&'static str> {
+    match instrument {
+        Some(MARKET) => Some(MARKET),
+        Some(SPOT_MARKET) if v.spot.is_some() => Some(SPOT_MARKET),
+        _ => None,
+    }
+}
+
+fn candles_for(v: &Venue, instrument: &str, ms: u64, limit: usize) -> Vec<Value> {
     let mut agg: std::collections::BTreeMap<u64, [f64; 5]> = std::collections::BTreeMap::new();
-    for (&minute, c) in &v.candles {
+    let src = if instrument == SPOT_MARKET { v.spot.as_ref().map(|s| &s.candles).unwrap_or(&v.candles) } else { &v.candles };
+    for (&minute, c) in src {
         let b = minute / ms * ms;
         let e = agg.entry(b).or_insert([c[0], c[1], c[2], c[3], 0.0]);
         e[1] = e[1].max(c[1]);
@@ -462,13 +512,13 @@ fn candles_for(v: &Venue, ms: u64, limit: usize) -> Vec<Value> {
 }
 
 async fn candles(app: &App, query: &str) -> (u16, Value) {
-    if q(query, "instrument").as_deref() != Some(MARKET) {
-        return err(404, format!("unsupported instrument; this relay serves {MARKET}"));
-    }
+    let v = app.venue.lock().await;
+    let Some(inst) = instrument_ok(&v, q(query, "instrument").as_deref()) else {
+        return err(404, format!("unsupported instrument; this relay serves {MARKET}{}", if v.spot.is_some() { format!(" and {SPOT_MARKET}") } else { String::new() }));
+    };
     let Some((name, ms)) = interval_ms(query) else { return err(400, "unsupported interval") };
     let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(900usize).min(900);
-    let v = app.venue.lock().await;
-    (200, json!({"instrument": MARKET, "interval": name, "candles": candles_for(&v, ms, limit)}))
+    (200, json!({"instrument": inst, "interval": name, "candles": candles_for(&v, inst, ms, limit)}))
 }
 
 // -------------------------------------------------------------------- ws ----
@@ -487,7 +537,9 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
     let mut events = app.events.subscribe();
     let candle_mode = p == "/v1/stream";
     let iv = interval_ms(&query);
-    if candle_mode && (q(&query, "instrument").as_deref() != Some(MARKET) || iv.is_none()) {
+    let inst_ok = { instrument_ok(&*app.venue.lock().await, q(&query, "instrument").as_deref()) };
+    let inst = inst_ok.unwrap_or(MARKET);
+    if candle_mode && (inst_ok.is_none() || iv.is_none()) {
         let _ = tx.send(Message::text(json!({"type": "error", "error": "unsupported instrument or interval"}).to_string())).await;
         return;
     }
@@ -504,11 +556,12 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
                 let Ok(ev) = ev else { continue };
                 let frame = if candle_mode {
                     let kind: Value = serde_json::from_str(&ev).unwrap_or(Value::Null);
-                    if kind["type"] != "trade" && kind["type"] != "mark" { continue }
+                    let feeds = if inst == SPOT_MARKET { kind["type"] == "spot_trade" } else { kind["type"] == "trade" || kind["type"] == "mark" };
+                    if !feeds { continue }
                     let (name, ms) = iv.clone().unwrap();
-                    let last = { candles_for(&*app.venue.lock().await, ms, 1).pop() };
+                    let last = { candles_for(&*app.venue.lock().await, inst, ms, 1).pop() };
                     match last {
-                        Some(c) => json!({"type": "candle", "instrument": MARKET, "interval": name, "candle": c}).to_string(),
+                        Some(c) => json!({"type": "candle", "instrument": inst, "interval": name, "candle": c}).to_string(),
                         None => continue,
                     }
                 } else { ev };
@@ -516,7 +569,7 @@ async fn ws(app: Arc<App>, stream: TcpStream) {
             }
             _ = heartbeat.tick() => {
                 let hb = if candle_mode {
-                    json!({"type": "heartbeat", "instrument": MARKET, "interval": iv.as_ref().map(|x| x.0.clone())})
+                    json!({"type": "heartbeat", "instrument": inst, "interval": iv.as_ref().map(|x| x.0.clone())})
                 } else {
                     json!({"type": "heartbeat", "server_us": now_us()})
                 };

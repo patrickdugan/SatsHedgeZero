@@ -366,6 +366,30 @@ export async function signTransfer(op, { owner, asset = null, amount, expires_us
   return body;
 }
 
+// ---------- SpotIntent (BTC/USDT spot, intent version 8) ----------
+// Mirrors crates/shz-dex/src/routing/options/spot.rs (SpotIntent::id); ui/venue/test/spot_vector.json
+// is checked by both the Rust and the node tests.
+const TAG_SPOT_INTENT = 'SHZ/HFT06/SPOT-INTENT/V8';
+export function spotIntentPreimageParts(intent, template) {
+  const sc = template.scope;
+  if (!(intent.action in ACTION)) throw new Error('bad action');
+  return [
+    u32(intent.version ?? 8), unhex(sc.network, 32), u64(sc.epoch), unhex(sc.policy, 32), u32(template.router),
+    unhex(intent.channel.txid, 32), u32(intent.channel.vout), unhex(intent.owner, 32), u64(intent.sequence), u64(intent.expires_us),
+    u8(ACTION[intent.action]), unhex(intent.pair, 32), u8(intent.buy ? 1 : 0), u64(intent.qty_sats ?? 0), u64(intent.price ?? 0),
+    unhex(intent.cancel_target || ZERO32, 32),
+  ];
+}
+export async function spotIntentId(intent, template) {
+  return taggedHash(TAG_SPOT_INTENT, ...spotIntentPreimageParts(intent, template));
+}
+// Returns the SpotIntent JSON ready to POST to /api/spot/intents (signature added).
+export async function signSpotIntent(intent, template, seckey) {
+  const full = { version: 8, qty_sats: 0, price: 0, cancel_target: ZERO32, buy: false, ...intent };
+  const id = await spotIntentId(full, template);
+  return { id: hex(id), intent: { ...full, signature: hex(await bip340Sign(id, seckey)) } };
+}
+
 // 64 bytes of browser entropy, reduced to a nonzero scalar inside WASM.
 export function randomKey() {
   for (;;) {

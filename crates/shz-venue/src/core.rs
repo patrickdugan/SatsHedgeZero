@@ -27,6 +27,7 @@ use shz_dex::{
 use shz_dlc::{Bip340Signature, BtcOutPoint, bip340_sign, bip340_verify, tagged_hash};
 
 pub mod options;
+pub mod spot;
 
 pub type Key = [u8; 32];
 pub const ROUTER_ID: u32 = 1;
@@ -213,6 +214,8 @@ pub struct Venue {
     pub opts: Option<options::OptState>,
     /// Option records of the venue log (`opt_*`), folded in when options are switched on.
     opt_log: Vec<Value>,
+    /// Spot (`--spot`, on top of options): `None` keeps every spot endpoint off.
+    pub spot: Option<spot::SpotState>,
 }
 
 fn venue_scope(keys: &Keys) -> (Scope, Policy) {
@@ -317,6 +320,7 @@ impl Venue {
             risk_state: BTreeMap::new(),
             opts: None,
             opt_log: vec![],
+            spot: None,
         };
         // Account metadata is restored from the venue log; the router replays its own journal.
         for e in prior {
@@ -1118,6 +1122,7 @@ impl Venue {
             "position": self.position(owner), "open_orders": open, "fills": fills, "rejected": recent, "pending_signatures": pending,
             "wallet_link": self.wallet_link_view(owner),
             "options": self.opts.as_ref().map(|_| self.options_account(owner)),
+            "spot": self.spot.as_ref().map(|_| self.spot_account(owner)),
         })
     }
 
@@ -1136,6 +1141,7 @@ impl Venue {
             "clearing": self.router.clearing_summary().ok().flatten(),
             "closing_loans": self.router.closing_loans_active().unwrap_or(false),
             "options": self.options_summary(),
+            "spot": self.spot_summary(),
             "production_ready": false,
             "network": "testnet4",
         })

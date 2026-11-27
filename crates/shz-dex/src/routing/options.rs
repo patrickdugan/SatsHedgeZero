@@ -36,6 +36,9 @@ use shz_dlc::{OracleAnnouncement,OracleAttestation};
 use shz_margin::payoff::{self,Leg,OptionKind,PriceDomain};
 use shz_margin::CollateralAsset;
 
+pub mod spot;
+pub use spot::{SPOT_INTENT_TAG,SPOT_INTENT_VERSION,SpotDesk,SpotFill,SpotIntent,SpotPair};
+
 /// Intent version number of option orders (`IntentV6` is the perpetual intent).
 pub const OPTION_INTENT_VERSION:u32=7;
 /// Most legs one combo intent may carry.
@@ -171,6 +174,8 @@ pub enum OptionBatchKind{
  /// is a void: the oracle declared the event unattestable, no payoff moves, every leg
  /// returns to its pre-trade position (premiums stay paid) and its collateral is freed.
  Expiry{event_id:String,series:Vec<Key>,price_usd:u64},
+ /// One spot take (`SpotIntent` id), all of its fills in `OptionBatch::spot`.
+ Spot{taker:Key},
 }
 impl OptionBatchKind{
  /// An expiry on the oracle's unattestable notice (`price_usd == 0`).
@@ -187,7 +192,12 @@ pub struct AssetClearing{pub asset:SettleAsset,pub report:BatchClearing}
 /// Atomic unit of option settlement: every fill and cash move of one take or expiry,
 /// with one clearing report per asset it moves (assets in `SettleAsset` order).
 #[derive(Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
-pub struct OptionBatch{pub sequence:u64,pub kind:OptionBatchKind,pub fills:Vec<OptionFill>,pub clearing:Vec<AssetClearing>}
+pub struct OptionBatch{
+ pub sequence:u64,pub kind:OptionBatchKind,pub fills:Vec<OptionFill>,pub clearing:Vec<AssetClearing>,
+ /// Spot fills of a `Spot` batch (empty for every option batch).
+ #[serde(default,skip_serializing_if="Vec::is_empty")]
+ pub spot:Vec<SpotFill>,
+}
 impl OptionBatch{
  pub fn clearing_of(&self,a:&SettleAsset)->Option<&BatchClearing>{self.clearing.iter().find(|c|c.asset==*a).map(|c|&c.report)}
  /// Channels with a clearing row in any asset, in key order.
@@ -206,6 +216,7 @@ impl OptionBatch{
     for s in series{b.extend(s)}
     u64b(&mut b,*price_usd);
    }
+   OptionBatchKind::Spot{taker}=>{b.push(3);b.extend(taker)},
   }
   u64b(&mut b,self.fills.len()as u64);
   for f in &self.fills{
@@ -214,6 +225,8 @@ impl OptionBatch{
   }
   u64b(&mut b,self.clearing.len()as u64);
   for c in &self.clearing{c.asset.put(&mut b);b.extend(c.report.digest());}
+  // Spot fills only exist in spot batches: every option batch digest is unchanged.
+  if !self.spot.is_empty(){u64b(&mut b,self.spot.len()as u64);for f in &self.spot{f.put(&mut b)}}
   tagged_hash(b"SHZ/OPTIONS/BATCH/V1",&b)
  }
 }
@@ -267,6 +280,8 @@ pub struct OptionsDesk{
  accounts:BTreeMap<Outpoint,OptionAccount>,
  batches:Vec<OptionBatch>,
  arrival:u64,clock:u64,
+ /// Spot market (journaled `EnableSpot`), sharing `accounts` as each account's asset wallet.
+ spot:Option<SpotDesk>,
 }
 
 /// Premium of `qty` units at `milli` per unit, in base units (floor, same for both sides).
@@ -278,7 +293,7 @@ impl OptionsDesk{
  pub fn new(oracle:Key,num_bits:u8)->R<Self>{
   if !(4..=40).contains(&num_bits)||oracle==[0;32]{return Err(Reject::Bounds)}
   Ok(Self{oracle,domain:PriceDomain::from_bits(num_bits),combos:false,pools:BTreeMap::new(),series:BTreeMap::new(),books:BTreeMap::new(),
-   locations:BTreeMap::new(),accounts:BTreeMap::new(),batches:Vec::new(),arrival:0,clock:0})
+   locations:BTreeMap::new(),accounts:BTreeMap::new(),batches:Vec::new(),arrival:0,clock:0,spot:None})
  }
  pub fn account(&self,k:&Outpoint)->Option<&OptionAccount>{self.accounts.get(k)}
  /// Latest `now` the desk has seen.
@@ -286,9 +301,13 @@ impl OptionsDesk{
  pub(crate) fn touch(&mut self,now:u64){self.clock=self.clock.max(now)}
  /// Mark an intent sequence used (an aborted staged take cannot be replayed).
  pub(crate) fn consume(&mut self,k:Outpoint,sequence:u64){let a=self.accounts.entry(k).or_default();a.last_sequence=a.last_sequence.max(sequence)}
- /// Pull resting quotes by id (makers of an aborted batch are not reactivated).
+ /// Pull resting quotes by id (makers of an aborted batch are not reactivated). A spot
+ /// order is pulled with its lock returned to free.
  pub(crate) fn cancel_quotes(&mut self,ids:&[Key]){
-  for id in ids{if let Some((s,l,key))=self.locations.remove(id)&&let Some(b)=self.books.get_mut(&(s,l)){b.remove(&key);}}
+  for id in ids{
+   if let Some((s,l,key))=self.locations.remove(id){if let Some(b)=self.books.get_mut(&(s,l)){b.remove(&key);}}
+   else{self.spot_pull(id);}
+  }
  }
  pub fn batch(&self,sequence:u64)->Option<&OptionBatch>{sequence.checked_sub(1).and_then(|i|self.batches.get(i as usize))}
  pub fn batch_count(&self)->u64{self.batches.len()as u64}
@@ -500,7 +519,7 @@ impl OptionsDesk{
   }
   let seq=self.batches.len()as u64+1;
   let (reports,next)=self.settle_all(clearing,rows,&BTreeMap::new())?;
-  Ok(Ok((OptionBatch{sequence:seq,kind:OptionBatchKind::Trade{taker:i.id()},fills,clearing:reports},next)))
+  Ok(Ok((OptionBatch{sequence:seq,kind:OptionBatchKind::Trade{taker:i.id()},fills,clearing:reports,spot:Vec::new()},next)))
  }
  /// Clear every asset's rows: BTC against `clearing`, stablecoins against their pools
  /// (updated in place on this working copy). Returns the reports and the next BTC ledger.
@@ -579,7 +598,7 @@ impl OptionsDesk{
   let seq=work.batches.len()as u64+1;
   let (reports,next)=work.settle_all(clearing,rows,&dust)?;
   let kind=OptionBatchKind::Expiry{event_id:event,series:ids.clone(),price_usd:price.unwrap_or(0)};
-  let batch=OptionBatch{sequence:seq,kind,fills:Vec::new(),clearing:reports};
+  let batch=OptionBatch{sequence:seq,kind,fills:Vec::new(),clearing:reports,spot:Vec::new()};
   for s in &ids{work.series.get_mut(s).unwrap().settled=Some(price.unwrap_or(0));}
   work.batches.push(batch.clone());*self=work;*clearing=next;
   Ok(batch)

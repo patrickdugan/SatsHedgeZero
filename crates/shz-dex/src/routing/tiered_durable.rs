@@ -9,7 +9,7 @@ use super::durable::{AckBundle,ChannelAck,Disposition,FeeRecipients,Head,Journal
 use super::positions::{self,Position,Settlement};
 use super::clearing::{self,BatchClearing,ClearPlan,ClearingState};
 use super::tiered::*;
-use super::options::{OptionBatchKind,IntentV7,OptionAckBundle,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset,option_ack_message};
+use super::options::{OptionBatchKind,IntentV7,OptionAckBundle,OptionBatch,OptionOutcome,OptionsDesk,Series,SettleAsset,SpotIntent,SpotPair,option_ack_message};
 use shz_dlc::{OracleAnnouncement,OracleAttestation};
 use std::{fs::{File,OpenOptions},io::{self,Write},path::Path};
 use thiserror::Error;
@@ -140,7 +140,7 @@ impl State{
  }
  fn stage(&mut self,b:&OptionBatch,desk:OptionsDesk,now:u64,taker:Option<(Outpoint,u64)>){
   let btc_dust=b.clearing_of(&SettleAsset::Btc).map_or(0,|c|c.pool_net());
-  let makers=b.fills.iter().map(|f|f.maker).collect();
+  let makers=b.fills.iter().map(|f|f.maker).chain(b.spot.iter().map(|f|f.maker)).collect();
   self.pending_option=Some(PendingOption{batch:b.clone(),desk,btc_dust,staged_us:now,taker,makers});
  }
  /// Commit or fence-abort the staged option batch against every lane's V4 acknowledgement.
@@ -153,7 +153,8 @@ impl State{
   let abort=bundle.disposition==Disposition::FencedAbort;
   // An expiry or void batch is a deterministic function of the oracle's signature, so
   // once enabled an offline holder's owner signature is optional for it; never for a trade.
-  let owner_optional=abort||(self.ownerless_expiry&&!matches!(p.batch.kind,OptionBatchKind::Trade{..}));
+  // Trade and spot batches always need every owner.
+  let owner_optional=abort||(self.ownerless_expiry&&matches!(p.batch.kind,OptionBatchKind::Expiry{..}));
   if abort&&now<p.staged_us.saturating_add(ABORT_AFTER_US){return Err(Reject::Clock)}
   let channels=p.batch.channels();
   if bundle.acks.len()!=channels.len(){return Err(Reject::Allocation)}
@@ -300,6 +301,21 @@ impl State{
     else{self.options=Some(desk);self.clearing=Some(clearing);}
     Ok(Reply::OptionBatch(Box::new(b)))
    },
+   Event::EnableSpot=>{
+    // Spot batches settle only through the lane acknowledgement round.
+    if !self.option_acks{return Err(TierReject::Scope)}
+    self.desk()?.enable_spot()?;Ok(Reply::Unit)
+   },
+   Event::ListSpotPair{pair}=>Ok(Reply::Key(self.desk()?.list_spot(pair)?)),
+   Event::SubmitSpot{intent,now}=>{
+    let mut desk=self.desk()?.clone();let clearing=self.clearing.as_ref().ok_or(TierReject::Scope)?;
+    let c=self.router.config();let router=&self.router;
+    let taker=(op(&intent.channel),intent.sequence);
+    match desk.submit_spot(c.scope,c.router,&|k:&Outpoint|router.account_owner(k),clearing,intent,now)?{
+     OptionOutcome::Filled(b)=>{self.stage(&b,desk,now,Some(taker));Ok(Reply::Option(OptionOutcome::Staged(b)))},
+     out=>{self.options=Some(desk);Ok(Reply::Option(out))},
+    }
+   },
   }
  }
 }
@@ -345,6 +361,12 @@ enum Event{
  VoidUnattestable{event_id:String,notice:Bip340Signature},
  /// Expiry and void batches commit on peer and monitor signatures, owner optional.
  EnableOwnerlessExpiry,
+ /// Switch on the spot market on the options desk (option acknowledgements must be on).
+ EnableSpot,
+ /// List a BTC/stablecoin spot pair (the quote asset must be registered).
+ ListSpotPair{pair:SpotPair},
+ /// One signed spot order; a take is staged as a spot batch for the acknowledgement round.
+ SubmitSpot{intent:SpotIntent,now:u64},
 }
 #[allow(clippy::large_enum_variant)]
 enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool),Key(Key),Option(OptionOutcome),OptionBatch(Box<OptionBatch>)}
@@ -536,6 +558,23 @@ impl DurableTieredRouter{
  pub fn ownerless_expiry_active(&self)->D<bool>{self.ready()?;Ok(self.state.ownerless_expiry)}
  pub fn expire_series(&mut self,series:Key,attestation:OracleAttestation)->D<OptionBatch>{
   match self.record(Event::ExpireSeries{series,attestation})?{Reply::OptionBatch(x)=>Ok(*x),_=>unreachable!()}
+ }
+ /// Switch on the spot market (journaled `EnableSpot`, once; option acknowledgements must
+ /// be on, so every spot batch is staged and commits only on every lane's V4 signatures).
+ /// Returns `false` if already on.
+ pub fn enable_spot(&mut self)->D<bool>{
+  self.ready()?;if self.state.options.as_ref().is_some_and(|d|d.spot().is_some()){return Ok(false)}
+  self.record(Event::EnableSpot)?;Ok(true)
+ }
+ pub fn spot_active(&self)->D<bool>{self.ready()?;Ok(self.state.options.as_ref().is_some_and(|d|d.spot().is_some()))}
+ /// List a spot pair; returns its id (`SpotPair::id`).
+ pub fn list_spot_pair(&mut self,pair:SpotPair)->D<Key>{
+  match self.record(Event::ListSpotPair{pair})?{Reply::Key(k)=>Ok(k),_=>unreachable!()}
+ }
+ /// Submit a signed spot order: `Posted`, `Cancelled`, or `Staged` (a take's batch, which
+ /// commits through `resolve_option` like an option batch).
+ pub fn submit_spot(&mut self,intent:SpotIntent,now:u64)->D<OptionOutcome>{
+  match self.record(Event::SubmitSpot{intent,now})?{Reply::Option(x)=>Ok(x),_=>unreachable!()}
  }
  pub fn closing_loans_active(&self)->D<bool>{self.ready()?;Ok(self.state.router.close_from_lots())}
  /// The clearing ledger: pool cash, fund, carried deficit, deferred claims.

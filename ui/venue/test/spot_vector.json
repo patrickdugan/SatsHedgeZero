@@ -1,0 +1,74 @@
+{
+ "note": "Shared Rust/JS vector: SpotIntent ids (shz_dex SpotIntent::id, tag SHZ/HFT06/SPOT-INTENT/V8). Test key: sha256(\"shz-spot-vector/owner/v1\").",
+ "scope": {
+  "network": "5e242a07a3904229c3b156a7663e7bfea60417f56a0b7faa0bf31267bae940f8",
+  "epoch": 1,
+  "policy": "74d171299340d9d61fc559d519586207d8bec3c4faa3808957fc09a88cdb86ea"
+ },
+ "router": 1,
+ "intents": [
+  {
+   "name": "post: sell 0.01 BTC at 90,000.0 USDT",
+   "intent": {
+    "version": 8,
+    "qty_sats": 1000000,
+    "price": 90000000000,
+    "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+    "buy": false,
+    "owner": "4a58c0319d65aebb81f337c2bbcd23add615ed065030086e67a5c5a528a3201a",
+    "channel": {
+     "txid": "97145b7b36d33006ba687dabc9e44f1f381690a6607845be1e54703fde9ba0b1",
+     "vout": 3
+    },
+    "pair": "c4f1a6b0d2e38957a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718",
+    "expires_us": 1800000000000000,
+    "sequence": 1764000000000001,
+    "action": "post",
+    "signature": "50c93664d68cc4e5b0da97fdd1ea0da4004510c82b3b7f1c1c12ac00f8c9c749bf1699d5fd7b147a73ccfb3a16558f2e89c87da0c65d8d587ea6322e6f060d57"
+   },
+   "id": "85fa74eb07915bdb82b62075a0a9fb6d15999061edbf8d210123ca7e123b1c42"
+  },
+  {
+   "name": "take: buy 0.004 BTC up to 90,050.5 USDT",
+   "intent": {
+    "version": 8,
+    "qty_sats": 400000,
+    "price": 90050500000,
+    "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+    "buy": true,
+    "owner": "4a58c0319d65aebb81f337c2bbcd23add615ed065030086e67a5c5a528a3201a",
+    "channel": {
+     "txid": "97145b7b36d33006ba687dabc9e44f1f381690a6607845be1e54703fde9ba0b1",
+     "vout": 3
+    },
+    "pair": "c4f1a6b0d2e38957a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718",
+    "expires_us": 1800000000000000,
+    "sequence": 1764000000000002,
+    "action": "take",
+    "signature": "a1fafccda1f02fd259467f3582a7018cea1bba24e5098be4a52129668aa9778e66c61935a0f639a1117705e9f9ee105c328678770f2d802c6defe0b9d81f73c1"
+   },
+   "id": "26acaa17d4f561c02e0430ba61d6719450a0ad6ca88dcc2a0de8647ee9f0f0cb"
+  },
+  {
+   "name": "cancel a resting order",
+   "intent": {
+    "version": 8,
+    "qty_sats": 0,
+    "price": 0,
+    "cancel_target": "2e6e314e196f35cfc9e7bdd2d5489268f222f147ab0b4ee26f44477789989095",
+    "buy": false,
+    "owner": "4a58c0319d65aebb81f337c2bbcd23add615ed065030086e67a5c5a528a3201a",
+    "channel": {
+     "txid": "97145b7b36d33006ba687dabc9e44f1f381690a6607845be1e54703fde9ba0b1",
+     "vout": 3
+    },
+    "pair": "c4f1a6b0d2e38957a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718",
+    "expires_us": 1800000000000000,
+    "sequence": 1764000000000003,
+    "action": "cancel",
+    "signature": "54cc81a70099b7b8c08d89d67940b2e593a87918fb5909b968786b93c666cf1486333ffd266971dab815a81808f34ec0e4a485abed073eb80bddd445fbbffbc2"
+   },
+   "id": "a6af6f012f06a9d5399a8722516f7322936e5cf5741178662d34c1935646e092"
+  }
+ ]
+}

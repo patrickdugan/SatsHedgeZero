@@ -4,11 +4,13 @@
 //!             [--relay http://170.75.168.145:8091]
 //!             [--group-key 403c4966...fdb8]
 //!             [--mempool-api https://mempool.space/testnet4/api]
-//!             [--options [--stable-usdt <RGB contract id, 32-byte hex>]]
+//!             [--options [--stable-usdt <RGB contract id, 32-byte hex>] [--spot]]
 //!
 //! Options are off unless `--options` is given. Switching them on journals EnableOptions,
 //! EnableCombos and EnableOptionAcks (and RegisterStable for `--stable-usdt`) in the router
 //! journal of the state dir; series list from the relay's announced DLC events.
+//! `--spot` (needs `--options --stable-usdt`) journals EnableSpot and ListSpotPair: the
+//! BTC/USDT spot market on the options desk (docs/SHZ_SPOT.md). Off by default.
 
 mod core;
 mod feed;
@@ -81,6 +83,16 @@ async fn main() {
     } else if a.contains_key("stable-usdt") {
         eprintln!("--stable-usdt needs --options");
         std::process::exit(1)
+    }
+    if a.contains_key("spot") {
+        // Spot lives on the options desk and trades BTC against the demo USDT asset.
+        match venue.lock().await.spot_enable() {
+            Ok(s) => eprintln!("spot on: {s}"),
+            Err(e) => {
+                eprintln!("spot: {e}");
+                std::process::exit(1)
+            }
+        }
     }
     tokio::spawn(feed::run(venue.clone(), relay.clone(), events.clone()));
 
