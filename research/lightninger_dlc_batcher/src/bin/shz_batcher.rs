@@ -882,7 +882,7 @@ impl Daemon {
         let cash0 = seg[0]["clearing"]["cash_before"].as_i64().unwrap_or(0);
         write_json(
             &dir.join("venue_batches.json"),
-            &json!({"name": format!("{event}/seg{k}"), "venue": self.cfg.venue,
+            &json!({"name": format!("{event}-seg{k}"), "venue": self.cfg.venue,
                     "status_before": {"clearing": {"cash": cash0, "fund": fund0, "carry": carry0, "claims": 0, "book": cash0 - fund0 as i64 + carry0 as i64}},
                     "batches": seg.iter().map(|b| json!({"batch": b})).collect::<Vec<_>>()}),
         );
