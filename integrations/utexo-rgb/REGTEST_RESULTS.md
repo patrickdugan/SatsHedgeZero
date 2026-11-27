@@ -76,6 +76,11 @@ Blockers, both in the published `@utexo/rgb-lightning-node-nodejs@0.2.0-beta.5` 
 
 Mainnet check: `mainnet-lightning-rejection-v1` is present in runtime capabilities. Offline, a mainnet `SdkNode` creates and initializes, and unlock stops at `Rln(Conflict): Invalid indexer: resolver is for another chain-network pair`; the lightning rejection itself is not exercised offline. The previous check accepted an unrelated constructor error (`WalletAccountRgbLightning requires a BareRgbLightningBinding`) as a mainnet refusal and has been replaced.
 
+Issuer route for B1 (separate on-chain rgb-lib wallet), attempted 2026-11-27:
+
+- Exact pin: RLN embeds `UTEXO-Protocol/rgb-lib` tag `v0.3.0-beta.50-bfa` (`1b951af0c8233308c919975552487be19ad2a930`). The repo is public, but its `[patch.crates-io]` points `rgb-consensus`, `rgb-ops`, `rgb-invoicing` and `rgb-schemas` at `UTEXO-Protocol/rgb-consensus-s-bfa`, `rgb-ops-s-bfa` and `rgb-schemas-s-bfa`. All three return HTTP 404 without credentials, so `cargo build --locked` of an issuer at the pinned commit fails with `revision 2faf6118b2f5fe30dd90dd5244d5a7dc32bcd757 not found`. These are the private BFA sources gated by `ORG_READ_TOKEN`.
+- Closest public build: `rgb-lib@0.3.0-beta.7` (gitHead `15da5514a7e57a4492f4c769d1e52159c7ce1a3c`) with `@rgb-tools/rgb-lib-linux-x64@0.3.0-beta.7`, integrity `sha512-vEoSwZUXDWCUa7nHL1flv8Xae0O2vOBPYLKEGh/GD6FTjlpb9iF+N6Sm0NRhkwBOT1GcdsqrRq1mJMR2fAWu0A==` (verified after download). It is the upstream base version of the fork and lacks the BFA consensus patches, so whether RLN accepts its NIA consignments is untested. Loading this prebuilt addon was not run in this session: the operator's tool policy refused it. rgb-chain and the non-S01 adversarial scenarios stay at 0 executed.
+
 Harness fixes made to reach these stop points: 32-byte native seeds; `SdkNode.create` request uses `storage_dir_path` and lowercase `network` as in upstream `src/node-binding.js`; `mine()` waits for esplora to serve the tip block hash; `listChannels` read through a shape-tolerant helper; the benchmark writes the issuance refusal and smoke failure into its receipt.
 
 ---

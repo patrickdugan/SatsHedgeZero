@@ -29,7 +29,13 @@
     "node": "v18.19.1",
     "bitcoind": "v31.1.0",
     "signerPolicy": "strict",
-    "hostIssueResolved": "the 2026-11-26 read-only filesystem came from D: (holding the WSL ext4.vhdx) being full, not C:; this run kept regtest data on a C:-backed loop image"
+    "hostIssueResolved": "the 2026-11-26 read-only filesystem came from D: (holding the WSL ext4.vhdx) being full, not C:; this run kept regtest data on a C:-backed loop image",
+    "issuerRoute": {
+      "exactPin": "UTEXO-Protocol/rgb-lib v0.3.0-beta.50-bfa 1b951af0: build fails, [patch.crates-io] BFA repos rgb-consensus-s-bfa / rgb-ops-s-bfa / rgb-schemas-s-bfa return HTTP 404 (private, ORG_READ_TOKEN)",
+      "publicFallback": "rgb-lib@0.3.0-beta.7 + @rgb-tools/rgb-lib-linux-x64@0.3.0-beta.7 downloaded, integrity verified, not executed (operator tool policy refused loading the prebuilt addon); RLN acceptance of its NIA consignments untested",
+      "rgbChainExecuted": 0,
+      "adversarialNonS01Executed": 0
+    }
   },
   "nativeRegtestBenchmarks": {
     "executed": true,
