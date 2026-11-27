@@ -1,0 +1,80 @@
+{"t":0.02,"kind":"note","m":"drill start","relay_group_key":"adc862202a19e28f92fff4d5ceb4054c7d1ddca6dffab76dcb9d09c955a2afbd","usdt":"65f028f5d8f23cc69b63222142213b58de601c8360f73a376d6e41545a6994a2"}
+{"t":0.41,"kind":"note","m":"relay announced 4 events","soon":"SHZ-BTCUSD-20261127T0119Z","e1":"SHZ-BTCUSD-20261127T0121Z","e2":"SHZ-BTCUSD-20261127T0136Z","e3":"SHZ-BTCUSD-20261127T0122Z","e1_maturity_in_s":112}
+{"t":0.71,"kind":"assert","name":"without --options: series says enabled=false, intents and fund answer 404, status.options.enabled=false","ok":true,"detail":{"series":{"enabled":false},"intents":404,"fund":404,"status":{"enabled":false}}}
+{"t":0.97,"kind":"note","m":"venue up","state":"D:\\shz\\tmp\\options-drill-1795742349639","log":"D:\\shz\\tmp\\options-drill-venue-on-18295.log"}
+{"t":0.98,"kind":"assert","name":"venue pins the drill key; options on with combos, acks, ownerless expiry and the USDT asset","ok":true,"detail":{"acks":true,"combos":true,"enabled":true,"num_bits":20,"oracle":"adc862202a19e28f92fff4d5ceb4054c7d1ddca6dffab76dcb9d09c955a2afbd","ownerless_expiry":true,"staged":null,"usdt":{"adapter":"simulated (no on-chain transfer)","code":"USDT","decimals":6,"id":"65f028f5d8f23cc69b63222142213b58de601c8360f73a376d6e41545a6994a2","kind":"stable","protocol":"rgb","unit":"base unit"}}}
+{"t":4.01,"kind":"ws","type":"options_series"}
+{"t":4.05,"kind":"ws","type":"options_series"}
+{"t":4.1,"kind":"ws","type":"options_series"}
+{"t":4.24,"kind":"assert","name":"the three events ahead of the 60 s lead list 15 series each (5 strikes x BTC call, BTC put, USDT put)","ok":true,"detail":{"e1":15,"e2":15,"e3":15,"strikes":[98000,99000,100000,101000,102000]}}
+{"t":4.25,"kind":"assert","name":"the strike grid centres on the 100,000 mark (98,000 .. 102,000)","ok":true,"detail":[98000,99000,100000,101000,102000]}
+{"t":4.25,"kind":"assert","name":"an event under 60 s to maturity is not listed","ok":true,"detail":{}}
+{"t":4.25,"kind":"assert","name":"calls are BTC only; puts list in BTC and USDT","ok":true}
+{"t":4.25,"kind":"assert","name":"series view carries the worst case per side: short 100k BTC call ~90,463 sats per 100 USD, short USDT 98k put 979.99 USDT per 0.01 BTC","ok":true,"detail":{"c100":{"long":0,"note":"base units of the settlement asset, premium excluded; the long's worst case is the premium it pays","short":90464},"p98":{"long":0,"note":"base units of the settlement asset, premium excluded; the long's worst case is the premium it pays","short":979990000}}}
+{"t":4.54,"kind":"assert","name":"a transfer with a stale nonce and a withdrawal signed by another key are refused","ok":true,"detail":{"replay":"expires_us must increase with every transfer (replay)","forged":"transfer signature does not verify"}}
+{"t":4.56,"kind":"assert","name":"collateral landed: M1/T1/T3 BTC free 150,000/40,000/120,000; M2/T2/T3 USDT 3,000/2,000/200","ok":true,"detail":{"M1":{"BTC":{"free":150000,"locked":0,"realized":0},"USDT":{"free":0,"locked":0,"realized":0}},"M2":{"BTC":{"free":0,"locked":0,"realized":0},"USDT":{"free":3000000000,"locked":0,"realized":0}},"T1":{"BTC":{"free":40000,"locked":0,"realized":0},"USDT":{"free":0,"locked":0,"realized":0}},"T2":{"BTC":{"free":0,"locked":0,"realized":0},"USDT":{"free":2000000000,"locked":0,"realized":0}},"T3":{"BTC":{"free":120000,"locked":0,"realized":0},"USDT":{"free":200000000,"locked":0,"realized":0}}}}
+{"t":4.57,"kind":"assert","name":"fund moved sats out of the perpetual allocation (cap and free drop by 150,000)","ok":true,"detail":{"cap":50000,"committed":0,"equity":50000,"free":50000,"paid_fees":0,"pending":0,"realized_pnl":0,"resting":0}}
+{"t":4.59,"kind":"note","m":"options_mm.py started","log":"D:\\shz\\tmp\\options-mm-18295.jsonl"}
+{"t":5.55,"kind":"ws","type":"option_book"}
+{"t":5.59,"kind":"ws","type":"option_book"}
+{"t":5.61,"kind":"ws","type":"option_book"}
+{"t":5.63,"kind":"ws","type":"option_book"}
+{"t":5.66,"kind":"ws","type":"option_book"}
+{"t":5.68,"kind":"ws","type":"option_book"}
+{"t":5.72,"kind":"ws","type":"option_book"}
+{"t":5.74,"kind":"ws","type":"option_book"}
+{"t":5.77,"kind":"ws","type":"option_book"}
+{"t":5.78,"kind":"ws","type":"option_book"}
+{"t":5.81,"kind":"ws","type":"option_book"}
+{"t":5.85,"kind":"ws","type":"option_book"}
+{"t":5.87,"kind":"ws","type":"option_book"}
+{"t":5.9,"kind":"ws","type":"option_book"}
+{"t":5.92,"kind":"ws","type":"option_book"}
+{"t":5.95,"kind":"ws","type":"option_book"}
+{"t":5.98,"kind":"assert","name":"the bot quotes all 5 BTC calls and all 5 USDT puts of the nearest expiry, with bids below asks","ok":true,"detail":[[98000,18775,22041],[99000,9292,10910],[100000,402,474],[101000,null,20],[102000,null,20]]}
+{"t":5.99,"kind":"mm_ladder","c100_ask":[474,100,1],"p100_bid":[402,1000000,1]}
+{"t":5.99,"kind":"assert","name":"the ATM call ask and ATM USDT put bid bracket an independent Black-76 at the time left (8% spread each side)","ok":true,"detail":{"c0":474,"fairCall":437,"p0":402,"fairPut":437,"minutes_left":1.75}}
+{"t":6.08,"kind":"take","label":"T1 buys the bot's 100k call ask (bot signs its V4 ack)","acct":"T1","status":200,"outcome":"staged","batch":1}
+{"t":6.08,"kind":"ws","type":"option_batch","phase":"staged","n":1}
+{"t":6.08,"kind":"ws","type":"option_book"}
+{"t":6.13,"kind":"option_ack","acct":"T1","id":"opt1:ack:e3f05f57040e02e9f302db7db91766a8b8589c07e986f7e582e002247b80ae93:0"}
+{"t":6.51,"kind":"ws","type":"option_batch","phase":"committed","n":1}
+{"t":6.51,"kind":"ws","type":"option_fill","n":1}
+{"t":6.51,"kind":"ws","type":"option_book"}
+{"t":6.62,"kind":"batch","label":"T1 buys the bot's 100k call ask (bot signs its V4 ack)","n":1,"phase":"committed","fills":[{"asset":"BTC","long":{"channel":{"txid":"e3f05f57040e02e9f302db7db91766a8b8589c07e986f7e582e002247b80ae93","vout":0},"owner":"3e1f00fb33118d3be02fb98a44d8eeac23cefc641f5a920463404f0cd5f98c95"},"maker":"bb2b2c2866a5b3c085e3c69142b37b108123fe1cca92da6eaf729e716e22ce3b","premium":47,"premium_milli":474,"qty":100,"series":"05fae3a540ff87f3bfa48795dba39cfd756f0a84585e43c40e07a5a5d398f0d2","short":{"channel":{"txid":"abe4522abafdc3fffe38bc30fe11a2088474821cef33d1b4570a4ec85c599e75","vout":0},"owner":"7dfeb2921c31c331a10591ef71ce72a8c27c3d9ad5131c08c11d359c6cb9cd73"},"taker":"1be83d2fdb90a9b425a63f34a0124666612dac0ac406cca29d2908457e2632f1"}],"clearing":[{"asset":"BTC","cash_after":1000000,"cash_before":1000000,"digest":"4972ce0041f93849c0441d9f685fb3951ebf8910547170db1963dc4445035838","fund_after":1000000,"layer":"Margin","pool_net":0,"rows":[{"channel":{"txid":"abe4522abafdc3fffe38bc30fe11a2088474821cef33d1b4570a4ec85c599e75","vout":0},"collected":0,"net":47,"owner":"7dfeb2921c31c331a10591ef71ce72a8c27c3d9ad5131c08c11d359c6cb9cd73","paid":47,"pnl":47},{"channel":{"txid":"e3f05f57040e02e9f302db7db91766a8b8589c07e986f7e582e002247b80ae93","vout":0},"collected":47,"net":-47,"owner":"3e1f00fb33118d3be02fb98a44d8eeac23cefc641f5a920463404f0cd5f98c95","paid":0,"pnl":-47}]}],"acks":[{"channel":{"txid":"abe4522abafdc3fffe38bc30fe11a2088474821cef33d1b4570a4ec85c599e75","vout":0},"monitor_signature":"6e700c5fcf20ea291b42bc14d665518df976ff993443e9594dcb38c4fb2f22f2b76c313b5ea96237b4b1dbb72f4bee88a6178853cbafeb961907f300783d2a2e","owner_signed":true,"peer_signature":"f32e041e357abe9583b66350939d0a48fde1a3dfe31258dfd3e842bd631aa508289dbc3bf6ccb7e4ff53d65149363055eee97ca202baa6cadc150e8e8bfc0dd4"},{"channel":{"txid":"e3f05f57040e02e9f302db7db91766a8b8589c07e986f7e582e002247b80ae93","vout":0},"monitor_signature":"3d5b2ac64032ac95fe1f795f393502ec4c809717856df2a072473f9f186d186191fb6bbe01b00b9c46804e5a7ac9839819f5fbaac57a5978b958da53909a4d0b","owner_signed":true,"peer_signature":"cbf65781c3e2a9aea73688317fcadaf46ee3cfbb027b4ec9277838780c33a63b558d7108a3774978f4aff43869f9d182fe25b28ea21443ead9d25a976647d22c"}],"ws_phases":["staged","committed"]}
+{"t":6.62,"kind":"assert","name":"T1 buys the bot's 100k call ask (bot signs its V4 ack): staged, then committed (WS option_batch staged -> committed)","ok":true,"detail":{"n":1,"phase":"committed","ws":["staged","committed"]}}
+{"t":6.63,"kind":"assert","name":"T1 buys the bot's 100k call ask (bot signs its V4 ack): every account's balance change equals its clearing row in each asset (BTC)","ok":true,"detail":[{"asset":"BTC","rows":[["BOT",47],["T1",-47]]}]}
+{"t":6.63,"kind":"assert","name":"T1 buys the bot's 100k call ask (bot signs its V4 ack): every lane carried owner, peer and monitor signatures","ok":true,"detail":2}
+{"t":6.7,"kind":"take","label":"T2 sells into the bot's 100k USDT put bid (bot signs its V4 ack)","acct":"T2","status":200,"outcome":"staged","batch":2}
+{"t":6.71,"kind":"ws","type":"option_batch","phase":"staged","n":2}
+{"t":6.71,"kind":"ws","type":"option_book"}
+{"t":6.76,"kind":"option_ack","acct":"T2","id":"opt2:ack:f9cb134e547fdc413cb33fd71263ae9e66e0d81d1d9054e8447cf3491e070b60:0"}
+{"t":7.12,"kind":"ws","type":"option_batch","phase":"committed","n":2}
+{"t":7.12,"kind":"ws","type":"option_fill","n":2}
+{"t":7.12,"kind":"ws","type":"option_book"}
+{"t":7.26,"kind":"batch","label":"T2 sells into the bot's 100k USDT put bid (bot signs its V4 ack)","n":2,"phase":"committed","fills":[{"asset":"USDT","long":{"channel":{"txid":"abe4522abafdc3fffe38bc30fe11a2088474821cef33d1b4570a4ec85c599e75","vout":0},"owner":"7dfeb2921c31c331a10591ef71ce72a8c27c3d9ad5131c08c11d359c6cb9cd73"},"maker":"aa0185ceca93e31ffb6181c4c881d934335206cb897e0df5d5de560a69d059fe","premium":402000,"premium_milli":402,"qty":1000000,"series":"32cf5ac336f5b6d01ea0d2bb14d584316e0419e95c44c61977f208db8f3d4ef7","short":{"channel":{"txid":"f9cb134e547fdc413cb33fd71263ae9e66e0d81d1d9054e8447cf3491e070b60","vout":0},"owner":"579223b983abf61f83c962c2b3c9f919e8c98a43b20ec5851ce742aee14c56be"},"taker":"b1e81c78914e5d806fe600b683068d47687ae939ed5fcfe145f5c430e38797a2"}],"clearing":[{"asset":"USDT","cash_after":0,"cash_before":0,"digest":"db3366945ff0f1ba4aa03d44638c4fa57b2dc46689e147ab5534af7dc85ed489","fund_after":0,"layer":"Margin","pool_net":0,"rows":[{"channel":{"txid":"abe4522abafdc3fffe38bc30fe11a2088474821cef33d1b4570a4ec85c599e75","vout":0},"collected":402000,"net":-402000,"owner":"7dfeb2921c31c331a10591ef71ce72a8c27c3d9ad5131c08c11d359c6cb9cd73","paid":0,"pnl":-402000},{"channel":{"txid":"f9cb134e547fdc413cb33fd71263ae9e66e0d81d1d9054e8447cf3491e070b60","vout":0},"collected":0,"net":402000,"owner":"579223b983abf61f83c962c2b3c9f919e8c98a43b20ec5851ce742aee14c56be","paid":402000,"pnl":402000}]}],"acks":[{"channel":{"txid":"abe4522abafdc3fffe38bc30fe11a2088474821cef33d1b4570a4ec85c599e75","vout":0},"monitor_signature":"204ae06b977b6dd778d007d0395c4933d1728e8d44e9aaab16faf7394b53485be53bc24de066e870ab701d328af059051c19feda3c9388ffce3b68996dc3e1a0","owner_signed":true,"peer_signature":"a2b86fe7dcd463532b6c2ade42bcbd6ad7bbaa585b0548ee691f7cadf9e977c6f9e61d640a50e1bd9633c42b87285a3bf84e51eddd2dc8ba439943b4c6d1bb17"},{"channel":{"txid":"f9cb134e547fdc413cb33fd71263ae9e66e0d81d1d9054e8447cf3491e070b60","vout":0},"monitor_signature":"94ad38495dbcd59f0a63a278eaccffe0883fdc1d8fc80f89178a40355c4ad1f568b4716a5492a1b4086cc91c2575e7d7319fb36b2d505c8c20ae5d713b30d523","owner_signed":true,"peer_signature":"cc21da702f8f03229159f4cbe67e01a0d62d947c4fd667cc49b7ba64e65b3993c9b45a69190c8cef71a208087e97b4477104bb2ff69333a59f9040495911fe0b"}],"ws_phases":["staged","committed"]}
+{"t":7.26,"kind":"assert","name":"T2 sells into the bot's 100k USDT put bid (bot signs its V4 ack): staged, then committed (WS option_batch staged -> committed)","ok":true,"detail":{"n":2,"phase":"committed","ws":["staged","committed"]}}
+{"t":7.27,"kind":"assert","name":"T2 sells into the bot's 100k USDT put bid (bot signs its V4 ack): every account's balance change equals its clearing row in each asset (USDT)","ok":true,"detail":[{"asset":"USDT","rows":[["BOT",-402000],["T2",402000]]}]}
+{"t":7.27,"kind":"assert","name":"T2 sells into the bot's 100k USDT put bid (bot signs its V4 ack): every lane carried owner, peer and monitor signatures","ok":true,"detail":2}
+{"t":7.27,"kind":"assert","name":"both fills are against the bot","ok":true,"detail":{}}
+{"t":7.29,"kind":"mark_set","price_usd":101000,"seq":9}
+{"t":8.12,"kind":"ws","type":"option_book"}
+{"t":8.14,"kind":"ws","type":"option_book"}
+{"t":8.17,"kind":"ws","type":"option_book"}
+{"t":8.21,"kind":"ws","type":"option_book"}
+{"t":8.23,"kind":"ws","type":"option_book"}
+{"t":8.25,"kind":"ws","type":"option_book"}
+{"t":8.28,"kind":"ws","type":"option_book"}
+{"t":8.34,"kind":"mm_requote","before":[474,100,1],"after":[10694,100,1],"requotes":[{"reason":"start","posted":16,"cancelled":0}]}
+{"t":8.34,"kind":"assert","name":"after the mark moves to 101,000 the bot cancels and requotes: the 100k call ask rises (now 1,000 USD in the money)","ok":true,"detail":{"before":[474,100,1],"after":[10694,100,1]}}
+{"t":8.34,"kind":"assert","name":"the bot signed its own acks (signed events in its log) and logged no error","ok":true,"detail":[]}
+{"t":8.34,"kind":"summary","mode":"mm","passed":21,"failed":0,"total":21}
+{"t":8.34,"kind":"ws","type":"option_book"}
+{"t":8.34,"kind":"ws","type":"option_book"}
+{"t":8.37,"kind":"ws","type":"option_book"}
+{"t":8.39,"kind":"ws","type":"option_book"}
+{"t":8.4,"kind":"ws","type":"option_book"}
+{"t":8.42,"kind":"ws","type":"option_book"}
+{"t":8.45,"kind":"ws","type":"option_book"}
+{"t":8.48,"kind":"ws","type":"option_book"}
+{"t":8.5,"kind":"ws","type":"option_book"}

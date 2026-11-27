@@ -47,3 +47,31 @@ passed to the venue as-is).
 Testnet coins and a testnet venue: no value, but the venue can reject, restart, or lose state. Collateral in a
 `utxo` account is only checked at registration. The key file controls the account; keep it out of git
 (`state/` is ignored). Quotes can fill against a stale view between polls; sizes are deliberately tiny.
+
+## Options market maker (`options_mm.py`)
+
+For a venue started with `--options` (docs/SHZ_VENUE_OPTIONS.md). Testnet only, stdlib only, same
+`bip340.py` and HTTP helpers as `mm.py`.
+
+```
+python options_mm.py --selftest                                   # Black-76, units, shared IntentV7 vector
+python -m unittest test_options_mm
+python options_mm.py run --server http://127.0.0.1:18295          # demo account, fund, quote, sign acks
+```
+
+- Quotes a bid and an ask on every BTC call and every USDT put of the nearest listed expiry at least
+  30 s away: Black-76 from the oracle mark (r = 0, `--vol` 0.6), `--spread-bps` 800 of the premium each
+  side, floor one sat or 0.01 USDT per quote. BTC series are inverse (`C / (K * F)` BTC per USD
+  notional), USDT series linear (`P * 1e-8` USD per 1e-8 BTC). Sizes `--call-qty` 100 USD,
+  `--put-qty` 1,000,000 (0.01 BTC).
+- Requotes (cancel all, post the ladder) when the mark moves `--requote-bps` (10) from the last
+  quoted mark, when the listed expiries change, or every `--refresh-s` (120). While an option batch
+  is settling the venue refuses cancels; the bot retries on the next poll.
+- Signs every pending signature of its account each poll (`--poll-s` 1): V4 option acks of the
+  batches its quotes fill in.
+- Collateral: funds `--fund-sats` (150,000) from its perpetual demo allocation and deposits
+  `--deposit-usdt` (5,000) through the venue's simulated stablecoin adapter when below target.
+- Key: `<state-dir>/options_mm.key` (hex, never printed). Output: one JSON line per action.
+
+Run against the local drill venue: `node ops/venue-bench/options_drill/drill.mjs --mm` starts a
+scripted relay and venue, runs this bot, trades against its quotes and moves the mark.
