@@ -1,0 +1,89 @@
+name: ZKL-24 pinned augmented matrix window search
+on:
+  pull_request:
+    paths:
+      - 'research/zk_lean/window_dependency.py'
+      - 'research/zk_lean/test_window_dependency.py'
+      - 'research/zk_lean/emit_window_replay.py'
+      - 'research/zk_lean/zkl22_capture_pins.json'
+      - '.github/workflows/shz-zkl24.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fixture regressions and indexed proof emission
+        run: |
+          cd research/zk_lean
+          python -m unittest test_audit_capture test_local_binding test_window_dependency -v
+          python emit_window_replay.py "${GITHUB_WORKSPACE}/zkl24-fixtures"
+      - uses: actions/download-artifact@v4
+        with:
+          name: zkl22-nova-setup-capture
+          path: captured
+          run-id: 46042490831
+          github-token: ${{ github.token }}
+      - name: Recheck pinned capture and search both actual ordered matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          ulimit -v 524288
+          test "$(cat captured/source-commit.txt)" = e2495d2ed24115675960abd89efb36e53cfeaa35
+          echo 'ffb298ecbb4e923beba2ad1ee907588507ddc57c1bd91237156c18d6f8f5684a  captured/capture.json' | sha256sum -c -
+          echo '3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6  captured/vk.bin' | sha256sum -c -
+          mkdir zkl24-actual
+          for side in primary secondary; do
+            gzip -d "captured/$side.rows.jsonl.gz"
+            pin="$(python -c 'import json,sys; print(json.load(open("research/zk_lean/zkl22_capture_pins.json"))[sys.argv[1]])' "$side")"
+            /usr/bin/time -v python research/zk_lean/window_dependency.py "captured/$side.rows.jsonl" \
+              --expected-original "$pin" --out "zkl24-actual/$side"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zkl24-window-results
+          path: |
+            zkl24-fixtures
+            zkl24-actual
+      - uses: actions/checkout@v4
+        with:
+          repository: patrickdugan/MathCan
+          ref: a04649b9e91e79498f2986791b800273bd5c0c8c
+          path: mathcan
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: mathcan
+          auto-config: false
+          build: true
+          build-args: MathCan.ZKLeanLocal
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Kernel replay of fixture and actual candidate implications
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mathcan
+          shopt -s nullglob
+          files=(../zkl24-fixtures/*.lean ../zkl24-actual/*/*.lean)
+          test "${#files[@]}" -ge 6
+          for f in "${files[@]}"; do
+            printf 'REPLAY %s\n' "$f" | tee -a zkl24-axioms.txt
+            lake env lean "$f" | tee -a zkl24-axioms.txt
+          done
+          test "$(grep -c "'indexed_context_delete' depends on axioms" zkl24-axioms.txt)" -eq "${#files[@]}"
+          if grep -Eq 'sorryAx|ofReduceBool|Classical.choice' zkl24-axioms.txt; then
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl24-indexed-axioms
+          path: mathcan/zkl24-axioms.txt

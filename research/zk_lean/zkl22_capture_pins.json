@@ -1,0 +1,11 @@
+{
+  "schema": "zkl22-pinned-capture-v1",
+  "run_id": 46042490831,
+  "artifact_id": 15220907562,
+  "source_commit": "e2495d2ed24115675960abd89efb36e53cfeaa35",
+  "capture_sha256": "ffb298ecbb4e923beba2ad1ee907588507ddc57c1bd91237156c18d6f8f5684a",
+  "vk_sha256": "3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6",
+  "pp_digest": "0x0306bc1d5101fc8fedef05cc5f384d989bfab3a85d2629df3a311520eb87e2c1",
+  "primary": "acf5a8b094824d9aac8e8b5a875f931a5e72f06f5333268db98f9199433f5c0e",
+  "secondary": "e3288035b42da6ab7084a8f7397d61ade7c03e1b4c27f8940ccd230c6325f25f"
+}
