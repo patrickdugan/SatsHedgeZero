@@ -182,7 +182,7 @@ fn native_candidate_replay() {
         for root in [91u32,92,93] {
             let drafts: Vec<_>=(0..24).map(|c| draft(root,regime,c)).collect();
             assert_eq!(drafts.iter().map(|d|d.tx.txid_hex()).collect::<BTreeSet<_>>().len(),24);
-            let mut trace=Vec::new();
+            let mut trace: Vec<&Check> = Vec::new();
             for (i,d) in drafts.iter().enumerate() {
                 trace.extend(&d.checks);
                 if i%3==2 {
