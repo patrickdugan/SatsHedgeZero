@@ -414,9 +414,15 @@ pub fn from_venue(v: &serde_json::Value, table: usize) -> Result<Trace, String> 
             }
         }
     }
+    // The step requires the table in ascending (txid, vout) order (the BTreeMap order clear walks
+    // claims in); `(txid, vout)` tuple order is the order of `key_limbs`.
+    keys.sort();
     let n = keys.len();
     if n > table {
         return Err(format!("{n} accounts do not fit a table of {table}"));
+    }
+    if keys.first().is_some_and(|k| k.0 == [0xff; 32]) || keys.last().is_some_and(|k| k.0 == [0xff; 32]) {
+        return Err("an account txid collides with the sentinel keys".into());
     }
     for s in 0..(table - n) {
         keys.push(([0xff; 32], s as u32));
