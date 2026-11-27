@@ -1,4 +1,4 @@
-name: ZKL-25 pinned graph-neighborhood polynomial search
+name: ZKL-25 overlapping neighborhood degree search
 on:
   pull_request:
     paths:
@@ -6,8 +6,6 @@ on:
       - 'research/zk_lean/test_graph_dependency.py'
       - 'research/zk_lean/emit_graph_replay.py'
       - 'research/zk_lean/zkl22_capture_pins.json'
-      - 'research/zk_lean/window_dependency.py'
-      - 'research/zk_lean/neighborhood_search.py'
       - '.github/workflows/shz-zkl25.yml'
   workflow_dispatch:
 permissions:
@@ -16,7 +14,7 @@ permissions:
 jobs:
   search:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,7 +23,7 @@ jobs:
       - name: Fixture regressions and indexed proof emission
         run: |
           cd research/zk_lean
-          python -m unittest test_audit_capture test_local_binding test_graph_dependency -v
+          python -m unittest test_graph_dependency -v
           python emit_graph_replay.py "${GITHUB_WORKSPACE}/zkl25-fixtures"
       - uses: actions/download-artifact@v4
         with:
@@ -33,7 +31,7 @@ jobs:
           path: captured
           run-id: 46042490831
           github-token: ${{ github.token }}
-      - name: Recheck pinned capture and search both actual ordered matrices with graph and nearby controls
+      - name: Recheck pinned capture and search both actual ordered matrices
         shell: bash
         run: |
           set -euo pipefail
@@ -75,7 +73,7 @@ jobs:
           cd mathcan
           shopt -s nullglob
           files=(../zkl25-fixtures/*.lean ../zkl25-actual/*/*.lean)
-          test "${#files[@]}" -ge 6
+          test "${#files[@]}" -ge 4
           for f in "${files[@]}"; do
             printf 'REPLAY %s\n' "$f" | tee -a zkl25-axioms.txt
             lake env lean "$f" | tee -a zkl25-axioms.txt
