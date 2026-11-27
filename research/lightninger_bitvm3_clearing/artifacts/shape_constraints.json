@@ -1,0 +1,56 @@
+[
+  {
+    "A": 4,
+    "R": 2,
+    "arity": 23,
+    "aux_variables": 284451,
+    "constraints": 284851,
+    "step": "clearing",
+    "synth_seconds": 0.7614099
+  },
+  {
+    "A": 6,
+    "R": 4,
+    "arity": 31,
+    "aux_variables": 436440,
+    "constraints": 437054,
+    "step": "clearing",
+    "synth_seconds": 1.0781328000000001
+  },
+  {
+    "A": 8,
+    "R": 4,
+    "arity": 39,
+    "aux_variables": 497567,
+    "constraints": 498269,
+    "step": "clearing",
+    "synth_seconds": 1.3978003
+  },
+  {
+    "A": 16,
+    "R": 8,
+    "arity": 71,
+    "aux_variables": 890472,
+    "constraints": 891726,
+    "step": "clearing",
+    "synth_seconds": 4.0363543
+  },
+  {
+    "aux_variables": 885539,
+    "constraints": 886447,
+    "shape": "bip341_vector_9in_2out",
+    "step": "tapsighash"
+  },
+  {
+    "aux_variables": 672532,
+    "constraints": 673274,
+    "shape": "p2tr_3in_3out_annex40",
+    "step": "tapsighash"
+  },
+  {
+    "aux_variables": 619025,
+    "constraints": 619673,
+    "shape": "p2tr_3in_3out",
+    "step": "tapsighash"
+  }
+]

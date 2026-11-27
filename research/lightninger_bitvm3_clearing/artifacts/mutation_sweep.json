@@ -1,0 +1,7303 @@
+{
+  "accepted": [],
+  "rejected": 1216,
+  "results": [
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_before[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_before[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "collected[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "collected[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "own_claim_used[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "own_claim_used[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "shortfall[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "shortfall[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "row_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "row_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "paid[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_after[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_after[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "net[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "net[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "shortfall_total+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "fund_absorbed+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "fund_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "haircut+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cash_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claims_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "layer+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[10]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[11]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[12]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[13]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[14]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[15]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[16]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[17]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[18]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[19]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[20]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[21]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[22]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[23]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[24]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[25]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[26]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[27]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[28]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[29]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[30]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input released[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input released[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_before[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_before[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "collected[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "collected[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "own_claim_used[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "own_claim_used[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "shortfall[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "shortfall[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "row_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "row_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "paid[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "paid[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_after[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_after[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "net[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "net[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "shortfall_total-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "fund_absorbed-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "fund_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "haircut-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cash_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claims_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "layer-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim3[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "claim_haircut[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "cut_rem[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pay_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[10]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[11]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[12]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[13]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[14]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[15]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[16]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[17]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[18]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[19]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[20]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[21]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[22]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[23]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[24]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[25]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[26]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[27]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[28]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[29]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "z_in[30]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input released[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input released[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input slot[0] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input slot[1] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input rows 0,1 swapped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "input last row dropped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "digest replaced",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: collected-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: own_claim_used-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: fund_absorbed-1, carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: haircut+1, carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: paid-1, claim_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: paid[0]-1, paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: claim3 moved 1 sat between slots 0,1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: cut_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 3,
+      "layer": "Margin",
+      "mutation": "pair: pay_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[2]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[3]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall_total+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "fund_absorbed+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "fund_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "haircut+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cash_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claims_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "layer+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[10]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[11]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[12]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[13]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[14]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[15]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[16]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[17]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[18]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[19]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[20]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[21]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[22]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[23]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[24]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[25]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[26]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[27]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[28]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[29]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[30]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[2]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[2]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[3]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[3]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[2]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pnl[3]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_before[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "collected[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "own_claim_used[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "row_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "paid[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_after[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "net[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "shortfall_total-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "fund_absorbed-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "fund_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "haircut-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cash_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claims_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "layer-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim3[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "claim_haircut[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "cut_rem[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pay_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[10]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[11]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[12]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[13]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[14]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[15]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[16]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[17]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[18]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[19]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[20]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[21]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[22]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[23]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[24]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[25]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[26]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[27]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[28]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[29]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "z_in[30]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[2]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[2]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input released[3]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input pnl[3]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input slot[0] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input slot[1] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input slot[2] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input slot[3] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input rows 0,1 swapped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "input last row dropped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "digest replaced",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: collected-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: own_claim_used-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: fund_absorbed-1, carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: haircut+1, carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: paid-1, claim_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: paid[0]-1, paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: claim3 moved 1 sat between slots 0,1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: cut_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Fund",
+      "mutation": "pair: pay_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[2]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[3]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall_total+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "fund_absorbed+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "fund_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "haircut+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cash_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claims_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "layer+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[10]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[11]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[12]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[13]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[14]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[15]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[16]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[17]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[18]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[19]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[20]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[21]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[22]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[23]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[24]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[25]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[26]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[27]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[28]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[29]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[30]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[2]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[2]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[3]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[3]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[2]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pnl[3]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_before[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "collected[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "own_claim_used[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "row_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "paid[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_after[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "net[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "shortfall_total-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "fund_absorbed-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "fund_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "haircut-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cash_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claims_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "layer-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim3[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "claim_haircut[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "cut_rem[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pay_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[10]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[11]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[12]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[13]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[14]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[15]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[16]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[17]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[18]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[19]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[20]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[21]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[22]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[23]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[24]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[25]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[26]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[27]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[28]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[29]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "z_in[30]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[2]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[2]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input released[3]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input pnl[3]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input slot[0] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input slot[1] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input slot[2] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input slot[3] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input rows 0,1 swapped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "input last row dropped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "digest replaced",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: collected-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: own_claim_used-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: fund_absorbed-1, carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: haircut+1, carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: paid-1, claim_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: paid[0]-1, paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: claim3 moved 1 sat between slots 0,1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: cut_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Haircut",
+      "mutation": "pair: pay_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_before[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_before[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "collected[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "collected[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "own_claim_used[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "own_claim_used[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "shortfall[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "shortfall[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "row_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "row_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "paid[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_after[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_after[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "net[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "net[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "shortfall_total+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "fund_absorbed+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "fund_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "haircut+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cash_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claims_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "layer+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[10]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[11]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[12]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[13]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[14]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[15]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[16]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[17]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[18]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[19]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[20]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[21]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[22]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[23]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[24]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[25]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[26]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[27]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[28]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[29]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[30]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input released[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input released[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_before[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_before[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "collected[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "collected[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "own_claim_used[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "own_claim_used[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "shortfall[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "shortfall[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "row_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "row_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "paid[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "paid[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_after[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_after[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "net[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "net[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "shortfall_total-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "fund_absorbed-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "fund_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "haircut-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cash_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claims_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "layer-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim3[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "claim_haircut[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "cut_rem[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pay_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[10]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[11]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[12]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[13]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[14]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[15]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[16]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[17]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[18]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[19]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[20]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[21]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[22]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[23]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[24]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[25]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[26]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[27]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[28]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[29]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "z_in[30]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input released[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input slot[0] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input slot[1] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input rows 0,1 swapped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "input last row dropped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "digest replaced",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: collected-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: own_claim_used-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: fund_absorbed-1, carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: haircut+1, carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: paid-1, claim_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: paid[0]-1, paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: claim3 moved 1 sat between slots 0,1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: cut_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "OwnClaim",
+      "mutation": "pair: pay_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_before[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_before[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "collected[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "collected[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "own_claim_used[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "own_claim_used[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "shortfall[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "shortfall[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "row_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "row_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "paid[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_after[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_after[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "net[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "net[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "shortfall_total+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "fund_absorbed+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "fund_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "haircut+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cash_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claims_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "layer+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[10]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[11]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[12]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[13]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[14]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[15]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[16]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[17]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[18]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[19]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[20]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[21]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[22]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[23]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[24]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[25]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[26]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[27]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[28]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[29]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[30]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input released[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input released[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_before[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_before[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "collected[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "collected[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "own_claim_used[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "own_claim_used[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "shortfall[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "shortfall[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "row_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "row_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "paid[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "paid[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_after[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_after[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "net[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "net[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "shortfall_total-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "fund_absorbed-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "fund_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "haircut-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cash_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claims_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "layer-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim3[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "claim_haircut[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "cut_rem[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pay_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[10]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[11]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[12]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[13]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[14]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[15]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[16]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[17]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[18]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[19]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[20]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[21]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[22]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[23]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[24]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[25]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[26]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[27]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[28]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[29]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "z_in[30]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input slot[0] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input slot[1] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input rows 0,1 swapped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "input last row dropped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "digest replaced",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: collected-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: own_claim_used-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: fund_absorbed-1, carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: haircut+1, carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: paid-1, claim_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: paid[0]-1, paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: claim3 moved 1 sat between slots 0,1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: cut_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 4,
+      "layer": "Carried",
+      "mutation": "pair: pay_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_before[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_before[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "collected[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "collected[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "own_claim_used[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "own_claim_used[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "shortfall[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "shortfall[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "row_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "row_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "paid[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_after[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_after[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "net[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "net[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "shortfall_total+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "fund_absorbed+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "fund_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "haircut+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cash_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claims_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "layer+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[0]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[2]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[3]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[4]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[5]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[6]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[7]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[8]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[9]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[10]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[11]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[12]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[13]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[14]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[15]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[16]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[17]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[18]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[19]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[20]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[21]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[22]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[23]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[24]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[25]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[26]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[27]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[28]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[29]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[30]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input released[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input pnl[0]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input released[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input pnl[1]+1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_before[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_before[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "collected[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "collected[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "own_claim_used[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "own_claim_used[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "shortfall[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "shortfall[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "row_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "row_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "paid[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "paid[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_after[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_after[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "net[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "net[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "shortfall_total-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "fund_absorbed-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "fund_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "haircut-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cash_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claims_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "layer-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim3[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "claim_haircut[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "cut_rem[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pay_rem[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[0]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[1]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[2]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[3]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[4]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[5]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[6]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[7]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[8]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[9]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[10]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[11]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[12]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[13]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[14]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[15]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[16]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[17]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[18]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[19]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[20]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[21]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[22]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[23]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[24]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[25]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[26]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[27]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[28]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[29]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "z_in[30]-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input pnl[0]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input released[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input pnl[1]-1",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input slot[0] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input slot[1] -> unused slot",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input rows 0,1 swapped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "input last row dropped",
+      "outcome": "output differs"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "digest replaced",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: collected-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: own_claim_used-1, shortfall+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: fund_absorbed-1, carry_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: haircut+1, carry_after-1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: paid-1, claim_after+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: paid[0]-1, paid[1]+1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: claim3 moved 1 sat between slots 0,1",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: cut_rem moved first->second",
+      "outcome": "unsatisfied"
+    },
+    {
+      "batch": 12,
+      "layer": "Carried",
+      "mutation": "pair: pay_rem moved first->second",
+      "outcome": "unsatisfied"
+    }
+  ],
+  "total": 1216
+}

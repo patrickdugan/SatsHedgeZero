@@ -1,0 +1,140 @@
+{
+  "accumulators_equal": true,
+  "auth_accumulator": "a62892f297589eb06b05a61ba09ff14796bb5245adfbfd5b35984f570baf31c3",
+  "secq_fold": {
+    "auth_accumulator": "a62892f297589eb06b05a61ba09ff14796bb5245adfbfd5b35984f570baf31c3",
+    "compress_seconds": 28.3229088,
+    "fold_seconds": 3.4942026,
+    "mutated_z0_rejected": true,
+    "output": [
+      "0700000000000000000000000000000000000000000000000000000000000000",
+      "a62892f297589eb06b05a61ba09ff14700000000000000000000000000000000",
+      "96bb5245adfbfd5b35984f570baf31c300000000000000000000000000000000"
+    ],
+    "primary_constraints": 144959,
+    "proof_bytes": 11980,
+    "relation": "shz/mnr05-secq256k1-bip340-batch-auth/v1 (Mnr05SecqBip340Step, unchanged)",
+    "secondary_constraints": 10787,
+    "setup_seconds": 5.5051853,
+    "steps": 7,
+    "verify_seconds": 0.9152548
+  },
+  "shape": {
+    "annex_max": 0,
+    "out_spk_lens": [
+      25,
+      32
+    ],
+    "prevout_spk_lens": [
+      34,
+      34,
+      25,
+      34,
+      34,
+      22,
+      34,
+      34,
+      34
+    ],
+    "script_sig_lens": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "sighashes": [
+    "2514a6272f85cfa0f45eb907fcb0d121b808ed37c6ea160a5a9046ed5526d555",
+    "325a644af47e8a5a2591cda0ab0723978537318f10e6a63d4eed783b96a71a4d",
+    "bf013ea93474aa67815b1b6cc441d23b64fa310911d991e713cd34c7f5d46669",
+    "4f900a0bae3f1446fd48490c2958b5a023228f01661cda3496a11da502a7f7ef",
+    "15f25c298eb5cdc7eb1d638dd2d45c97c4c59dcaec6679cfc16ad84f30876b85",
+    "cd292de50313804dabe4685e83f923d2969577191a3e1d2882220dca88cbeb10",
+    "cccb739eca6c13a8a89e6e5cd317ffe55669bbda23f2fd37b0f18755e008edd2"
+  ],
+  "signed_mask": "0b111011011",
+  "slots": [
+    {
+      "annex_len": null,
+      "hash_type": "0x03",
+      "input": 0
+    },
+    {
+      "annex_len": null,
+      "hash_type": "0x83",
+      "input": 1
+    },
+    {
+      "annex_len": null,
+      "hash_type": "0x01",
+      "input": 3
+    },
+    {
+      "annex_len": null,
+      "hash_type": "0x00",
+      "input": 4
+    },
+    {
+      "annex_len": null,
+      "hash_type": "0x02",
+      "input": 6
+    },
+    {
+      "annex_len": null,
+      "hash_type": "0x82",
+      "input": 7
+    },
+    {
+      "annex_len": null,
+      "hash_type": "0x81",
+      "input": 8
+    }
+  ],
+  "source": "bip341_vector",
+  "tapsighash_fold": {
+    "arity": 8,
+    "compress_seconds": 86.1856216,
+    "curve_cycle": "Bn256EngineIPA / GrumpkinEngine, Spartan RelaxedR1CSSNARK + IPA (no trusted setup)",
+    "flipped_proof_rejected": true,
+    "fold_seconds": 8.84297,
+    "fold_seconds_per_step": 1.2632814285714284,
+    "mutated_z0_rejected": true,
+    "output_matches_expected": true,
+    "primary_constraints": 897994,
+    "proof_bytes": 12688,
+    "proof_sha256": "2a146a5276589680a9f75415293c34800982002e018f6226507e00c87e798a0a",
+    "relation": "lightninger/bip341-keypath-tapsighash-fold/v1",
+    "secondary_constraints": 10538,
+    "setup_seconds": 29.4612746,
+    "steps": 7,
+    "verify_seconds": 2.7813269,
+    "vk_sha256": "a2200ecd38d99afed0745324c8387b8389cbcd0f22d7420a4edfaef31d910296",
+    "wrong_step_count_rejected": true,
+    "z0": [
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "0000000000000000000000000000000000000000000000000000000000000000",
+      "00000000000000000000000000000000e615027b7d519d156f8029ab84e98403",
+      "00000000000000000000000000000000e3ea200036ccbcda7c5d24dcec1e5014",
+      "0000000000000000000000000000000066f1ef1b42ca9d999b23e75f14ef9f81",
+      "000000000000000000000000000000003ce16cbb97bbac0f5f2ace97112061a9",
+      "0000000000000000000000000000000000000000000000000000000000000000"
+    ],
+    "zk": [
+      "0000000000000000000000000000000000000000000000000000000000000007",
+      "0000000000000000000000000000000047f19fa01ba6056bb09e5897f29228a6",
+      "00000000000000000000000000000000c331af0b574f98355bfdfbad4552bb96",
+      "00000000000000000000000000000000e615027b7d519d156f8029ab84e98403",
+      "00000000000000000000000000000000e3ea200036ccbcda7c5d24dcec1e5014",
+      "0000000000000000000000000000000066f1ef1b42ca9d999b23e75f14ef9f81",
+      "000000000000000000000000000000003ce16cbb97bbac0f5f2ace97112061a9",
+      "00000000000000000000000000000000000000000000000000000000000001db"
+    ]
+  },
+  "txid": "0384e984ab29806f159d517d7b0215e614501eecdc245d7cdabccc360020eae3"
+}
