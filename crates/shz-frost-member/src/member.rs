@@ -63,6 +63,7 @@ fn int_list(j: &J) -> R<Vec<i128>> {
 }
 
 impl Member {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(share: Share, state_dir: &Path, dlc_path: Option<&Path>, view: View, max_deviation_bps: i128, view_max_age_s: f64, rng: Arc<Mutex<Box<dyn Rng>>>, clock: Clock) -> R<Member> {
         std::fs::create_dir_all(state_dir).map_err(|e| PyErr::new("OSError", e.to_string()))?;
         let state = SignerState::open(&state_dir.join("nonces.json"))?;

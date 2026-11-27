@@ -139,10 +139,10 @@ pub fn src_coinbase(raw: &[u8]) -> R<Parsed> {
 
 pub fn src_kraken(raw: &[u8]) -> R<Parsed> {
     let j = json::loads_bytes(raw)?;
-    if let Some(e) = j.get("error")? {
-        if e.truthy() {
-            return Err(PyErr::value(json::dumps(e, json::Style::Default)));
-        }
+    if let Some(e) = j.get("error")?
+        && e.truthy()
+    {
+        return Err(PyErr::value(json::dumps(e, json::Style::Default)));
     }
     let res = j.at("result")?.items()?;
     if res.len() != 1 {
