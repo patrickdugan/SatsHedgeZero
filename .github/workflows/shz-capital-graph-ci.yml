@@ -29,6 +29,8 @@ jobs:
           node research/capital_graph/placement.mjs
           node research/capital_graph/temporal.mjs
           node research/capital_graph/policy.mjs
+          node research/capital_graph/rolling_check.mjs
+          node research/capital_graph/recovery_check.mjs
       - uses: dtolnay/rust-toolchain@stable
       - name: Validated Rust graph and reservation regressions
         run: cargo test --locked -p shz-utxoref
