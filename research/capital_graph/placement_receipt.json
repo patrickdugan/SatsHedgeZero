@@ -1,0 +1,28 @@
+{
+  "families": 364,
+  "uniform_strictly_worse": 331,
+  "maximum_units_saved_vs_uniform": 4,
+  "triangle": {
+    "minimum_integer_stock": 2,
+    "one_optimal_placement": [
+      0,
+      1,
+      1
+    ],
+    "uniform_integer_stock": 3,
+    "lp_relaxation_optimum": "3/2",
+    "worst_deficit_before": 1,
+    "worst_deficit_after_each_single_sat": [
+      1,
+      1,
+      1
+    ]
+  },
+  "rust_fixture_replay": {
+    "deficit_sats": 6000,
+    "loser_injection_6000_deficit": 6000,
+    "winner_injection_6000_deficit": 0
+  },
+  "scope": "synthetic static placement, recourse after scenario; not temporal or execution evidence",
+  "execution": "function bodies evaluated in isolated JS; Rust and Node CI pending"
+}
