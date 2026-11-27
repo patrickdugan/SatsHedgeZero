@@ -821,7 +821,7 @@ impl Venue {
         let maturity = self.opts.as_ref().and_then(|o| o.events.get(&s.event_id)).map(|e| e.maturity_unix);
         json!({
             "id": h(id), "kind": kind_name(s.kind), "asset": self.asset_json(&s.asset), "asset_code": self.asset_code(&s.asset),
-            "strike_usd": s.strike_usd, "event_id": s.event_id, "maturity_unix": maturity, "settled_price_usd": settled,
+            "strike_usd": s.strike_usd, "event_id": s.event_id, "maturity_unix": maturity, "settled_price_usd": settled, "void": settled == Some(0),
             "contract_qty": contract_qty(&s.asset), "qty_unit": if s.asset == SettleAsset::Btc { "usd" } else { "btc_e8" },
             "premium_unit": if s.asset == SettleAsset::Btc { "millisat per unit" } else { "thousandth of a base unit per unit" },
             "bid": best(true), "ask": best(false),
@@ -892,7 +892,7 @@ impl Venue {
             .map(|ac| {
                 ac.legs.iter().filter(|(_, n)| **n != 0).filter_map(|(sid, n)| {
                     desk.series(sid).map(|(s, settled)| json!({"series": h(sid), "kind": kind_name(s.kind), "asset": self.asset_code(&s.asset), "strike_usd": s.strike_usd,
-                        "event_id": s.event_id, "maturity_unix": st.events.get(&s.event_id).map(|e| e.maturity_unix), "net": n, "settled_price_usd": settled}))
+                        "event_id": s.event_id, "maturity_unix": st.events.get(&s.event_id).map(|e| e.maturity_unix), "net": n, "settled_price_usd": settled, "void": settled == Some(0)}))
                 }).collect()
             })
             .unwrap_or_default();
@@ -984,6 +984,75 @@ mod tests {
         assert!(verify_announcement(&announced, &[7; 32]).is_err());
         // the testnet mark is near 60,600: strikes 59,500 .. 61,500 in steps of 500
         assert_eq!(strike_grid(60_614, PriceDomain::from_bits(NUM_BITS)), vec![59_500, 60_000, 60_500, 61_000, 61_500]);
+    }
+
+    /// An event the relay marks unattestable (dlc_coord.py declare_unattestable shape: status
+    /// "unattestable", unattestable_signature hex) is voided on the oracle's notice: no payoff,
+    /// premium stays paid, collateral freed, and it commits with the holders offline (ownerless).
+    /// No live relay event has this status yet, so the event JSON is constructed and signed by a
+    /// test oracle key.
+    #[test]
+    fn unattestable_notice_voids_the_event_with_holders_offline() {
+        use shz_dex::routing::{options::unattestable_message, public};
+        let dir = std::env::temp_dir().join(format!("shz-venue-opt-void-{}", now_us()));
+        let oracle_sk = [9u8; 32];
+        let oracle = public(&oracle_sk);
+        let mut v = Venue::open(&dir, oracle, "http://127.0.0.1:9".into()).unwrap();
+        v.options_enable(None).unwrap();
+        assert!(v.router.ownerless_expiry_active().unwrap());
+        let (msk, tsk) = ([3u8; 32], [4u8; 32]);
+        for sk in [&msk, &tsk] {
+            let owner = public(sk);
+            let d = v.register_draft(owner, "demo", None, None).unwrap();
+            let dig = parse_key(d["allocation_digest"].as_str().unwrap()).unwrap();
+            v.register(d["draft_id"].as_str().unwrap(), bip340_sign(sk, &dig).unwrap()).unwrap();
+            let exp = now_us() + 300_000_000;
+            let td = transfer_digest(1, &owner, &SettleAsset::Btc, 150_000, exp);
+            v.option_transfer("fund", &json!({"owner": h(&owner), "amount": 150_000, "expires_us": exp, "signature": sig_hex(&bip340_sign(sk, &td).unwrap())})).unwrap();
+        }
+        let ev_id = "SHZ-BTCUSD-20261127T0300Z";
+        let ann = OracleAnnouncement { event_id: ev_id.into(), maturity_unix: 1, oracle_pubkey_x: oracle, digit_nonces_x: vec![[1; 32]; NUM_BITS as usize] };
+        let call = v.router.list_series(Series { kind: OptionKind::Call, asset: SettleAsset::Btc, strike_usd: 100_000, event_id: ev_id.into() }, ann).unwrap();
+        let mk = |v: &Venue, sk: &Key, action: Action, long: bool, seq: u64, premium: i64| {
+            IntentV7 { version: OPTION_INTENT_VERSION, scope: v.scope, router: ROUTER_ID, channel: v.accounts[&public(sk)].outpoint.clone(), owner: [0; 32], sequence: seq,
+                       expires_us: now_us() + 600_000_000, action, legs: vec![LegOrder { series: call, long, qty: 100 }], premium_milli: premium,
+                       other_limits: vec![], cancel_target: [0; 32], signature: ZERO_SIG }.signed(sk).unwrap()
+        };
+        v.option_submit(mk(&v, &msk, Action::Post, false, 1, 3000)).unwrap();
+        v.option_submit(mk(&v, &tsk, Action::Take, true, 1, 300_000)).unwrap();
+        for sk in [&msk, &tsk] {
+            let owner = public(sk);
+            let items: Vec<(String, shz_dlc::Bip340Signature)> = v.pending.values().filter(|p| p.owner == owner).map(|p| (p.id.clone(), bip340_sign(sk, &p.message).unwrap())).collect();
+            v.add_signatures(owner, &items).unwrap();
+        }
+        let bal = |v: &Venue, sk: &Key| {
+            let a = &v.accounts[&public(sk)].outpoint;
+            v.router.options().unwrap().unwrap().account(&(a.txid, a.vout)).unwrap().balance(&SettleAsset::Btc)
+        };
+        assert!(bal(&v, &msk).locked > 90_000);
+        let (t_before, m_before) = (bal(&v, &tsk), bal(&v, &msk));
+        // a notice signed by another key is refused; the oracle's notice voids the event
+        let ev = |sig: &shz_dlc::Bip340Signature| json!({"core": {"event_id": ev_id, "maturity_unix": 1}, "status": "unattestable",
+            "unattestable_digest": h(&unattestable_message(ev_id)), "unattestable_signature": sig_hex(sig)});
+        let forged = bip340_sign(&[8; 32], &unattestable_message(ev_id)).unwrap();
+        assert!(v.options_apply_event(&ev(&forged), now_us()).is_err());
+        let notice = bip340_sign(&oracle_sk, &unattestable_message(ev_id)).unwrap();
+        let r = v.options_apply_event(&ev(&notice), now_us()).unwrap();
+        assert_eq!(r["action"], "voiding");
+        // committed at once with no owner signature (both holders "offline": nothing was signed)
+        let st = v.opts.as_ref().unwrap();
+        let last = st.batches.last().unwrap();
+        assert_eq!((last.phase.as_str(), batch_kind_name(&last.batch)), ("committed", "void"));
+        assert!(last.acks.iter().all(|a| a.signatures[0] == ZERO_SIG));
+        assert!(last.batch.clearing.iter().all(|c| c.report.rows.iter().all(|r| r.net == 0)));
+        assert_eq!(st.events[ev_id].status, "void");
+        let (t_after, m_after) = (bal(&v, &tsk), bal(&v, &msk));
+        assert_eq!((t_after.realized, t_after.locked), (t_before.realized, 0), "premium stays paid");
+        assert_eq!((m_after.locked, m_after.free + m_after.locked), (0, m_before.free + m_before.locked), "collateral freed, nothing paid out");
+        assert_eq!(v.options_series_view()["series"][0]["void"], true);
+        assert_eq!(v.options_account(&public(&tsk))["legs"], json!([]));
+        drop(v);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Restart: transfer nonces (fsync'd before the move), aborted and committed option batches

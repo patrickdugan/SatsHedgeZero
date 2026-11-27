@@ -160,6 +160,8 @@ function quoteCell(s, side) {
   const sel = o.sel && o.sel.id === s.id && (side === 'ask') === o.long ? ' sel' : '';
   return `<td class="q ${side === 'bid' ? 'long' : 'short'}${sel}" data-s="${s.id}" data-side="${side}" title="${q ? `${fmtN(q.qty / s.contract_qty, 2)} contracts` : 'no quote'}">${q ? fmtN(human(s, perContractBase(s, q.premium_milli)), decimalsOf(s) ? 2 : 0) : '—'}</td>`;
 }
+// A void series (unattestable event) has settled_price_usd 0: shown as "void", never as a price.
+const settledMark = (s) => (!s || s.settled_price_usd == null ? '' : s.void || s.settled_price_usd === 0 ? ' <span class="muted">void</span>' : ' ✓');
 const worstCell = (s) => (s ? `<td class="muted" title="worst-case loss of one contract written">${fmtN(human(s, s.worst_case_per_contract.short), decimalsOf(s) ? 2 : 0)}</td>` : '<td></td>');
 function renderChain() {
   const el = $('optchain'); if (!el) return;
@@ -172,7 +174,7 @@ function renderChain() {
     <tr><th>Bid</th><th>Ask</th><th>Worst</th><th class="k">Strike</th>${pa.map(() => '<th>Bid</th><th>Ask</th><th>Worst</th>').join('')}</tr>`;
   const mark = v.mark_usd;
   const a = mark ? atmIndex(ev.rows, mark) : -1;
-  const rows = ev.rows.map((r, i) => `<tr class="${i === a ? 'atm' : ''}">${quoteCell(r.call, 'bid')}${quoteCell(r.call, 'ask')}${worstCell(r.call)}<td class="k">${fmtN(r.strike)}${(r.call || Object.values(r.puts)[0])?.settled_price_usd != null ? ' ✓' : ''}</td>${pa.map((x) => quoteCell(r.puts[x], 'bid') + quoteCell(r.puts[x], 'ask') + worstCell(r.puts[x])).join('')}</tr>`).join('');
+  const rows = ev.rows.map((r, i) => `<tr class="${i === a ? 'atm' : ''}">${quoteCell(r.call, 'bid')}${quoteCell(r.call, 'ask')}${worstCell(r.call)}<td class="k">${fmtN(r.strike)}${settledMark(r.call || Object.values(r.puts)[0])}</td>${pa.map((x) => quoteCell(r.puts[x], 'bid') + quoteCell(r.puts[x], 'ask') + worstCell(r.puts[x])).join('')}</tr>`).join('');
   const any = ev.rows.find((r) => r.call) || {};
   const pAny = ev.rows.map((r) => r.puts.USDT).find(Boolean);
   el.innerHTML = `<h3>Options chain <span class="mono muted">mark ${fmtN(mark)} &middot; ${esc(ev.event_id)} &middot; DLC oracle ${esc(short(v.oracle))}</span></h3>
@@ -284,7 +286,7 @@ export function renderBottom(el, table) {
   const label = (id) => { const s = sOf(id); return s ? describe(s) : short(id); };
   const amt = (id, base) => { const s = sOf(id); return s ? fmtAmt(s, base) : fmtN(base); };
   el.innerHTML = `<div class="optbal">${op.balances.map((b) => `<span><b>${esc(b.asset)}</b> free ${fmtN(b.free)} &middot; locked ${fmtN(b.locked)} &middot; realized <span class="${b.realized >= 0 ? 'long' : 'short'}">${fmtN(b.realized)}</span></span>`).join('')}<span class="${op.fully_funded ? 'long' : 'short'}">${op.fully_funded ? 'fully funded: no liquidation' : 'under-collateralized'}</span></div>`
-    + table(['Option position', 'Net contracts', 'Asset', 'Expiry', 'Settled'], op.legs.map((l) => { const s = sOf(l.series); return `<tr><td>${esc(label(l.series))}</td><td class="${l.net > 0 ? 'long' : 'short'}">${s ? fmtN(l.net / s.contract_qty, 2) : l.net}</td><td><span class="abadge${l.asset === 'BTC' ? '' : ' st'}">${esc(l.asset)}</span></td><td>${esc(l.event_id)}</td><td>${l.settled_price_usd != null ? fmtN(l.settled_price_usd) : ''}</td></tr>`; }))
+    + table(['Option position', 'Net contracts', 'Asset', 'Expiry', 'Settled'], op.legs.map((l) => { const s = sOf(l.series); return `<tr><td>${esc(label(l.series))}</td><td class="${l.net > 0 ? 'long' : 'short'}">${s ? fmtN(l.net / s.contract_qty, 2) : l.net}</td><td><span class="abadge${l.asset === 'BTC' ? '' : ' st'}">${esc(l.asset)}</span></td><td>${esc(l.event_id)}</td><td>${l.void ? 'void' : l.settled_price_usd != null ? fmtN(l.settled_price_usd) : ''}</td></tr>`; }))
     + table(['Open option quote', 'Side', 'Premium / contract', 'Remaining', ''], op.open_orders.map((q) => { const s = sOf(q.series); return `<tr><td>${esc(label(q.series))}</td><td class="${q.long ? 'long' : 'short'}">${q.long ? 'bid' : 'ask'}</td><td>${s ? amt(q.series, perContractBase(s, q.premium_milli)) : q.premium_milli}</td><td>${s ? fmtN(q.remaining / s.contract_qty, 2) : q.remaining}</td><td><button class="btn sm" data-ocancel="${esc(q.id)}">Cancel</button></td></tr>`; }))
     + table(['Option fill', 'Batch', 'Phase', 'Side', 'Contracts', 'Premium'], op.fills.slice(0, 40).map((f) => { const s = sOf(f.series); return `<tr><td>${esc(label(f.series))}</td><td>#${f.batch}</td><td><span class="phase ${esc(f.phase)}">${esc(f.phase)}</span></td><td class="${f.side === 'long' ? 'long' : 'short'}">${f.side}</td><td>${s ? fmtN(f.qty / s.contract_qty, 2) : f.qty}</td><td>${amt(f.series, f.premium)}</td></tr>`; }))
     + table(['Option acknowledgement', 'Batch', 'Lane rows', 'Status'], op.pending_signatures.map((p) => `<tr><td>${esc(p.id)}</td><td>#${p.context.option_batch} ${esc(p.context.batch_kind)}</td><td>${esc((p.context.rows || []).map((r) => `${r.asset} ${r.net >= 0 ? '+' : ''}${fmtN(r.net)}`).join(', '))}</td><td class="amber">${o.ctx.st.signed.has(p.id) ? 'signed, awaiting the other lanes' : 'auto-signing…'}</td></tr>`));
