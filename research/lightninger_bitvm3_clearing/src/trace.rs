@@ -378,3 +378,92 @@ pub fn random_walk(n: u8, table: usize, fund: u64, windows: usize, seed: u64) ->
     v.flatten(price);
     v.finish(&format!("random_walk_n{n}_fund{fund}_seed{seed}"))
 }
+
+/// Committed batches of the live venue as a trace: `v` is `ops/venue-bench/dlc_demo/fill.mjs`
+/// output (`status_before.clearing` and one explorer `batch`) or `{status_before, batches: [..]}`
+/// with consecutive explorer batches. The pre-state of the first batch is the venue's clearing
+/// summary taken before its fill; each later pre-state is the previous post-state. The account
+/// table holds the batches' channels in first-appearance order, then sentinels. Deferred claims
+/// must be zero venue-wide (per-account claims are not in the explorer JSON).
+pub fn from_venue(v: &serde_json::Value, table: usize) -> Result<Trace, String> {
+    let s = &v["status_before"]["clearing"];
+    let batches: Vec<&serde_json::Value> = match v["batches"].as_array() {
+        Some(a) => a.iter().map(|b| b.get("batch").unwrap_or(b)).collect(),
+        None => vec![&v["batch"]["batch"]],
+    };
+    let int = |x: &serde_json::Value, k: &str| x[k].as_i64().ok_or(format!("{k} missing"));
+    if int(s, "claims")? != 0 {
+        return Err("venue has deferred claims: per-account claims are not in the explorer JSON".into());
+    }
+    let reports: Vec<(u64, BatchClearing)> = batches
+        .iter()
+        .map(|b| {
+            if b["phase"] != "committed" {
+                return Err(format!("batch {} is not committed", b["seq"]));
+            }
+            let r: BatchClearing = serde_json::from_value(b["clearing"].clone()).map_err(|e| format!("clearing: {e}"))?;
+            Ok((b["seq"].as_u64().ok_or("seq")?, r))
+        })
+        .collect::<Result<_, String>>()?;
+    let mut keys: Vec<crate::clearing_step::Key> = Vec::new();
+    for (_, r) in &reports {
+        for row in &r.rows {
+            let k = (row.channel.txid, row.channel.vout);
+            if !keys.contains(&k) {
+                keys.push(k);
+            }
+        }
+    }
+    let n = keys.len();
+    if n > table {
+        return Err(format!("{n} accounts do not fit a table of {table}"));
+    }
+    for s in 0..(table - n) {
+        keys.push(([0xff; 32], s as u32));
+    }
+    let mut pre = PoolState {
+        seq: reports[0].0,
+        cash: int(s, "cash")?,
+        fund: int(s, "fund")? as u64,
+        carry: int(s, "carry")? as u64,
+        book: int(s, "book")? as i128,
+        claims: vec![0; table],
+        keys: keys.clone(),
+        chain: [0; 32],
+    };
+    if pre.identity() != 0 {
+        return Err(format!("venue summary identity {} != 0", pre.identity()));
+    }
+    let mut out = Vec::new();
+    for (seq, report) in reports {
+        if seq != pre.seq || report.cash_before != pre.cash {
+            return Err(format!("batch {seq} does not follow state {} (cash {} vs {})", pre.seq, report.cash_before, pre.cash));
+        }
+        if report.claims_after != 0 || !report.claim_haircuts.is_empty() {
+            return Err(format!("batch {seq} leaves deferred claims"));
+        }
+        let rows: Vec<RowIn> = report
+            .rows
+            .iter()
+            .map(|r| RowIn { slot: keys.iter().position(|k| k.0 == r.channel.txid && k.1 == r.channel.vout).unwrap(), pnl: r.pnl, released: r.released })
+            .collect();
+        let pnl: i128 = report.rows.iter().map(|r| r.pnl as i128).sum();
+        let post = PoolState {
+            seq: seq + 1,
+            cash: report.cash_after,
+            fund: report.fund_after,
+            carry: report.carry_after,
+            book: pre.book - pnl,
+            claims: vec![0; table],
+            keys: keys.clone(),
+            chain: [0; 32],
+        };
+        if post.identity() != 0 {
+            return Err(format!("batch {seq} post identity {} != 0", post.identity()));
+        }
+        let digest = report.digest();
+        out.push(BatchRecord { seq, pre: pre.clone(), rows, report, digest, post: post.clone() });
+        pre = post;
+    }
+    Ok(Trace { name: v["name"].as_str().unwrap_or("venue").to_string(), accounts: n as u8, table, batches: out })
+}
