@@ -478,7 +478,7 @@ fn build_graph(node: &Node, sink: &str, value: u64, stmt_sha: &[u8; 32], gc: &Va
     // the committee presigns its half of the claim at setup; the operator signs to start the window
     let (sd, _) = sign_leaf(&claim, &[value], &[v.spk()], 0, &v, 0, &POOL_SK, 0);
     let (sc, _) = sign_leaf(&claim, &[value], &[v.spk()], 0, &v, 0, &OPERATOR_SK, 0);
-    claim.witness = vec![vec![sd, sc, v.leaves[0].clone(), v.control(0)]];
+    claim.witness = vec![vec![sc, sd, v.leaves[0].clone(), v.control(0)]];
     let claim_txid = hex::encode(claim.txid());
     let mut payout = Tx { version: 2, inputs: vec![input(&claim_txid, 0, WINDOW_BLOCKS)], outputs: vec![out(k_value - fee, payout_spk.to_vec())], locktime: 0, witness: vec![] };
     let (sp, _) = sign_leaf(&payout, &[k_value], &[k.spk()], 0, &k, 0, &POOL_SK, 0);

@@ -1,0 +1,235 @@
+{
+  "events": [
+    {
+      "result": {
+        "allowed": true,
+        "fees": {
+          "base": 4e-6,
+          "effective-feerate": 0.00001923,
+          "effective-includes": [
+            "4db0e190bd24f7cad7354065b5c3439834b736398721e42dda2a1092c3c97ac5"
+          ]
+        },
+        "txid": "a207458aa6a25d3c8618e93913f45c39cffcd206eeb90f0790ac5809f33bfd9c",
+        "vsize": 208,
+        "wtxid": "4db0e190bd24f7cad7354065b5c3439834b736398721e42dda2a1092c3c97ac5"
+      },
+      "step": "honest: claim testmempoolaccept"
+    },
+    {
+      "result": {
+        "allowed": false,
+        "reject-details": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation), input 0 of ab9d100758fd978f2b2a642b1316566e0571a151ae6c570030d5fa38f89be54e (wtxid 6f4be14dde7265dc467d3c34cd096e062d8148a5d3bf3e2978780d9f20bef9c1), spending a207458aa6a25d3c8618e93913f45c39cffcd206eeb90f0790ac5809f33bfd9c:0",
+        "reject-reason": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)",
+        "txid": "ab9d100758fd978f2b2a642b1316566e0571a151ae6c570030d5fa38f89be54e",
+        "wtxid": "6f4be14dde7265dc467d3c34cd096e062d8148a5d3bf3e2978780d9f20bef9c1"
+      },
+      "step": "honest: challenger's disprove with the evaluated (accept) label"
+    },
+    {
+      "result": {
+        "allowed": false,
+        "reject-details": "non-BIP68-final",
+        "reject-reason": "non-BIP68-final",
+        "txid": "a1fb199386937ce5b47fff7ad81c43650c8c7439846bd33177c42404aaaf7439",
+        "wtxid": "b106442e183ae3cf3ab19f2cf26f6191533d74f6a032581257d5118c5cc854c2"
+      },
+      "step": "honest: payout one block after the claim"
+    },
+    {
+      "result": {
+        "allowed": true,
+        "fees": {
+          "base": 4e-6,
+          "effective-feerate": 0.00002919,
+          "effective-includes": [
+            "b106442e183ae3cf3ab19f2cf26f6191533d74f6a032581257d5118c5cc854c2"
+          ]
+        },
+        "txid": "a1fb199386937ce5b47fff7ad81c43650c8c7439846bd33177c42404aaaf7439",
+        "vsize": 137,
+        "wtxid": "b106442e183ae3cf3ab19f2cf26f6191533d74f6a032581257d5118c5cc854c2"
+      },
+      "step": "honest: payout after the window"
+    },
+    {
+      "result": {
+        "height": 150,
+        "to": "operator",
+        "txid": "a1fb199386937ce5b47fff7ad81c43650c8c7439846bd33177c42404aaaf7439"
+      },
+      "step": "honest: payout mined"
+    },
+    {
+      "result": {
+        "height": 152,
+        "txid": "e08f5869f7a6318c402b89ae9c54391bf1af2d8267c262ad3dad9bd4db2ad776"
+      },
+      "step": "wrong: claim mined"
+    },
+    {
+      "result": {
+        "allowed": false,
+        "reject-details": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation), input 0 of b7a3e656595ccbb94f10d4ec1aacf6ca5d464cfcf1b6f8e35178a4646421280f (wtxid f0c6e6913a8afaa871dcb461d08a1d0ff98bb6ca73a472f881fa44f886dfb49c), spending e08f5869f7a6318c402b89ae9c54391bf1af2d8267c262ad3dad9bd4db2ad776:0",
+        "reject-reason": "mempool-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation)",
+        "txid": "b7a3e656595ccbb94f10d4ec1aacf6ca5d464cfcf1b6f8e35178a4646421280f",
+        "wtxid": "f0c6e6913a8afaa871dcb461d08a1d0ff98bb6ca73a472f881fa44f886dfb49c"
+      },
+      "step": "wrong: disprove with a label one bit off the reject label"
+    },
+    {
+      "result": {
+        "allowed": true,
+        "fees": {
+          "base": 4e-6,
+          "effective-feerate": 0.00002666,
+          "effective-includes": [
+            "9d4ece81459b3b171bc01cf9c9c0c69d7ccc3e51317c003b025618946599491d"
+          ]
+        },
+        "txid": "b7a3e656595ccbb94f10d4ec1aacf6ca5d464cfcf1b6f8e35178a4646421280f",
+        "vsize": 150,
+        "wtxid": "9d4ece81459b3b171bc01cf9c9c0c69d7ccc3e51317c003b025618946599491d"
+      },
+      "step": "wrong: disprove with the evaluated reject label"
+    },
+    {
+      "result": {
+        "height": 158,
+        "txid": "b7a3e656595ccbb94f10d4ec1aacf6ca5d464cfcf1b6f8e35178a4646421280f"
+      },
+      "step": "wrong: disprove mined, funds back to the pool"
+    },
+    {
+      "result": {
+        "allowed": false,
+        "reject-reason": "missing-inputs",
+        "txid": "4719e03262e1e437d4b683678d843e041e47dcdc6dde22cb79f2dd858f71c1a0",
+        "wtxid": "b18ca88079c38eb6ab33169b2c61a45c0113b4af23f702f6f17535807a25a567"
+      },
+      "step": "wrong: operator's payout after the window"
+    }
+  ],
+  "honest_graph": {
+    "claim": {
+      "claim_id": "f212ae607c7925b5b83cd286979b540ca39457074b122ceb9313899a111fae87",
+      "k_sats": 3164,
+      "k_spk": "5120e6e525b2750840b970415db43be665616bae7b57a79aa02d081116be0bc9e9f0",
+      "leaves": [
+        "56b275206144373d5c39a77d1a5d1a2cb28c3ab2685d4b053440451800ae51647c399874ac",
+        "a82025ce3da9dc2d59c34640ee1c825a18ce3526e513c4ee512b329cc7e4589152578820a706ad8f73115f90500266f273f7571df9429a4cfb4bbfbcd825227202dabad1ac"
+      ],
+      "txid": "a207458aa6a25d3c8618e93913f45c39cffcd206eeb90f0790ac5809f33bfd9c"
+    },
+    "disprove": {
+      "to_spk": "512019faf521e21cc42c7b3798d9d864522d1a2836936c1a3ac847d21977927cf0d9"
+    },
+    "garbled_instance": {
+      "accept_label_sha256": "ca8f21f33fe5ed10f03e94953626001d0240484dcbe5c31f3b90ff7dc35d7fdc",
+      "ciphertext_commitment_blake3": "25971ff20f96244a7cfb41722fe7f06ea5b4087bbb97a2793d20543060c786cb",
+      "ciphertext_stream_matches_commitment": true,
+      "ciphertext_stream_rehash_blake3": "25971ff20f96244a7cfb41722fe7f06ea5b4087bbb97a2793d20543060c786cb",
+      "claimed_public_inputs_dec": [
+        "234431167913074962991513348295378763589",
+        "150177018928374403521509990670524534578"
+      ],
+      "claimed_statement_sha256": "b05dccf54f9308ce47317ebf4b767f4570fb0ab186105ef1260c5ba1e9c4cf32",
+      "evaluated_label_hex": "ccc9f3b7b6a17222fd0c950bdb8e73f8",
+      "evaluated_label_is_accept": true,
+      "evaluated_label_is_reject": false,
+      "evaluated_label_sha256": "ca8f21f33fe5ed10f03e94953626001d0240484dcbe5c31f3b90ff7dc35d7fdc",
+      "evaluated_value": true,
+      "garble_seconds": 848.5729326,
+      "garbling_seed": 101,
+      "gate_hasher": "AES-CCR half gates, Free-XOR (gsv streaming)",
+      "groth16": "../lightninger_dlc_batcher/artifacts/regtest/garbled/groth16_standin.json",
+      "native_groth16_verify_on_claimed_statement": true,
+      "regarble_and_evaluate_seconds": 1276.6876553,
+      "reject_label_sha256": "25ce3da9dc2d59c34640ee1c825a18ce3526e513c4ee512b329cc7e458915257",
+      "vk_sha256": "2cadec567dc84ef9c649b69f4e705181bcfe430b7ab8d0475942af7f2d2a594b"
+    },
+    "payout": {
+      "sequence": 6,
+      "to_spk": "5120b6f2ee25e85dac4bdd134ebea5f96766cae0f8625e56a97c491966d722dc0e92",
+      "txid": "a1fb199386937ce5b47fff7ad81c43650c8c7439846bd33177c42404aaaf7439"
+    },
+    "reclaim_blocks": 144,
+    "statement_sha256": "b05dccf54f9308ce47317ebf4b767f4570fb0ab186105ef1260c5ba1e9c4cf32",
+    "vault": {
+      "leaves": [
+        "206144373d5c39a77d1a5d1a2cb28c3ab2685d4b053440451800ae51647c399874ad20552c630b64b54bf50210c9e253d38bd4949c72e22873500f6285c2bede312a84ac",
+        "029000b275206144373d5c39a77d1a5d1a2cb28c3ab2685d4b053440451800ae51647c399874ac"
+      ],
+      "outpoint": "cc8a69f6a26366dca51b6f861b689e4109ca46db9dff82ef0b19206f52a9f543:1",
+      "sats": 3564,
+      "spk": "51208dcfbccd4e32bc4224b2d187df93e4d82f0050028b061b76cb89a031f363be29"
+    },
+    "window_blocks": 6
+  },
+  "keys": {
+    "note": "regtest-only fixed keys",
+    "operator": "552c630b64b54bf50210c9e253d38bd4949c72e22873500f6285c2bede312a84",
+    "pool_committee": "6144373d5c39a77d1a5d1a2cb28c3ab2685d4b053440451800ae51647c399874",
+    "watcher": "a706ad8f73115f90500266f273f7571df9429a4cfb4bbfbcd825227202dabad1"
+  },
+  "node": "/Satoshi:31.1.0/",
+  "reimbursement_sats": 3564,
+  "settlement_confirmations_at_start": 2,
+  "settlement_txid": "27e753de9b642f7329ace7bb98602705f387b665967e399d161f3f378e029eb0",
+  "wrong_statement_graph": {
+    "claim": {
+      "claim_id": "e69cfa495cbcc5b11106ccd1bde864a35e221f3819a16416c17de5f64a785082",
+      "k_sats": 3164,
+      "k_spk": "5120ba5932e4a07e8bb3d61eea3e117a09fc140d793f123172383f5bc1a2e64a661b",
+      "leaves": [
+        "56b275206144373d5c39a77d1a5d1a2cb28c3ab2685d4b053440451800ae51647c399874ac",
+        "a8206ed44de5e60e52719da4b5cd3720469a69fad7322f085c3a048c477c4b5e5a868820a706ad8f73115f90500266f273f7571df9429a4cfb4bbfbcd825227202dabad1ac"
+      ],
+      "txid": "e08f5869f7a6318c402b89ae9c54391bf1af2d8267c262ad3dad9bd4db2ad776"
+    },
+    "disprove": {
+      "to_spk": "512019faf521e21cc42c7b3798d9d864522d1a2836936c1a3ac847d21977927cf0d9"
+    },
+    "garbled_instance": {
+      "accept_label_sha256": "87f6ba08d24b9b27b8798b15aae18071dc696b5abf9ce9274cb668ce5e4540b1",
+      "ciphertext_commitment_blake3": "1dd8e8f0be7e0d73b0042e001a2241407aa783ba49d7021b015b0e3a965707d4",
+      "ciphertext_stream_matches_commitment": true,
+      "ciphertext_stream_rehash_blake3": "1dd8e8f0be7e0d73b0042e001a2241407aa783ba49d7021b015b0e3a965707d4",
+      "claimed_public_inputs_dec": [
+        "65440486922724190495675557864136120730",
+        "232219831002405078458737007136335069902"
+      ],
+      "claimed_statement_sha256": "313b611c080b6496d8dd40e49e2a199aaeb3e9a18469ffdd3f00b7a680d602ce",
+      "evaluated_label_hex": "0dfb48d8e8b413042b3c50bc4da29d02",
+      "evaluated_label_is_accept": false,
+      "evaluated_label_is_reject": true,
+      "evaluated_label_sha256": "6ed44de5e60e52719da4b5cd3720469a69fad7322f085c3a048c477c4b5e5a86",
+      "evaluated_value": false,
+      "garble_seconds": 914.4340085,
+      "garbling_seed": 202,
+      "gate_hasher": "AES-CCR half gates, Free-XOR (gsv streaming)",
+      "groth16": "../lightninger_dlc_batcher/artifacts/regtest/garbled/groth16_standin.json",
+      "native_groth16_verify_on_claimed_statement": false,
+      "regarble_and_evaluate_seconds": 1218.0816478,
+      "reject_label_sha256": "6ed44de5e60e52719da4b5cd3720469a69fad7322f085c3a048c477c4b5e5a86",
+      "vk_sha256": "2cadec567dc84ef9c649b69f4e705181bcfe430b7ab8d0475942af7f2d2a594b"
+    },
+    "payout": {
+      "sequence": 6,
+      "to_spk": "5120b6f2ee25e85dac4bdd134ebea5f96766cae0f8625e56a97c491966d722dc0e92",
+      "txid": "4719e03262e1e437d4b683678d843e041e47dcdc6dde22cb79f2dd858f71c1a0"
+    },
+    "reclaim_blocks": 144,
+    "statement_sha256": "313b611c080b6496d8dd40e49e2a199aaeb3e9a18469ffdd3f00b7a680d602ce",
+    "vault": {
+      "leaves": [
+        "206144373d5c39a77d1a5d1a2cb28c3ab2685d4b053440451800ae51647c399874ad20552c630b64b54bf50210c9e253d38bd4949c72e22873500f6285c2bede312a84ac",
+        "029000b275206144373d5c39a77d1a5d1a2cb28c3ab2685d4b053440451800ae51647c399874ac"
+      ],
+      "outpoint": "d123fc5c8d19e06ff377256f711306d9bcdfc985e3c5fcee5449808edcc84867:0",
+      "sats": 3564,
+      "spk": "51208dcfbccd4e32bc4224b2d187df93e4d82f0050028b061b76cb89a031f363be29"
+    },
+    "window_blocks": 6
+  }
+}

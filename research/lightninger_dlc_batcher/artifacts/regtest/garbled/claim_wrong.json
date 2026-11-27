@@ -1,0 +1,24 @@
+{
+  "accept_label_sha256": "87f6ba08d24b9b27b8798b15aae18071dc696b5abf9ce9274cb668ce5e4540b1",
+  "ciphertext_commitment_blake3": "1dd8e8f0be7e0d73b0042e001a2241407aa783ba49d7021b015b0e3a965707d4",
+  "ciphertext_stream_matches_commitment": true,
+  "ciphertext_stream_rehash_blake3": "1dd8e8f0be7e0d73b0042e001a2241407aa783ba49d7021b015b0e3a965707d4",
+  "claimed_public_inputs_dec": [
+    "65440486922724190495675557864136120730",
+    "232219831002405078458737007136335069902"
+  ],
+  "claimed_statement_sha256": "313b611c080b6496d8dd40e49e2a199aaeb3e9a18469ffdd3f00b7a680d602ce",
+  "evaluated_label_hex": "0dfb48d8e8b413042b3c50bc4da29d02",
+  "evaluated_label_is_accept": false,
+  "evaluated_label_is_reject": true,
+  "evaluated_label_sha256": "6ed44de5e60e52719da4b5cd3720469a69fad7322f085c3a048c477c4b5e5a86",
+  "evaluated_value": false,
+  "garble_seconds": 914.4340085,
+  "garbling_seed": 202,
+  "gate_hasher": "AES-CCR half gates, Free-XOR (gsv streaming)",
+  "groth16": "../lightninger_dlc_batcher/artifacts/regtest/garbled/groth16_standin.json",
+  "native_groth16_verify_on_claimed_statement": false,
+  "regarble_and_evaluate_seconds": 1218.0816478,
+  "reject_label_sha256": "6ed44de5e60e52719da4b5cd3720469a69fad7322f085c3a048c477c4b5e5a86",
+  "vk_sha256": "2cadec567dc84ef9c649b69f4e705181bcfe430b7ab8d0475942af7f2d2a594b"
+}
