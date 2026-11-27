@@ -1,5 +1,5 @@
 // SHZ venue client crypto: SHA-256, BIP340 (Schnorr), BIP341 key-path tweak,
-// bech32m, and IntentV6 id encoding. ES module for browser and node; no JS dependencies.
+// bech32m, IntentV6 and IntentV7 id encoding. ES module for browser and node; no JS dependencies.
 // Secret-key operations run in WebAssembly (sign.wasm, built from crates/shz-wasm-sign
 // over the k256 crate, constant-time scalar arithmetic): pubkey, bip340Sign's signing
 // step, taprootTweakSecret, randomKey (browser entropy reduced to a scalar in WASM).
@@ -306,6 +306,64 @@ export async function signIntent(intent, template, seckey, entitlementDigest) {
   const out = { ...intent, signature: hex(signature) };
   if (entitlementDigest) out.entitlement_digest = entitlementDigest;
   return { id: hex(id), intent: out };
+}
+
+// ---------- IntentV7 (options) and option collateral transfers ----------
+// Encodings mirror crates/shz-dex/src/routing/options.rs (IntentV7::id) and
+// crates/shz-venue/src/core/options.rs (transfer_digest); ui/venue/test/options_vector.json
+// is checked by both the Rust and the node tests.
+const TAG_INTENT_V7 = 'SHZ/HFT06/INTENT/V7';
+const TAG_TRANSFER = 'SHZ/VENUE/OPTIONS-TRANSFER/V1';
+const TRANSFER_OP = { fund: 1, defund: 2, deposit: 3, withdraw: 4 };
+function i64(n) {
+  let v = BigInt(n);
+  if (v < -(1n << 63n) || v >= 1n << 63n) throw new RangeError('integer out of range');
+  if (v < 0n) v += 1n << 64n;
+  return uN(v, 8);
+}
+// Settlement asset descriptor ({kind:'btc'} or {kind:'stable', protocol:'rgb'|'tap', id, decimals}).
+export function assetBytes(a) {
+  if (!a || a.kind === 'btc') return u8(1);
+  if (a.kind !== 'stable' || !(a.protocol in { rgb: 0, tap: 1 })) throw new Error('bad asset');
+  return concat(u8(2), u8({ rgb: 0, tap: 1 }[a.protocol]), unhex(a.id, 32), u8(a.decimals));
+}
+export function intentV7PreimageParts(intent, template) {
+  const sc = template.scope;
+  if (!(intent.action in ACTION)) throw new Error('bad action');
+  const parts = [
+    u32(intent.version ?? 7), unhex(sc.network, 32), u64(sc.epoch), unhex(sc.policy, 32), u32(template.router),
+    unhex(intent.channel.txid, 32), u32(intent.channel.vout), unhex(intent.owner, 32), u64(intent.sequence), u64(intent.expires_us),
+    u8(ACTION[intent.action]), u64(intent.legs.length),
+  ];
+  for (const l of intent.legs) parts.push(unhex(l.series, 32), u8(l.long ? 1 : 0), u64(l.qty));
+  parts.push(i64(intent.premium_milli ?? 0), unhex(intent.cancel_target || ZERO32, 32));
+  const ol = intent.other_limits || [];
+  if (ol.length) {
+    parts.push(u64(ol.length));
+    for (const l of ol) parts.push(assetBytes(l.asset), i64(l.premium_milli));
+  }
+  return parts;
+}
+export async function intentV7Id(intent, template) {
+  return taggedHash(TAG_INTENT_V7, ...intentV7PreimageParts(intent, template));
+}
+// Returns the IntentV7 JSON ready to POST to /api/options/intents (signature added).
+export async function signIntentV7(intent, template, seckey) {
+  const full = { version: 7, premium_milli: 0, cancel_target: ZERO32, ...intent };
+  if (!full.other_limits || !full.other_limits.length) delete full.other_limits;
+  const id = await intentV7Id(full, template);
+  return { id: hex(id), intent: { ...full, signature: hex(await bip340Sign(id, seckey)) } };
+}
+export async function transferDigest(op, owner, asset, amount, expiresUs) {
+  if (!(op in TRANSFER_OP)) throw new Error('bad transfer op');
+  return taggedHash(TAG_TRANSFER, u8(TRANSFER_OP[op]), unhex(owner, 32), assetBytes(op === 'fund' || op === 'defund' ? null : asset), u64(amount), u64(expiresUs));
+}
+// Body for POST /api/options/{fund|defund|deposit|withdraw}.
+export async function signTransfer(op, { owner, asset = null, amount, expires_us }, seckey) {
+  const d = await transferDigest(op, owner, asset, amount, expires_us);
+  const body = { owner, amount, expires_us, signature: hex(await bip340Sign(d, seckey)) };
+  if (asset && op !== 'fund' && op !== 'defund') body.asset = asset;
+  return body;
 }
 
 // 64 bytes of browser entropy, reduced to a nonzero scalar inside WASM.

@@ -4,6 +4,11 @@
 //!             [--relay http://170.75.168.145:8091]
 //!             [--group-key 403c4966...fdb8]
 //!             [--mempool-api https://mempool.space/testnet4/api]
+//!             [--options [--stable-usdt <RGB contract id, 32-byte hex>]]
+//!
+//! Options are off unless `--options` is given. Switching them on journals EnableOptions,
+//! EnableCombos and EnableOptionAcks (and RegisterStable for `--stable-usdt`) in the router
+//! journal of the state dir; series list from the relay's announced DLC events.
 
 mod core;
 mod feed;
@@ -17,9 +22,25 @@ use tokio::sync::{Mutex, broadcast};
 
 const DEFAULT_GROUP_KEY: &str = "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8";
 
+/// `--key value` pairs; a `--flag` followed by another `--key` (or nothing) has an empty value.
 fn args() -> BTreeMap<String, String> {
     let v: Vec<String> = std::env::args().skip(1).collect();
-    v.chunks(2).filter_map(|c| Some((c.first()?.trim_start_matches("--").to_string(), c.get(1).cloned().unwrap_or_default()))).collect()
+    let mut out = BTreeMap::new();
+    let mut i = 0;
+    while i < v.len() {
+        let k = v[i].trim_start_matches("--").to_string();
+        match v.get(i + 1).filter(|x| !x.starts_with("--")) {
+            Some(x) => {
+                out.insert(k, x.clone());
+                i += 2;
+            }
+            None => {
+                out.insert(k, String::new());
+                i += 1;
+            }
+        }
+    }
+    out
 }
 
 #[tokio::main(flavor = "multi_thread")]
@@ -40,6 +61,27 @@ async fn main() {
         }
     };
     let (events, _) = broadcast::channel::<String>(4_096);
+    if a.contains_key("options") {
+        let usdt = match a.get("stable-usdt").map(|s| core::parse_key(s)) {
+            None => None,
+            Some(Ok(k)) => Some(k),
+            Some(Err(e)) => {
+                eprintln!("--stable-usdt: {e}");
+                std::process::exit(1)
+            }
+        };
+        match venue.lock().await.options_enable(usdt) {
+            Ok(s) => eprintln!("options on: {s}"),
+            Err(e) => {
+                eprintln!("options: {e}");
+                std::process::exit(1)
+            }
+        }
+        tokio::spawn(feed::run_options(venue.clone(), relay.clone(), events.clone()));
+    } else if a.contains_key("stable-usdt") {
+        eprintln!("--stable-usdt needs --options");
+        std::process::exit(1)
+    }
     tokio::spawn(feed::run(venue.clone(), relay.clone(), events.clone()));
 
     // Matching and settlement tick.

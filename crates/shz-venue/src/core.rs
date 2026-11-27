@@ -26,6 +26,8 @@ use shz_dex::{
 };
 use shz_dlc::{Bip340Signature, BtcOutPoint, bip340_sign, bip340_verify, tagged_hash};
 
+pub mod options;
+
 pub type Key = [u8; 32];
 pub const ROUTER_ID: u32 = 1;
 pub const MARKET: &str = "SHZ-BTCUSD-INV";
@@ -207,6 +209,8 @@ pub struct Venue {
     pub wallets: crate::wallet::Wallets,
     /// Last risk state per account with open lots, and when it first went below maintenance.
     risk_state: BTreeMap<Key, (crate::risk::State, Option<u64>)>,
+    /// Options (`--options`): `None` keeps every option endpoint off.
+    pub opts: Option<options::OptState>,
 }
 
 fn venue_scope(keys: &Keys) -> (Scope, Policy) {
@@ -309,6 +313,7 @@ impl Venue {
             events: vec![],
             wallets: Default::default(),
             risk_state: BTreeMap::new(),
+            opts: None,
         };
         // Account metadata is restored from the venue log; the router replays its own journal.
         for e in prior {
@@ -742,6 +747,7 @@ impl Venue {
             }
         }
         self.advance_settlement(now)?;
+        self.options_advance(now)?;
         Ok(())
     }
 
@@ -875,6 +881,12 @@ impl Venue {
                 return Err(format!("{id} belongs to another owner"));
             }
             bip340_verify(&owner, &p.message, sig).map_err(|_| format!("{id}: signature does not verify"))?;
+            if p.kind == "option_ack" {
+                self.option_ack_signed(&p, *sig)?;
+                self.pending.remove(id);
+                n += 1;
+                continue;
+            }
             let seq = p.context["batch_seq"].as_u64().unwrap_or(0);
             let Some(b) = self.batches.get_mut(&seq) else { continue };
             let c = &p.context["channel"];
@@ -895,6 +907,7 @@ impl Venue {
         }
         let now = now_us();
         self.advance_settlement(now)?;
+        self.options_advance(now)?;
         Ok(n)
     }
 
@@ -1097,6 +1110,7 @@ impl Venue {
             "balance": b.map(|b| balance_json(&b)),
             "position": self.position(owner), "open_orders": open, "fills": fills, "rejected": recent, "pending_signatures": pending,
             "wallet_link": self.wallet_link_view(owner),
+            "options": self.opts.as_ref().map(|_| self.options_account(owner)),
         })
     }
 
@@ -1114,6 +1128,7 @@ impl Venue {
             "margin_release": self.router.margin_release_active().unwrap_or(false),
             "clearing": self.router.clearing_summary().ok().flatten(),
             "closing_loans": self.router.closing_loans_active().unwrap_or(false),
+            "options": self.options_summary(),
             "production_ready": false,
             "network": "testnet4",
         })

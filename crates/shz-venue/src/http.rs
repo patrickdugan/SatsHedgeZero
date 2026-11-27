@@ -121,6 +121,7 @@ fn static_file(app: &App, path: &str) -> (u16, &'static str, Vec<u8>) {
                 "svg" => "image/svg+xml",
                 "json" => "application/json",
                 "png" => "image/png",
+                "wasm" => "application/wasm",
                 _ => "application/octet-stream",
             };
             (200, ct, b)
@@ -254,6 +255,59 @@ async fn api(app: &App, method: &str, path: &str, query: &str, body: &[u8]) -> (
             }
             Err(e) => err(400, e),
         },
+        (true, _, "/api/options/series") => (200, app.venue.lock().await.options_series_view()),
+        (true, _, p) if p.starts_with("/api/options/book/") => match parse_key(&p["/api/options/book/".len()..]) {
+            Ok(k) => {
+                let depth = q(query, "depth").and_then(|d| d.parse().ok()).unwrap_or(25usize).min(200);
+                match app.venue.lock().await.options_book(&k, depth) {
+                    Ok(x) => (200, x),
+                    Err(e) => err(404, e),
+                }
+            }
+            Err(e) => err(400, e),
+        },
+        (true, _, "/api/options/batches") => {
+            let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(50usize).min(500);
+            let v = app.venue.lock().await;
+            if v.opts.is_none() { err(404, "options are off on this venue") } else { (200, v.option_batches(limit)) }
+        }
+        (true, _, p) if p.starts_with("/api/options/account/") => match parse_key(&p["/api/options/account/".len()..]) {
+            Ok(k) => {
+                let x = app.venue.lock().await.options_account(&k);
+                if x.is_null() { err(404, "no such account, or options are off") } else { (200, x) }
+            }
+            Err(e) => err(400, e),
+        },
+        (_, true, "/api/options/intent-id") => {
+            let v = app.venue.lock().await;
+            match v.option_intent_from_json(&jb["intent"]) {
+                Ok(i) => (200, json!({"id": hex::encode(i.id())})),
+                Err(e) => err(400, e),
+            }
+        }
+        (_, true, "/api/options/intents") => {
+            let mut v = app.venue.lock().await;
+            if v.opts.is_none() {
+                return err(404, "options are off on this venue");
+            }
+            match v.option_intent_from_json(&jb["intent"]) {
+                Ok(i) => match v.option_submit(i) {
+                    Ok(x) => (200, x),
+                    Err(e) => err(409, e),
+                },
+                Err(e) => err(400, e),
+            }
+        }
+        (_, true, p) if crate::core::options::transfer_op(p.trim_start_matches("/api/options/")).is_some() && p.starts_with("/api/options/") => {
+            let mut v = app.venue.lock().await;
+            if v.opts.is_none() {
+                return err(404, "options are off on this venue");
+            }
+            match v.option_transfer(&p["/api/options/".len()..], &jb) {
+                Ok(x) => (200, x),
+                Err(e) => err(409, e),
+            }
+        }
         (true, _, "/v1/candles") => candles(app, query).await,
         (true, _, "/api/explorer/packets") => {
             let limit = q(query, "limit").and_then(|d| d.parse().ok()).unwrap_or(50usize).min(600);

@@ -118,3 +118,38 @@ async fn ingest(venue: &Arc<Mutex<Venue>>, events: &broadcast::Sender<String>, p
         Err(e) => eprintln!("rejected relay packet: {e}"),
     }
 }
+
+/// Options feed (`--options` only): every few seconds, read the relay's DLC event listing,
+/// fetch the events the venue wants (to list, or to expire once attested) and apply them.
+pub async fn run_options(venue: Arc<Mutex<Venue>>, relay: String, events: broadcast::Sender<String>) {
+    let mut iv = tokio::time::interval(Duration::from_secs(3));
+    loop {
+        iv.tick().await;
+        let listing = match relay_get(&relay, "/v1/dlc/events").await {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("dlc events: {e}");
+                continue;
+            }
+        };
+        let wants = venue.lock().await.options_feed_wants(&listing, now_us());
+        for id in wants {
+            let ev = match relay_get(&relay, &format!("/v1/dlc/event/{id}")).await {
+                Ok(ev) => ev,
+                Err(e) => {
+                    eprintln!("dlc event {id}: {e}");
+                    continue;
+                }
+            };
+            let mut v = venue.lock().await;
+            match v.options_apply_event(&ev, now_us()) {
+                Ok(r) if r["action"] != "waiting" && r["action"] != "none" => eprintln!("options: {r}"),
+                Ok(_) => {}
+                Err(e) => eprintln!("options event {id}: {e}"),
+            }
+            for e in v.drain_events() {
+                let _ = events.send(e);
+            }
+        }
+    }
+}

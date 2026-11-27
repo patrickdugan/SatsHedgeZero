@@ -1,0 +1,116 @@
+{
+ "note": "Shared Rust/JS vector: IntentV7 ids (shz_dex IntentV7::id) and option transfer digests (shz-venue transfer_digest). Test key: sha256(\"shz-options-vector/owner/v1\").",
+ "scope": {
+  "network": "5e242a07a3904229c3b156a7663e7bfea60417f56a0b7faa0bf31267bae940f8",
+  "epoch": 1,
+  "policy": "74d171299340d9d61fc559d519586207d8bec3c4faa3808957fc09a88cdb86ea"
+ },
+ "router": 1,
+ "intents": [
+  {
+   "name": "post: sell one BTC call",
+   "intent": {
+    "version": 7,
+    "premium_milli": 3000,
+    "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+    "owner": "0aa40fa553b63a2f21450b5c5654535855f2d5aae631979f644c7d08e947b2f0",
+    "channel": {
+     "txid": "97145b7b36d33006ba687dabc9e44f1f381690a6607845be1e54703fde9ba0b1",
+     "vout": 3
+    },
+    "expires_us": 1800000000000000,
+    "sequence": 1764000000000001,
+    "action": "post",
+    "legs": [
+     {
+      "series": "fa27c50822d586b246c98a86b3756944bbf0830f680df0c6eb8b21f4f8e02b64",
+      "long": false,
+      "qty": 100
+     }
+    ],
+    "signature": "bc994ceb457ae88bef35155c450f8489a207ce7fbae0fbd06d4599b4ac0d02f471ba93bd546674630660f6b97df39caf3ca127889c718453c7858b4e800e06cf"
+   },
+   "id": "2e6e314e196f35cfc9e7bdd2d5489268f222f147ab0b4ee26f44477789989095"
+  },
+  {
+   "name": "take: collar (long USDT put, short BTC call) with a BTC limit in other_limits",
+   "intent": {
+    "version": 7,
+    "premium_milli": 25000000,
+    "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+    "owner": "0aa40fa553b63a2f21450b5c5654535855f2d5aae631979f644c7d08e947b2f0",
+    "channel": {
+     "txid": "97145b7b36d33006ba687dabc9e44f1f381690a6607845be1e54703fde9ba0b1",
+     "vout": 3
+    },
+    "expires_us": 1800000000000000,
+    "sequence": 1764000000000002,
+    "action": "take",
+    "legs": [
+     {
+      "series": "0019002619428a4646c6cf782c935fe35696c3dc95e5e59c2bd0d979945078a4",
+      "long": true,
+      "qty": 1000000
+     },
+     {
+      "series": "fa27c50822d586b246c98a86b3756944bbf0830f680df0c6eb8b21f4f8e02b64",
+      "long": false,
+      "qty": 100
+     }
+    ],
+    "other_limits": [
+     {
+      "asset": {
+       "kind": "btc"
+      },
+      "premium_milli": -2000000
+     }
+    ],
+    "signature": "7d5e7755b6dd7276dd143bafa1d66f1f033b4453abba80ed3d27340603c9ae26be6cb220e630092fe09b4356c1793fd5ad3476c322df67cb1006f1d599638772"
+   },
+   "id": "422c4d124de3a3afdf663dc6cc7366dc533b2667c412c7de43e9de2ef88079a5"
+  },
+  {
+   "name": "cancel",
+   "intent": {
+    "version": 7,
+    "premium_milli": 0,
+    "cancel_target": "00318de14297b1e2d1255a9cc7256cb4cb9cecd332fc47b6bddaae384a0a5297",
+    "owner": "0aa40fa553b63a2f21450b5c5654535855f2d5aae631979f644c7d08e947b2f0",
+    "channel": {
+     "txid": "97145b7b36d33006ba687dabc9e44f1f381690a6607845be1e54703fde9ba0b1",
+     "vout": 3
+    },
+    "expires_us": 1800000000000000,
+    "sequence": 1764000000000003,
+    "action": "cancel",
+    "legs": [],
+    "signature": "0f1397dbee4f10679f8da53a62d357457dbed59ed169e482d3828a98f19f67e2f90e6fb038e73255c788e793719ef2a731749dffe91291f0e026ca2c6175b9d9"
+   },
+   "id": "7698027e902fee39105cadba5b46abc9df831c2eb61f31c5989e72a9e21a2689"
+  }
+ ],
+ "transfers": [
+  {
+   "op": "fund",
+   "owner": "0aa40fa553b63a2f21450b5c5654535855f2d5aae631979f644c7d08e947b2f0",
+   "asset": null,
+   "amount": 150000,
+   "expires_us": 1800000000000010,
+   "digest": "cca762b51b8b16a1416c83fa6644e24fe3f75f5e8d3c1bea1c4fc042f540c84d"
+  },
+  {
+   "op": "deposit",
+   "owner": "0aa40fa553b63a2f21450b5c5654535855f2d5aae631979f644c7d08e947b2f0",
+   "asset": {
+    "kind": "stable",
+    "protocol": "rgb",
+    "id": "0c07334ba9e12d1337878523daef694f99f109b687be36d7df8a2e222d93277b",
+    "decimals": 6
+   },
+   "amount": 2000000000,
+   "expires_us": 1800000000000011,
+   "digest": "aa9836659f88c93fb1dbd1b3884503440587a9824ca0f3444567659551337351"
+  }
+ ]
+}
