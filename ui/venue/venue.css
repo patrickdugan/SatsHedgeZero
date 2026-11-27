@@ -172,6 +172,13 @@ html[data-ui="classic"] .foot { background: #000; }
 .shell.opts .optticket { display: flex; grid-column: 3; grid-row: 1 / span 2; overflow-y: auto; }
 .shell.opts .bottom { grid-column: 1 / span 2; }
 .optchain .scroll { flex: 1; overflow: auto; }
+/* Spot view (BTC/USDT): its own chart, book and ticket in the perpetual's grid slots. */
+.spotchart, .spotbook, .spotticket { display: none; }
+.shell.spot .chart, .shell.spot .bookcol:not(.spotbook), .shell.spot .formcol:not(.spotticket) { display: none; }
+.shell.spot .spotchart { display: flex; grid-column: 1; grid-row: 1; background: var(--chart-bg); }
+.spotchart iframe { flex: 1; width: 100%; border: 0; background: var(--chart-bg); }
+.shell.spot .spotbook { display: flex; grid-column: 2; grid-row: 1 / span 2; }
+.shell.spot .spotticket { display: flex; grid-column: 3; grid-row: 1 / span 2; overflow-y: auto; }
 .evtabs button .muted { font-weight: 400; }
 table.chain td.q { cursor: pointer; } table.chain td.q:hover { outline: 1px solid var(--accent); }
 table.chain td.q.sel { background: var(--accent-dim); color: #fff; }
@@ -188,4 +195,5 @@ table.chain th.cgrp { text-align: center; color: var(--text-secondary); }
 .msg.note { color: var(--amber-text); }
 @media (max-width: 1100px) {
   .shell.opts .optchain, .shell.opts .optticket, .shell.opts .bottom { grid-column: 1; grid-row: auto; } .shell.opts .optchain { height: 460px; }
+  .shell.spot .spotchart, .shell.spot .spotbook, .shell.spot .spotticket { grid-column: 1; grid-row: auto; } .shell.spot .spotchart { height: 380px; } .shell.spot .spotbook { height: 520px; }
 }

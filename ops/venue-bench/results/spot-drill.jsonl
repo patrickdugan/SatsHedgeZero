@@ -1,0 +1,87 @@
+{"t":0.27,"kind":"assert","name":"venue runs spot on the options desk","ok":true,"detail":{"spot":"SHZ-BTCUSDT-SPOT","lot":1000,"tick":100000}}
+{"t":0.76,"kind":"ws","type":"spot_book"}
+{"t":0.76,"kind":"ws","type":"spot_book"}
+{"t":0.78,"kind":"ws","type":"spot_book"}
+{"t":0.78,"kind":"ws","type":"spot_book"}
+{"t":0.79,"kind":"ws","type":"spot_book"}
+{"t":0.82,"kind":"ws","type":"spot_book"}
+{"t":0.95,"kind":"assert","name":"maker quotes three levels each side around the mark","ok":true,"detail":{"best_bid":89820000000,"best_ask":90180000000,"mark":90000}}
+{"t":0.95,"kind":"assert","name":"maker bid below and ask above the oracle mark, on the tick","ok":true,"detail":{"bid":89820000000,"ask":90180000000,"mark":90000000000}}
+{"t":0.95,"kind":"assert","name":"maker account found","ok":true}
+{"t":1,"kind":"assert","name":"client wallet funded: 100,000 sats and 1,000 USDT","ok":true,"detail":{"BTC":{"free":100000,"spot_locked":0,"total":100000},"USDT":{"free":1000000000,"spot_locked":0,"total":1000000000}}}
+{"t":1.02,"kind":"assert","name":"buy 0.0005 BTC at market: take staged as a spot batch","ok":true,"detail":{"status":200,"outcome":"staged","batch":1}}
+{"t":1.02,"kind":"ws","type":"option_batch","phase":"staged","n":1}
+{"t":1.02,"kind":"ws","type":"spot_batch","phase":"staged","n":1}
+{"t":1.02,"kind":"ws","type":"spot_book"}
+{"t":1.09,"kind":"option_ack","id":"opt1:ack:6a97c67101b1724bcb32507a1e24d28c1270895826c762f3260b06200c95c7b5:0","batch_kind":"spot"}
+{"t":1.14,"kind":"ws","type":"option_batch","phase":"committed","n":1}
+{"t":1.14,"kind":"ws","type":"spot_trade"}
+{"t":1.14,"kind":"ws","type":"spot_trade"}
+{"t":1.14,"kind":"ws","type":"spot_batch","phase":"committed","n":1}
+{"t":1.14,"kind":"ws","type":"spot_book"}
+{"t":1.19,"kind":"assert","name":"buy 0.0005 BTC at market: committed on every lane's acknowledgement","ok":true,"detail":{"phase":"committed","lanes":2}}
+{"t":1.19,"kind":"assert","name":"buy 0.0005 BTC at market: fills match the book walk (50000 sats for 45.099 USDT)","ok":true,"detail":{"est":{"sats":50000,"quote":45099000,"avg":90198000000,"levels":2},"got":50000,"paid":45099000}}
+{"t":1.19,"kind":"assert","name":"buy 0.0005 BTC at market: BTC and USDT both moved, buyer to seller and seller to buyer","ok":true,"detail":{"client":[50000,-45099000],"mm":[-50000,45099000]}}
+{"t":1.19,"kind":"assert","name":"buy 0.0005 BTC at market: one clearing row per account per asset equals its change; each asset nets to zero","ok":true,"detail":[{"asset":"BTC","rows":[["mm",-50000],["client",50000]]},{"asset":"USDT","rows":[["mm",45099000],["client",-45099000]]}]}
+{"t":1.51,"kind":"ws","type":"spot_book"}
+{"t":1.54,"kind":"ws","type":"spot_book"}
+{"t":1.55,"kind":"ws","type":"spot_book"}
+{"t":1.6,"kind":"ws","type":"spot_book"}
+{"t":1.6,"kind":"ws","type":"spot_book"}
+{"t":1.68,"kind":"ws","type":"spot_book"}
+{"t":1.7,"kind":"ws","type":"spot_book"}
+{"t":1.71,"kind":"ws","type":"spot_book"}
+{"t":1.74,"kind":"ws","type":"spot_book"}
+{"t":1.76,"kind":"ws","type":"spot_book"}
+{"t":1.78,"kind":"ws","type":"spot_book"}
+{"t":2.72,"kind":"assert","name":"sell 0.0003 BTC at market: take staged as a spot batch","ok":true,"detail":{"status":200,"outcome":"staged","batch":2}}
+{"t":2.72,"kind":"ws","type":"option_batch","phase":"staged","n":2}
+{"t":2.72,"kind":"ws","type":"spot_batch","phase":"staged","n":2}
+{"t":2.72,"kind":"ws","type":"spot_book"}
+{"t":2.78,"kind":"option_ack","id":"opt2:ack:6a97c67101b1724bcb32507a1e24d28c1270895826c762f3260b06200c95c7b5:0","batch_kind":"spot"}
+{"t":3.05,"kind":"ws","type":"option_batch","phase":"committed","n":2}
+{"t":3.05,"kind":"ws","type":"spot_trade"}
+{"t":3.05,"kind":"ws","type":"spot_batch","phase":"committed","n":2}
+{"t":3.05,"kind":"ws","type":"spot_book"}
+{"t":3.07,"kind":"assert","name":"sell 0.0003 BTC at market: committed on every lane's acknowledgement","ok":true,"detail":{"phase":"committed","lanes":2}}
+{"t":3.07,"kind":"assert","name":"sell 0.0003 BTC at market: fills match the book walk (30000 sats for 26.946 USDT)","ok":true,"detail":{"est":{"sats":30000,"quote":26946000,"avg":89820000000,"levels":1},"got":30000,"paid":26946000}}
+{"t":3.07,"kind":"assert","name":"sell 0.0003 BTC at market: BTC and USDT both moved, buyer to seller and seller to buyer","ok":true,"detail":{"client":[-30000,26946000],"mm":[30000,-26946000]}}
+{"t":3.07,"kind":"assert","name":"sell 0.0003 BTC at market: one clearing row per account per asset equals its change; each asset nets to zero","ok":true,"detail":[{"asset":"BTC","rows":[["mm",30000],["client",-30000]]},{"asset":"USDT","rows":[["mm",-26946000],["client",26946000]]}]}
+{"t":3.08,"kind":"assert","name":"trades tape lists both commits newest first","ok":true,"detail":[[2,"sell",30000,89820000000],[1,"buy",10000,90270000000],[1,"buy",40000,90180000000]]}
+{"t":3.09,"kind":"assert","name":"chart candles (SHZ-BTCUSDT-SPOT) follow the spot fills","ok":true,"detail":{"close":89820,"high":90270,"low":89820,"open":90180,"time":1795763040000,"volume":0.0007999999999999999}}
+{"t":3.09,"kind":"assert","name":"WS: spot_batch staged and committed, spot_trade per fill, spot_book","ok":true,"detail":{"staged":2,"committed":2,"trades":3,"book":21}}
+{"t":3.13,"kind":"ws","type":"spot_book"}
+{"t":3.14,"kind":"assert","name":"a resting bid locks exactly its USDT","ok":true,"detail":{"lock":8981500,"w":{"free":972865500,"spot_locked":8981500,"total":981847000}}}
+{"t":3.16,"kind":"assert","name":"a post-only bid that would cross is refused","ok":true,"detail":{"status":409,"error":"router rejected operation: Bounds"}}
+{"t":3.18,"kind":"assert","name":"a sell the wallet cannot fund is refused","ok":true,"detail":{"status":409,"error":"router rejected operation: Capacity"}}
+{"t":3.2,"kind":"ws","type":"spot_book"}
+{"t":3.21,"kind":"assert","name":"cancel unlocks it","ok":true,"detail":{"free":981847000,"spot_locked":0,"total":981847000}}
+{"t":3.25,"kind":"assert","name":"withheld ack: take staged","ok":true,"detail":{"id":"54637037b43fdf8c40bf3956294743a7b79a6a732d43c2fdba522adb69c75723","status":200,"batch":3,"outcome":"staged"}}
+{"t":3.26,"kind":"ws","type":"option_batch","phase":"staged","n":3}
+{"t":3.26,"kind":"ws","type":"spot_batch","phase":"staged","n":3}
+{"t":3.26,"kind":"ws","type":"spot_book"}
+{"t":13.27,"kind":"ws","type":"option_batch","phase":"aborted","n":3}
+{"t":13.28,"kind":"ws","type":"spot_batch","phase":"aborted","n":3}
+{"t":13.28,"kind":"ws","type":"spot_book"}
+{"t":13.37,"kind":"assert","name":"withheld ack: fence-aborted at the deadline","ok":true,"detail":{"phase":"aborted"}}
+{"t":13.37,"kind":"assert","name":"withheld ack: neither leg moved (BTC and USDT totals unchanged for both)","ok":true,"detail":{"before":{"client":{"BTC":{"free":120000,"spot_locked":0,"total":120000},"USDT":{"free":981847000,"spot_locked":0,"total":981847000}},"mm":{"BTC":{"free":60000,"spot_locked":120000,"total":180000},"USDT":{"free":1937423000,"spot_locked":80730000,"total":2018153000}}},"after":{"client":{"BTC":{"free":120000,"spot_locked":0,"total":120000},"USDT":{"free":981847000,"spot_locked":0,"total":981847000}},"mm":{"BTC":{"free":100000,"spot_locked":80000,"total":180000},"USDT":{"free":1937423000,"spot_locked":80730000,"total":2018153000}}}}}
+{"t":13.37,"kind":"assert","name":"withheld ack: client wallet untouched","ok":true,"detail":{"BTC":{"free":120000,"spot_locked":0,"total":120000},"USDT":{"free":981847000,"spot_locked":0,"total":981847000}}}
+{"t":13.37,"kind":"assert","name":"withheld ack: the maker order in the batch is pulled and its BTC lock returned to free","ok":true,"detail":{"pulled":[["cancelled","pulled: its fill was in an aborted spot batch; its lock returned to free"]],"mm_btc":[{"free":60000,"spot_locked":120000,"total":180000},{"free":100000,"spot_locked":80000,"total":180000}],"mm_orders_before":6}}
+{"t":13.38,"kind":"assert","name":"withheld ack: the taker intent reads aborted","ok":true,"detail":{"accepted_us":1795763048079869,"action":"take","batch":3,"filled_sats":0,"id":"54637037b43fdf8c40bf3956294743a7b79a6a732d43c2fdba522adb69c75723","price":90630900000,"qty_sats":20000,"reason":"its spot batch was fence-aborted: neither leg moved","side":"buy","status":"aborted"}}
+{"t":13.47,"kind":"ws","type":"spot_book"}
+{"t":13.49,"kind":"ws","type":"spot_book"}
+{"t":13.51,"kind":"ws","type":"spot_book"}
+{"t":13.54,"kind":"ws","type":"spot_book"}
+{"t":13.56,"kind":"ws","type":"spot_book"}
+{"t":13.6,"kind":"ws","type":"spot_book"}
+{"t":13.62,"kind":"ws","type":"spot_book"}
+{"t":13.63,"kind":"ws","type":"spot_book"}
+{"t":13.65,"kind":"ws","type":"spot_book"}
+{"t":13.67,"kind":"ws","type":"spot_book"}
+{"t":13.7,"kind":"ws","type":"spot_book"}
+{"t":13.7,"kind":"assert","name":"maker requotes after its order was pulled","ok":true}
+{"t":13.97,"kind":"assert","name":"restart: wallets, the tape and every spot batch (committed and aborted) come back","ok":true,"detail":{"batches":3,"tape":3}}
+{"t":13.98,"kind":"assert","name":"restart: intent history restored","ok":true}
+{"t":14.21,"kind":"assert","name":"without --spot: every spot endpoint is off","ok":true,"detail":{"book":404,"post":404,"candles":404}}
+{"t":14.23,"kind":"summary","t1":{"sats":50000,"usdt":45099000},"t2":{"sats":30000,"usdt":26946000}}
+{"t":14.23,"kind":"done","pass":32,"total":32,"code":0}

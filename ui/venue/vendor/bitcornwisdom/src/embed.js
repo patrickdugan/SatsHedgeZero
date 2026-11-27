@@ -90,10 +90,13 @@ function syncDepth() {
   if (active?.theme !== 'classic' || !relay) { chart.clearDepthBook(); return; }
   const pull = async () => {
     try {
-      const res = await fetch(new URL('/api/book?depth=40', relay));
+      const spot = active.instrument === 'SHZ-BTCUSDT-SPOT';
+      const res = await fetch(new URL(spot ? '/api/spot/book?depth=40' : '/api/book?depth=40', relay));
       if (!res.ok) return;
       const b = await res.json();
-      chart.setDepth(b.bids, b.asks, 'LIVE L2');
+      // Spot levels are [base units per BTC, sats, n]: shown as USDT per BTC and BTC.
+      const lv = (rows) => (spot ? rows.map(([p, q, n]) => [p / 10 ** (b.pair?.quote?.decimals ?? 6), q / 1e8, n]) : rows);
+      chart.setDepth(lv(b.bids), lv(b.asks), 'LIVE L2');
     } catch { /* keep the last book */ }
   };
   pull();
