@@ -1,8 +1,9 @@
-# Testnet4 demo: one venue fill, one DLC, real co-signs (not broadcast)
+# Testnet4 demo: one venue fill, one DLC, real co-signs (broadcast)
 
 Prover inputs for the Lightninger testnet4 demo. Every transaction here passed Bitcoin Core 31.1
-`testmempoolaccept` on testnet4 (local node and the witness host's pruned node, tip 163,663) and
-none is broadcast yet.
+`testmempoolaccept` on testnet4 (local node and the witness host's pruned node, tip 163,663).
+The funding transaction and CET 527 are broadcast on testnet4 (see Broadcast below); the refund
+stays unbroadcast because the CET spent the funding output.
 
 | File | Content |
 | --- | --- |
@@ -91,3 +92,12 @@ $cli = "C:\Users\patri\bitcoin-core-31.1\bin\bitcoin-cli.exe"; $t = Get-Content 
 & $cli -datadir=C:\BitcoinTestnet sendrawtransaction ($t | Where-Object label -eq funding).signed_hex
 & $cli -datadir=C:\BitcoinTestnet sendrawtransaction ($t | Where-Object label -eq cet).signed_hex
 ```
+
+Broadcast on 2026-11-27 from the local Core 31.1 node:
+
+| Transaction | txid | Result |
+| --- | --- | --- |
+| Funding | [`e6bbb87d249d1f57f622038833ff34e4cebef549de54e1403762d9f8fa02700e`](https://mempool.space/testnet4/tx/e6bbb87d249d1f57f622038833ff34e4cebef549de54e1403762d9f8fa02700e) | sent at height 163,677, confirmed in block 163,680 (`00000000009fe49f…18b9`) |
+| CET 527 | [`cac6a1a58bf8ee7562411deb4755baf6182fc7a24e6e46f6a0e60ee5bca29a3f`](https://mempool.space/testnet4/tx/cac6a1a58bf8ee7562411deb4755baf6182fc7a24e6e46f6a0e60ee5bca29a3f) | sent 16:04 UTC after the funding's first confirmation; accepted to the mempool and seen by mempool.space |
+
+The CET txid is the `settlement_txid` of the clearing statement and of the joint statement above.
