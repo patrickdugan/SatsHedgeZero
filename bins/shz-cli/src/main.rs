@@ -2,6 +2,7 @@
 
 mod dlc_oracle_regtest;
 mod dlc_refund_plan;
+mod dlc_testnet4_demo;
 mod mnr02_regtest;
 mod mnr03_harness;
 mod testnet_clearing;
@@ -518,6 +519,13 @@ fn main() {
                 std::process::exit(1);
             }
         },
+        "dlc-testnet4-demo" => match dlc_testnet4_demo::run(&args[1..]) {
+            Ok(v) => println!("{}", serde_json::to_string_pretty(&v).unwrap()),
+            Err(e) => {
+                eprintln!("dlc-testnet4-demo: {e}");
+                std::process::exit(1);
+            }
+        },
         "dlc-oracle-regtest" => {
             let default_bin = std::env::var("BITCOIND_BIN")
                 .map(PathBuf::from)
@@ -619,7 +627,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | dlc-refund-plan --event FILE --tip-height H --tip-time UNIX [--block-secs N] [--attest-window-secs N] [--grace-blocks N] [--refund-delay-blocks N] [--fast-factor N] [--min-gap-secs N] [--force] | dlc-oracle-regtest [bitcoind_path] | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir] | mnr03-regtest [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | mnr03-testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]\n  testnet4-live env: SHZ_CHAIN (default testnet4; e.g. signet), SHZ_BITCOIN_CLI_DIRECT=1, SHZ_WSL_BITCOIN_CLI, SHZ_WSL_BITCOIN_DATADIR, SHZ_BITCOIN_CLI_EXTRA_ARGS"
+                "Usage: shz [quote [usd] [price] [long_x] [short_x] | demo-dex | demo-fraud | nova-demo | clearing-demo | verify-all | mnr02-regtest [bitcoind_path] | dlc-refund-plan --event FILE --tip-height H --tip-time UNIX [--block-secs N] [--attest-window-secs N] [--grace-blocks N] [--refund-delay-blocks N] [--fast-factor N] [--min-gap-secs N] [--force] | dlc-oracle-regtest [bitcoind_path] | dlc-testnet4-demo originate|settle ... | testnet-clearing [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir] | mnr03-regtest [bitcoind_path] [lnm_nova_path] [bundle_out_dir] | mnr03-testnet4-live [wallet] [lnm_nova_path] [bundle_out_dir]]\n  testnet4-live env: SHZ_CHAIN (default testnet4; e.g. signet), SHZ_BITCOIN_CLI_DIRECT=1, SHZ_WSL_BITCOIN_CLI, SHZ_WSL_BITCOIN_DATADIR, SHZ_BITCOIN_CLI_EXTRA_ARGS"
             );
             std::process::exit(1);
         }
