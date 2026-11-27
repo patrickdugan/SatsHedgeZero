@@ -365,6 +365,7 @@ impl Venue {
             "id": h(id), "status": status, "grant": grant_json(&s.grant), "admitted_us": s.admitted_us, "revoked_us": s.revoked_us,
             "label": self.agents.as_ref().and_then(|a| a.labels.get(id)).cloned().unwrap_or_default(),
             "consent": consent_text(&s.grant),
+            "sequences": self.sequences(&s.grant.owner),
             "usage": {"day_notional_usd": day, "day_remaining_usd": s.grant.limits.max_daily_notional_usd.saturating_sub(day),
                       "orders_last_minute": minute, "open_orders": self.agent_open_orders(id), "accepted": usage.map_or(0, |u| u.accepted), "refused": usage.map_or(0, |u| u.refused)},
         }))
@@ -817,6 +818,19 @@ mod tests {
             // Per-order notional and the collar (3 % of 90,000 = 2,700).
             assert_eq!(code(v.agent_submit(g, o(s.perp(&v, &AGENT, Action::Post, OrderSide::Long, 101, 90_000, [0; 32])))), "limit.order_notional");
             assert_eq!(code(v.agent_submit(g, o(s.perp(&v, &AGENT, Action::Post, OrderSide::Long, 100, 86_000, [0; 32])))), "limit.collar");
+            // Same limits with a stale sequence (below the account's last): the grant's error, not
+            // the router's Replay, and the router journal is untouched.
+            let stale = |s: &mut Seq, v: &Venue, qty: u64, px: u64| {
+                let mut i = s.perp(v, &AGENT, Action::Post, OrderSide::Long, qty, px, [0; 32]);
+                i.sequence = 1;
+                i.signature = bip340_sign(&AGENT, &i.id()).unwrap();
+                AgentOrder::Perp(i)
+            };
+            v.submit(s.perp(&v, &OWNER, Action::Post, OrderSide::Long, 1, 85_000, [0; 32])).unwrap(); // the owner's own order moves the account's sequence
+            let tip = v.router.tip().unwrap();
+            assert_eq!(code(v.agent_submit(g, stale(&mut s, &v, 101, 90_000))), "limit.order_notional");
+            assert_eq!(code(v.agent_submit(g, stale(&mut s, &v, 10, 80_000))), "limit.collar");
+            assert_eq!(v.router.tip().unwrap(), tip, "a grant refusal journals nothing");
             // Two orders of 100 rest; 60 more would pass 250 in 24 h; 50 fits.
             let a = s.perp(&v, &AGENT, Action::Post, OrderSide::Long, 100, 89_000, [0; 32]);
             let (a_id, replay) = (a.id(), a.clone());
@@ -828,6 +842,11 @@ mod tests {
             // Open orders: three rest.
             assert_eq!(v.agent_open_orders(&g), 3);
             assert_eq!(code(v.agent_submit(g, o(s.perp(&v, &AGENT, Action::Post, OrderSide::Long, 1, 88_800, [0; 32])))), "limit.open_orders");
+            // Grant checks come before the router: orders breaking a limit with a stale sequence get
+            // the limit's error, not Replay, and nothing reaches the router journal.
+            let tip = v.router.tip().unwrap();
+            assert_eq!(code(v.agent_submit(g, stale(&mut s, &v, 10, 89_000))), "limit.open_orders");
+            assert_eq!(v.router.tip().unwrap(), tip, "a grant refusal journals nothing");
             // The agent cancels its own order (a cancel never counts as notional).
             let cx = s.perp(&v, &AGENT, Action::Cancel, OrderSide::Long, 0, 0, a_id);
             let cx_again = cx.clone();
@@ -845,6 +864,10 @@ mod tests {
             let u = v.agent_grant_view(&g).unwrap();
             assert_eq!(u["usage"]["day_notional_usd"], 250);
             assert_eq!(u["usage"]["open_orders"], 2);
+            // The grant view reports the account's last admitted perpetual sequence (the last
+            // accepted cancel; the rate-refused one after it never reached the router).
+            assert_eq!(u["sequences"]["perp"].as_u64(), Some(s.0 - 1));
+            assert_eq!(v.account_view(&public(&OWNER))["sequences"], u["sequences"]);
             // Revocation pulls the two resting orders at once.
             let r = revoke(&mut v, &g).unwrap();
             assert!(r["orders_pulled"].as_array().unwrap().len() >= 2, "{r}");

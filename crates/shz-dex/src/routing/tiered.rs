@@ -536,6 +536,8 @@ impl TieredRouter{
  /// Every account's position and balance, in key order (clearing summary).
  pub(super) fn account_books(&self)->impl Iterator<Item=(&Outpoint,&positions::Position,&Balance)>{self.accounts.iter().map(|(k,a)|(k,&a.position,&a.balance))}
  pub(super) fn account_owner(&self,k:&Outpoint)->Option<Key>{self.accounts.get(k).map(|a|a.owner)}
+ /// Highest perpetual intent sequence admitted for `channel` (the next must be greater).
+ pub fn account_sequence(&self,channel:&BtcOutPoint)->Option<u64>{self.accounts.get(&op(channel)).map(|a|a.last_seq)}
  pub(super) fn account_balance(&self,k:&Outpoint)->Option<Balance>{self.accounts.get(k).map(|a|a.balance)}
  pub(super) fn set_account_balance(&mut self,k:&Outpoint,b:Balance){if let Some(a)=self.accounts.get_mut(k){a.balance=b}}
  pub(super) fn account_position(&self,k:&Outpoint)->Option<positions::Position>{self.accounts.get(k).map(|a|a.position.clone())}

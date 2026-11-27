@@ -156,7 +156,7 @@ function renderTicket() {
   $('samt').onchange = () => renderTicket();
   $('sgo').onclick = submit;
 }
-function nextSeq() { s.seq = Math.max(s.seq + 1, Date.now() * 1000); return s.seq; }
+function nextSeq() { s.seq = Math.max(s.seq + 1, Date.now() * 1000, (s.ctx?.st.account?.sequences?.spot ?? 0) + 1); return s.seq; }
 async function send(fields) {
   const st = s.ctx.st, a = st.account;
   const { intent } = await signSpotIntent({ owner: st.owner, channel: { txid: a.outpoint.txid, vout: a.outpoint.vout }, pair: s.pair.pair, sequence: nextSeq(), expires_us: (Date.now() + 120e3) * 1000, ...fields }, st.template, st.key);

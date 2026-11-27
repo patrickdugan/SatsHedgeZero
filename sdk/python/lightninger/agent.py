@@ -37,12 +37,13 @@ class Agent:
         self.sk = agent_sk
         self.pk = pubkey_hex(agent_sk)
         self.grant_id = grant
-        self.last_seq = 0
+        self.seq = {"perp": 0, "desk": 0}
         self.refresh()
 
     def refresh(self):
-        """Grant, signing template and account from the venue."""
+        """Grant, signing template, account and its last sequences from the venue."""
         self.view = self.c.grant(self.grant_id)
+        self._seed(self.view.get("sequences"))
         g = self.view["grant"]
         if g["agent"] != self.pk:
             raise ValueError("this grant names another agent key")
@@ -60,14 +61,25 @@ class Agent:
         return self.c.grant(self.grant_id)
 
     # -------------------------------------------------------------- signing
-    def next_seq(self):
-        # Millisecond clock, like the browser and the MM bots: sequences are per account and
-        # shared with the owner, so the agent never runs ahead of the owner's clock.
-        self.last_seq = max(int(time.time() * 1000), self.last_seq + 1)
-        return self.last_seq
+    # Sequences are per account and per book, shared with the owner's browser and bots: the
+    # perpetual router has one counter, the options desk one for options and spot. Every client
+    # uses the microsecond clock; the agent also starts above the venue's last admitted sequence.
+    @staticmethod
+    def book(instrument):
+        return "perp" if instrument == "perp" else "desk"
+
+    def _seed(self, seqs):
+        if seqs:
+            self.seq["perp"] = max(self.seq["perp"], seqs.get("perp", 0))
+            self.seq["desk"] = max(self.seq["desk"], seqs.get("option", 0), seqs.get("spot", 0))
+
+    def next_seq(self, instrument="perp"):
+        b = self.book(instrument)
+        self.seq[b] = max(int(time.time() * 1e6), self.seq[b] + 1)
+        return self.seq[b]
 
     def _signed(self, instrument, fields, ttl_s):
-        i = {"channel": self.channel, "owner": self.owner, "sequence": self.next_seq(),
+        i = {"channel": self.channel, "owner": self.owner, "sequence": self.next_seq(instrument),
              "expires_us": int((time.time() + ttl_s) * 1e6), **fields}
         iid = intent_id(instrument, i, self.template)
         i["signature"] = sign(self.sk, iid)
@@ -81,8 +93,10 @@ class Agent:
                 r.setdefault("id", iid)
                 return r
             except LightningerError as e:
-                # Sequence collision with the owner's own orders: once more with a fresh one.
+                # The owner (or another client) used a higher sequence meanwhile: re-read the
+                # account's sequences and sign once more above them.
                 if attempt == 0 and e.code == "venue.rejected" and "Replay" in (e.message or ""):
+                    self._seed(self.c.grant(self.grant_id).get("sequences"))
                     continue
                 raise
 

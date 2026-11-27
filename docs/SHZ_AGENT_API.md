@@ -99,6 +99,25 @@ If a grant lapses between the agent's signature and the batch's prepare or resol
 refuses the delegated event, the venue clears the agent's signatures and re-posts the owner's
 pending signatures (the batch then commits on the owner or aborts at the deadline as before).
 
+All grant checks run at intake before the router is called, so an order that breaks a limit gets
+the limit's error even if its sequence is stale, and writes nothing to the router journal (venue
+test `venue_enforces_every_grant_limit`).
+
+## Sequences
+
+Intent sequences are per account and per book, and the owner and its agents share them: the
+perpetual router keeps one counter, the options desk one for options and spot together. An intent
+must carry a sequence above the book's last admitted one, or the router refuses it (`Replay`).
+
+Every client uses the **microsecond clock** (`Date.now() * 1000`, `time.time() * 1e6`):
+`next = max(previous + 1, now_us, last_admitted + 1)`. The browser (`ui/venue/venue.js`,
+`options.js`, `spot.js`), the market makers (`ops/venue-mm`) and both SDKs follow it. The venue
+reports the last admitted sequences in `account.get` and `grant.get` as
+`sequences: {perp, option, spot}` (option and spot are the same desk counter); the SDKs seed their
+counters from it and, on a `Replay` refusal, re-read it and sign once more. The perpetual browser
+counter moved from milliseconds to microseconds on 2026-11-27; microseconds are larger, so existing
+journals stay valid.
+
 ## API
 
 Base path `/agent/v1`. The same methods over REST and JSON-RPC 2.0 (`/agent/v1/ws`):

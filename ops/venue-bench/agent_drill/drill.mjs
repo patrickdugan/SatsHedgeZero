@@ -190,7 +190,7 @@ async function mkAcct(name) {
   const owner = hex(pubkey(sk));
   const d = await api('/api/register/draft', { owner, kind: 'demo', outpoint: null });
   const a = (await api('/api/register', { draft_id: d.draft_id, owner_signature: hex(await bip340Sign(unhex(d.allocation_digest), sk)) })).account;
-  return (accts[name] = { name, sk, owner, outpoint: a.outpoint, seq: Date.now(), signed: new Set(), online: true });
+  return (accts[name] = { name, sk, owner, outpoint: a.outpoint, seqP: 0, seqO: 0, seqS: 0, signed: new Set(), online: true });
 }
 let xn = 0;
 async function transfer(w, op, amount, asset = null) {
@@ -198,22 +198,25 @@ async function transfer(w, op, amount, asset = null) {
   return api('/api/options/' + op, await signTransfer(op, { owner: w.owner, asset, amount, expires_us: (Date.now() + 60_000) * 1000 + xn }, w.sk));
 }
 const chan = (w) => ({ txid: w.outpoint.txid, vout: w.outpoint.vout });
+// Owner sequences exactly as the browser makes them (ui/venue/venue.js, options.js, spot.js): one
+// counter per instrument, microsecond clock. These are the counters an agent must stay above.
+const usNow = () => Date.now() * 1000;
+const nextPerp = (w) => (w.seqP = Math.max(w.seqP + 1, usNow()));
+const nextOpt = (w) => (w.seqO = Math.max(w.seqO + 1, usNow()));
+const nextSpot = (w) => (w.seqS = Math.max(w.seqS + 1, usNow()));
 async function perpOwner(w, f) {
-  w.seq = Math.max(w.seq + 1, Date.now());
-  const { id, intent } = await signIntent({ owner: w.owner, channel: chan(w), sequence: w.seq, expires_us: (Date.now() + 120e3) * 1000, tier: 'standard',
+  const { id, intent } = await signIntent({ owner: w.owner, channel: chan(w), sequence: nextPerp(w), expires_us: (Date.now() + 120e3) * 1000, tier: 'standard',
     max_fee_ppm: 0, max_fee_sats: 100_000, max_mark_age_us: 15_000_000, early_window_opt_in: false, cancel_target: '0'.repeat(64), ...f }, template, w.sk);
   const r = await fetchJson(VENUE + '/api/intents', { intent });
   return { id, status: r.status, ...r.json };
 }
 async function optionOwner(w, f) {
-  w.seq = Math.max(w.seq + 1, Date.now());
-  const { id, intent } = await signIntentV7({ owner: w.owner, channel: chan(w), sequence: w.seq, expires_us: (Date.now() + 600e3) * 1000, ...f }, template, w.sk);
+  const { id, intent } = await signIntentV7({ owner: w.owner, channel: chan(w), sequence: nextOpt(w), expires_us: (Date.now() + 600e3) * 1000, ...f }, template, w.sk);
   const r = await fetchJson(VENUE + '/api/options/intents', { intent });
   return { id, status: r.status, ...r.json };
 }
 async function spotOwner(w, f) {
-  w.seq = Math.max(w.seq + 1, Date.now());
-  const { id, intent } = await signSpotIntent({ owner: w.owner, channel: chan(w), sequence: w.seq, expires_us: (Date.now() + 600e3) * 1000, pair: spotPair, ...f }, template, w.sk);
+  const { id, intent } = await signSpotIntent({ owner: w.owner, channel: chan(w), sequence: nextSpot(w), expires_us: (Date.now() + 600e3) * 1000, pair: spotPair, ...f }, template, w.sk);
   const r = await fetchJson(VENUE + '/api/spot/intents', { intent });
   return { id, status: r.status, ...r.json };
 }
@@ -311,7 +314,19 @@ async function main() {
   const tamper = await fetchJson(VENUE + '/agent/v1/grants', { grant: { ...gv.grant, limits: { ...limits, max_order_notional_usd: 100_000 } } });
   check('a grant whose fields differ from what the owner signed is refused (grant.signature)', tamper.status === 401 && tamper.json.error.code === 'grant.signature', tamper.json?.error);
 
+  // The owner trades every instrument from the browser first (browser sequence scheme), on the
+  // same account the agent will trade: the agent must start above each of those counters.
+  const oSpot = await spotOwner(O, { action: 'post', buy: true, qty_sats: 1_000, price: usdtBase(90_000) });
+  const oSpotX = await spotOwner(O, { action: 'cancel', buy: false, qty_sats: 0, price: 0, cancel_target: oSpot.id });
+  const oOpt = await optionOwner(O, { action: 'post', legs: [{ series: C100.id, long: true, qty: 100 }], premium_milli: 100 });
+  const oOptX = await optionOwner(O, { action: 'cancel', legs: [], premium_milli: 0, cancel_target: oOpt.id });
+  const oPerp = await perpOwner(O, { action: 'post', side: 'long', quantity: 10, limit_usd: 95_000, leverage_bps: 50_000 });
+  const oPerpX = await perpOwner(O, { action: 'cancel', side: 'long', quantity: 0, limit_usd: 0, leverage_bps: 0, max_fee_ppm: 0, max_fee_sats: 0, max_mark_age_us: 0, cancel_target: oPerp.id });
+  check('the owner posts and cancels spot, an option and a perpetual from the browser path first (microsecond sequences)',
+    [oSpot, oSpotX, oOpt, oOptX, oPerp, oPerpX].every((x) => x.status === 200), [oSpot, oSpotX, oOpt, oOptX, oPerp, oPerpX].map((x) => x.outcome || x.status || x.error));
   const A = await Agent.open(c, aSk, G1);
+  const overCap = await code(A.spotPost(true, 400_000, usdtBase(99_900)));
+  check('on that account an over-cap agent order is refused by the grant (limit.order_notional), not by the router', overCap === 'limit.order_notional', overCap);
   const stopA = A.startAutosigner(150);
   const stream = await Stream.open(VENUE);
   const seen = { trades: [], batches: [], grants: [] };
@@ -332,7 +347,16 @@ async function main() {
 
   // ---- A buys spot
   const sBefore = (await c.account(O.owner)).options.balances.find((b) => b.asset === 'BTC').free;
+  // The owner's browser clock runs 60 s ahead: its desk sequence jumps past the agent's counter after
+  // the agent started; the agent's next spot order is refused once (Replay), re-reads the venue's
+  // sequences and goes through.
+  O.seqS = usNow() + 60_000_000;
+  const ahead = await spotOwner(O, { action: 'post', buy: true, qty_sats: 1_000, price: usdtBase(90_000) });
+  await spotOwner(O, { action: 'cancel', buy: false, qty_sats: 0, price: 0, cancel_target: ahead.id });
+  const deskBefore = A.seq.desk;
   const st = await A.spotTake(true, 20_000, usdtBase(100_100));
+  check('owner clock ahead: the agent re-seeds from the venue and its spot order is accepted', ahead.status === 200 && st.outcome === 'staged' && A.seq.desk > O.seqS && deskBefore < O.seqS,
+    { owner_seq: O.seqS, agent_before: deskBefore, agent_after: A.seq.desk });
   const sDone = await waitFor(async () => { const a = await c.account(O.owner); const b = a.options.balances.find((x) => x.asset === 'BTC').free; return b === sBefore + 20_000 ? a : null; }, 20_000, 'spot committed');
   check('A buys 20,000 sats spot with demo USDT; the spot batch commits on A\'s ack', st.outcome === 'staged' && !!sDone, { outcome: st.outcome, btc_free: [sBefore, sDone && sBefore + 20_000] });
 
@@ -385,7 +409,6 @@ async function main() {
   check('withdrawal: an agent-signed defund is refused and the agent API has no withdraw route', wd.status === 409 && /signature/.test(wd.json?.error) && wdAgent.status === 404, { defund: wd.json?.error, route: wdAgent.status });
 
   // ---- idempotency, rate headers, structured errors
-  A.lastSeq = Math.max(Date.now(), A.lastSeq + 1);
   const signed = A.signed('perp', { action: 'post', side: 'long', tier: 'standard', quantity: 10, limit_usd: 99_500, leverage_bps: 50_000, max_fee_ppm: 0, max_fee_sats: 100_000, max_mark_age_us: 15_000_000, early_window_opt_in: false, cancel_target: '0'.repeat(64) }, 120);
   const ik = 'drill-' + Date.now();
   const i1 = await fetchJson(VENUE + '/agent/v1/orders', { grant: G1, instrument: 'perp', intent: signed.intent }, { 'idempotency-key': ik });

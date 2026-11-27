@@ -1183,6 +1183,16 @@ impl Venue {
                "deferred_claim_sats": self.router.clearing_state().ok().flatten().map(|c| c.claim(&a.outpoint))})
     }
 
+    /// Highest admitted intent sequence of the account per book: the perpetual router and the
+    /// options desk (options and spot share one counter). A client's next intent on that book
+    /// must carry a greater sequence; every client uses the microsecond clock (docs/SHZ_AGENT_API.md).
+    pub fn sequences(&self, owner: &Key) -> Value {
+        let Some(a) = self.accounts.get(owner) else { return Value::Null };
+        let perp = self.router.router().ok().and_then(|r| r.account_sequence(&a.outpoint)).unwrap_or(0);
+        let desk = self.router.options().ok().flatten().and_then(|d| d.account(&(a.outpoint.txid, a.outpoint.vout)).map(|x| x.last_sequence)).unwrap_or(0);
+        json!({"perp": perp, "option": desk, "spot": desk, "unit": "microseconds since the Unix epoch"})
+    }
+
     pub fn account_view(&self, owner: &Key) -> Value {
         let Some(a) = self.accounts.get(owner) else { return json!(null) };
         let b = self.balance(owner);
@@ -1198,6 +1208,7 @@ impl Venue {
             "balance": b.map(|b| balance_json(&b)),
             "position": self.position(owner), "open_orders": open, "fills": fills, "rejected": recent, "pending_signatures": pending,
             "wallet_link": self.wallet_link_view(owner),
+            "sequences": self.sequences(owner),
             "options": self.opts.as_ref().map(|_| self.options_account(owner)),
             "spot": self.spot.as_ref().map(|_| self.spot_account(owner)),
         })

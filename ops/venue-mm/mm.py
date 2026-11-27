@@ -160,7 +160,8 @@ class MM:
 
     # --- intents ---
     def next_seq(self):
-        self.last_seq = max(int(time.time() * 1000), self.last_seq + 1)
+        # Microseconds, like every other client (docs/SHZ_AGENT_API.md, sequences).
+        self.last_seq = max(int(time.time() * 1e6), self.last_seq + 1)
         return self.last_seq
 
     def send(self, iid, intent, what):

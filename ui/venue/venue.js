@@ -347,7 +347,7 @@ async function entitlementDigest(tier) {
   st.ents.set(k, { digest, until: Date.now() + 3600e3 }); return digest;
 }
 function baseIntent(fields) {
-  const t = st.template, a = st.account; st.lastSeq = Math.max(st.lastSeq + 1, Date.now());
+  const t = st.template, a = st.account; st.lastSeq = Math.max(st.lastSeq + 1, Date.now() * 1000, (a.sequences?.perp ?? 0) + 1); // microseconds, above any agent's
   return { owner: st.owner, channel: { txid: a.outpoint.txid, vout: a.outpoint.vout }, sequence: st.lastSeq,
     expires_us: (Date.now() + 120e3) * 1000, action: 'post', side: 'long', tier: st.tier, quantity: 0, limit_usd: 0, leverage_bps: 10000,
     max_fee_ppm: 0, max_fee_sats: 0, max_mark_age_us: t.max_mark_age_us, early_window_opt_in: false, cancel_target: '0'.repeat(64), ...fields };

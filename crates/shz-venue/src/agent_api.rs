@@ -124,6 +124,7 @@ struct Bucket {
 }
 pub struct RateInfo {
     pub ok: bool,
+    pub limit: u64,
     pub remaining: u64,
     pub reset_ms: u64,
 }
@@ -145,31 +146,38 @@ struct Ring {
 
 pub struct ApiState {
     buckets: StdMutex<HashMap<String, Bucket>>,
+    /// (requests per second, burst) of every client bucket.
+    pub rate: (f64, f64),
     idem: StdMutex<(HashMap<String, IdemEntry>, VecDeque<String>)>,
     rings: StdMutex<BTreeMap<&'static str, Ring>>,
     pub tx: broadcast::Sender<Arc<Notif>>,
 }
 impl Default for ApiState {
     fn default() -> Self {
-        Self { buckets: Default::default(), idem: Default::default(), rings: Default::default(), tx: broadcast::channel(4_096).0 }
+        Self { buckets: Default::default(), rate: (RATE_PER_S, BURST), idem: Default::default(), rings: Default::default(), tx: broadcast::channel(4_096).0 }
     }
 }
 impl ApiState {
+    /// State with a given client-bucket rate (requests per second, burst).
+    #[cfg(test)]
+    pub fn with_rate(per_s: f64, burst: f64) -> Self {
+        Self { rate: (per_s, burst), ..Default::default() }
+    }
     pub fn take(&self, key: &str) -> RateInfo {
         let mut m = self.buckets.lock().unwrap();
         if m.len() > 50_000 {
             m.retain(|_, b| b.last.elapsed() < Duration::from_secs(60));
         }
-        let b = m.entry(key.to_string()).or_insert(Bucket { tokens: BURST, last: Instant::now() });
+        let b = m.entry(key.to_string()).or_insert(Bucket { tokens: self.rate.1, last: Instant::now() });
         let now = Instant::now();
-        b.tokens = (b.tokens + now.duration_since(b.last).as_secs_f64() * RATE_PER_S).min(BURST);
+        b.tokens = (b.tokens + now.duration_since(b.last).as_secs_f64() * self.rate.0).min(self.rate.1);
         b.last = now;
         let ok = b.tokens >= 1.0;
         if ok {
             b.tokens -= 1.0;
         }
-        let reset_ms = if b.tokens >= 1.0 { 0 } else { ((1.0 - b.tokens) / RATE_PER_S * 1000.0).ceil() as u64 };
-        RateInfo { ok, remaining: b.tokens.floor() as u64, reset_ms }
+        let reset_ms = if b.tokens >= 1.0 { 0 } else { ((1.0 - b.tokens) / self.rate.0 * 1000.0).ceil() as u64 };
+        RateInfo { ok, limit: self.rate.1 as u64, remaining: b.tokens.floor() as u64, reset_ms }
     }
     fn idem_get(&self, key: &str, digest: &[u8; 32]) -> Option<Result<Value, AgentError>> {
         let m = self.idem.lock().unwrap();
@@ -509,7 +517,7 @@ pub fn rate_headers(rate: &Option<RateInfo>) -> Vec<(String, String)> {
     match rate {
         Some(r) => {
             let mut h = vec![
-                ("X-RateLimit-Limit".to_string(), format!("{}", BURST as u64)),
+                ("X-RateLimit-Limit".to_string(), r.limit.to_string()),
                 ("X-RateLimit-Remaining".to_string(), r.remaining.to_string()),
                 ("X-RateLimit-Reset".to_string(), format!("{:.3}", r.reset_ms as f64 / 1000.0)),
                 ("X-RateLimit-Scope".to_string(), "address".to_string()),

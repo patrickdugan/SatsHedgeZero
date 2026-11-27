@@ -244,7 +244,7 @@ function renderTicket() {
   $('xasset').onchange = (e) => { o.xasset = e.target.value; };
   el.querySelector('.xfer').onclick = (e) => { const b = e.target.closest('[data-x]'); if (b) moveCollateral(b.dataset.x === 'in'); };
 }
-function nextSeq() { o.seq = Math.max(o.seq + 1, Date.now() * 1000); return o.seq; }
+function nextSeq() { o.seq = Math.max(o.seq + 1, Date.now() * 1000, (o.ctx?.st.account?.sequences?.option ?? 0) + 1); return o.seq; }
 async function sendIntent(fields) {
   const st = o.ctx.st, a = st.account;
   const { intent } = await signIntentV7({ owner: st.owner, channel: { txid: a.outpoint.txid, vout: a.outpoint.vout }, sequence: nextSeq(), expires_us: (Date.now() + 120e3) * 1000, ...fields }, st.template, st.key);

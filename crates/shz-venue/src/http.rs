@@ -681,7 +681,9 @@ mod tests {
         let ui = dir.join("ui");
         std::fs::create_dir_all(&ui).unwrap();
         std::fs::write(ui.join("index.html"), "<!doctype html>ok").unwrap();
-        let app = Arc::new(App { venue: Arc::new(Mutex::new(venue)), events: broadcast::channel(16).0, ui_dir: ui, mempool_api: String::new(), agent: Default::default() });
+        let app = Arc::new(App { venue: Arc::new(Mutex::new(venue)), events: broadcast::channel(16).0, ui_dir: ui, mempool_api: String::new(),
+            // Burst 60 with a refill too slow to matter inside the test: no timing dependence.
+            agent: Arc::new(crate::agent_api::ApiState::with_rate(0.01, crate::agent_api::BURST)) });
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         tokio::spawn(serve(app.clone(), listener));

@@ -7,13 +7,14 @@ import { type Grant, type Instrument, type Intent, type Limits, type Template, Z
 import { type Client, LightningerError } from './client.ts';
 
 export class Agent {
-  c: Client; sk: Bytes; pk: string; grantId: string; lastSeq = 0;
+  c: Client; sk: Bytes; pk: string; grantId: string; seq = { perp: 0, desk: 0 };
   owner = ''; channel: { txid: string; vout: number } = { txid: ZERO32, vout: 0 }; limits!: Limits; template!: Template; view: any;
   private constructor(c: Client, sk: Bytes, grant: string) { this.c = c; this.sk = sk; this.pk = hex(pubkey(sk)); this.grantId = grant; }
   static async open(c: Client, agentSk: Bytes, grant: string): Promise<Agent> { const a = new Agent(c, agentSk, grant); await a.refresh(); return a; }
 
   async refresh() {
     this.view = await this.c.grant(this.grantId);
+    this.seed(this.view.sequences);
     const g: Grant = this.view.grant;
     if (g.agent !== this.pk) throw new Error('this grant names another agent key');
     this.owner = g.owner; this.channel = g.channel; this.limits = g.limits;
@@ -22,11 +23,20 @@ export class Agent {
     return this.view;
   }
   status() { return this.c.grant(this.grantId); }
-  /** Millisecond clock like the browser and the MM bots (sequences are shared with the owner). */
-  nextSeq() { this.lastSeq = Math.max(Date.now(), this.lastSeq + 1); return this.lastSeq; }
+  // Sequences are per account and per book, shared with the owner's browser and bots: the perpetual
+  // router has one counter, the options desk one for options and spot. Every client uses the
+  // microsecond clock (Date.now() * 1000 stays below 2^53); the agent also starts above the venue's
+  // last admitted sequence.
+  static book(instrument: Instrument): 'perp' | 'desk' { return instrument === 'perp' ? 'perp' : 'desk'; }
+  seed(s?: { perp?: number; option?: number; spot?: number }) {
+    if (!s) return;
+    this.seq.perp = Math.max(this.seq.perp, s.perp ?? 0);
+    this.seq.desk = Math.max(this.seq.desk, s.option ?? 0, s.spot ?? 0);
+  }
+  nextSeq(instrument: Instrument = 'perp') { const b = Agent.book(instrument); this.seq[b] = Math.max(Date.now() * 1000, this.seq[b] + 1); return this.seq[b]; }
 
   signed(instrument: Instrument, fields: Intent, ttlS: number): { id: string; intent: Intent } {
-    const i: Intent = { channel: this.channel, owner: this.owner, sequence: this.nextSeq(), expires_us: Math.round((Date.now() + ttlS * 1000) * 1000), ...fields };
+    const i: Intent = { channel: this.channel, owner: this.owner, sequence: this.nextSeq(instrument), expires_us: Math.round((Date.now() + ttlS * 1000) * 1000), ...fields };
     const id = intentId(instrument, i, this.template);
     i.signature = hex(sign(id, this.sk));
     return { id: hex(id), intent: i };
@@ -38,7 +48,8 @@ export class Agent {
         const r = await (cancel ? this.c.cancel(this.grantId, instrument, intent) : this.c.place(this.grantId, instrument, intent));
         return { id, ...r };
       } catch (e) {
-        if (attempt === 0 && e instanceof LightningerError && e.code === 'venue.rejected' && /Replay/.test(e.message)) continue;
+        // The owner (or another client) used a higher sequence meanwhile: re-read and sign above it.
+        if (attempt === 0 && e instanceof LightningerError && e.code === 'venue.rejected' && /Replay/.test(e.message)) { this.seed((await this.c.grant(this.grantId)).sequences); continue; }
         throw e;
       }
     }
