@@ -153,6 +153,82 @@ pub struct VerifiedPnlSettlementBatch {
     pub evidence_flags: BatchEvidenceFlags,
 }
 
+/// Read-only accounting witness, indexed by the ordered vault/target arrays.
+/// Parallel routes retain separate entries; no signing or execution authority is implied.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CapitalGraphRoute {
+    pub vault: usize,
+    pub target: usize,
+    pub capacity_sats: u64,
+    pub allocated_sats: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CapitalGraphCertificate {
+    pub snapshot_hash: [u8; 32],
+    pub vault_ids: Vec<String>,
+    pub targets: Vec<RouteTarget>,
+    pub budgets_sats: Vec<u64>,
+    pub demands_sats: Vec<u64>,
+    pub routes: Vec<CapitalGraphRoute>,
+    pub sink_side_targets: Vec<usize>,
+    pub delivered_sats: u64,
+    pub deficit_sats: u64,
+}
+
+impl CapitalGraphCertificate {
+    /// Verify the primal and cut using integer sums, without a flow solver.
+    /// This verifies the supplied graph only. Use analyze_pnl_batch_graph on the
+    /// independently pinned snapshot to establish the authoritative graph.
+    pub fn verify(&self) -> Result<(), UtxoRefError> {
+        let bad = UtxoRefError::AccountingViolation("invalid capital graph certificate");
+        if self.vault_ids.len() != self.budgets_sats.len()
+            || self.targets.len() != self.demands_sats.len()
+            || self.vault_ids.iter().collect::<BTreeSet<_>>().len() != self.vault_ids.len()
+            || self.targets.iter().collect::<BTreeSet<_>>().len() != self.targets.len()
+        {
+            return Err(bad);
+        }
+        let cut: BTreeSet<_> = self.sink_side_targets.iter().copied().collect();
+        if cut.len() != self.sink_side_targets.len()
+            || cut.iter().any(|&j| j >= self.targets.len())
+        {
+            return Err(bad);
+        }
+        let mut used = vec![0u128; self.vault_ids.len()];
+        let mut received = vec![0u128; self.targets.len()];
+        let mut into_cut = vec![0u128; self.vault_ids.len()];
+        for r in &self.routes {
+            if r.vault >= used.len() || r.target >= received.len()
+                || r.allocated_sats > r.capacity_sats
+            {
+                return Err(bad);
+            }
+            used[r.vault] += u128::from(r.allocated_sats);
+            received[r.target] += u128::from(r.allocated_sats);
+            if cut.contains(&r.target) {
+                into_cut[r.vault] += u128::from(r.capacity_sats);
+            }
+        }
+        if used.iter().zip(&self.budgets_sats).any(|(&x, &c)| x > u128::from(c))
+            || received.iter().zip(&self.demands_sats).any(|(&x, &d)| x > u128::from(d))
+            || received.iter().sum::<u128>() != u128::from(self.delivered_sats)
+        {
+            return Err(bad);
+        }
+        let demand: u128 = self.demands_sats.iter().map(|&x| u128::from(x)).sum();
+        let cut_demand: u128 = cut.iter().map(|&j| u128::from(self.demands_sats[j])).sum();
+        let cut_supply: u128 = into_cut.iter().zip(&self.budgets_sats)
+            .map(|(&u, &c)| u.min(u128::from(c))).sum();
+        if demand != u128::from(self.delivered_sats) + u128::from(self.deficit_sats)
+            || cut_demand != cut_supply + u128::from(self.deficit_sats)
+        {
+            return Err(bad);
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone)]
 struct FlowEdge {
     to: usize,
@@ -245,6 +321,21 @@ impl MaxFlowGraph {
 
         total_flow
     }
+
+    fn reachable(&self, source: usize) -> Vec<bool> {
+        let mut seen = vec![false; self.adj.len()];
+        let mut queue = VecDeque::from([source]);
+        seen[source] = true;
+        while let Some(u) = queue.pop_front() {
+            for e in &self.adj[u] {
+                if e.res_cap > 0 && !seen[e.to] {
+                    seen[e.to] = true;
+                    queue.push_back(e.to);
+                }
+            }
+        }
+        seen
+    }
 }
 
 /// Validates account obligations (`b = A * g`), entitlement equations (`e'_i = e_i + b_i - p_i`),
@@ -253,6 +344,29 @@ impl MaxFlowGraph {
 pub fn solve_and_verify_pnl_batch(
     snapshot: &PnlBatchSnapshotV1,
     expected_snapshot_hash: &[u8; 32],
+) -> Result<VerifiedPnlSettlementBatch, UtxoRefError> {
+    solve_pnl_batch_internal(snapshot, expected_snapshot_hash, None)
+}
+
+/// Return a checked primal/cut certificate even on a funding deficit.
+/// Invalid snapshots still fail before emitting a graph. This path does not
+/// reserve, authorize, or execute a batch.
+pub fn analyze_pnl_batch_graph(
+    snapshot: &PnlBatchSnapshotV1,
+    expected_snapshot_hash: &[u8; 32],
+) -> Result<CapitalGraphCertificate, UtxoRefError> {
+    let mut certificate = None;
+    match solve_pnl_batch_internal(snapshot, expected_snapshot_hash, Some(&mut certificate)) {
+        Ok(_) | Err(UtxoRefError::CapacitatedFlowDeficit { .. }) => certificate
+            .ok_or(UtxoRefError::AccountingViolation("missing capital graph certificate")),
+        Err(e) => Err(e),
+    }
+}
+
+fn solve_pnl_batch_internal(
+    snapshot: &PnlBatchSnapshotV1,
+    expected_snapshot_hash: &[u8; 32],
+    certificate: Option<&mut Option<CapitalGraphCertificate>>,
 ) -> Result<VerifiedPnlSettlementBatch, UtxoRefError> {
     let actual_hash = snapshot.snapshot_hash();
     if &actual_hash != expected_snapshot_hash {
@@ -379,8 +493,7 @@ pub fn solve_and_verify_pnl_batch(
 
     for a in &snapshot.accounts {
         let b_i = net_deltas[&a.id];
-        let max_payout = b_i.max(0) as u64;
-        if a.payout_sats > max_payout {
+        if i128::from(a.payout_sats) > b_i.max(0) {
             return Err(UtxoRefError::AccountingViolation(
                 "payout_sats exceeds positive net PnL in current batch",
             ));
@@ -391,7 +504,8 @@ pub fn solve_and_verify_pnl_batch(
                 "post-batch equity falls below locked_sats",
             ));
         }
-        let e_next = e_next_i128 as u64;
+        let e_next = u64::try_from(e_next_i128)
+            .map_err(|_| UtxoRefError::AccountingViolation("post-batch equity overflow"))?;
         post_equities.insert(a.id.clone(), e_next);
         direct_payouts.insert(a.id.clone(), a.payout_sats);
         let entry = vault_retained_demand.get_mut(&a.vault_id).unwrap();
@@ -495,6 +609,42 @@ pub fn solve_and_verify_pnl_batch(
     }
 
     let achieved = graph.edmonds_karp(source, sink);
+    if let Some(out) = certificate {
+        let reachable = graph.reachable(source);
+        let targets: Vec<_> = snapshot.vaults.iter().map(|v| RouteTarget::Vault(v.id.clone()))
+            .chain(snapshot.accounts.iter().map(|a| RouteTarget::Payout(a.id.clone())))
+            .collect();
+        let mut routes = Vec::new();
+        for (v, edges) in graph.adj[1..1 + v_len].iter().enumerate() {
+            for e in edges {
+                if e.route_meta.is_some() {
+                    routes.push(CapitalGraphRoute {
+                        vault: v,
+                        target: e.to - (1 + v_len),
+                        capacity_sats: e.initial_cap,
+                        allocated_sats: e.initial_cap - e.res_cap,
+                    });
+                }
+            }
+        }
+        let cert = CapitalGraphCertificate {
+            snapshot_hash: actual_hash,
+            vault_ids: snapshot.vaults.iter().map(|v| v.id.clone()).collect(),
+            targets,
+            budgets_sats: snapshot.vaults.iter()
+                .map(|v| Ok(v.total_input_sats()? - v.fee_sats))
+                .collect::<Result<Vec<_>, UtxoRefError>>()?,
+            demands_sats: snapshot.vaults.iter().map(|v| vault_retained_demand[&v.id])
+                .chain(snapshot.accounts.iter().map(|a| a.payout_sats)).collect(),
+            routes,
+            sink_side_targets: (0..v_len + a_len)
+                .filter(|&j| !reachable[1 + v_len + j]).collect(),
+            delivered_sats: achieved,
+            deficit_sats: required_sink_flow - achieved,
+        };
+        cert.verify()?;
+        *out = Some(cert);
+    }
     if achieved < required_sink_flow {
         return Err(UtxoRefError::CapacitatedFlowDeficit {
             deficit_sats: required_sink_flow - achieved,
@@ -523,10 +673,12 @@ pub fn solve_and_verify_pnl_batch(
         vault_residuals.insert(v.id.clone(), residual);
     }
 
-    // Verify global satoshi conservation: inputs == fees + payouts + residuals!
-    let sum_payouts: u64 = direct_payouts.values().sum();
-    let sum_residuals: u64 = vault_residuals.values().sum();
-    debug_assert_eq!(total_input_sats, total_fee_sats + sum_payouts + sum_residuals);
+    // Enforce global satoshi conservation in release builds too.
+    let sum_payouts: u128 = direct_payouts.values().map(|&x| u128::from(x)).sum();
+    let sum_residuals: u128 = vault_residuals.values().map(|&x| u128::from(x)).sum();
+    if u128::from(total_input_sats) != u128::from(total_fee_sats) + sum_payouts + sum_residuals {
+        return Err(UtxoRefError::AccountingViolation("batch conservation mismatch"));
+    }
 
     let mut next_root_payload = borsh::to_vec(&(
         snapshot.epoch_id,
@@ -638,6 +790,15 @@ impl DurablePnlBatchBook {
             }
         }
 
+        // The persisted replay state is authoritative, even if the caller omits
+        // entries from the snapshot's spent_outpoints list.
+        let prior_spent: BTreeSet<_> = self.spent_outpoints.iter()
+            .map(|o| (o.txid, o.vout)).collect();
+        if snapshot.vaults.iter().flat_map(|v| &v.utxos)
+            .any(|u| prior_spent.contains(&(u.outpoint.txid, u.outpoint.vout)))
+        {
+            return Err(UtxoRefError::ReplayDetected("vault UTXO already spent in book"));
+        }
         let snap_hash = snapshot.snapshot_hash();
         let batch = solve_and_verify_pnl_batch(snapshot, &snap_hash)?;
         self.state = BookAuthState::ReservedBeforeSigning {
@@ -714,6 +875,15 @@ impl DurablePnlBatchBook {
             self.bump_head(b"freeze-txid-mismatch", confirmed_txid_hex.as_bytes());
             self.state = BookAuthState::Frozen {
                 reason: "confirmed txid did not match signed reservation".into(),
+            };
+            return Err(UtxoRefError::BookFrozen);
+        }
+
+        // Bind the replay updates to the exact snapshot solved before signing.
+        if settled_snapshot.snapshot_hash() != verified_batch.snapshot_hash {
+            self.bump_head(b"freeze-snapshot-mismatch", &settled_snapshot.snapshot_hash());
+            self.state = BookAuthState::Frozen {
+                reason: "confirmed snapshot did not match signed reservation".into(),
             };
             return Err(UtxoRefError::BookFrozen);
         }
