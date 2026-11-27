@@ -1,0 +1,1399 @@
+{
+  "account_views_after": {
+    "alice": {
+      "balance": {
+        "cap": 200000,
+        "committed": 1627,
+        "equity": 200000,
+        "free": 198373,
+        "paid_fees": 0,
+        "pending": 0,
+        "realized_pnl": 0,
+        "resting": 0
+      },
+      "cap_sats": 200000,
+      "fills": [
+        {
+          "batch_seq": 301,
+          "early_window": false,
+          "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+          "maker_fee_sats": 0,
+          "maker_id": "c53cc9592944bec8e487762b5e2a5a1fb454dde7252a3bd3d352aabe51d4ddf6",
+          "maker_owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+          "maker_tier": "standard",
+          "packet_digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+          "packet_seq": 36464,
+          "price_usd": 61464,
+          "qty_usd": 1,
+          "taker_fee_sats": 0,
+          "taker_owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+          "taker_side": "short",
+          "taker_tier": "standard",
+          "ts_us": 1795785034142590
+        }
+      ],
+      "kind": "demo",
+      "label": "TESTNET DEMO CREDIT",
+      "open_orders": [],
+      "options": {
+        "balances": [
+          {
+            "asset": "BTC",
+            "descriptor": {
+              "code": "BTC",
+              "kind": "btc",
+              "unit": "sat"
+            },
+            "free": 0,
+            "locked": 0,
+            "realized": 0,
+            "required": 0
+          },
+          {
+            "asset": "USDT",
+            "descriptor": {
+              "adapter": "simulated (no on-chain transfer)",
+              "code": "USDT",
+              "decimals": 6,
+              "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+              "kind": "stable",
+              "protocol": "rgb",
+              "unit": "base unit"
+            },
+            "free": 0,
+            "locked": 0,
+            "realized": 0,
+            "required": 0
+          }
+        ],
+        "fills": [],
+        "fully_funded": true,
+        "intents": [],
+        "last_sequence": 0,
+        "legs": [],
+        "open_orders": [],
+        "pending_signatures": []
+      },
+      "outpoint": {
+        "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+        "vout": 0
+      },
+      "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+      "pending_signatures": [],
+      "position": {
+        "avg_entry_usd": 61464,
+        "committed_net_usd": 1,
+        "deferred_claim_sats": 0,
+        "gross_traded_usd": 1,
+        "lots": [
+          {
+            "counterparty_margin_sats": 1627,
+            "entry_usd": 61464,
+            "margin_sats": 1627,
+            "qty_usd": 1,
+            "side": "long"
+          }
+        ],
+        "margin_sats": 1627,
+        "net_usd": 1,
+        "realized_pnl_sats": 0,
+        "risk": {
+          "bankruptcy_price_usd": 30740,
+          "equity_sats": 1627,
+          "liquidation_price_usd": 32268,
+          "lots": [
+            {
+              "bankruptcy_price_usd": 30731,
+              "entry_usd": 61464,
+              "qty_usd": 1
+            }
+          ],
+          "margin_bps": 10000,
+          "mark_usd": 61475,
+          "notional_usd": 1,
+          "params": {
+            "auction_ms": 60000,
+            "maintenance_bps": 500,
+            "max_discount_bps": 200,
+            "target_restore_bps": 800,
+            "warning_bps": 750
+          },
+          "reduce_only": false,
+          "state": "ok"
+        },
+        "unrealized_sats": 0,
+        "unsettled_usd": 0
+      },
+      "rejected": [],
+      "sequences": {
+        "option": 0,
+        "perp": 1795785035844000,
+        "spot": 0,
+        "unit": "microseconds since the Unix epoch"
+      },
+      "spot": {
+        "balances": [
+          {
+            "asset": "BTC",
+            "descriptor": {
+              "code": "BTC",
+              "kind": "btc",
+              "unit": "sat"
+            },
+            "free": 0,
+            "option_locked": 0,
+            "spot_locked": 0
+          },
+          {
+            "asset": "USDT",
+            "descriptor": {
+              "adapter": "simulated (no on-chain transfer)",
+              "code": "USDT",
+              "decimals": 6,
+              "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+              "kind": "stable",
+              "protocol": "rgb",
+              "unit": "base unit"
+            },
+            "free": 0,
+            "option_locked": 0,
+            "spot_locked": 0
+          }
+        ],
+        "fills": [],
+        "intents": [],
+        "last_sequence": 0,
+        "open_orders": [],
+        "pair": "6b7ef4bc3fbd90f177aede130769ce4d51fda975a5d54c9e252921c34a20fbbf",
+        "pending_signatures": []
+      },
+      "wallet_link": null
+    },
+    "bob": {
+      "balance": {
+        "cap": 200000,
+        "committed": 1627,
+        "equity": 200000,
+        "free": 198373,
+        "paid_fees": 0,
+        "pending": 0,
+        "realized_pnl": 0,
+        "resting": 0
+      },
+      "cap_sats": 200000,
+      "fills": [
+        {
+          "batch_seq": 301,
+          "early_window": false,
+          "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+          "maker_fee_sats": 0,
+          "maker_id": "c53cc9592944bec8e487762b5e2a5a1fb454dde7252a3bd3d352aabe51d4ddf6",
+          "maker_owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+          "maker_tier": "standard",
+          "packet_digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+          "packet_seq": 36464,
+          "price_usd": 61464,
+          "qty_usd": 1,
+          "taker_fee_sats": 0,
+          "taker_owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+          "taker_side": "short",
+          "taker_tier": "standard",
+          "ts_us": 1795785034142590
+        }
+      ],
+      "kind": "demo",
+      "label": "TESTNET DEMO CREDIT",
+      "open_orders": [],
+      "options": {
+        "balances": [
+          {
+            "asset": "BTC",
+            "descriptor": {
+              "code": "BTC",
+              "kind": "btc",
+              "unit": "sat"
+            },
+            "free": 0,
+            "locked": 0,
+            "realized": 0,
+            "required": 0
+          },
+          {
+            "asset": "USDT",
+            "descriptor": {
+              "adapter": "simulated (no on-chain transfer)",
+              "code": "USDT",
+              "decimals": 6,
+              "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+              "kind": "stable",
+              "protocol": "rgb",
+              "unit": "base unit"
+            },
+            "free": 0,
+            "locked": 0,
+            "realized": 0,
+            "required": 0
+          }
+        ],
+        "fills": [],
+        "fully_funded": true,
+        "intents": [],
+        "last_sequence": 0,
+        "legs": [],
+        "open_orders": [],
+        "pending_signatures": []
+      },
+      "outpoint": {
+        "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+        "vout": 0
+      },
+      "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+      "pending_signatures": [],
+      "position": {
+        "avg_entry_usd": 61464,
+        "committed_net_usd": -1,
+        "deferred_claim_sats": 0,
+        "gross_traded_usd": 1,
+        "lots": [
+          {
+            "counterparty_margin_sats": 1627,
+            "entry_usd": 61464,
+            "margin_sats": 1627,
+            "qty_usd": 1,
+            "side": "short"
+          }
+        ],
+        "margin_sats": 1627,
+        "net_usd": -1,
+        "realized_pnl_sats": 0,
+        "risk": {
+          "bankruptcy_price_usd": null,
+          "equity_sats": 1627,
+          "liquidation_price_usd": null,
+          "lots": [
+            {
+              "bankruptcy_price_usd": null,
+              "entry_usd": 61464,
+              "qty_usd": 1
+            }
+          ],
+          "margin_bps": 10000,
+          "mark_usd": 61475,
+          "notional_usd": 1,
+          "params": {
+            "auction_ms": 60000,
+            "maintenance_bps": 500,
+            "max_discount_bps": 200,
+            "target_restore_bps": 800,
+            "warning_bps": 750
+          },
+          "reduce_only": false,
+          "state": "ok"
+        },
+        "unrealized_sats": 0,
+        "unsettled_usd": 0
+      },
+      "rejected": [],
+      "sequences": {
+        "option": 0,
+        "perp": 1795785036097000,
+        "spot": 0,
+        "unit": "microseconds since the Unix epoch"
+      },
+      "spot": {
+        "balances": [
+          {
+            "asset": "BTC",
+            "descriptor": {
+              "code": "BTC",
+              "kind": "btc",
+              "unit": "sat"
+            },
+            "free": 0,
+            "option_locked": 0,
+            "spot_locked": 0
+          },
+          {
+            "asset": "USDT",
+            "descriptor": {
+              "adapter": "simulated (no on-chain transfer)",
+              "code": "USDT",
+              "decimals": 6,
+              "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+              "kind": "stable",
+              "protocol": "rgb",
+              "unit": "base unit"
+            },
+            "free": 0,
+            "option_locked": 0,
+            "spot_locked": 0
+          }
+        ],
+        "fills": [],
+        "intents": [],
+        "last_sequence": 0,
+        "open_orders": [],
+        "pair": "6b7ef4bc3fbd90f177aede130769ce4d51fda975a5d54c9e252921c34a20fbbf",
+        "pending_signatures": []
+      },
+      "wallet_link": null
+    }
+  },
+  "accounts": {
+    "alice": {
+      "outpoint": {
+        "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+        "vout": 0
+      },
+      "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105"
+    },
+    "bob": {
+      "outpoint": {
+        "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+        "vout": 0
+      },
+      "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de"
+    }
+  },
+  "batch": {
+    "batch": {
+      "accounts": [
+        {
+          "approved": true,
+          "channel": {
+            "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+            "vout": 0
+          },
+          "fee_sats": 0,
+          "margin_sats": 1627,
+          "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105"
+        },
+        {
+          "approved": true,
+          "channel": {
+            "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+            "vout": 0
+          },
+          "fee_sats": 0,
+          "margin_sats": 1627,
+          "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de"
+        }
+      ],
+      "acks": [
+        {
+          "channel": {
+            "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+            "vout": 0
+          },
+          "evidence": "1025e96728b7247764506fd2ea6ae4c2ee08e27d338d3503e6cb1d6f63883ca8",
+          "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+          "monitor_signature": "49d8253b6537642017f3b8ae2453735d3af2922f0db8e7c842a7277cc033d935ef63fd25d42ff6b8f7a48e481721fb1599054e77cb936781c791683f1a4f2fe3",
+          "next_commitment": 1,
+          "owner_signed": true,
+          "peer_signature": "189e34bb550aa82379c35237f3b4ab3a4e5cfb2840e0d268412e4c4cded989ab67344d272865d7c3424c03d107ef9110b6391868d72ba7a6f6996802f3699eea",
+          "previous_commitment": 0
+        },
+        {
+          "channel": {
+            "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+            "vout": 0
+          },
+          "evidence": "81f9408142c36d20c510c690aeb9a5ff1630a2ab7137f2ab1efec92e026a530b",
+          "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+          "monitor_signature": "f5bcb4e558bf73124f7355d8a088657c182857c25c93099a19af5ef25cbe967427730bff9f7e97b10d9eb4ad068edc9145844feed42b9f4b83d9d7d6dc097626",
+          "next_commitment": 1,
+          "owner_signed": true,
+          "peer_signature": "e79224db76be5dfdee2a5cf953848aa42199b25a6a4d28b715e3b4586e01187a3cf34eb008600c22a88097f01492e6703be2743909d82e9b3a6ff5a1761d9211",
+          "previous_commitment": 0
+        }
+      ],
+      "clearing": {
+        "carry_after": 0,
+        "cash_after": 1000114,
+        "cash_before": 1000114,
+        "claim_haircuts": [],
+        "claims_after": 0,
+        "fund_absorbed": 0,
+        "fund_after": 1000002,
+        "haircut": 0,
+        "layer": "None",
+        "rows": [
+          {
+            "channel": {
+              "txid": [
+                218,
+                148,
+                79,
+                29,
+                76,
+                150,
+                62,
+                216,
+                101,
+                124,
+                88,
+                216,
+                129,
+                158,
+                25,
+                58,
+                167,
+                120,
+                46,
+                84,
+                46,
+                108,
+                211,
+                132,
+                191,
+                18,
+                192,
+                124,
+                161,
+                174,
+                63,
+                187
+              ],
+              "vout": 0
+            },
+            "claim_after": 0,
+            "claim_before": 0,
+            "collected": 0,
+            "haircut": 0,
+            "net": 0,
+            "own_claim_used": 0,
+            "paid": 0,
+            "pnl": 0,
+            "released": 0,
+            "shortfall": 0
+          },
+          {
+            "channel": {
+              "txid": [
+                238,
+                36,
+                144,
+                126,
+                115,
+                234,
+                57,
+                156,
+                254,
+                99,
+                105,
+                162,
+                143,
+                91,
+                123,
+                158,
+                118,
+                135,
+                120,
+                172,
+                30,
+                42,
+                116,
+                230,
+                201,
+                177,
+                89,
+                9,
+                174,
+                172,
+                22,
+                144
+              ],
+              "vout": 0
+            },
+            "claim_after": 0,
+            "claim_before": 0,
+            "collected": 0,
+            "haircut": 0,
+            "net": 0,
+            "own_claim_used": 0,
+            "paid": 0,
+            "pnl": 0,
+            "released": 0,
+            "shortfall": 0
+          }
+        ],
+        "shortfall": 0
+      },
+      "committed_us": 1795785037586929,
+      "created_us": 1795785034204842,
+      "digest": "5718d1178e35d39769793941cf15f533eca6a987c9fc156aeda7ce014bb58bf9",
+      "ledger_state": "Committed",
+      "legs": [
+        "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9"
+      ],
+      "oracle_due_sats": 0,
+      "phase": "committed",
+      "prepared_us": 1795785035697380,
+      "router_due_sats": 0,
+      "seq": 301,
+      "settlements": [
+        {
+          "channel": {
+            "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+            "vout": 0
+          },
+          "closed_leg_margin_sats": 0,
+          "closed_usd": 0,
+          "margin_after_sats": 1627,
+          "net_after_usd": 1,
+          "net_before_usd": 0,
+          "opened_margin_sats": 1627,
+          "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+          "payout_sats": 0,
+          "realized_pnl_sats": 0,
+          "released_margin_sats": 0
+        },
+        {
+          "channel": {
+            "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+            "vout": 0
+          },
+          "closed_leg_margin_sats": 0,
+          "closed_usd": 0,
+          "margin_after_sats": 1627,
+          "net_after_usd": -1,
+          "net_before_usd": 0,
+          "opened_margin_sats": 1627,
+          "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+          "payout_sats": 0,
+          "realized_pnl_sats": 0,
+          "released_margin_sats": 0
+        }
+      ],
+      "window_us": [
+        1795785034100000,
+        1795785034200000
+      ]
+    },
+    "fills": [
+      {
+        "batch_seq": 301,
+        "early_window": false,
+        "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+        "maker_fee_sats": 0,
+        "maker_id": "c53cc9592944bec8e487762b5e2a5a1fb454dde7252a3bd3d352aabe51d4ddf6",
+        "maker_owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+        "maker_tier": "standard",
+        "packet_digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+        "packet_seq": 36464,
+        "price_usd": 61464,
+        "qty_usd": 1,
+        "taker_fee_sats": 0,
+        "taker_owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+        "taker_side": "short",
+        "taker_tier": "standard",
+        "ts_us": 1795785034142590
+      }
+    ]
+  },
+  "fill": {
+    "batch_seq": 301,
+    "early_window": false,
+    "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+    "maker_fee_sats": 0,
+    "maker_id": "c53cc9592944bec8e487762b5e2a5a1fb454dde7252a3bd3d352aabe51d4ddf6",
+    "maker_owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+    "maker_tier": "standard",
+    "packet_digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+    "packet_seq": 36464,
+    "price_usd": 61464,
+    "qty_usd": 1,
+    "taker_fee_sats": 0,
+    "taker_owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+    "taker_side": "short",
+    "taker_tier": "standard",
+    "ts_us": 1795785034142590
+  },
+  "fill_explorer": {
+    "batch": {
+      "accounts": [
+        {
+          "approved": true,
+          "channel": {
+            "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+            "vout": 0
+          },
+          "fee_sats": 0,
+          "margin_sats": 1627,
+          "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105"
+        },
+        {
+          "approved": true,
+          "channel": {
+            "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+            "vout": 0
+          },
+          "fee_sats": 0,
+          "margin_sats": 1627,
+          "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de"
+        }
+      ],
+      "acks": [
+        {
+          "channel": {
+            "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+            "vout": 0
+          },
+          "evidence": "1025e96728b7247764506fd2ea6ae4c2ee08e27d338d3503e6cb1d6f63883ca8",
+          "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+          "monitor_signature": "49d8253b6537642017f3b8ae2453735d3af2922f0db8e7c842a7277cc033d935ef63fd25d42ff6b8f7a48e481721fb1599054e77cb936781c791683f1a4f2fe3",
+          "next_commitment": 1,
+          "owner_signed": true,
+          "peer_signature": "189e34bb550aa82379c35237f3b4ab3a4e5cfb2840e0d268412e4c4cded989ab67344d272865d7c3424c03d107ef9110b6391868d72ba7a6f6996802f3699eea",
+          "previous_commitment": 0
+        },
+        {
+          "channel": {
+            "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+            "vout": 0
+          },
+          "evidence": "81f9408142c36d20c510c690aeb9a5ff1630a2ab7137f2ab1efec92e026a530b",
+          "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+          "monitor_signature": "f5bcb4e558bf73124f7355d8a088657c182857c25c93099a19af5ef25cbe967427730bff9f7e97b10d9eb4ad068edc9145844feed42b9f4b83d9d7d6dc097626",
+          "next_commitment": 1,
+          "owner_signed": true,
+          "peer_signature": "e79224db76be5dfdee2a5cf953848aa42199b25a6a4d28b715e3b4586e01187a3cf34eb008600c22a88097f01492e6703be2743909d82e9b3a6ff5a1761d9211",
+          "previous_commitment": 0
+        }
+      ],
+      "clearing": {
+        "carry_after": 0,
+        "cash_after": 1000114,
+        "cash_before": 1000114,
+        "claim_haircuts": [],
+        "claims_after": 0,
+        "fund_absorbed": 0,
+        "fund_after": 1000002,
+        "haircut": 0,
+        "layer": "None",
+        "rows": [
+          {
+            "channel": {
+              "txid": [
+                218,
+                148,
+                79,
+                29,
+                76,
+                150,
+                62,
+                216,
+                101,
+                124,
+                88,
+                216,
+                129,
+                158,
+                25,
+                58,
+                167,
+                120,
+                46,
+                84,
+                46,
+                108,
+                211,
+                132,
+                191,
+                18,
+                192,
+                124,
+                161,
+                174,
+                63,
+                187
+              ],
+              "vout": 0
+            },
+            "claim_after": 0,
+            "claim_before": 0,
+            "collected": 0,
+            "haircut": 0,
+            "net": 0,
+            "own_claim_used": 0,
+            "paid": 0,
+            "pnl": 0,
+            "released": 0,
+            "shortfall": 0
+          },
+          {
+            "channel": {
+              "txid": [
+                238,
+                36,
+                144,
+                126,
+                115,
+                234,
+                57,
+                156,
+                254,
+                99,
+                105,
+                162,
+                143,
+                91,
+                123,
+                158,
+                118,
+                135,
+                120,
+                172,
+                30,
+                42,
+                116,
+                230,
+                201,
+                177,
+                89,
+                9,
+                174,
+                172,
+                22,
+                144
+              ],
+              "vout": 0
+            },
+            "claim_after": 0,
+            "claim_before": 0,
+            "collected": 0,
+            "haircut": 0,
+            "net": 0,
+            "own_claim_used": 0,
+            "paid": 0,
+            "pnl": 0,
+            "released": 0,
+            "shortfall": 0
+          }
+        ],
+        "shortfall": 0
+      },
+      "committed_us": 1795785037586929,
+      "created_us": 1795785034204842,
+      "digest": "5718d1178e35d39769793941cf15f533eca6a987c9fc156aeda7ce014bb58bf9",
+      "ledger_state": "Committed",
+      "legs": [
+        "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9"
+      ],
+      "oracle_due_sats": 0,
+      "phase": "committed",
+      "prepared_us": 1795785035697380,
+      "router_due_sats": 0,
+      "seq": 301,
+      "settlements": [
+        {
+          "channel": {
+            "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+            "vout": 0
+          },
+          "closed_leg_margin_sats": 0,
+          "closed_usd": 0,
+          "margin_after_sats": 1627,
+          "net_after_usd": 1,
+          "net_before_usd": 0,
+          "opened_margin_sats": 1627,
+          "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+          "payout_sats": 0,
+          "realized_pnl_sats": 0,
+          "released_margin_sats": 0
+        },
+        {
+          "channel": {
+            "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+            "vout": 0
+          },
+          "closed_leg_margin_sats": 0,
+          "closed_usd": 0,
+          "margin_after_sats": 1627,
+          "net_after_usd": -1,
+          "net_before_usd": 0,
+          "opened_margin_sats": 1627,
+          "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+          "payout_sats": 0,
+          "realized_pnl_sats": 0,
+          "released_margin_sats": 0
+        }
+      ],
+      "window_us": [
+        1795785034100000,
+        1795785034200000
+      ]
+    },
+    "binding": {
+      "mark_id": "111ebbb3827d65b3cfddb840b7a89f94e55299f819f6b0f8a0256af814f782ae",
+      "matches": true,
+      "preimage": {
+        "execution_policy": "15efcb240c5cdee99fca2da48063b5e3f229c3a346fa2052e5d19926c97b4493",
+        "maker_entitlement": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packet_digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+        "taker_entitlement": "0000000000000000000000000000000000000000000000000000000000000000",
+        "tariff_version": 1
+      },
+      "recomputed": "111ebbb3827d65b3cfddb840b7a89f94e55299f819f6b0f8a0256af814f782ae"
+    },
+    "fees": {
+      "maker_fee_sats": 0,
+      "oracle_due_sats": 0,
+      "router_due_sats": 0,
+      "taker_fee_sats": 0
+    },
+    "ledger_state": "Committed",
+    "maker_intent": {
+      "accepted_us": 1795785033878759,
+      "action": "post",
+      "early_window_opt_in": false,
+      "expires_us": 1795785095844000,
+      "id": "c53cc9592944bec8e487762b5e2a5a1fb454dde7252a3bd3d352aabe51d4ddf6",
+      "leverage_bps": 10000,
+      "limit_usd": 61464,
+      "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+      "quantity": 1,
+      "reason": null,
+      "remaining": 0,
+      "sequence": 1795785035844000,
+      "side": "long",
+      "signature": "a0f27b34acb86bfaf4fc6b219b2be6f47a605e1d00758f2d9e2d0083b238f7d9909dc9ec7b74154565d68b40e685a656e5ec682b4d070ecfe81ecb70a946da50",
+      "status": "filled",
+      "tier": "standard"
+    },
+    "margins": {
+      "long_margin_sats": 1627,
+      "short_margin_sats": 1627
+    },
+    "packet": {
+      "age_s": 8.329405,
+      "digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+      "median_e8": 6146449500000,
+      "price_usd": 61464.495,
+      "received_us": 1795785030198067,
+      "seq": 36464,
+      "signers": [
+        1,
+        2,
+        3
+      ],
+      "slot_us": 1795785030000000,
+      "status": "VALID",
+      "verified": true
+    },
+    "settlement_note": "Batches are acknowledged by a simulated channel adapter (venue-held peer and monitor keys); no Lightning channel exists yet.",
+    "taker_intent": {
+      "accepted_us": 1795785034140158,
+      "action": "take",
+      "early_window_opt_in": false,
+      "expires_us": 1795785096097000,
+      "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+      "leverage_bps": 10000,
+      "limit_usd": 61464,
+      "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+      "quantity": 1,
+      "reason": null,
+      "remaining": 0,
+      "sequence": 1795785036097000,
+      "side": "short",
+      "signature": "b68c07b0f5d228dfb0a9518b3a40ebfbb4e14df6a59089eb1cf5ed0c2f503d3a107ebed910f0df7df48b11cb960e52012ad818bb792a8cee90d53cdafa76ccb8",
+      "status": "filled",
+      "tier": "standard"
+    },
+    "trade": {
+      "batch_seq": 301,
+      "early_window": false,
+      "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+      "maker_fee_sats": 0,
+      "maker_id": "c53cc9592944bec8e487762b5e2a5a1fb454dde7252a3bd3d352aabe51d4ddf6",
+      "maker_owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+      "maker_tier": "standard",
+      "packet_digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+      "packet_seq": 36464,
+      "price_usd": 61464,
+      "qty_usd": 1,
+      "taker_fee_sats": 0,
+      "taker_owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+      "taker_side": "short",
+      "taker_tier": "standard",
+      "ts_us": 1795785034142590
+    }
+  },
+  "name": "testnet4_batch301",
+  "post": {
+    "id": "c53cc9592944bec8e487762b5e2a5a1fb454dde7252a3bd3d352aabe51d4ddf6",
+    "intent": {
+      "action": "post",
+      "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+      "channel": {
+        "txid": "da944f1d4c963ed8657c58d8819e193aa7782e542e6cd384bf12c07ca1ae3fbb",
+        "vout": 0
+      },
+      "early_window_opt_in": false,
+      "expires_us": 1795785095844000,
+      "leverage_bps": 10000,
+      "limit_usd": 61464,
+      "max_fee_ppm": 0,
+      "max_fee_sats": 0,
+      "max_mark_age_us": 15000000,
+      "owner": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+      "quantity": 1,
+      "sequence": 1795785035844000,
+      "side": "long",
+      "signature": "a0f27b34acb86bfaf4fc6b219b2be6f47a605e1d00758f2d9e2d0083b238f7d9909dc9ec7b74154565d68b40e685a656e5ec682b4d070ecfe81ecb70a946da50",
+      "tier": "standard"
+    }
+  },
+  "previous_batch": {
+    "batch": {
+      "accounts": [
+        {
+          "approved": false,
+          "channel": {
+            "txid": "00ad2c6ef6e47bcf75efd88bd5d268871c3d5ea6c103a1a090b03715614b2a08",
+            "vout": 0
+          },
+          "fee_sats": 0,
+          "margin_sats": 4145,
+          "owner": "a3cad0739cdf8ea4a1d0e3a6cc6e6babf3b7b599ef3ffefe0800267c24db024a"
+        },
+        {
+          "approved": false,
+          "channel": {
+            "txid": "818cb277d9bb2edc46089800699aac6bd10db3f5abb0b3021281ed3c5b94fb5b",
+            "vout": 0
+          },
+          "fee_sats": 0,
+          "margin_sats": 2764,
+          "owner": "2733cacccf17747b7fd5138b64806af1e2725c7d04dd1ba5ccf9eea1431b3c6b"
+        }
+      ],
+      "acks": [],
+      "clearing": {
+        "carry_after": 0,
+        "cash_after": 1000113,
+        "cash_before": 1000091,
+        "claim_haircuts": [],
+        "claims_after": 0,
+        "fund_absorbed": 0,
+        "fund_after": 1000001,
+        "haircut": 0,
+        "layer": "Margin",
+        "rows": [
+          {
+            "channel": {
+              "txid": [
+                0,
+                173,
+                44,
+                110,
+                246,
+                228,
+                123,
+                207,
+                117,
+                239,
+                216,
+                139,
+                213,
+                210,
+                104,
+                135,
+                28,
+                61,
+                94,
+                166,
+                193,
+                3,
+                161,
+                160,
+                144,
+                176,
+                55,
+                21,
+                97,
+                75,
+                42,
+                8
+              ],
+              "vout": 0
+            },
+            "claim_after": 0,
+            "claim_before": 0,
+            "collected": 0,
+            "haircut": 0,
+            "net": 0,
+            "own_claim_used": 0,
+            "paid": 0,
+            "pnl": 0,
+            "released": 0,
+            "shortfall": 0
+          },
+          {
+            "channel": {
+              "txid": [
+                129,
+                140,
+                178,
+                119,
+                217,
+                187,
+                46,
+                220,
+                70,
+                8,
+                152,
+                0,
+                105,
+                154,
+                172,
+                107,
+                209,
+                13,
+                179,
+                245,
+                171,
+                176,
+                179,
+                2,
+                18,
+                129,
+                237,
+                60,
+                91,
+                148,
+                251,
+                91
+              ],
+              "vout": 0
+            },
+            "claim_after": 0,
+            "claim_before": 0,
+            "collected": 22,
+            "haircut": 0,
+            "net": -22,
+            "own_claim_used": 0,
+            "paid": 0,
+            "pnl": -22,
+            "released": 2756,
+            "shortfall": 0
+          }
+        ],
+        "shortfall": 0
+      },
+      "committed_us": null,
+      "created_us": 1795782919842962,
+      "digest": "44f1a58b13bf6d0a3b974d626dc8c33c7585744fb59d0cd1d9f6f2bb5c6b3448",
+      "ledger_state": "Committed",
+      "legs": [
+        "c59a00bba1eb3637a8ad21a071b8a663c5df746c29580fa37b1d46a36855d731"
+      ],
+      "oracle_due_sats": 0,
+      "phase": "committed",
+      "prepared_us": null,
+      "router_due_sats": 0,
+      "seq": 300,
+      "settlements": [
+        {
+          "channel": {
+            "txid": "00ad2c6ef6e47bcf75efd88bd5d268871c3d5ea6c103a1a090b03715614b2a08",
+            "vout": 0
+          },
+          "closed_leg_margin_sats": 0,
+          "closed_usd": 0,
+          "margin_after_sats": 4145,
+          "net_after_usd": 5,
+          "net_before_usd": 0,
+          "opened_margin_sats": 4145,
+          "owner": "a3cad0739cdf8ea4a1d0e3a6cc6e6babf3b7b599ef3ffefe0800267c24db024a",
+          "payout_sats": 0,
+          "realized_pnl_sats": 0,
+          "released_margin_sats": 0
+        },
+        {
+          "channel": {
+            "txid": "818cb277d9bb2edc46089800699aac6bd10db3f5abb0b3021281ed3c5b94fb5b",
+            "vout": 0
+          },
+          "closed_leg_margin_sats": 2764,
+          "closed_usd": 5,
+          "margin_after_sats": 0,
+          "net_after_usd": 0,
+          "net_before_usd": 5,
+          "opened_margin_sats": 0,
+          "owner": "2733cacccf17747b7fd5138b64806af1e2725c7d04dd1ba5ccf9eea1431b3c6b",
+          "payout_sats": 2734,
+          "realized_pnl_sats": -22,
+          "released_margin_sats": 2756
+        }
+      ],
+      "window_us": [
+        1795737000400000,
+        1795737000500000
+      ]
+    },
+    "fills": [
+      {
+        "batch_seq": 300,
+        "early_window": false,
+        "id": "c59a00bba1eb3637a8ad21a071b8a663c5df746c29580fa37b1d46a36855d731",
+        "maker_fee_sats": 0,
+        "maker_id": "89d8ef67e8f7f8d3518cf2c41d4b64cbbd38e7507efb0c1ee4dd65cf15b47274",
+        "maker_owner": "a3cad0739cdf8ea4a1d0e3a6cc6e6babf3b7b599ef3ffefe0800267c24db024a",
+        "maker_tier": "standard",
+        "packet_digest": null,
+        "packet_seq": null,
+        "price_usd": 60317,
+        "qty_usd": 5,
+        "taker_fee_sats": 0,
+        "taker_owner": "2733cacccf17747b7fd5138b64806af1e2725c7d04dd1ba5ccf9eea1431b3c6b",
+        "taker_side": "short",
+        "taker_tier": "standard",
+        "ts_us": 1795737000444203
+      }
+    ]
+  },
+  "status_after": {
+    "accounts": 29,
+    "agents": {
+      "active": 0,
+      "enabled": true,
+      "grants": 2
+    },
+    "clearing": {
+      "book": 112,
+      "carry": 0,
+      "cash": 1000114,
+      "claims": 0,
+      "fund": 1000002,
+      "fund0": 1000000,
+      "identity": 0,
+      "legacy": 1
+    },
+    "closing_loans": true,
+    "group_key": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+    "journal": {
+      "digest": "a992208b2a3f67f97687b87a6c5b619ab9450d4d24a567d8ad37873dc297b489",
+      "records": 90001
+    },
+    "margin_release": true,
+    "mark": {
+      "age_s": 3.081507,
+      "digest": "0931145a2a39fbf46ca569ce82a48ada54c74ba76da2fa252d9c7feac9c529b0",
+      "median_e8": 6147465000000,
+      "price_usd": 61474.65,
+      "received_us": 1795785035287041,
+      "seq": 36465,
+      "signers": [
+        1,
+        2,
+        3
+      ],
+      "slot_us": 1795785035000000,
+      "status": "VALID",
+      "verified": true
+    },
+    "market": "SHZ-BTCUSD-INV",
+    "network": "testnet4",
+    "options": {
+      "acks": true,
+      "combos": true,
+      "enabled": true,
+      "num_bits": 20,
+      "oracle": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+      "ownerless_expiry": true,
+      "staged": null,
+      "usdt": {
+        "adapter": "simulated (no on-chain transfer)",
+        "code": "USDT",
+        "decimals": 6,
+        "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+        "kind": "stable",
+        "protocol": "rgb",
+        "unit": "base unit"
+      }
+    },
+    "production_ready": false,
+    "relay": "http://127.0.0.1:8091",
+    "router": {
+      "batch_sequence": 301,
+      "clock_us": 1795785035287042,
+      "fills": 301,
+      "resting": 8
+    },
+    "spot": {
+      "base": {
+        "code": "BTC",
+        "kind": "btc",
+        "unit": "sat"
+      },
+      "enabled": true,
+      "lot_sats": 1000,
+      "market": "SHZ-BTCUSDT-SPOT",
+      "pair": "6b7ef4bc3fbd90f177aede130769ce4d51fda975a5d54c9e252921c34a20fbbf",
+      "price_unit": "quote base units per BTC",
+      "quote": {
+        "adapter": "simulated (no on-chain transfer)",
+        "code": "USDT",
+        "decimals": 6,
+        "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+        "kind": "stable",
+        "protocol": "rgb",
+        "unit": "base unit"
+      },
+      "settlement": "venue ledger; USDT is a simulated adapter credit, nothing moves on chain (on-chain path: RGB-02 atomic BTC/RGB swaps, blocked upstream)",
+      "size_unit": "sats",
+      "tick": 100000
+    }
+  },
+  "status_before": {
+    "accounts": 29,
+    "agents": {
+      "active": 0,
+      "enabled": true,
+      "grants": 2
+    },
+    "clearing": {
+      "book": 112,
+      "carry": 0,
+      "cash": 1000114,
+      "claims": 0,
+      "fund": 1000002,
+      "fund0": 1000000,
+      "identity": 0,
+      "legacy": 1
+    },
+    "closing_loans": true,
+    "group_key": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+    "journal": {
+      "digest": "c564f57e4bbbba0a5a115cd6e1915ec0cf34f6157021107cb5684c19442975fe",
+      "records": 89992
+    },
+    "margin_release": true,
+    "mark": {
+      "age_s": 3.625689,
+      "digest": "e07dbd9357052366a2dab62552c7fce507e405e79942bdf0046793c1c8db1bea",
+      "median_e8": 6146449500000,
+      "price_usd": 61464.495,
+      "received_us": 1795785030198067,
+      "seq": 36464,
+      "signers": [
+        1,
+        2,
+        3
+      ],
+      "slot_us": 1795785030000000,
+      "status": "VALID",
+      "verified": true
+    },
+    "market": "SHZ-BTCUSD-INV",
+    "network": "testnet4",
+    "options": {
+      "acks": true,
+      "combos": true,
+      "enabled": true,
+      "num_bits": 20,
+      "oracle": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+      "ownerless_expiry": true,
+      "staged": null,
+      "usdt": {
+        "adapter": "simulated (no on-chain transfer)",
+        "code": "USDT",
+        "decimals": 6,
+        "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+        "kind": "stable",
+        "protocol": "rgb",
+        "unit": "base unit"
+      }
+    },
+    "production_ready": false,
+    "relay": "http://127.0.0.1:8091",
+    "router": {
+      "batch_sequence": 300,
+      "clock_us": 1795785030198068,
+      "fills": 300,
+      "resting": 8
+    },
+    "spot": {
+      "base": {
+        "code": "BTC",
+        "kind": "btc",
+        "unit": "sat"
+      },
+      "enabled": true,
+      "lot_sats": 1000,
+      "market": "SHZ-BTCUSDT-SPOT",
+      "pair": "6b7ef4bc3fbd90f177aede130769ce4d51fda975a5d54c9e252921c34a20fbbf",
+      "price_unit": "quote base units per BTC",
+      "quote": {
+        "adapter": "simulated (no on-chain transfer)",
+        "code": "USDT",
+        "decimals": 6,
+        "id": "4d96ef854df462263b583115bcecfb09e01876e8515b1ee3b12c12d59c7165df",
+        "kind": "stable",
+        "protocol": "rgb",
+        "unit": "base unit"
+      },
+      "settlement": "venue ledger; USDT is a simulated adapter credit, nothing moves on chain (on-chain path: RGB-02 atomic BTC/RGB swaps, blocked upstream)",
+      "size_unit": "sats",
+      "tick": 100000
+    }
+  },
+  "take": {
+    "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+    "intent": {
+      "action": "take",
+      "cancel_target": "0000000000000000000000000000000000000000000000000000000000000000",
+      "channel": {
+        "txid": "ee24907e73ea399cfe6369a28f5b7b9e768778ac1e2a74e6c9b15909aeac1690",
+        "vout": 0
+      },
+      "early_window_opt_in": false,
+      "expires_us": 1795785096097000,
+      "leverage_bps": 10000,
+      "limit_usd": 61464,
+      "max_fee_ppm": 0,
+      "max_fee_sats": 0,
+      "max_mark_age_us": 15000000,
+      "owner": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+      "quantity": 1,
+      "sequence": 1795785036097000,
+      "side": "short",
+      "signature": "b68c07b0f5d228dfb0a9518b3a40ebfbb4e14df6a59089eb1cf5ed0c2f503d3a107ebed910f0df7df48b11cb960e52012ad818bb792a8cee90d53cdafa76ccb8",
+      "tier": "standard"
+    }
+  },
+  "template": {
+    "authority_key": "ea717bfe557a706406e9f6f0189f0030b586502489539e491e985e0fb9756078",
+    "collar_bps": 200,
+    "entitlement_key": "6c83146ced016e610c2051f2a812cfd9a9740d47da3284d01248622fdbb0614b",
+    "execution_policy": "15efcb240c5cdee99fca2da48063b5e3f229c3a346fa2052e5d19926c97b4493",
+    "group_key": "403c496669cba966c14d989711a2a16026c7c295305301e5c61b96eb718cfdb8",
+    "leverage_bps": {
+      "max": 100000,
+      "min": 1000
+    },
+    "market": "SHZ-BTCUSD-INV",
+    "max_mark_age_us": 15000000,
+    "router": 1,
+    "scope": {
+      "epoch": 1,
+      "network": "c48ee5347fe7d8f52804fb64398b68005b66907981fdb928f0c9e0c67757a4e7",
+      "policy": "99eb90bfbccddf2b60e24b5e308eec4dcaf09579e5bdc946d280d43604c0d07e"
+    },
+    "tariff": {
+      "maker_ppm": [
+        0,
+        0,
+        20
+      ],
+      "taker_ppm": [
+        0,
+        50,
+        200
+      ]
+    },
+    "tariff_version": 1
+  },
+  "venue": "https://shz-venue.170-75-168-145.sslip.io"
+}

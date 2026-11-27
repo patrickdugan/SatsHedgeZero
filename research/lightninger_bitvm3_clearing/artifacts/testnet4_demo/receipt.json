@@ -1,0 +1,139 @@
+{
+  "adaptor_signatures_verified": 3066,
+  "attested_price_usd": 61346,
+  "broadcast": "none",
+  "cet": {
+    "fee_sats": 300,
+    "index": 527,
+    "locktime": 163662,
+    "outputs": [
+      {
+        "sats": 1629,
+        "spk": "5120db95e279db7fd536477dc9c1f1414b89fcb2cd46ab6c587cf1308e8d4d9e58be",
+        "who": "bob (short)"
+      },
+      {
+        "sats": 995,
+        "spk": "51201ddf1d4cd86c2e3f1ab6b0fbbe54a39fe2d02c9366e49bed4ca39bde0f9785b6",
+        "who": "alice (long)"
+      },
+      {
+        "sats": 330,
+        "spk": "5120cc3166f6f4ef93c81c0561782d440c2d975b415040cfabdb4ef7849a2c613bb8",
+        "who": "cpfp anchor"
+      }
+    ],
+    "payout_at_price": {
+      "long_sats": 1624,
+      "short_sats": 1630
+    },
+    "prefix_len": 13,
+    "range_usd": [
+      61312,
+      61439
+    ],
+    "txid": "cac6a1a58bf8ee7562411deb4755baf6182fc7a24e6e46f6a0e60ee5bca29a3f",
+    "vsize": 257
+  },
+  "cet_count": 1022,
+  "contract": {
+    "alice_pubkey_x": "c6d8391669c0e6a3ee172ea855cc237431f142cfdb99628cf23c7c127b6ca105",
+    "bob_pubkey_x": "14ca6dece201a570616b40108229dddee51a33a2b9e164ca6cafcb252c8f47de",
+    "dlc_address": "tb1ptfwrch2xa5har2dkxlc4stta0cnlsug5udlafc3sewc3ehcxpjhs3faj2s",
+    "dlc_sats": 3254,
+    "internal_key": "c99e9965166e7ff80516494709db8fdfdc31b0626500bb70dc3652fc2ff584ab",
+    "long_margin_sats": 1627,
+    "maturity_height": 163661,
+    "refund_cltv_height": 164093,
+    "router_guard_pubkey_x": "66e893e1842932194b0e61d85dcf523ba56e40413f100e89c9db5ea7c9f7e55e",
+    "short_margin_sats": 1627,
+    "unilateral_cltv_height": 163662
+  },
+  "core": "/Satoshi:31.1.0/",
+  "event_id": "SHZ-BTCUSD-20261127T1345Z",
+  "fill": {
+    "batch_seq": 301,
+    "id": "6f469f5cb150a13f6ecc52bdca8d41811dae222feb2cba8c6f0b36530ccb32b9",
+    "long_leverage_bps": 10000,
+    "notional_usd": 1,
+    "price_usd": 61464,
+    "short_leverage_bps": 10000
+  },
+  "funding": {
+    "fee_sats": 487,
+    "locked_inputs": [
+      {
+        "txid": "9d4134097b71dbc68f20a2cb637f764aa9a8e05f4afaae229810abaff58c5e28",
+        "vout": 0
+      },
+      {
+        "txid": "ac51783fe1fc33237c1df53b04679c232f8dbcc53e69f19647b02ab30cd24378",
+        "vout": 2
+      },
+      {
+        "txid": "2f687523db237dcd0ffc8d19a619be0bad1a0ba471243944802e357d161e693b",
+        "vout": 0
+      },
+      {
+        "txid": "67857223e1cf5502a30ec26f1a93738ad824a58b4306fe3e9824e04b0e8854b3",
+        "vout": 1
+      },
+      {
+        "txid": "9219c81b7552735250c956ce8fd3129c325482f62545c647a72bf87e0d66e2f4",
+        "vout": 0
+      }
+    ],
+    "txid": "e6bbb87d249d1f57f622038833ff34e4cebef549de54e1403762d9f8fa02700e",
+    "vout": 0,
+    "vsize": 341
+  },
+  "network": "bitcoin-testnet4",
+  "other_cets_not_completable_checked": 64,
+  "refund": {
+    "locktime": 164093,
+    "txid": "6e303661dcb86b6db1c34cc01d7baf95b50d3eb9678350189e4d38610785d401"
+  },
+  "testmempoolaccept_funding_and_cet": [
+    {
+      "allowed": true,
+      "fees": {
+        "base": 4.87e-6,
+        "effective-feerate": 0.00001428,
+        "effective-includes": [
+          "dddb8ebe70e6c8d65beaf6eaf4e98b9a513466916d7aca23e1bda6c80b162647"
+        ]
+      },
+      "txid": "e6bbb87d249d1f57f622038833ff34e4cebef549de54e1403762d9f8fa02700e",
+      "vsize": 341,
+      "wtxid": "dddb8ebe70e6c8d65beaf6eaf4e98b9a513466916d7aca23e1bda6c80b162647"
+    },
+    {
+      "allowed": true,
+      "fees": {
+        "base": 3e-6,
+        "effective-feerate": 0.00001167,
+        "effective-includes": [
+          "132e3f195531eb3a1706f67d1679a738ae33f6c7b1dfdeac67c25eab63c40fee"
+        ]
+      },
+      "txid": "cac6a1a58bf8ee7562411deb4755baf6182fc7a24e6e46f6a0e60ee5bca29a3f",
+      "vsize": 257,
+      "wtxid": "132e3f195531eb3a1706f67d1679a738ae33f6c7b1dfdeac67c25eab63c40fee"
+    }
+  ],
+  "testmempoolaccept_funding_and_refund": [
+    {
+      "txid": "e6bbb87d249d1f57f622038833ff34e4cebef549de54e1403762d9f8fa02700e",
+      "wtxid": "dddb8ebe70e6c8d65beaf6eaf4e98b9a513466916d7aca23e1bda6c80b162647"
+    },
+    {
+      "allowed": false,
+      "reject-details": "non-final",
+      "reject-reason": "non-final",
+      "txid": "6e303661dcb86b6db1c34cc01d7baf95b50d3eb9678350189e4d38610785d401",
+      "wtxid": "5237311769248daa650a2bc997e02bd5f7286e6f4f1ec151e4683d281a25ae2b"
+    }
+  ],
+  "tip_height_at_settle": 163663,
+  "wallet": "bitvm-arena-staging"
+}
