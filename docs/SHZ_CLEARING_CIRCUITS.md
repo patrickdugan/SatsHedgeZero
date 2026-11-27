@@ -20,6 +20,7 @@ The review of the earlier drafts these replace is `docs/SHZ_CLEARING_CIRCUITS_RE
 | `tests/mutation_sweep.rs` | field-level mutation sweep of the clearing step |
 | `tests/tapsighash_vectors.rs` | BIP-341 wallet test vectors (`keyPathSpending`) |
 | `tests/core_regtest.rs` | Bitcoin Core 31.1 regtest: wallet-signed transactions for all 7 hash types, annex spends through `generateblock` |
+| `tests/core_scriptpath.rs` | Bitcoin Core 31.1 regtest: script-path spends (2-signature leaf, codeseparator) for the bind mode |
 
 Build and test (git bash, as the other research workspaces):
 
@@ -200,6 +201,36 @@ hashes, `sha_single_output`, `sha_annex`, the `TapSighash` message (up to 5 bloc
 midstate) and the accumulator. Each step recomputes the component hashes, so the relation's
 cost grows with the transaction, not with the number of signatures.
 
+### Bind mode: script-path signatures (`TxShape::bind`)
+
+With `bind` set, the same step also covers tapscript (script-path) signatures, as DLC CETs that
+spend a script leaf need. Per signature the witness adds a `ScriptPath { key, tapleaf, codesep }`
+(absent for key path), and:
+- `SigMsg` gains the BIP-342 extension `tapleaf ‖ 0x00 (key_version) ‖ codesep_pos (u32 LE)` and
+  `spend_type = 2·ext + annex` (6 layouts × annex × ext = up to 24 configurations);
+- the signing key is the script-path key for a script-path signature and the P2TR output key
+  otherwise; on a key-path signature the script-path fields must be zero;
+- the key-path mask counts key-path signatures only (a leaf can carry several signatures);
+- `z` has arity 10: the 8 fields above plus a **parameter accumulator**
+  `par' = SHA256("LIGHTNINGER/TAPSIG/PARAMS/V1" ‖ par ‖ input ‖ hash_type ‖ ext ‖ tapleaf ‖ codesep ‖
+  key ‖ r_x ‖ s ‖ annex_present ‖ sha_annex)` (zeros for absent fields).
+
+The authorization accumulator binds each message to a valid BIP-340 signature (with the Secq
+fold). The parameter accumulator tells a verifier which input, key, leaf and codeseparator
+position each signature was checked for, in terms it rebuilds from the spend's script execution
+(M17's claims and compiled program) with no curve or sighash work. Key-path relations (`bind`
+off) are unchanged: the shapes above have the same constraint counts as before bind mode.
+
+| Shape | constraints |
+|---|---:|
+| 3 P2TR inputs, 3 P2TR outputs, bind, no annex | 748,719 |
+
+`prove-tapsighash` takes `vector`, `core:<label>` (`artifacts/core_sighash_txs.json`),
+`corescript:<label>` (`artifacts/core_scriptpath_txs.json`) and `testnet4:<label>`
+(`artifacts/testnet4_demo/txs.json`). A file holds `[{label, signed_hex, amounts, spks, slots}]`
+with each slot `{input, hash_type, annex, sig_rx, sig_s, script_path: null | {key, tapleaf,
+codesep}}`; bind mode is used when any slot has a script path.
+
 ## 3. Ground truth
 
 ### Clearing against `shz_dex::routing::clearing`
@@ -268,6 +299,14 @@ no lane signed.
   - For all 12 inputs the native sighash verifies the signature (Core's, or consensus-accepted),
     and the step (one relation, shape 3-in/3-out P2TR, `annex_max = 40`) is satisfied with the
     expected outputs.
+- Script path (`tests/core_scriptpath.rs`, Bitcoin Core 31.1 regtest): one transaction whose
+  input 0 spends a leaf `<A> CHECKSIGVERIFY <B> CHECKSIG` (two signatures: DEFAULT and ALL),
+  input 1 a leaf `1 DROP CODESEPARATOR <C> CHECKSIG` (SINGLE|ANYONECANPAY, codeseparator at
+  opcode 2), input 2 a key-path `rawtr` output. Signed with the native BIP-341/342 reference;
+  `testmempoolaccept` allows it and it is mined. Input 1 signed for "no codeseparator" is
+  refused (`Invalid Schnorr signature`). All four slots satisfy the bind relation with the
+  expected accumulators; a tapleaf on the key-path slot, or another codeseparator position,
+  does not reach the real outputs.
 - Rejected: hash types `0x04` and `0x80` (`ht_one`), an input signed twice (`not_signed_yet`),
   SINGLE on input 3 of a 2-output transaction (`single_has_output`), a `z` with another txid, a
   prevout amount that disagrees with `spent`.
@@ -297,6 +336,12 @@ single-threaded mutation sweep ran alongside. Peak working set sampled every 0.5
 | ↳ Secq256k1 BIP-340, same slots | 3 | accumulator `64642b941761b8a1…` equal: True | 144,959 / 10,787 | 13.5 s | 11.8 s | 54.1 s | 1.67 s | 11,980 B | (same process) |
 | TapSighash, `bip341_vector` | 7 | 0x03,0x83,0x01,0x00,0x02,0x82,0x81 | 897,994 / 10,538 | 29.5 s | 8.8 s (1.26 s/step) | 86.2 s | 2.78 s | 12,688 B | 2,135 MiB |
 | ↳ Secq256k1 BIP-340, same slots | 7 | accumulator `a62892f297589eb0…` equal: True | 144,959 / 10,787 | 5.5 s | 3.5 s | 28.3 s | 0.92 s | 11,980 B | (same process) |
+
+Bind mode, `corescript:scriptpath` (3 script-path signatures and 1 key-path signature, one
+transaction): 760,268 primary constraints, setup 17.5 s, fold 3.2 s for 4 steps, compression
+90.7 s, verification 4.1 s, 12,752-byte proof, 1,967 MiB peak; negative controls rejected. The
+Secq256k1 fold over the same 4 signatures (fold 1.4 s, compression 24.3 s) ends in the same
+authorization accumulator, and the parameter accumulator is `54ed2a40…`.
 
 - The clearing relation has one verifying key for every K
   (`e314976c5d20bca0735782d216d2431e43cc8dec40ea48dedcb38dbd5467b1e5` for `A = 6, R = 4`).
@@ -380,6 +425,8 @@ keeps every constraint satisfied is a second witness with the same public IO.
 | TapSighash vector input 1, SINGLE\|ANYONECANPAY | 886,447 | 885,540 | 1,771,078 / 1,771,078 | 4,165,758 / 4,165,758 | 0 |
 | TapSighash vector input 4, DEFAULT | 886,447 | 885,540 | 1,771,078 / 1,771,078 | 4,163,114 / 4,163,114 | 0 |
 | TapSighash Core annex input 0 (5-byte annex) | 673,274 | 672,533 | 1,345,064 / 1,345,064 | 3,196,955 / 3,196,955 | 0 |
+| TapSighash bind, Core script-path slot 1 (65-byte ALL signature, leaf with 2 keys) | 748,719 | 747,875 | 1,495,748 / 1,495,748 | 3,553,899 / 3,553,899 | 0 |
+| TapSighash bind, Core key-path slot 3 | 748,719 | 747,875 | 1,495,748 / 1,495,748 | 3,550,873 / 3,550,873 | 0 |
 | TapSighash 1-in/1-out (small, exported) | 431,919 | 431,455 | 862,906 / 862,906 | 2,033,735 / 2,033,735 | 0 |
 
 (Variables include the constant one; "single" counts two perturbations per variable.)

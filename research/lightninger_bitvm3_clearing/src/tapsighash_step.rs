@@ -166,6 +166,11 @@ impl Tx {
 
 /// BIP-341 `SigMsg` for a key-path spend (`ext_flag = 0`), natively.
 pub fn sig_msg(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], input: usize, hash_type: u8, annex: Option<&[u8]>) -> Result<Vec<u8>, String> {
+    sig_msg_ext(tx, amounts, spks, input, hash_type, annex, None)
+}
+
+/// BIP-341 `SigMsg` with the BIP-342 extension when `ext` is `Some(script path)`.
+pub fn sig_msg_ext(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], input: usize, hash_type: u8, annex: Option<&[u8]>, ext: Option<&ScriptPath>) -> Result<Vec<u8>, String> {
     if !HASH_TYPES.contains(&hash_type) {
         return Err(format!("invalid hash type {hash_type:#04x}"));
     }
@@ -195,7 +200,7 @@ pub fn sig_msg(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], input: usize, hash_ty
         let o: Vec<u8> = tx.outputs.iter().flat_map(Tx::out_bytes).collect();
         m.extend(sha256_native(&o));
     }
-    m.push(annex.is_some() as u8);
+    m.push(2 * ext.is_some() as u8 + annex.is_some() as u8);
     if acp {
         let x = &tx.inputs[input];
         m.extend(x.txid);
@@ -216,11 +221,51 @@ pub fn sig_msg(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], input: usize, hash_ty
         let o = tx.outputs.get(input).ok_or("SIGHASH_SINGLE without a matching output")?;
         m.extend(sha256_native(&Tx::out_bytes(o)));
     }
+    if let Some(e) = ext {
+        m.extend(e.tapleaf);
+        m.push(0x00);
+        m.extend(e.codesep.to_le_bytes());
+    }
     Ok(m)
 }
 
 pub fn tap_sighash(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], input: usize, hash_type: u8, annex: Option<&[u8]>) -> Result<[u8; 32], String> {
     Ok(tagged_hash(b"TapSighash", &sig_msg(tx, amounts, spks, input, hash_type, annex)?))
+}
+
+pub fn tap_sighash_ext(tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], input: usize, hash_type: u8, annex: Option<&[u8]>, ext: Option<&ScriptPath>) -> Result<[u8; 32], String> {
+    Ok(tagged_hash(b"TapSighash", &sig_msg_ext(tx, amounts, spks, input, hash_type, annex, ext)?))
+}
+
+/// A tapscript signature: the key it is checked against (from the script, not the output),
+/// the tapleaf hash of the executed script and the codeseparator position (`u32::MAX` for none).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScriptPath {
+    pub key: [u8; 32],
+    pub tapleaf: [u8; 32],
+    pub codesep: u32,
+}
+
+pub const PARAMS_TAG: &[u8] = b"LIGHTNINGER/TAPSIG/PARAMS/V1";
+
+/// The parameter accumulator of the bind mode: what each signature is checked as, in terms a
+/// verifier holding the spend's script claims recomputes without any curve or sighash work.
+/// `SHA256(PARAMS_TAG || par || input || hash_type || ext || tapleaf || codesep_le32 || key ||
+/// r_x || s || annex_present || sha_annex)` (zeros for absent fields).
+pub fn params_next(par: &[u8; 32], slot: &SigSlot, ext: Option<&ScriptPath>, key: &[u8; 32]) -> [u8; 32] {
+    let mut b = PARAMS_TAG.to_vec();
+    b.extend(par);
+    b.push(slot.input as u8);
+    b.push(slot.hash_type);
+    b.push(ext.is_some() as u8);
+    b.extend(ext.map_or([0; 32], |e| e.tapleaf));
+    b.extend(ext.map_or(0, |e| e.codesep).to_le_bytes());
+    b.extend(key);
+    b.extend(slot.sig_rx);
+    b.extend(slot.sig_s);
+    b.push(slot.annex.is_some() as u8);
+    b.extend(slot.annex.as_ref().map_or([0; 32], |a| sha256_native(&[compact(a.len()), a.clone()].concat())));
+    sha256_native(&b)
 }
 
 /// `SHA256(sha_amounts || sha_scriptpubkeys)`.
@@ -236,6 +281,10 @@ pub struct TxShape {
     pub prevout_spk_lens: Vec<usize>,
     pub out_spk_lens: Vec<usize>,
     pub annex_max: usize,
+    /// Bind mode: script-path (tapscript) signatures allowed, and `z` carries the parameter
+    /// accumulator (arity 10). Off: the key-path relation of arity 8.
+    #[serde(default)]
+    pub bind: bool,
 }
 
 impl TxShape {
@@ -245,6 +294,7 @@ impl TxShape {
             prevout_spk_lens: spks.iter().map(|s| s.len()).collect(),
             out_spk_lens: tx.outputs.iter().map(|o| o.spk.len()).collect(),
             annex_max,
+            bind: false,
         }
     }
     pub fn n_in(&self) -> usize {
@@ -279,21 +329,32 @@ pub struct SighashStep {
     pub step: u8,
     pub prev_acc: [u8; 32],
     pub mask: u64,
+    /// Bind mode only: a script-path signature, and the parameter accumulator before this step.
+    pub ext: Option<ScriptPath>,
+    pub par: [u8; 32],
 }
 
 impl SighashStep {
     pub fn pubkey_x(&self) -> [u8; 32] {
-        self.spks[self.slot.input][2..34].try_into().unwrap()
+        match &self.ext {
+            Some(e) => e.key,
+            None => self.spks[self.slot.input][2..34].try_into().unwrap(),
+        }
     }
     pub fn sighash(&self) -> [u8; 32] {
-        tap_sighash(&self.tx, &self.amounts, &self.spks, self.slot.input, self.slot.hash_type, self.slot.annex.as_deref()).expect("valid slot")
+        tap_sighash_ext(&self.tx, &self.amounts, &self.spks, self.slot.input, self.slot.hash_type, self.slot.annex.as_deref(), self.ext.as_ref()).expect("valid slot")
     }
     /// The MNR-05 slot this step accumulates (the Secq step checks its signature).
     pub fn bip340_slot(&self) -> Bip340StepSlot {
         Bip340StepSlot { step_idx: self.step, sighash_flag: self.slot.hash_type, pubkey_x: self.pubkey_x(), sighash32: self.sighash(), sig_rx: self.slot.sig_rx, sig_s: self.slot.sig_s }
     }
     pub fn z_in(&self) -> Vec<F> {
-        tap_z(self.step as u64, &self.prev_acc, &self.tx.txid(), &spent_commitment(&self.amounts, &self.spks), self.mask)
+        let mut z = tap_z(self.step as u64, &self.prev_acc, &self.tx.txid(), &spent_commitment(&self.amounts, &self.spks), self.mask);
+        if self.shape.bind {
+            let (p0, p1) = le_halves(&self.par);
+            z.extend([fu(p0), fu(p1)]);
+        }
+        z
     }
     /// A setup witness of the same shape: zero bytes, the first taproot input, `SIGHASH_DEFAULT`.
     pub fn blank(shape: &TxShape) -> Self {
@@ -315,6 +376,8 @@ impl SighashStep {
             step: 0,
             prev_acc: [0; 32],
             mask: 0,
+            ext: None,
+            par: [0; 32],
         }
     }
 }
@@ -333,7 +396,7 @@ pub fn sighash_steps(shape: &TxShape, tx: &Tx, amounts: &[u64], spks: &[Vec<u8>]
     let mut steps = Vec::new();
     let mut b = Vec::new();
     for (i, s) in slots.iter().enumerate() {
-        let st = SighashStep { shape: shape.clone(), tx: tx.clone(), amounts: amounts.to_vec(), spks: spks.to_vec(), slot: s.clone(), step: i as u8, prev_acc: acc, mask };
+        let st = SighashStep { shape: shape.clone(), tx: tx.clone(), amounts: amounts.to_vec(), spks: spks.to_vec(), slot: s.clone(), step: i as u8, prev_acc: acc, mask, ext: None, par: [0; 32] };
         let bs = st.bip340_slot();
         acc = bs.next_accumulator(&acc);
         mask |= 1 << s.input;
@@ -343,9 +406,33 @@ pub fn sighash_steps(shape: &TxShape, tx: &Tx, amounts: &[u64], spks: &[Vec<u8>]
     (steps, b, acc, mask)
 }
 
+/// Bind-mode steps: key-path (`None`) and script-path signatures over one transaction, with the
+/// authorization accumulator, the key-path mask and the parameter accumulator threaded through.
+pub fn bound_steps(shape: &TxShape, tx: &Tx, amounts: &[u64], spks: &[Vec<u8>], slots: &[(SigSlot, Option<ScriptPath>)]) -> (Vec<SighashStep>, Vec<Bip340StepSlot>, [u8; 32], u64, [u8; 32]) {
+    assert!(shape.bind);
+    let (mut acc, mut mask, mut par) = ([0u8; 32], 0u64, [0u8; 32]);
+    let (mut steps, mut b) = (Vec::new(), Vec::new());
+    for (i, (s, e)) in slots.iter().enumerate() {
+        let st = SighashStep { shape: shape.clone(), tx: tx.clone(), amounts: amounts.to_vec(), spks: spks.to_vec(), slot: s.clone(), step: i as u8, prev_acc: acc, mask, ext: e.clone(), par };
+        let bs = st.bip340_slot();
+        acc = bs.next_accumulator(&acc);
+        par = params_next(&par, s, e.as_ref(), &st.pubkey_x());
+        if e.is_none() {
+            mask |= 1 << s.input;
+        }
+        b.push(bs);
+        steps.push(st);
+    }
+    (steps, b, acc, mask, par)
+}
+
 impl StepCircuit<F> for SighashStep {
     fn arity(&self) -> usize {
-        8
+        if self.shape.bind {
+            10
+        } else {
+            8
+        }
     }
 
     fn synthesize<CS: ConstraintSystem<F>>(&self, cs: &mut CS, z: &[AllocatedNum<F>]) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
@@ -354,7 +441,7 @@ impl StepCircuit<F> for SighashStep {
         assert!(n_in <= 32);
         let one = W::konst::<CS>(1);
         let tx = &self.tx;
-        assert_eq!(TxShape::of(tx, &self.spks, sh.annex_max), *sh, "witness does not have the relation's shape");
+        assert_eq!(TxShape { bind: sh.bind, ..TxShape::of(tx, &self.spks, sh.annex_max) }, *sh, "witness does not have the relation's shape");
 
         // ------------------------------------------------ transaction bytes and txid
         let mut tx_bits: Vec<Boolean> = Vec::new();
@@ -424,8 +511,14 @@ impl StepCircuit<F> for SighashStep {
         for &i in &taproot {
             hit = hit.add(&mul(cs.namespace(|| format!("hit{i}")), &sel[i], &W::bit(&mask_bits[i], CS::one()))?);
         }
+        // bind mode: a script-path signature (ext = 1) leaves the key-path mask alone
+        let ext = if sh.bind { alloc_bit(cs.namespace(|| "ext"), self.ext.is_some())? } else { W::zero() };
+        let keypath = ext.not::<CS>();
+        let hit = if sh.bind { mul(cs.namespace(|| "hit_kp"), &hit, &keypath)? } else { hit };
         enforce_eq(cs, "not_signed_yet", &hit, &W::zero());
-        let mask_out = mask.add(&W::sum(&sel.iter().enumerate().map(|(i, s)| s.scale(1i128 << i)).collect::<Vec<_>>()));
+        let added = W::sum(&sel.iter().enumerate().map(|(i, s)| s.scale(1i128 << i)).collect::<Vec<_>>());
+        let added = if sh.bind { mul(cs.namespace(|| "mask_kp"), &added, &keypath)? } else { added };
+        let mask_out = mask.add(&added);
         let tsel: Vec<W> = taproot.iter().map(|&i| sel[i].clone()).collect();
         let pick = |cs: &mut CS, name: &str, v: &[Vec<Boolean>]| mux_bits(cs.namespace(|| name.to_string()), &tsel, &taproot.iter().map(|&i| v[i].clone()).collect::<Vec<_>>());
         let my_outpoint = pick(cs, "my_outpoint", &outpoints)?;
@@ -437,7 +530,24 @@ impl StepCircuit<F> for SighashStep {
         for (i, (x, y)) in my_spk[..24].iter().zip(&p2tr).enumerate() {
             cs.enforce(|| format!("p2tr{i}"), |_| x.lc(CS::one(), F::ONE) - &y.lc(CS::one(), F::ONE), |l| l + CS::one(), |l| l);
         }
-        let px = my_spk[24..].to_vec();
+        let spk_x = my_spk[24..].to_vec();
+        // bind mode: the script-path fields (zero on a key-path step) and the signing key
+        let e = self.ext.clone().unwrap_or(ScriptPath { key: [0; 32], tapleaf: [0; 32], codesep: 0 });
+        let (px, leaf_bits, csep_bits) = if sh.bind {
+            let key = alloc_bytes(cs.namespace(|| "script_key"), &e.key)?;
+            let leaf = alloc_bytes(cs.namespace(|| "tapleaf"), &e.tapleaf)?;
+            let csep = alloc_bytes(cs.namespace(|| "codesep"), &e.codesep.to_le_bytes())?;
+            for (name, bytes) in [("key", &key), ("leaf", &leaf), ("csep", &csep)] {
+                for (i, byte) in bytes.chunks(8).enumerate() {
+                    let v = W { lc: lc_bytes_be::<CS>(byte), v: bits_value(byte)[0] as i128 };
+                    enforce_mul(cs, &format!("kp_zero_{name}{i}"), &keypath, &v, &W::zero());
+                }
+            }
+            let px = mux_bits(cs.namespace(|| "px"), &[keypath.clone(), ext.clone()], &[spk_x, key])?;
+            (px, leaf, csep)
+        } else {
+            (spk_x, vec![], vec![])
+        };
 
         // ------------------------------------------------ hash type
         let ht = self.slot.hash_type;
@@ -496,8 +606,16 @@ impl StepCircuit<F> for SighashStep {
         };
         let present_b = Boolean::from(nova_snark::frontend::gadgets::boolean::AllocatedBit::alloc(cs.namespace(|| "spend_type"), Some(present.v == 1))?);
         enforce_eq(cs, "spend_type_bit", &W::bit(&present_b, CS::one()), &present);
-        let mut spend_type = vec![Boolean::constant(false); 7];
-        spend_type.push(present_b);
+        let mut spend_type = vec![Boolean::constant(false); 6];
+        let ext_b = if sh.bind {
+            let b = Boolean::from(nova_snark::frontend::gadgets::boolean::AllocatedBit::alloc(cs.namespace(|| "ext_bit"), Some(self.ext.is_some()))?);
+            enforce_eq(cs, "ext_bit_eq", &W::bit(&b, CS::one()), &ext);
+            b
+        } else {
+            Boolean::constant(false)
+        };
+        spend_type.push(ext_b.clone());
+        spend_type.push(present_b.clone());
 
         // ------------------------------------------------ input index (non-ACP)
         let idx_bits = alloc_bits_le(cs.namespace(|| "idx"), idx.v, 8)?;
@@ -515,14 +633,18 @@ impl StepCircuit<F> for SighashStep {
         acp_data.extend(my_amount);
         acp_data.extend(my_spk);
         acp_data.extend(my_seq);
+        let mut ext_tail = leaf_bits.clone();
+        ext_tail.extend(const_bits(&[0x00]));
+        ext_tail.extend(csep_bits.clone());
         let mut configs = Vec::new();
         for (c, class) in classes.iter().enumerate() {
             let (acp, all, sgl) = (c >= 3, c % 3 == 0, c % 3 == 2);
-            for an in [false, true] {
-                if an && sh.annex_max == 0 {
+            for (an, xt) in [(false, false), (true, false), (false, true), (true, true)] {
+                if (an && sh.annex_max == 0) || (xt && !sh.bind) {
                     continue;
                 }
-                let s = if sh.annex_max == 0 { class.clone() } else { mul(cs.namespace(|| format!("cfg{c}_{an}")), class, &if an { present.clone() } else { present.not::<CS>() })? };
+                let s = if sh.annex_max == 0 { class.clone() } else { mul(cs.namespace(|| format!("cfg{c}_{an}_{xt}")), class, &if an { present.clone() } else { present.not::<CS>() })? };
+                let s = if sh.bind { mul(cs.namespace(|| format!("cfgx{c}_{an}_{xt}")), &s, &if xt { ext.clone() } else { keypath.clone() })? } else { s };
                 let mut m = head.clone();
                 if !acp {
                     m.extend(four.iter().cloned());
@@ -537,6 +659,9 @@ impl StepCircuit<F> for SighashStep {
                 }
                 if sgl {
                     m.extend(sha_single.iter().cloned());
+                }
+                if xt {
+                    m.extend(ext_tail.iter().cloned());
                 }
                 configs.push((s, m));
             }
@@ -556,18 +681,55 @@ impl StepCircuit<F> for SighashStep {
         pre.extend(prev);
         pre.extend(step_bits);
         pre.extend(le_bits_to_bytes(&ht_bits_le));
-        pre.extend(px);
+        pre.extend(px.iter().cloned());
         pre.extend(sighash);
-        pre.extend(rx);
-        pre.extend(s);
+        pre.extend(rx.iter().cloned());
+        pre.extend(s.iter().cloned());
         let acc = sha256_fixed(cs.namespace(|| "acc"), &pre)?;
         let (acc_lo, acc_hi) = digest_to_halves(cs.namespace(|| "acc_out"), &acc)?;
+        let par_out = if sh.bind {
+            let par_in = alloc_bytes(cs.namespace(|| "par_in"), &self.par)?;
+            bind_halves(cs, "par_in", &par_in, &z[8], &z[9]);
+            let annex_hash = mux_bits(cs.namespace(|| "annex_hash"), &[present.not::<CS>(), present.clone()], &[vec![Boolean::constant(false); 256], sha_annex.clone()])?;
+            let mut q = const_bits(PARAMS_TAG);
+            q.extend(par_in);
+            q.extend(le_bits_to_bytes(&idx_bits));
+            q.extend(le_bits_to_bytes(&ht_bits_le));
+            q.extend(vec![Boolean::constant(false); 7]);
+            q.push(ext_b.clone());
+            q.extend(leaf_bits);
+            q.extend(csep_bits);
+            q.extend(px);
+            q.extend(rx);
+            q.extend(s);
+            q.extend(vec![Boolean::constant(false); 7]);
+            q.push(present_b);
+            q.extend(annex_hash);
+            let par = sha256_fixed(cs.namespace(|| "par"), &q)?;
+            Some(digest_to_halves(cs.namespace(|| "par_out"), &par)?)
+        } else {
+            None
+        };
 
         let step_out = alloc_num(cs.namespace(|| "step_out"), F::from(self.step as u64 + 1))?;
         cs.enforce(|| "step_inc", |l| l + z[0].get_variable() + CS::one() - step_out.get_variable(), |l| l + CS::one(), |l| l);
         let mask_n = alloc_num(cs.namespace(|| "mask_out"), fi(mask_out.v))?;
         enforce_eq(cs, "mask_bind", &W::num(&mask_n, mask_out.v), &mask_out);
-        Ok(vec![step_out, acc_lo, acc_hi, z[3].clone(), z[4].clone(), z[5].clone(), z[6].clone(), mask_n])
+        let mut out = vec![step_out, acc_lo, acc_hi, z[3].clone(), z[4].clone(), z[5].clone(), z[6].clone(), mask_n];
+        if let Some((lo, hi)) = par_out {
+            out.extend([lo, hi]);
+        }
+        Ok(out)
     }
 }
 
+
+/// A signature slot as exchanged in JSON (`artifacts/*txs.json`): the key-path fields plus an
+/// optional script path (`null` for a key-path signature).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BoundSlot {
+    #[serde(flatten)]
+    pub slot: SigSlot,
+    #[serde(default)]
+    pub script_path: Option<ScriptPath>,
+}

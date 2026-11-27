@@ -29,3 +29,6 @@ panic = "unwind"
 
 [profile.test]
 opt-level = 3
+
+[dev-dependencies]
+k256 = { version = "0.13", features = ["arithmetic", "schnorr", "ecdsa", "sha256"] }

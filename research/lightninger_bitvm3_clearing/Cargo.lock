@@ -735,6 +735,7 @@ dependencies = [
  "ff",
  "halo2curves",
  "hex",
+ "k256",
  "nova-snark",
  "serde",
  "serde_json",

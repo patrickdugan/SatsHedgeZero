@@ -16,7 +16,7 @@ use lightninger_bitvm3_clearing::{
     clearing_step::{commitment_hash, program_hash, steps_of, ClearingStep, PoolState, RELATION_CLEARING_V1},
     fold::{self, shape_constraints, FoldReceipt},
     gadgets::{le_halves, sha256_native},
-    tapsighash_step::{sighash_steps, spent_commitment, tap_z, SigSlot, SighashStep, Tx, TxShape, RELATION_TAPSIGHASH_V1},
+    tapsighash_step::{bound_steps, sighash_steps, spent_commitment, tap_z, BoundSlot, SigSlot, SighashStep, Tx, TxShape, RELATION_TAPSIGHASH_V1},
     trace,
 };
 use nova_snark::{
@@ -53,10 +53,15 @@ fn scenario(name: &str, a: usize) -> trace::Trace {
         "legacy" => trace::legacy_deficit(a),
         "walk" => trace::random_walk(6, a, 200_000, 40, 7),
         "walk_nofund" => trace::random_walk(6, a, 0, 14, 11),
-        _ => match name.strip_prefix("walk:") {
+        _ => match (name.strip_prefix("walk:"), name.strip_prefix("journal:")) {
             // walk:N — the seeded random walk with N windows, for long folds
-            Some(n) => trace::random_walk(6, a, 200_000, n.parse().expect("walk:<windows>"), 7),
-            None => panic!("unknown scenario {name}"),
+            (Some(n), _) => trace::random_walk(6, a, 200_000, n.parse().expect("walk:<windows>"), 7),
+            // journal:PATH — committed live-venue batches (artifacts/testnet4_demo/venue_fill.json)
+            (_, Some(p)) => {
+                let v: Value = serde_json::from_str(&std::fs::read_to_string(p).unwrap_or_else(|e| panic!("{p}: {e}"))).expect("venue json");
+                trace::from_venue(&v, a).unwrap_or_else(|e| panic!("{p}: {e}"))
+            }
+            _ => panic!("unknown scenario {name}"),
         },
     }
 }
@@ -74,8 +79,8 @@ fn shape() {
     let tx = Tx::parse(&hex::decode(k["given"]["rawUnsignedTx"].as_str().unwrap()).unwrap());
     let spks: Vec<Vec<u8>> = k["given"]["utxosSpent"].as_array().unwrap().iter().map(|u| hex::decode(u["scriptPubKey"].as_str().unwrap()).unwrap()).collect();
     let mut shapes = vec![("bip341_vector_9in_2out", TxShape::of(&tx, &spks, 0))];
-    shapes.push(("p2tr_3in_3out_annex40", TxShape { script_sig_lens: vec![0; 3], prevout_spk_lens: vec![34; 3], out_spk_lens: vec![34; 3], annex_max: 40 }));
-    shapes.push(("p2tr_3in_3out", TxShape { script_sig_lens: vec![0; 3], prevout_spk_lens: vec![34; 3], out_spk_lens: vec![34; 3], annex_max: 0 }));
+    shapes.push(("p2tr_3in_3out_annex40", TxShape { script_sig_lens: vec![0; 3], prevout_spk_lens: vec![34; 3], out_spk_lens: vec![34; 3], annex_max: 40, bind: false }));
+    shapes.push(("p2tr_3in_3out", TxShape { script_sig_lens: vec![0; 3], prevout_spk_lens: vec![34; 3], out_spk_lens: vec![34; 3], annex_max: 0, bind: false }));
     for (name, s) in shapes {
         let (c, v) = shape_constraints(&SighashStep::blank(&s));
         rows.push(json!({"step": "tapsighash", "shape": name, "constraints": c, "aux_variables": v}));
@@ -100,6 +105,7 @@ struct ClearingRun {
 
 fn prove_clearing(name: &str, k: usize, a: usize, r: usize) {
     let t = scenario(name, a);
+    let live = name.starts_with("journal:");
     assert!(t.batches.len() >= k, "{name} has {} batches, asked for {k}", t.batches.len());
     let batches = &t.batches[..k];
     assert!(batches.iter().all(|b| b.rows.len() <= r));
@@ -108,9 +114,9 @@ fn prove_clearing(name: &str, k: usize, a: usize, r: usize) {
     let (receipt, proof) = fold::prove(RELATION_CLEARING_V1, &ClearingStep::blank(a, r), &steps, &z0.to_z(), &zk.to_z(), &mut |s| log(s)).unwrap_or_else(|e| panic!("{e}"));
     std::fs::write(std::env::temp_dir().join(format!("clearing_{name}_k{k}.proof")), &proof).ok();
     let stmt = UtxoRefL2SettlementStatementV0 {
-        network_code: BitcoinNetworkCode::Regtest,
+        network_code: if live { BitcoinNetworkCode::Testnet4 } else { BitcoinNetworkCode::Regtest },
         chain_genesis_hash: [0; 32],
-        contract_id: sha256_native(b"lightninger/venue/regtest-drill"),
+        contract_id: sha256_native(if live { b"lightninger/venue/testnet4".as_slice() } else { b"lightninger/venue/regtest-drill".as_slice() }),
         commitment_hash: commitment_hash(&zk.to_z()),
         assertion_txid: [0; 32],
         settlement_txid: [0; 32],
@@ -136,7 +142,7 @@ fn prove_clearing(name: &str, k: usize, a: usize, r: usize) {
         bitvm3_statement_sha256: hex::encode(d),
         bitvm3_public_limbs_be: [limbs[0].to_string(), limbs[1].to_string()],
     };
-    let p = artifacts().join(format!("clearing_{}_k{k}_A{a}_R{r}.json", name.replace(':', "")));
+    let p = artifacts().join(format!("clearing_{}_k{k}_A{a}_R{r}.json", if live { format!("journal_{}", t.name) } else { name.replace(':', "") }));
     std::fs::write(&p, serde_json::to_string_pretty(&run).unwrap()).unwrap();
     log(&format!("wrote {}", p.display()));
 }
@@ -147,7 +153,8 @@ struct CoreTx {
     signed_hex: String,
     amounts: Vec<u64>,
     spks: Vec<String>,
-    slots: Vec<SigSlot>,
+    /// `script_path: null | {key, tapleaf, codesep}` per slot (absent = key path).
+    slots: Vec<BoundSlot>,
 }
 
 type SE1 = Secq256k1Engine;
@@ -212,20 +219,42 @@ fn prove_tapsighash(source: &str) {
                 let w = hex::decode(s["expected"]["witness"][0].as_str().unwrap()).unwrap();
                 SigSlot { input: s["given"]["txinIndex"].as_u64().unwrap() as usize, hash_type: s["given"]["hashType"].as_u64().unwrap() as u8, annex: None, sig_rx: w[..32].try_into().unwrap(), sig_s: w[32..64].try_into().unwrap() }
             })
-            .collect();
-        ("bip341_vector".to_string(), tx, amounts, spks, slots, 0)
+            .collect::<Vec<SigSlot>>();
+        ("bip341_vector".to_string(), tx, amounts, spks, slots.into_iter().map(|s| (s, None)).collect::<Vec<_>>(), 0)
     } else {
-        let want = source.strip_prefix("core:").expect("vector or core:LABEL");
-        let all: Vec<CoreTx> = serde_json::from_str(&std::fs::read_to_string(artifacts().join("core_sighash_txs.json")).expect("run the core_regtest test first")).unwrap();
-        let c = all.into_iter().find(|c| c.label == want).expect("label");
+        // <source>:<label> from a signed-transaction file in the core_sighash_txs.json shape
+        let (src, want) = source.split_once(':').expect("vector | core:LABEL | corescript:LABEL | testnet4:LABEL");
+        let (file, annex_max) = match src {
+            "core" => ("core_sighash_txs.json", Some(40)),
+            "corescript" => ("core_scriptpath_txs.json", None),
+            "testnet4" => ("testnet4_demo/txs.json", None),
+            _ => panic!("unknown source {src}"),
+        };
+        let all: Vec<CoreTx> = serde_json::from_str(&std::fs::read_to_string(artifacts().join(file)).unwrap_or_else(|e| panic!("{file}: {e}"))).unwrap();
+        let c = all.into_iter().find(|c| c.label == want).unwrap_or_else(|| panic!("no label {want} in {file}"));
         let tx = Tx::parse(&hex::decode(&c.signed_hex).unwrap());
-        (format!("core_{}", c.label), tx, c.amounts, c.spks.iter().map(|s| hex::decode(s).unwrap()).collect(), c.slots, 40)
+        let amax = annex_max.unwrap_or_else(|| c.slots.iter().filter_map(|s| s.slot.annex.as_ref().map(|a| a.len())).max().unwrap_or(0));
+        (format!("{src}_{}", c.label), tx, c.amounts, c.spks.iter().map(|s| hex::decode(s).unwrap()).collect(), c.slots.into_iter().map(|s| (s.slot, s.script_path)).collect::<Vec<_>>(), amax)
     };
-    let shape = TxShape::of(&tx, &spks, annex_max);
-    let (steps, b, acc, mask) = sighash_steps(&shape, &tx, &amounts, &spks, &slots);
-    let z0 = tap_z(0, &[0; 32], &tx.txid(), &spent_commitment(&amounts, &spks), 0);
-    let zk = tap_z(steps.len() as u64, &acc, &tx.txid(), &spent_commitment(&amounts, &spks), mask);
-    log(&format!("{label}: {} signature steps, txid {}", steps.len(), hex::encode(tx.txid())));
+    let mut shape = TxShape::of(&tx, &spks, annex_max);
+    // bind mode when any signature is a script-path one
+    shape.bind = slots.iter().any(|s| s.1.is_some());
+    let spent = spent_commitment(&amounts, &spks);
+    let (steps, b, acc, mask, par) = if shape.bind {
+        bound_steps(&shape, &tx, &amounts, &spks, &slots)
+    } else {
+        let plain: Vec<SigSlot> = slots.iter().map(|s| s.0.clone()).collect();
+        let (st, b, acc, mask) = sighash_steps(&shape, &tx, &amounts, &spks, &plain);
+        (st, b, acc, mask, [0; 32])
+    };
+    let mut z0 = tap_z(0, &[0; 32], &tx.txid(), &spent, 0);
+    let mut zk = tap_z(steps.len() as u64, &acc, &tx.txid(), &spent, mask);
+    if shape.bind {
+        let (p0, p1) = le_halves(&par);
+        z0.extend([F::ZERO, F::ZERO]);
+        zk.extend([F::from_u128(p0), F::from_u128(p1)]);
+    }
+    log(&format!("{label}: {} signature steps ({} script path), txid {}", steps.len(), slots.iter().filter(|s| s.1.is_some()).count(), hex::encode(tx.txid())));
     let (receipt, _) = fold::prove(RELATION_TAPSIGHASH_V1, &SighashStep::blank(&shape), &steps, &z0, &zk, &mut |s| log(s)).unwrap_or_else(|e| panic!("{e}"));
     log("folding the same slots through Mnr05SecqBip340Step");
     let secq = prove_secq(&b);
@@ -234,9 +263,10 @@ fn prove_tapsighash(source: &str) {
     assert!(same, "TapSighash and Secq accumulators differ");
     let out = json!({
         "source": label, "txid": hex::encode(tx.txid()), "shape": shape,
-        "slots": slots.iter().map(|s| json!({"input": s.input, "hash_type": format!("{:#04x}", s.hash_type), "annex_len": s.annex.as_ref().map(|a| a.len())})).collect::<Vec<_>>(),
+        "slots": slots.iter().map(|(s, e)| json!({"input": s.input, "hash_type": format!("{:#04x}", s.hash_type), "annex_len": s.annex.as_ref().map(|a| a.len()), "script_path": e})).collect::<Vec<_>>(),
         "sighashes": b.iter().map(|s| hex::encode(s.sighash32)).collect::<Vec<_>>(),
         "auth_accumulator": hex::encode(acc), "signed_mask": format!("{mask:#b}"),
+        "params_accumulator": if shape.bind { Some(hex::encode(par)) } else { None },
         "tapsighash_fold": receipt, "secq_fold": secq, "accumulators_equal": same,
     });
     let p = artifacts().join(format!("tapsighash_{label}.json"));
@@ -260,6 +290,7 @@ fn audit_one(name: &str, cs: &lightninger_bitvm3_clearing::audit::AuditCS, publi
 
 /// Variable-level audit of real steps (and small instances exported as .r1cs).
 fn audit_all(pairs: usize) {
+    let pairs_budget = pairs;
     use lightninger_bitvm3_clearing::audit::record;
     let mut out = Vec::new();
     let traces: Vec<(&str, trace::Trace)> = ["drill_fund", "drill_nofund", "own_claim", "legacy", "walk", "walk_nofund"].iter().map(|n| (*n, scenario(n, 6))).collect();
@@ -312,13 +343,29 @@ fn audit_all(pairs: usize) {
             let tx = Tx::parse(&hex::decode(&c.signed_hex).unwrap());
             let spks: Vec<Vec<u8>> = c.spks.iter().map(|s| hex::decode(s).unwrap()).collect();
             let shape = TxShape::of(&tx, &spks, 40);
-            let (steps, _, _, _) = sighash_steps(&shape, &tx, &c.amounts, &spks, &c.slots);
+            let plain: Vec<SigSlot> = c.slots.iter().map(|s| s.slot.clone()).collect();
+            let (steps, _, _, _) = sighash_steps(&shape, &tx, &c.amounts, &spks, &plain);
             let (cs, public) = record(&steps[0], &steps[0].z_in());
             out.push(audit_one("tapsighash_core_annex_input0", &cs, &public, pairs, false));
         }
     }
+    // bind mode (script path), from the Core script-path run
+    if let Ok(txt) = std::fs::read_to_string(artifacts().join("core_scriptpath_txs.json")) {
+        let all: Vec<CoreTx> = serde_json::from_str(&txt).unwrap();
+        let c = &all[0];
+        let tx = Tx::parse(&hex::decode(&c.signed_hex).unwrap());
+        let spks: Vec<Vec<u8>> = c.spks.iter().map(|s| hex::decode(s).unwrap()).collect();
+        let mut shape = TxShape::of(&tx, &spks, 0);
+        shape.bind = true;
+        let pairs: Vec<_> = c.slots.iter().map(|s| (s.slot.clone(), s.script_path.clone())).collect();
+        let (steps, _, _, _, _) = bound_steps(&shape, &tx, &c.amounts, &spks, &pairs);
+        for i in [1, 3] {
+            let (cs, public) = record(&steps[i], &steps[i].z_in());
+            out.push(audit_one(&format!("tapsighash_bind_core_slot{i}_{}", if steps[i].ext.is_some() { "scriptpath" } else { "keypath" }), &cs, &public, pairs_budget, false));
+        }
+    }
     // smallest TapSighash relation: 1 P2TR input, 1 P2TR output
-    let shape1 = TxShape { script_sig_lens: vec![0], prevout_spk_lens: vec![34], out_spk_lens: vec![34], annex_max: 0 };
+    let shape1 = TxShape { script_sig_lens: vec![0], prevout_spk_lens: vec![34], out_spk_lens: vec![34], annex_max: 0, bind: false };
     let st = SighashStep::blank(&shape1);
     let (cs, public) = record(&st, &st.z_in());
     out.push(audit_one("tapsighash_1in_1out_small", &cs, &public, pairs, true));
