@@ -282,14 +282,29 @@ signature under CET 527's anticipation point, completed with the oracle's attest
 | Testnet4 (`testmempoolaccept`, not broadcast) | settlement `af10ba81…`, CET `16c9f34c…` accepted | settlement `060fa639…`, CET `abf0238f…` accepted |
 | Prover: signatures folded (TapSighash bind + Secq steps) | 17 | 9 |
 | Prover: M17 steps, account input / operator input | 20 / 17 | 17 / 17 |
-| Prover: TapSighash step constraints | 1,304,502 | 1,304,502 |
-| Prover: compress seconds, peak RAM | from the Colab run (`artifacts/ab/A/README.md`) | from the Colab run (`artifacts/ab/B/README.md`) |
+| Prover: TapSighash step constraints (step circuit / primary with Nova's augmentation) | 1,304,502 / 1,316,051 | 1,304,502 / 1,316,051 |
+| Prover: TapSighash bind fold / compress / verify | 17.60 s / 181.69 s / 3.28 s | 9.35 s / 181.51 s / 3.17 s |
+| Prover: Secq256k1 BIP-340 fold / compress | 5.83 s / 33.82 s | 3.13 s / 31.75 s |
+| Prover: M17, all 9 inputs (steps, prove, verify) | 177 steps, 20.20 s, 1.02 s | 153 steps, 17.63 s, 1.02 s |
+| Prover: clearing (table 8, 2 rows, 8 steps) fold / compress / verify | 4.64 s / 48.54 s / 0.85 s | 4.12 s / 43.15 s / 0.71 s |
+| Prover: whole `prove` run, wall / peak RSS | 6 min 37.7 s / 4,008,420 KB | 6 min 12.7 s / 3,976,128 KB |
+| Proof sizes (TapSighash, Secq, clearing) | 13,064 / 11,980 / 13,368 B | same |
+| SP1 guest input (`guest_in.bin`) | 9,722 B | 8,053 B |
+| Statement SHA-256 (`joint_statement.json`) | `863341122f9ff0e3…9f74` | `be9d04e286befbff…ed64` |
 
-Reading: B saves 51 vB per account input (one 65-byte signature on the key path, against two signatures
-plus a 70-byte leaf script and a 65-byte control block) and 50 vB per CET, and folds half the
-signatures. It costs a second signing round and about 6.5× the signing CPU on the CET grid. The
-MuSig2 session recomputes the key aggregation in each signing and verification call (5 times per CET);
-caching it per funding output removes most of that gap, which this run does not do.
-Measured times come from one run on this laptop. Prover inputs for both variants and the commands
-are in [`artifacts/ab/`](../research/lightninger_dlc_batcher/artifacts/ab/). Locally only a K = 2
-smoke check ran (`ab_prover_inputs_smoke`); the full proofs run on Colab.
+Prover columns: Antigravity on Colab (CPU High-RAM, AMD EPYC 7B12, 8 vCPU, 50 GiB, Rust 1.99.0) at
+SatsHedgeZero 3967d5d, `dlc-batcher prove ab/A 8 2` and `prove ab/B 8 2`; every binding, relation and
+fold negative control passed, both statements name the expected settlement txids (`5caa42e1…6bf0`,
+`a8b11813…46d6`), clearing key `c660c21a…477b`, TapSighash bind key `60f4e0ad…b559`. Receipts:
+[Drive folder](https://drive.google.com/drive/folders/1UGZr20BKhAwSLhKw08EXslDPLtvttg8O).
+
+Reading: on chain, B saves 51 vB per account input (one 65-byte signature on the key path, against two
+signatures plus a 70-byte leaf script and a 65-byte control block) and 50 vB per CET: 30% fewer vB for
+the N = 8 settlement. In the prover it halves the signature folds (TapSighash 17 → 9 steps, Secq 17 → 9)
+and cuts M17 steps by 14% (177 → 153), but compression dominates and barely moves (TapSighash 181.7 s
+vs 181.5 s), so the whole prove run is 6% faster (397.7 s → 372.7 s) at the same memory. B costs a
+second signing round and about 6.5× the signing CPU on the CET grid; the MuSig2 session recomputes the
+key aggregation in each signing and verification call (5 times per CET), and caching it per funding
+output removes most of that gap, which this run does not do. Signing times come from one run on this
+laptop. Prover inputs for both variants and the commands are in
+[`artifacts/ab/`](../research/lightninger_dlc_batcher/artifacts/ab/).
