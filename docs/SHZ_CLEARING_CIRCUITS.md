@@ -546,9 +546,18 @@ TapSighash fold over another transaction, a Secq fold ending in another accumula
 The statement is a `UtxoRefL2SettlementStatementV0` with `settlement_txid` = the CET's txid and
 `commitment_hash = SHA256("LIGHTNINGER/CET-SPENDS+CLEARING/V1" ‖ c_cet ‖ c_refund)`, where each
 `c` hashes, under the same tag, the clearing fold's `z_0` and `z_K`, the TapSighash and Secq
-folds' `z_K`, and each M17 input fold's `z_0` and `z_K`. `program_hash` names the four relations
-and the M17 commit, `epoch_id` is the clearing chain's next `seq`. Run: commitment
-`971b4eed…`, statement SHA-256 `c67ee0ca…`.
+folds' `z_K`, and each M17 input fold's `z_0` and `z_K`. `contract_id =
+SHA256("LIGHTNINGER/DLC/CONTRACT/V1" ‖ the outpoint the CET spends)` (the funding output),
+`program_hash` names the four relations and the M17 commit, `epoch_id` is the clearing chain's
+next `seq`. Run: commitment `971b4eed…`, statement SHA-256 `21ebcce7…`.
+
+On the testnet4 demo (`artifacts/testnet4_demo/`, real funding, CET and refund co-signed and
+`testmempoolaccept`-checked on testnet4) the same command,
+`prove-cet journal:artifacts/testnet4_demo/venue_fill.json 1 4 2 testnet4_demo/txs.json`, folds all
+7 inputs and 9 signatures with venue batch 301 and writes `testnet4_demo/joint_statement.json`
+(testnet4 network code and genesis, `settlement_txid` = the CET `cac6a1a5…29a3f`). The clearing-only
+statement of the same batch (`prove-clearing journal:… 1 4 2`) names the same CET, taken from
+label `cet` of `txs.json` beside the journal or from `--settlement-txid=<hex>`.
 
 **What "one statement" means here.** The seven proofs (per transaction an M17 fold, a TapSighash fold and a Secq fold, plus the clearing fold) are over three curve cycles (clearing and
 TapSighash Bn256/Grumpkin, Secq Secq256k1/Secp256k1 for native secp256k1 arithmetic, M17

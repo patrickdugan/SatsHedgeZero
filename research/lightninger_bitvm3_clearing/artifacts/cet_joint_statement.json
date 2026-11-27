@@ -1,29 +1,29 @@
 {
   "bitvm3_public_limbs_be": [
-    "263845931888533726428811904980543845373",
-    "173138670287277657709194119766506453886"
+    "45088869591274619311850331004345952823",
+    "324403276910628562300523606872697091036"
   ],
-  "bitvm3_statement_hex": "5554584f5245465f4c325f534554544c454d454e545f47524f544831365f5630000000000000000000000000000000000000000000000000000000000000000000000000dab5825b0517c526f146740da6ae7a316b66019236ee83e5d7dc2ca46586932c971b4eed8d84950b001f37595f84ea2bcb3a3a67f7064939bb9d24513dc882aa00000000000000000000000000000000000000000000000000000000000000003f77751cf53469907e0042b4e94f2603f9b498cfe1657f4e76e409cfa5d755732b86e99c4c25300971b88b71359db394910ef8cbb540176e7ff0819ac275d79501a40f38e8b0cac22973a401c7886640413b44a5cc16ee10b98f11c6802c11a70000000000000000000000000000000000000000000000000000000000000000050000000000000000000000",
-  "bitvm3_statement_sha256": "c67ee0cab20dbeefcddd5d261e9fb3fd82414b82becf0664e6825cf3ec13bb7e",
+  "bitvm3_statement_hex": "5554584f5245465f4c325f534554544c454d454e545f47524f544831365f5630000000000000000000000000000000000000000000000000000000000000000000000000924e0cba097c9b7dd6a168da39db03367964d5f31e2fc0ca3e2101040c226416971b4eed8d84950b001f37595f84ea2bcb3a3a67f7064939bb9d24513dc882aa00000000000000000000000000000000000000000000000000000000000000003f77751cf53469907e0042b4e94f2603f9b498cfe1657f4e76e409cfa5d755732b86e99c4c25300971b88b71359db394910ef8cbb540176e7ff0819ac275d79501a40f38e8b0cac22973a401c7886640413b44a5cc16ee10b98f11c6802c11a70000000000000000000000000000000000000000000000000000000000000000050000000000000000000000",
+  "bitvm3_statement_sha256": "21ebcce7b2da1f46ddcf5d99e0e6aa37f40dcc6ae2d73183e7f88192b98033dc",
   "clearing": {
     "batches": 4,
     "fold": {
       "arity": 31,
-      "compress_seconds": 38.5617057,
+      "compress_seconds": 32.4619091,
       "curve_cycle": "Bn256EngineIPA / GrumpkinEngine, Spartan RelaxedR1CSSNARK + IPA (no trusted setup)",
       "flipped_proof_rejected": true,
-      "fold_seconds": 2.927802,
-      "fold_seconds_per_step": 0.7319505,
+      "fold_seconds": 2.7769484,
+      "fold_seconds_per_step": 0.6942371,
       "mutated_z0_rejected": true,
       "output_matches_expected": true,
       "primary_constraints": 451732,
       "proof_bytes": 13112,
-      "proof_sha256": "68345f019ada2ae27988117e9eca9b60bc99c430df3faac65f30108e9c0a4e36",
+      "proof_sha256": "a078edc4bf088de062eb3d42d15cdc151268cac582baab3a3b7cff1508785591",
       "relation": "lightninger/v3-clearing-batch-fold/v1",
       "secondary_constraints": 10538,
-      "setup_seconds": 13.1218836,
+      "setup_seconds": 12.6219453,
       "steps": 4,
-      "verify_seconds": 1.7041542,
+      "verify_seconds": 0.4838208,
       "vk_sha256": "e314976c5d20bca0735782d216d2431e43cc8dec40ea48dedcb38dbd5467b1e5",
       "wrong_step_count_rejected": true,
       "z0": [
@@ -102,10 +102,13 @@
     "scenario": "liquidation_drill_fund1000000"
   },
   "commitment_hash": "971b4eed8d84950b001f37595f84ea2bcb3a3a67f7064939bb9d24513dc882aa",
+  "contract_id": "924e0cba097c9b7dd6a168da39db03367964d5f31e2fc0ca3e2101040c226416",
+  "network": "regtest",
   "per_transaction_commitments": [
     "b8acece862a9c61638c309a7c8e977d23ad9bec502361a210f1807a77e440a93",
     "bfbd66a289cea1f2659b55be578eecc4d8a99a9f13fb47a895cddb32fa8a1fa6"
   ],
+  "settlement_txid": "3f77751cf53469907e0042b4e94f2603f9b498cfe1657f4e76e409cfa5d75573",
   "spends": [
     {
       "auth_accumulator": "365b15b31c7ee87b260d0a6cb9315537d03507fa7f2fc593a67d19a9e896379c",
@@ -141,9 +144,9 @@
           "claims": 3,
           "deferred_signatures": 2,
           "input": 0,
-          "prove_seconds": 1.6527447,
+          "prove_seconds": 1.5308229,
           "steps": 20,
-          "verify_seconds": 0.0654527,
+          "verify_seconds": 0.0837827,
           "z0": [
             "d7f355d8303e8310e96a19b1c66ba0b1fe95d497ee2664af4e03c01596722f33",
             "0000000000000000000000000000000000000000000000000000000000000000",
@@ -191,8 +194,8 @@
       "params_accumulator": "184a3e354975e76b79950b15b169ed70d7ca4da0750d61f983abae664159bf6d",
       "secq_fold": {
         "auth_accumulator": "365b15b31c7ee87b260d0a6cb9315537d03507fa7f2fc593a67d19a9e896379c",
-        "compress_seconds": 19.4654133,
-        "fold_seconds": 0.5831423,
+        "compress_seconds": 21.9654275,
+        "fold_seconds": 0.5066516,
         "mutated_z0_rejected": true,
         "output": [
           "0200000000000000000000000000000000000000000000000000000000000000",
@@ -203,9 +206,9 @@
         "proof_bytes": 11980,
         "relation": "shz/mnr05-secq256k1-bip340-batch-auth/v1 (Mnr05SecqBip340Step, unchanged)",
         "secondary_constraints": 10787,
-        "setup_seconds": 4.8461359,
+        "setup_seconds": 5.3873849,
         "steps": 2,
-        "verify_seconds": 0.3196656
+        "verify_seconds": 0.2925184
       },
       "shape": {
         "annex_max": 0,
@@ -375,21 +378,21 @@
       ],
       "tapsighash_fold": {
         "arity": 10,
-        "compress_seconds": 62.8329462,
+        "compress_seconds": 58.1265528,
         "curve_cycle": "Bn256EngineIPA / GrumpkinEngine, Spartan RelaxedR1CSSNARK + IPA (no trusted setup)",
         "flipped_proof_rejected": true,
-        "fold_seconds": 1.405205,
-        "fold_seconds_per_step": 0.7026025,
+        "fold_seconds": 1.2930867,
+        "fold_seconds_per_step": 0.64654335,
         "mutated_z0_rejected": true,
         "output_matches_expected": true,
         "primary_constraints": 624543,
         "proof_bytes": 12752,
-        "proof_sha256": "5458ce4dba02ad17bf80ae197b323a5f235c28815be383aa44ecd33b967f3391",
+        "proof_sha256": "fcf695afd8a6f20ea88565aa5f6a2e05f860e4d409edda652399319d6df910c6",
         "relation": "lightninger/bip341-keypath-tapsighash-fold/v1",
         "secondary_constraints": 10538,
-        "setup_seconds": 20.3183902,
+        "setup_seconds": 20.5369332,
         "steps": 2,
-        "verify_seconds": 1.2050851,
+        "verify_seconds": 0.8416293,
         "vk_sha256": "5026134ce718ac2c1a02762893ead4bf9690fb71aafcc85183c5e7a7327cb2ff",
         "wrong_step_count_rejected": true,
         "z0": [
@@ -453,9 +456,9 @@
           "claims": 4,
           "deferred_signatures": 2,
           "input": 0,
-          "prove_seconds": 1.8563141,
+          "prove_seconds": 2.2129349,
           "steps": 23,
-          "verify_seconds": 0.0747679,
+          "verify_seconds": 0.0679232,
           "z0": [
             "2e9cb7d6f0775f0638c8668cd9e3f87955f29f587de7b5e319676f8bdc72941b",
             "0000000000000000000000000000000000000000000000000000000000000000",
@@ -503,8 +506,8 @@
       "params_accumulator": "87218319bbf8641ef53f1bacc23b5a02dff6f44e60a05ad99976dd69e895807e",
       "secq_fold": {
         "auth_accumulator": "db68ba5c1ebb6b6037d5ebe085ee0321ab77e66b5191fc735c981152a575820b",
-        "compress_seconds": 19.7255062,
-        "fold_seconds": 0.5903796,
+        "compress_seconds": 19.2530286,
+        "fold_seconds": 0.5145658,
         "mutated_z0_rejected": true,
         "output": [
           "0200000000000000000000000000000000000000000000000000000000000000",
@@ -515,9 +518,9 @@
         "proof_bytes": 11980,
         "relation": "shz/mnr05-secq256k1-bip340-batch-auth/v1 (Mnr05SecqBip340Step, unchanged)",
         "secondary_constraints": 10787,
-        "setup_seconds": 4.9261143,
+        "setup_seconds": 4.4950284,
         "steps": 2,
-        "verify_seconds": 0.3077765
+        "verify_seconds": 0.279245
       },
       "shape": {
         "annex_max": 0,
@@ -687,21 +690,21 @@
       ],
       "tapsighash_fold": {
         "arity": 10,
-        "compress_seconds": 65.4258045,
+        "compress_seconds": 63.913803,
         "curve_cycle": "Bn256EngineIPA / GrumpkinEngine, Spartan RelaxedR1CSSNARK + IPA (no trusted setup)",
         "flipped_proof_rejected": true,
-        "fold_seconds": 1.5033244,
-        "fold_seconds_per_step": 0.7516622,
+        "fold_seconds": 1.9723362,
+        "fold_seconds_per_step": 0.9861681,
         "mutated_z0_rejected": true,
         "output_matches_expected": true,
         "primary_constraints": 624543,
         "proof_bytes": 12752,
-        "proof_sha256": "4db9a840ac787f5a6922bafcb861078b361e25a2de988fbc38a2775acac1cfff",
+        "proof_sha256": "13d8edebd17d8988d4b7683930de31f5c21a48476e865db2ef8515696bad426b",
         "relation": "lightninger/bip341-keypath-tapsighash-fold/v1",
         "secondary_constraints": 10538,
-        "setup_seconds": 20.4128729,
+        "setup_seconds": 19.1432087,
         "steps": 2,
-        "verify_seconds": 1.1525787,
+        "verify_seconds": 1.021222,
         "vk_sha256": "5026134ce718ac2c1a02762893ead4bf9690fb71aafcc85183c5e7a7327cb2ff",
         "wrong_step_count_rejected": true,
         "z0": [

@@ -388,7 +388,8 @@
       "5120b54dd0c59c7d07c3ddedd339fceeeacd225fc5476f9014850e3dda85499956a9",
       "5120087c38963e9544b4954fba2d9e45f1293795251115f61274a13c048db585bd82",
       "5120b54dd0c59c7d07c3ddedd339fceeeacd225fc5476f9014850e3dda85499956a9"
-    ]
+    ],
+    "m17_flags": 69723
   },
   {
     "amounts": [
@@ -689,7 +690,8 @@
     ],
     "spks": [
       "51205a5c3c5d46ed2fd1a9b637f1582d7d7e27f87114e37fd4e230cbb11cdf060caf"
-    ]
+    ],
+    "m17_flags": 69723
   },
   {
     "amounts": [
@@ -990,6 +992,7 @@
     ],
     "spks": [
       "51205a5c3c5d46ed2fd1a9b637f1582d7d7e27f87114e37fd4e230cbb11cdf060caf"
-    ]
+    ],
+    "m17_flags": 69723
   }
 ]

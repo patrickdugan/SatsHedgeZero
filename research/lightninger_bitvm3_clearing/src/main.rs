@@ -6,10 +6,12 @@
 //!   trace (`drill_fund`, `drill_nofund`, `own_claim`, `legacy`, `walk`, `walk_nofund`,
 //!   `walk:<windows>`), compress, verify,
 //!   and write `artifacts/clearing_<scenario>_k<K>.json` with the BitVM3 statement.
-//! - `prove-cet [scenario] [K]` — the joint statement: M17 folds of the CET and refund inputs
-//!   (`artifacts/core_cet_txs.json`, from `tests/core_cet.rs`), bind-mode TapSighash and Secq
-//!   folds of their signatures, the binding check (and its negative cases), a clearing fold of
-//!   `K` batches, and the 304-byte statement over all of them (`artifacts/cet_joint_statement.json`).
+//! - `prove-cet [scenario] [K] [A] [R] [txs file]` — the joint statement: M17 folds of every
+//!   input of every transaction in the file (default `artifacts/core_cet_txs.json`, from
+//!   `tests/core_cet.rs`; `testnet4_demo/txs.json` for the testnet4 demo), bind-mode TapSighash
+//!   and Secq folds of their signatures, the binding check (and its negative cases), a clearing
+//!   fold of `K` batches, and the 304-byte statement over all of them, settling label `cet`
+//!   (`artifacts/cet_joint_statement.json`, or `joint_statement.json` beside a non-default file).
 //! - `trace-stats <scenario> [A]` — batch count, largest batch, layers of a trace.
 //! - `prove-tapsighash <vector|core:LABEL>` — fold every signature slot of one transaction,
 //!   fold the same slots through `Mnr05SecqBip340Step` (Secq256k1), check both end in the
@@ -95,6 +97,23 @@ fn shape() {
     log(&format!("wrote {}", p.display()));
 }
 
+/// The txid (display order) of label `cet` in a signed-transaction file, if the file exists.
+fn cet_txid_in(file: &std::path::Path) -> Option<[u8; 32]> {
+    let txt = std::fs::read_to_string(file).ok()?;
+    let all: Vec<Value> = serde_json::from_str(&txt).ok()?;
+    let c = all.iter().find(|c| c["label"] == "cet")?;
+    Some(Tx::parse(&hex::decode(c["signed_hex"].as_str()?).ok()?).txid())
+}
+
+fn parse_txid(s: &str) -> [u8; 32] {
+    let h = s.strip_prefix("--settlement-txid=").unwrap_or(s);
+    hex::decode(h).ok().and_then(|b| b.try_into().ok()).unwrap_or_else(|| panic!("settlement txid must be 64 hex characters: {s}"))
+}
+
+fn testnet4_genesis() -> [u8; 32] {
+    hex::decode(shz_nova_bitvm::bitvm3::BITCOIN_TESTNET4_GENESIS_HASH_HEX).unwrap().try_into().unwrap()
+}
+
 #[derive(Serialize)]
 struct ClearingRun {
     scenario: String,
@@ -102,14 +121,31 @@ struct ClearingRun {
     rows_capacity: usize,
     batches: Vec<Value>,
     fold: FoldReceipt,
+    /// The transaction the statement settles (display order; zero when none is named).
+    settlement_txid: String,
+    settlement_txid_source: String,
     bitvm3_statement_hex: String,
     bitvm3_statement_sha256: String,
     bitvm3_public_limbs_be: [String; 2],
 }
 
-fn prove_clearing(name: &str, k: usize, a: usize, r: usize) {
+/// `settlement`: the txid the statement settles. A `journal:<path>` scenario without one takes
+/// the `cet` transaction of `txs.json` beside the journal (the testnet4 demo layout), so the
+/// clearing statement and the TapSighash fold of that CET name the same transaction.
+fn prove_clearing(name: &str, k: usize, a: usize, r: usize, settlement: Option<[u8; 32]>) {
     let t = scenario(name, a);
     let live = name.starts_with("journal:");
+    let (settlement_txid, source) = match (settlement, name.strip_prefix("journal:")) {
+        (Some(x), _) => (x, "command line".to_string()),
+        (None, Some(p)) => {
+            let f = std::path::Path::new(p).with_file_name("txs.json");
+            match cet_txid_in(&f) {
+                Some(x) => (x, format!("label cet of {}", f.display().to_string().replace('\\', "/"))),
+                None => ([0; 32], "none".into()),
+            }
+        }
+        _ => ([0; 32], "none".into()),
+    };
     assert!(t.batches.len() >= k, "{name} has {} batches, asked for {k}", t.batches.len());
     let batches = &t.batches[..k];
     assert!(batches.iter().all(|b| b.rows.len() <= r));
@@ -119,11 +155,11 @@ fn prove_clearing(name: &str, k: usize, a: usize, r: usize) {
     std::fs::write(std::env::temp_dir().join(format!("clearing_{name}_k{k}.proof")), &proof).ok();
     let stmt = UtxoRefL2SettlementStatementV0 {
         network_code: if live { BitcoinNetworkCode::Testnet4 } else { BitcoinNetworkCode::Regtest },
-        chain_genesis_hash: [0; 32],
+        chain_genesis_hash: if live { testnet4_genesis() } else { [0; 32] },
         contract_id: sha256_native(if live { b"lightninger/venue/testnet4".as_slice() } else { b"lightninger/venue/regtest-drill".as_slice() }),
         commitment_hash: commitment_hash(&zk.to_z()),
         assertion_txid: [0; 32],
-        settlement_txid: [0; 32],
+        settlement_txid,
         program_hash: program_hash(a, r),
         verifying_key_hash: hex::decode(&receipt.vk_sha256).unwrap().try_into().unwrap(),
         policy_hash: [0; 32],
@@ -142,6 +178,8 @@ fn prove_clearing(name: &str, k: usize, a: usize, r: usize) {
             .map(|b| json!({"seq": b.seq, "layer": format!("{:?}", b.report.layer), "rows": b.rows.len(), "claim_haircuts": b.report.claim_haircuts.len(), "digest": hex::encode(b.digest), "cash_before": b.report.cash_before, "cash_after": b.report.cash_after}))
             .collect(),
         fold: receipt,
+        settlement_txid: hex::encode(settlement_txid),
+        settlement_txid_source: source,
         bitvm3_statement_hex: hex::encode(enc),
         bitvm3_statement_sha256: hex::encode(d),
         bitvm3_public_limbs_be: [limbs[0].to_string(), limbs[1].to_string()],
@@ -378,6 +416,12 @@ fn audit_all(pairs: usize) {
     log(&format!("wrote {}", p.display()));
 }
 
+/// Core's standard flags for a Taproot spend (P2SH, DERSIG, CLTV, CSV, WITNESS, NULLDUMMY, TAPROOT).
+fn taproot_flags() -> u32 {
+    use m17_nova_script::sigcheck::flags as f;
+    f::P2SH | f::DERSIG | f::CHECKLOCKTIMEVERIFY | f::CHECKSEQUENCEVERIFY | f::WITNESS | f::NULLDUMMY | f::TAPROOT
+}
+
 #[derive(Deserialize)]
 struct CetTx {
     label: String,
@@ -385,13 +429,16 @@ struct CetTx {
     amounts: Vec<u64>,
     spks: Vec<String>,
     slots: Vec<BoundSlot>,
+    #[serde(default = "taproot_flags")]
     m17_flags: u32,
 }
 
-fn prove_cet(clearing_scenario: &str, k: usize) {
+fn prove_cet(clearing_scenario: &str, k: usize, acct: usize, rcap: usize, txs_file: &str) {
     use lightninger_bitvm3_clearing::cet::{expected_slots, joint_commitment, params_of, verify_binding};
     use m17_nova_script::{circuit as m17c, Case};
-    let txs: Vec<CetTx> = serde_json::from_str(&std::fs::read_to_string(artifacts().join("core_cet_txs.json")).expect("run tests/core_cet.rs first")).unwrap();
+    let txs_path = artifacts().join(txs_file);
+    let txs: Vec<CetTx> = serde_json::from_str(&std::fs::read_to_string(&txs_path).unwrap_or_else(|e| panic!("{}: {e}", txs_path.display()))).unwrap();
+    let testnet4 = txs_file.contains("testnet4") || clearing_scenario.starts_with("journal:");
     let t = Instant::now();
     let m17_pp = m17c::setup();
     log(&format!("M17 setup {:.1}s", t.elapsed().as_secs_f64()));
@@ -447,10 +494,9 @@ fn prove_cet(clearing_scenario: &str, k: usize) {
         // 3. the binding, and what it must reject
         let refs: Vec<(usize, &m17c::Folded)> = folded.iter().map(|(i, f)| (*i, f)).collect();
         verify_binding(&tx, &c.amounts, &spks, &refs, &zk, &acc).unwrap_or_else(|e| panic!("binding {}: {e}", c.label));
-        let key0: [u8; 32] = spks[0][2..34].try_into().unwrap();
         let par_with = |sl: &[(SigSlot, Option<lightninger_bitvm3_clearing::tapsighash_step::ScriptPath>)]| {
             let mut z = zk.clone();
-            let p = params_of(sl, |_| key0);
+            let p = params_of(sl, |i| spks[i % spks.len()][2..34].try_into().unwrap());
             let (a, b) = le_halves(&p);
             z[8] = F::from_u128(a);
             z[9] = F::from_u128(b);
@@ -470,12 +516,21 @@ fn prove_cet(clearing_scenario: &str, k: usize) {
         let mut z = par_with(&dropped);
         z[0] = F::from(dropped.len() as u64);
         neg("one signature dropped", z, acc);
-        let mut other_leaf = slots.clone();
-        other_leaf[0].1.as_mut().unwrap().tapleaf[0] ^= 1;
-        neg("signature checked for another tapleaf", par_with(&other_leaf), acc);
-        let mut other_cs = slots.clone();
-        other_cs[0].1.as_mut().unwrap().codesep = 0;
-        neg("signature checked for another codeseparator position", par_with(&other_cs), acc);
+        if slots[0].1.is_some() {
+            let mut other_leaf = slots.clone();
+            other_leaf[0].1.as_mut().unwrap().tapleaf[0] ^= 1;
+            neg("signature checked for another tapleaf", par_with(&other_leaf), acc);
+            let mut other_cs = slots.clone();
+            other_cs[0].1.as_mut().unwrap().codesep = 0;
+            neg("signature checked for another codeseparator position", par_with(&other_cs), acc);
+        } else {
+            let mut other_in = slots.clone();
+            other_in[0].0.input = (other_in[0].0.input + 1) % tx.inputs.len().max(2);
+            neg("key-path signature attributed to another input", par_with(&other_in), acc);
+            let mut as_script = slots.clone();
+            as_script[0].1 = Some(lightninger_bitvm3_clearing::tapsighash_step::ScriptPath { key: spks[0][2..34].try_into().unwrap(), tapleaf: [0; 32], codesep: u32::MAX });
+            neg("key-path signature claimed as a script-path signature", par_with(&as_script), acc);
+        }
         let mut z = zk.clone();
         z[3] += F::ONE;
         neg("TapSighash fold over another transaction", z, acc);
@@ -496,10 +551,10 @@ fn prove_cet(clearing_scenario: &str, k: usize) {
         secq_zks.push(secq_zk);
     }
     // 4. the clearing chain
-    let tr = scenario(clearing_scenario, 6);
+    let tr = scenario(clearing_scenario, acct);
     let batches = &tr.batches[..k];
-    let (steps, cz0, czk) = steps_of(6, 4, batches);
-    let (clear, _) = fold::prove(RELATION_CLEARING_V1, &ClearingStep::blank(6, 4), &steps, &cz0.to_z(), &czk.to_z(), &mut |s| log(s)).unwrap_or_else(|e| panic!("{e}"));
+    let (steps, cz0, czk) = steps_of(acct, rcap, batches);
+    let (clear, _) = fold::prove(RELATION_CLEARING_V1, &ClearingStep::blank(acct, rcap), &steps, &cz0.to_z(), &czk.to_z(), &mut |s| log(s)).unwrap_or_else(|e| panic!("{e}"));
     // 5. the joint statement: every fold's public IO under one commitment
     let mut commits = Vec::new();
     for (j, folded) in m17_folds.iter().enumerate() {
@@ -511,10 +566,15 @@ fn prove_cet(clearing_scenario: &str, k: usize) {
         cb.extend(c);
     }
     let commitment = sha256_native(&cb);
+    // the DLC is named by the outpoint the CET spends (the funding output)
+    let cet = txs.iter().find(|c| c.label == "cet").map(|c| Tx::parse(&hex::decode(&c.signed_hex).unwrap())).expect("a cet transaction");
+    let mut cid = b"LIGHTNINGER/DLC/CONTRACT/V1".to_vec();
+    cid.extend(cet.inputs[0].txid);
+    cid.extend(cet.inputs[0].vout.to_le_bytes());
     let stmt = UtxoRefL2SettlementStatementV0 {
-        network_code: BitcoinNetworkCode::Regtest,
-        chain_genesis_hash: [0; 32],
-        contract_id: sha256_native(b"lightninger/dlc/regtest-cet-demo"),
+        network_code: if testnet4 { BitcoinNetworkCode::Testnet4 } else { BitcoinNetworkCode::Regtest },
+        chain_genesis_hash: if testnet4 { testnet4_genesis() } else { [0; 32] },
+        contract_id: sha256_native(&cid),
         commitment_hash: commitment,
         assertion_txid: [0; 32],
         settlement_txid: cet_txid,
@@ -532,10 +592,12 @@ fn prove_cet(clearing_scenario: &str, k: usize) {
         "clearing": {"scenario": tr.name, "batches": k, "layers": batches.iter().map(|b| format!("{:?}", b.report.layer)).collect::<Vec<_>>(), "fold": clear},
         "per_transaction_commitments": commits.iter().map(hex::encode).collect::<Vec<_>>(),
         "commitment_hash": hex::encode(commitment),
+        "settlement_txid": hex::encode(cet_txid), "contract_id": hex::encode(stmt.contract_id),
+        "network": if testnet4 { "testnet4" } else { "regtest" },
         "bitvm3_statement_hex": hex::encode(enc), "bitvm3_statement_sha256": hex::encode(d),
         "bitvm3_public_limbs_be": [limbs[0].to_string(), limbs[1].to_string()],
     });
-    let p = artifacts().join("cet_joint_statement.json");
+    let p = if txs_file == "core_cet_txs.json" { artifacts().join("cet_joint_statement.json") } else { txs_path.with_file_name("joint_statement.json") };
     std::fs::write(&p, serde_json::to_string_pretty(&out).unwrap()).unwrap();
     log(&format!("wrote {}", p.display()));
 }
@@ -552,18 +614,25 @@ fn main() {
     let a: Vec<String> = std::env::args().collect();
     match a.get(1).map(String::as_str) {
         Some("shape") => shape(),
+        // prove-clearing <scenario> <K> [A] [R] [--settlement-txid=HEX]
         Some("prove-clearing") => {
             let k = a[3].parse().unwrap();
             let acc = a.get(4).map_or(6, |x| x.parse().unwrap());
             let r = a.get(5).map_or(4, |x| x.parse().unwrap());
-            prove_clearing(&a[2], k, acc, r)
+            prove_clearing(&a[2], k, acc, r, a.get(6).map(|x| parse_txid(x)))
         }
         Some("prove-tapsighash") => prove_tapsighash(&a[2]),
         Some("trace-stats") => {
             let t = scenario(&a[2], a.get(3).map_or(6, |x| x.parse().unwrap()));
             println!("{}: {} batches, max rows {}, layers {:?}, batches with claim haircuts {}", t.name, t.batches.len(), t.max_rows(), t.layers(), t.batches.iter().filter(|b| !b.report.claim_haircuts.is_empty()).count());
         }
-        Some("prove-cet") => prove_cet(a.get(2).map_or("drill_fund", String::as_str), a.get(3).map_or(4, |x| x.parse().unwrap())),
+        Some("prove-cet") => prove_cet(
+            a.get(2).map_or("drill_fund", String::as_str),
+            a.get(3).map_or(4, |x| x.parse().unwrap()),
+            a.get(4).map_or(6, |x| x.parse().unwrap()),
+            a.get(5).map_or(4, |x| x.parse().unwrap()),
+            a.get(6).map_or("core_cet_txs.json", String::as_str),
+        ),
         Some("audit") => audit_all(a.get(2).map_or(2_000_000, |x| x.parse().unwrap())),
         _ => eprintln!("usage: shape | trace-stats <scenario> [A] | prove-clearing <scenario> <K> [A] [R] | prove-tapsighash <vector|core:LABEL> | audit [pair_budget]"),
     }
