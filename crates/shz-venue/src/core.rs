@@ -27,6 +27,7 @@ use shz_dex::{
 use shz_dlc::{Bip340Signature, BtcOutPoint, bip340_sign, bip340_verify, tagged_hash};
 
 pub mod agents;
+pub mod collateral;
 pub mod options;
 pub mod spot;
 
@@ -224,6 +225,10 @@ pub struct Venue {
     pub agents: Option<agents::AgentState>,
     /// Agent records of the venue log (`agent_*`), folded in when agents are switched on.
     agent_log: Vec<Value>,
+    /// On-chain collateral accounts (`--collateral-chain`): `None` keeps them off.
+    pub coll: Option<collateral::CollState>,
+    /// Collateral records of the venue log (`coll_*`), folded in when collateral is switched on.
+    coll_log: Vec<Value>,
 }
 
 fn venue_scope(keys: &Keys) -> (Scope, Policy) {
@@ -331,6 +336,8 @@ impl Venue {
             spot: None,
             agents: None,
             agent_log: vec![],
+            coll: None,
+            coll_log: vec![],
         };
         // Account metadata is restored from the venue log; the router replays its own journal.
         for e in prior {
@@ -340,6 +347,10 @@ impl Venue {
             }
             if e["kind"].as_str().is_some_and(|k| k.starts_with("agent_")) {
                 v.agent_log.push(e);
+                continue;
+            }
+            if e["kind"].as_str().is_some_and(|k| k.starts_with("coll_")) {
+                v.coll_log.push(e);
                 continue;
             }
             if e["kind"] == "wallet_link" {
@@ -578,14 +589,18 @@ impl Venue {
         if self.accounts.contains_key(&owner) {
             return Err("owner already has an account".into());
         }
+        if self.coll.is_some() && kind != "collateral" {
+            return Err("this venue takes on-chain collateral only: deposit to your collateral address, then register kind collateral".into());
+        }
         let (outpoint, cap, label) = match kind {
             "demo" => (demo_outpoint(&owner), DEMO_CAP_SATS, "TESTNET DEMO CREDIT".to_string()),
+            "collateral" => self.collateral_draft_source(&owner)?,
             "utxo" => {
                 let o = outpoint.ok_or("utxo account needs an outpoint")?;
                 let v = utxo_value.ok_or("utxo value unverified")?;
                 (o, v, "testnet4 UTXO".to_string())
             }
-            _ => return Err("kind must be demo or utxo".into()),
+            _ => return Err("kind must be demo, utxo or collateral".into()),
         };
         if self.accounts.values().any(|a| a.outpoint == outpoint) {
             return Err("outpoint already registered".into());
@@ -623,6 +638,9 @@ impl Venue {
         self.persist(json!({"kind": "account", "owner": h(&meta.owner), "outpoint": outpoint_json(&meta.outpoint),
                             "account_kind": meta.kind, "cap_sats": meta.cap_sats, "label": meta.label}));
         self.accounts.insert(meta.owner, meta.clone());
+        if meta.kind == "collateral" {
+            self.collateral_registered(&meta.owner)?;
+        }
         Ok(self.account_view(&meta.owner))
     }
 
@@ -697,6 +715,7 @@ impl Venue {
     pub fn submit_with(&mut self, i: IntentV6, grant: Option<Key>) -> Result<Value, String> {
         self.wallet_check(&i.owner)?;
         if i.action != Action::Cancel {
+            self.collateral_gate(&i.owner)?;
             let lots = self.lots_of(&i.owner);
             let (unsettled, in_flight) = self.unsettled_of(&i.owner);
             // One closing loan in flight per account (docs/SHZ_LIQUIDATION_DRILL.md F1): a take that
@@ -1211,6 +1230,7 @@ impl Venue {
             "sequences": self.sequences(owner),
             "options": self.opts.as_ref().map(|_| self.options_account(owner)),
             "spot": self.spot.as_ref().map(|_| self.spot_account(owner)),
+            "collateral": self.coll.as_ref().and_then(|_| self.collateral_view(owner).ok()),
         })
     }
 
@@ -1231,8 +1251,9 @@ impl Venue {
             "options": self.options_summary(),
             "spot": self.spot_summary(),
             "agents": self.agents_summary(),
+            "collateral": self.collateral_summary(),
             "production_ready": false,
-            "network": "testnet4",
+            "network": self.coll.as_ref().map(|c| c.cfg.net.name()).unwrap_or("testnet4"),
         })
     }
 

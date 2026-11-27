@@ -502,3 +502,25 @@ fn window_end(b:&Batch)->u64{b.window().1}
  assert_eq!(d.batch(1).unwrap().unwrap().1,Phase::Sealed);
  assert!(d.expire(abort_without_owner(&d,&b1)).unwrap());
 }
+
+/// Collateral accounts: a withdrawal takes free sats only and survives a reopen; a deposit
+/// credits the allocation; over-withdrawal and unknown channels are refused.
+#[test]
+fn collateral_transfer_is_journaled_and_bounded(){
+ let t=Temp::new();let p=t.path("router.wal");
+ {
+  let mut d=create(&p);
+  d.collateral_transfer(channel(1),40_000_000,false).unwrap();
+  let b=d.balance(&channel(1)).unwrap().unwrap();
+  assert_eq!((b.cap,b.free),(CAP-40_000_000,CAP-40_000_000));
+  assert!(d.collateral_transfer(channel(1),CAP,false).is_err(),"more than free is refused");
+  assert!(d.collateral_transfer(channel(9),1,false).is_err(),"unknown channel");
+  d.collateral_transfer(channel(1),5_000,true).unwrap();
+  assert!(d.collateral_transfer(channel(2),0,false).is_err(),"zero is refused");
+ }
+ let d=open(&p);
+ let b=d.balance(&channel(1)).unwrap().unwrap();
+ assert_eq!((b.cap,b.free),(CAP-40_000_000+5_000,CAP-40_000_000+5_000));
+ assert!(b.conserved());
+ assert_eq!(d.balance(&channel(2)).unwrap().unwrap().free,CAP);
+}

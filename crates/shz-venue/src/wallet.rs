@@ -120,9 +120,9 @@ pub fn link_hash(network: &Key, kind: &str, wallet: &[u8], trade_key: &Key, nonc
 
 // ---------------------------------------------------------------- bech32 ----
 
-const B32: &[u8; 32] = b"qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+pub(crate) const B32: &[u8; 32] = b"qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
-fn polymod(values: &[u8]) -> u32 {
+pub(crate) fn polymod(values: &[u8]) -> u32 {
     const GEN: [u32; 5] = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
     let mut chk = 1u32;
     for v in values {
@@ -136,7 +136,7 @@ fn polymod(values: &[u8]) -> u32 {
     }
     chk
 }
-fn hrp_expand(hrp: &str) -> Vec<u8> {
+pub(crate) fn hrp_expand(hrp: &str) -> Vec<u8> {
     hrp.bytes().map(|b| b >> 5).chain([0]).chain(hrp.bytes().map(|b| b & 31)).collect()
 }
 /// Plain bech32 (not bech32m), no length limit, as LUD-01 requires.

@@ -14,6 +14,15 @@
 //! `--agents` journals EnableAgents once and opens the agent API's write methods
 //! (docs/SHZ_AGENT_API.md): owner-signed grants for delegated agent keys. Off by default;
 //! the agent API's read methods are served either way.
+//!
+//!   [--collateral-chain regtest|testnet4 --bitcoind-rpc http://127.0.0.1:18443
+//!    --bitcoind-auth-file <file: user:password, or a .cookie> --batcher-key <x-only hex>
+//!    [--refund-blocks 432] [--min-conf 1] [--min-lock refund-blocks/2] [--chain-poll-ms 15000]]
+//!
+//! `--collateral-chain` replaces demo credit with on-chain collateral accounts
+//! (docs/SHZ_MVP_COLLATERAL.md): deposit addresses `account(T, B, h)`, a bitcoind watcher that
+//! credits deposits after `--min-conf`, per-epoch settlement packages the owners co-sign, and
+//! withdrawals paid by the next settlement. Demo registration is refused while it is on.
 
 mod agent_api;
 mod core;
@@ -107,6 +116,20 @@ async fn main() {
             }
         }
     }
+    if let Some(chain) = a.get("collateral-chain") {
+        let cfg = collateral_cfg(&a, chain).unwrap_or_else(|e| {
+            eprintln!("collateral: {e}");
+            std::process::exit(1)
+        });
+        match venue.lock().await.collateral_enable(cfg) {
+            Ok(s) => eprintln!("collateral on: {s}"),
+            Err(e) => {
+                eprintln!("collateral: {e}");
+                std::process::exit(1)
+            }
+        }
+        tokio::spawn(core::collateral::run(venue.clone()));
+    }
     tokio::spawn(feed::run(venue.clone(), relay.clone(), events.clone()));
 
     // Matching and settlement tick.
@@ -132,11 +155,31 @@ async fn main() {
         eprintln!("listen {listen}: {e}");
         std::process::exit(1)
     });
-    eprintln!("shz-venue {} relay={relay} state={} ui={} network=testnet4 production_ready=false", listener.local_addr().unwrap(), state.display(), ui.display());
+    let network = venue.lock().await.coll.as_ref().map(|c| c.cfg.net.name()).unwrap_or("testnet4");
+    eprintln!("shz-venue {} relay={relay} state={} ui={} network={network} production_ready=false", listener.local_addr().unwrap(), state.display(), ui.display());
     let app = Arc::new(http::App { venue, events, ui_dir: ui, mempool_api: mempool, agent: Default::default() });
     tokio::spawn(agent_api::run_bus(app.clone()));
     tokio::select! {
         _ = http::serve(app, listener) => {}
         _ = tokio::signal::ctrl_c() => {}
     }
+}
+
+fn collateral_cfg(a: &BTreeMap<String, String>, chain: &str) -> Result<core::collateral::ChainCfg, String> {
+    let net = core::collateral::Net::parse(chain)?;
+    let rpc_url = a.get("bitcoind-rpc").cloned().ok_or("--bitcoind-rpc required")?;
+    let auth_file = a.get("bitcoind-auth-file").ok_or("--bitcoind-auth-file required")?;
+    let rpc_auth = std::fs::read_to_string(auth_file).map_err(|e| format!("--bitcoind-auth-file: {e}"))?.trim().to_string();
+    if !rpc_auth.contains(':') {
+        return Err("--bitcoind-auth-file must hold user:password (or a bitcoind .cookie)".into());
+    }
+    let batcher = core::parse_key(a.get("batcher-key").ok_or("--batcher-key required")?)?;
+    shz_dlc::lift_x_even(&batcher).map_err(|_| "--batcher-key is not a valid x-only key")?;
+    let n = |k: &str, d: u64| -> Result<u64, String> { a.get(k).map(|s| s.parse::<u64>().map_err(|_| format!("--{k}: number"))).unwrap_or(Ok(d)) };
+    let refund_blocks = n("refund-blocks", 432)? as u32;
+    let min_lock = n("min-lock", refund_blocks as u64 / 2)? as u32;
+    if min_lock == 0 || min_lock > refund_blocks {
+        return Err("--min-lock must be in 1..=refund-blocks".into());
+    }
+    Ok(core::collateral::ChainCfg { net, rpc_url, rpc_auth, batcher, refund_blocks, min_conf: n("min-conf", 1)?.max(1) as u32, min_lock, poll_ms: n("chain-poll-ms", 15_000)? })
 }

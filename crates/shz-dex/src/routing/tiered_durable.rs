@@ -390,6 +390,20 @@ impl State{
     let alt=self.option_delegates(&delegated,now)?;
     Ok(Reply::Resolved(self.resolve_option(bundle,now,&alt)?))
    },
+   Event::CollateralTransfer{channel,sats,deposit}=>{
+    let k=op(&channel);
+    let mut b=self.router.account_balance(&k).ok_or(TierReject::Allocation)?;
+    if sats==0{return Err(TierReject::Bounds)}
+    if deposit{
+     b.free=b.free.checked_add(sats).ok_or(TierReject::Bounds)?;b.cap=b.cap.checked_add(sats).ok_or(TierReject::Bounds)?;
+    }else{
+     if b.free<sats{return Err(TierReject::Capacity)}
+     let from_cap=sats.min(b.cap);
+     b.free-=sats;b.cap-=from_cap;b.realized_pnl-=(sats-from_cap) as i64;
+    }
+    debug_assert!(b.conserved());
+    self.router.set_account_balance(&k,b);Ok(Reply::Unit)
+   },
   }
  }
  /// Owner-slot signers for a perpetual batch: each (channel, grant) must be a live grant
@@ -488,6 +502,10 @@ enum Event{
  ResolveDelegated{bundle:AckBundle,delegated:Vec<(BtcOutPoint,Key)>},
  /// `ResolveOption` where each listed channel's owner signature is that grant's agent's.
  ResolveOptionDelegated{bundle:OptionAckBundle,now:u64,delegated:Vec<(BtcOutPoint,Key)>},
+ /// On-chain collateral credited to (`deposit`) or withdrawn from the perpetual allocation of a
+ /// collateral account. A withdrawal takes free sats only: from the allocation first, then from
+ /// realized PnL once the allocation is spent.
+ CollateralTransfer{channel:BtcOutPoint,sats:u64,deposit:bool},
 }
 #[allow(clippy::large_enum_variant)]
 enum Reply{Due(u64),Outcome(Option<TierOutcome>),Batch(Option<Batch>),Unit,Resolved(bool),Key(Key),Option(OptionOutcome),OptionBatch(Box<OptionBatch>),Pulled(Vec<Key>,Vec<Key>)}
@@ -771,5 +789,7 @@ impl DurableTieredRouter{
  /// process died between the append and the in-memory update. The writer is poisoned
  /// afterwards (memory is stale); reopen replays the step.
  #[doc(hidden)]
+ /// Credit (`deposit`) or withdraw `sats` of on-chain collateral on the account of `channel`.
+ pub fn collateral_transfer(&mut self,channel:BtcOutPoint,sats:u64,deposit:bool)->D<()>{self.record(Event::CollateralTransfer{channel,sats,deposit}).map(|_|())}
  pub fn append_process_without_apply(&mut self,now:u64)->D<()>{self.append(&Event::Process{now})?;self.poisoned=true;Ok(())}
 }
