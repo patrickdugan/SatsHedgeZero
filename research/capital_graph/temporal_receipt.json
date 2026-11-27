@@ -1,0 +1,69 @@
+{
+  "families": 180,
+  "feasible": 85,
+  "infeasible": 95,
+  "strict_instant_relaxation_gap": 1,
+  "monotonic": 180,
+  "witnesses": 170,
+  "persistent": {
+    "slice_stock": [
+      1,
+      1
+    ],
+    "whole_interval_feasible": false,
+    "optimal_stock": [
+      1,
+      2
+    ],
+    "integer_stock": 3
+  },
+  "reuse": {
+    "fast_stock": 2,
+    "slow_stock": 4,
+    "fast_busy_ticks": 24,
+    "slow_busy_ticks": 42,
+    "fast_reserved_ticks": 24,
+    "slow_reserved_ticks": 48
+  },
+  "clockSweep": [
+    {
+      "recovery_hours": 1,
+      "peak_stock_sats": 1000,
+      "reserved_sat_hours": 288000,
+      "busy_sat_hours": 6000
+    },
+    {
+      "recovery_hours": 24,
+      "peak_stock_sats": 1000,
+      "reserved_sat_hours": 288000,
+      "busy_sat_hours": 144000
+    },
+    {
+      "recovery_hours": 25,
+      "peak_stock_sats": 2000,
+      "reserved_sat_hours": 576000,
+      "busy_sat_hours": 150000
+    },
+    {
+      "recovery_hours": 48,
+      "peak_stock_sats": 2000,
+      "reserved_sat_hours": 576000,
+      "busy_sat_hours": 288000
+    },
+    {
+      "recovery_hours": 72,
+      "peak_stock_sats": 3000,
+      "reserved_sat_hours": 864000,
+      "busy_sat_hours": 432000
+    },
+    {
+      "recovery_hours": 144,
+      "peak_stock_sats": 6000,
+      "reserved_sat_hours": 1728000,
+      "busy_sat_hours": 864000
+    }
+  ],
+  "scope": "synthetic integer reusable liquidity; fixed full-interval assignment; same-vault replenishment; scenario-wise recourse with hindsight, not online policy",
+  "execution": "function bodies evaluated in isolated JS runtime before commit",
+  "production_ready": false
+}
