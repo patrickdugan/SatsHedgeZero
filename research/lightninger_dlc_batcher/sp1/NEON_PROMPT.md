@@ -17,6 +17,9 @@ Work under shz/research/lightninger_dlc_batcher.
    CUDA 12.8+, cmake, clang. Report `nvidia-smi` (GPU model, memory) first.
 
 2. Inputs. guest/ holds clearing_proof.bin, guest_in.bin and expected_statement.bin (committed).
+   guest_in.bin is bincode of relation::GuestIn in the layout of main since 303ea14 (Account.carry_in,
+   Manifest.carried); build the guest from the same checkout. `dlc-batcher guest-in artifacts/regtest`
+   re-encodes it from guest_input.json if the layout changes again.
    The clearing verifier key is not committed (size); rebuild it, setup is deterministic:
      cargo build --release --bin dlc-batcher
      ./target/release/dlc-batcher clearing-vk 8 2 artifacts/regtest/guest/clearing_vk.bin

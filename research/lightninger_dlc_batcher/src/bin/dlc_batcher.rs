@@ -424,6 +424,34 @@ fn clearing_vk(a: usize, r: usize, out: &Path) {
     println!("{} {}", hex::encode(sha256_native(&b)), b.len());
 }
 
+/// Re-encode `<dir>/guest/guest_in.bin` (bincode of `relation::GuestIn`, current field layout) from
+/// `<dir>/guest_input.json`, and check the guest relation still gives `expected_statement.bin`.
+fn guest_in(dir: &Path) {
+    let gi: Value = read(&dir.join("guest_input.json"));
+    let h = |v: &Value| -> [u8; 32] { hex::decode(v.as_str().unwrap()).unwrap().try_into().unwrap() };
+    let g = rel::GuestIn {
+        steps: gi["steps"].as_u64().unwrap() as u32,
+        table: gi["table"].as_u64().unwrap() as u32,
+        z0: gi["z0"].as_array().unwrap().iter().map(h).collect(),
+        tap_zk: gi["tap_zk"].as_array().unwrap().iter().map(h).collect(),
+        secq_zk_sha256: h(&gi["secq_zk_sha256"]),
+        m17: serde_json::from_value(gi["m17"].clone()).unwrap(),
+        manifest: serde_json::from_value(gi["manifest"].clone()).unwrap(),
+        batches: serde_json::from_value(gi["batches"].clone()).unwrap(),
+        settlement: hex::decode(gi["settlement_hex"].as_str().unwrap()).unwrap(),
+    };
+    let want = hex::decode(gi["expected_statement_hex"].as_str().unwrap()).unwrap();
+    let gdir = dir.join("guest");
+    assert_eq!(std::fs::read(gdir.join("expected_statement.bin")).unwrap(), want);
+    // the relation part of the guest, on the statement's own z_K is not available here; check the
+    // settlement relation and the manifest hash the statement names instead
+    let st = rel::check_settlement(&g.settlement, &g.manifest, &g.batches).unwrap();
+    assert_eq!(&want[164..196], &st.txid[..], "settlement txid");
+    assert_eq!(&want[260..292], &g.manifest.hash()[..], "manifest hash");
+    std::fs::write(gdir.join("guest_in.bin"), bincode::serialize(&g).unwrap()).unwrap();
+    log(&format!("wrote {} ({} bytes)", gdir.join("guest_in.bin").display(), bincode::serialize(&g).unwrap().len()));
+}
+
 fn wrong_statement(dir: &Path) {
     let js: Value = read(&dir.join("joint_statement.json"));
     let rc: Value = read(&dir.join("receipt.json"));
@@ -614,6 +642,7 @@ fn main() {
         Some("prove") if a.len() >= 3 => prove(&dir(2), a.get(3).map_or(8, |x| x.parse().unwrap()), a.get(4).map_or(2, |x| x.parse().unwrap())),
         Some("check-clearing") => check_clearing(a.get(2).map_or(8, |x| x.parse().unwrap()), a.get(3).map_or(2, |x| x.parse().unwrap())),
         Some("clearing-vk") if a.len() == 5 => clearing_vk(a[2].parse().unwrap(), a[3].parse().unwrap(), &PathBuf::from(&a[4])),
+        Some("guest-in") if a.len() == 3 => guest_in(&dir(2)),
         Some("wrong-statement") if a.len() == 3 => wrong_statement(&dir(2)),
         Some("claim-graph") if a.len() == 5 => claim_graph(&dir(2), &PathBuf::from(&a[3]), &PathBuf::from(&a[4])),
         _ => {

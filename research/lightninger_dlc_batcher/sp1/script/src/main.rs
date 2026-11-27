@@ -53,7 +53,8 @@ async fn main() -> Result<()> {
             let ok = pv.as_slice() == want.as_slice();
             ensure!(ok, "public values differ from the expected statement");
             eprintln!("honest: {} instructions, {secs:.1}s, statement {}", report.total_instruction_count(), sha_hex(pv.as_slice()));
-            // refusals: each must exit non-zero (guest panic) or fail to execute
+            // refusals: each must exit non-zero (guest panic) or fail to execute; DLC_GUEST_SKIP_REFUSALS=1 skips them
+            let skip = std::env::var("DLC_GUEST_SKIP_REFUSALS").map(|v| v == "1").unwrap_or(false);
             let g: GuestIn = bincode::deserialize(&gin)?;
             let mut cases = Vec::new();
             let mut g1 = g.clone();
@@ -87,7 +88,7 @@ async fn main() -> Result<()> {
             cases.push(("TapSighash z_K naming another transaction", bincode::serialize(&g4)?, proof.clone()));
             let _ = n;
             let mut refusals = Vec::new();
-            for (name, gb, pb) in cases {
+            for (name, gb, pb) in cases.into_iter().filter(|_| !skip) {
                 let r = client.execute(ELF, stdin(&vk, &pb, &gb)).await;
                 let (refused, code, err) = match r {
                     Ok((_, rep)) => (rep.exit_code != 0, Some(rep.exit_code), None),
