@@ -2,6 +2,8 @@
 
 `shz-venue` runs one HFT-06 tiered router (`DurableTieredRouter`) for the market `SHZ-BTCUSD-INV` (inverse BTC/USD contracts, integer USD prices, USD notional, BTC collateral in sats). Marks come from the live FROST relay (`http://170.75.168.145:8091/v1/stream`); every packet's group signature is checked before it reaches the router. Default listen `127.0.0.1:8095`; the trading page is served at `/`, the explorer at `/explorer.html`.
 
+Options (series on DLC events, IntentV7, option acks) are off unless the venue starts with `--options`: docs/SHZ_VENUE_OPTIONS.md.
+
 All keys, digests and signatures are lowercase hex. Prices are integer USD. Quantities are USD notional. Times are Unix microseconds (`_us`) unless a field says `_ms`.
 
 ## Accounts and collateral

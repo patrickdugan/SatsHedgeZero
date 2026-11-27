@@ -4,6 +4,7 @@ import { planTakes, describe as riskText } from './liquidate.js';
 import { connectNostr, lnurlStart, lnurlFinish, nostrAvailable, weblnInfo } from './wallet.js';
 import { qrSvg } from './qr.js';
 import { applyUiMode, chartSrc, renderSettings } from './settings.js';
+import * as Opt from './options.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -110,6 +111,7 @@ function reconnectWs() {
     else if (m.type === 'trade') { st.trades.unshift(m.trade || m); st.trades.length = Math.min(st.trades.length, 60); renderTrades(); }
     else if (m.type === 'batch') { const b = m.batch || m; if (b.seq !== undefined) st.batches.set(b.seq, { ...st.batches.get(b.seq), ...b }); refreshAccount().then(renderBottom); }
     else if (m.type === 'risk') { if (m.owner === st.owner) refreshAccount().then(() => { renderBottom(); maybeLiquidate(); }); }
+    else if (String(m.type).startsWith('option')) Opt.onEvent(m);
     else if (m.type === 'account') { if (m.account && m.account.owner === st.owner) { st.account = m.account; autoSign(); maybeLiquidate(); renderBottom(); renderWallet(); renderEst(); } else if (!m.account) refreshAccount().then(renderBottom); }
   };
 }
@@ -184,6 +186,8 @@ function renderBottom() {
   } else if (st.btab === 'orders') {
     p.innerHTML = bottomTable(['Order', 'Side', 'Tier', 'Size USD', 'Limit', 'Lev', ''], (a.open_orders || []).map((o) =>
       `<tr><td title="${esc(o.id)}">${esc(short(o.id))}</td><td class="${o.side === 'long' ? 'long' : 'short'}">${esc(o.side)}</td><td>${esc(o.tier)}</td><td>${fmt(o.quantity)}</td><td>${fmt(o.limit_usd)}</td><td>${(o.leverage_bps || 0) / 1e4}x</td><td><button class="btn sm" data-cancel="${esc(o.id)}">Cancel</button></td></tr>`));
+  } else if (st.btab === 'options') {
+    Opt.renderBottom(p, bottomTable);
   } else if (st.btab === 'fills') {
     p.innerHTML = bottomTable(['Fill (explorer)', 'Time', 'Side', 'Role', 'Price', 'Size USD', 'Fee sats', 'Batch'], (a.fills || []).map((f) =>
       `<tr><td><a href="explorer.html#/fill/${esc(f.id)}">${esc(short(f.id))}</a></td><td>${new Date((f.ts_us || 0) / 1000).toLocaleTimeString('en-GB')}</td><td class="${f.side === 'long' ? 'long' : 'short'}">${esc(f.side)}</td><td>${esc(f.role)}</td><td>${fmt(f.price_usd)}</td><td>${fmt(f.qty_usd ?? f.quantity)}</td><td>${fmt(f.fee_sats)}</td><td>${f.batch_seq != null ? `<a href="explorer.html#/batch/${f.batch_seq}">#${f.batch_seq}</a>` : ''}</td></tr>`));
@@ -371,7 +375,7 @@ for (const b of document.querySelectorAll('#toptier button, #ftier button')) b.o
 $('otabs').onclick = (e) => { const t = e.target.dataset?.t; if (!t) return; st.otype = t; for (const b of $('otabs').children) b.classList.toggle('on', b.dataset.t === t); renderEst(); };
 $('sides').onclick = (e) => { const s = e.target.dataset?.s; if (!s) return; st.side = s; for (const b of $('sides').children) b.classList.toggle('on', b.dataset.s === s); renderEst(); };
 $('btabs').onclick = (e) => { const t = e.target.dataset?.t; if (!t) return; st.btab = t; renderBottom(); };
-$('bpane').onclick = (e) => { const id = e.target.dataset?.cancel; if (id) cancelOrder(id); };
+$('bpane').onclick = (e) => { const id = e.target.dataset?.cancel; if (id) cancelOrder(id); const oid = e.target.dataset?.ocancel; if (oid) Opt.cancelOption(oid); };
 $('bpane').onchange = (e) => { if (e.target.id === 'autoliq') { store.set(AUTO_LIQ, e.target.checked ? 'on' : 'off'); if (e.target.checked) maybeLiquidate(); } };
 for (const id of ['size', 'price', 'lev']) $(id).oninput = renderEst;
 $('go').onclick = placeOrder;
@@ -390,6 +394,7 @@ async function init() {
     try { await setKey(unhex(k), w); } catch { store.del(KEY_STORE); }
   }
   await pollAll(); refreshBatches(); reconnectWs(); renderAll();
+  Opt.init({ api, st, refreshAccount, renderBottom });
   if (st.template && !$('price').value && st.book.bids[0]) $('price').value = st.book.bids[0][0];
   setInterval(() => { if (!st.wsOk) pollAll(); else api('/api/status').then((s) => { setMark(s.mark); st.router = s.router; renderTop(); }).catch(() => {}); }, 1500);
   setInterval(refreshBatches, 5000);

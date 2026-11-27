@@ -14,6 +14,7 @@
   <header class="top">
     <a class="brand" href="index.html" aria-label="Lightninger"><img class="mk" src="brand/lightninger-mark.svg" alt=""><img class="wm" src="brand/lightninger-wordmark.svg" alt="Lightninger"><span class="tag testnet">TESTNET</span></a>
     <select id="market" aria-label="Market"><option>SHZ-BTCUSD-INV</option></select>
+    <span class="seg" id="viewseg" role="group" aria-label="Product" data-options hidden><button data-v="perps" class="on">Perpetual</button><button data-v="options">Options</button></span>
     <span><span class="lbl">Oracle mark</span><span id="mark" class="mark">&mdash;</span></span>
     <a id="frost" class="badge warn" href="explorer.html#/packet">FROST 3-of-5 signed</a>
     <span><span class="lbl">Mark age</span><span id="markage" class="mono">&mdash;</span></span>
@@ -48,8 +49,10 @@
       </div>
       <div class="wallet" id="wallet"></div>
     </section>
+    <section class="panel optchain" id="optchain" aria-label="Options chain"></section>
+    <section class="panel formcol optticket" id="optticket" aria-label="Options ticket"></section>
     <section class="panel bottom">
-      <div class="tabs" id="btabs"><button data-t="positions" class="on">Positions</button><button data-t="orders">Open orders</button><button data-t="fills">Fills</button><button data-t="settle">Settlement</button></div>
+      <div class="tabs" id="btabs"><button data-t="positions" class="on">Positions</button><button data-t="orders">Open orders</button><button data-t="fills">Fills</button><button data-t="settle">Settlement</button><button data-t="options" data-options hidden>Options</button></div>
       <div class="scroll" id="bpane"></div>
     </section>
   </main>

@@ -812,7 +812,9 @@ impl Venue {
             .map(|(r, f)| json!({"batch": r.n, "phase": r.phase, "series": h(&f.series), "asset": self.asset_code(&f.asset), "side": if f.long == a.outpoint { "long" } else { "short" },
                                  "qty": f.qty, "premium_milli": f.premium_milli, "premium": f.premium, "taker": h(&f.taker)}))
             .collect();
-        let intents: Vec<Value> = st.intents.iter().filter(|(_, r)| r.intent.owner == *owner).rev().take(50)
+        let mut mine: Vec<(&Key, &OptIntentRec)> = st.intents.iter().filter(|(_, r)| r.intent.owner == *owner).collect();
+        mine.sort_by_key(|(_, r)| std::cmp::Reverse(r.accepted_us));
+        let intents: Vec<Value> = mine.into_iter().take(50)
             .map(|(id, r)| json!({"id": h(id), "status": r.status, "reason": r.reason, "batch": r.batch, "action": match r.intent.action { Action::Post => "post", Action::Take => "take", Action::Cancel => "cancel" },
                                   "legs": r.intent.legs.iter().map(|l| json!({"series": h(&l.series), "long": l.long, "qty": l.qty})).collect::<Vec<_>>(), "premium_milli": r.intent.premium_milli,
                                   "accepted_us": r.accepted_us})).collect();

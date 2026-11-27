@@ -163,3 +163,29 @@ html[data-ui="classic"] .go.long { background: var(--long); color: #000; } html[
 html[data-ui="classic"] .sides button.long.on { color: #000; }
 html[data-ui="classic"] .foot { background: #000; }
 .msg.note { color: var(--text-secondary); }
+
+/* options (shown only when the venue runs with --options) */
+#viewseg { flex: none; }
+.optchain, .optticket { display: none; }
+.shell.opts .chart, .shell.opts .bookcol, .shell.opts .formcol:not(.optticket) { display: none; }
+.shell.opts .optchain { display: flex; grid-column: 1 / span 2; grid-row: 1; }
+.shell.opts .optticket { display: flex; grid-column: 3; grid-row: 1 / span 2; overflow-y: auto; }
+.shell.opts .bottom { grid-column: 1 / span 2; }
+.optchain .scroll { flex: 1; overflow: auto; }
+.evtabs button .muted { font-weight: 400; }
+table.chain td.q { cursor: pointer; } table.chain td.q:hover { outline: 1px solid var(--accent); }
+table.chain td.q.sel { background: var(--accent-dim); color: #fff; }
+table.chain .k, table.chain th.k { text-align: center; color: var(--text-primary); font-weight: 600; background: var(--bg-elevated); }
+table.chain tr.atm .k { box-shadow: inset 3px 0 0 var(--accent); color: var(--accent-text); }
+table.chain th.cgrp { text-align: center; color: var(--text-secondary); }
+.abadge { display: inline-block; font: 9px var(--font-mono); padding: 0 5px; border-radius: 2px; border: 1px solid var(--accent); color: var(--accent-text); vertical-align: 1px; }
+.abadge.st { border-color: #3fa7a0; color: #7fd8d1; }
+.cnote { padding: 6px 10px; font-size: 11px; }
+.xfer { display: grid; grid-template-columns: 1fr auto auto auto; gap: 4px; }
+.xfer input, .xfer select { border: 1px solid var(--border-strong); border-radius: 3px; padding: 4px 6px; background: var(--bg-input); font: 12px var(--font-mono); min-width: 0; }
+.optbal { display: flex; flex-wrap: wrap; gap: 14px; padding: 6px 10px; font: 11px var(--font-mono); border-bottom: 1px solid var(--border); }
+.phase.staged { background: var(--amber-dim); color: var(--amber-text); } .phase.aborted { background: var(--short-bar); color: var(--short-text); }
+.msg.note { color: var(--amber-text); }
+@media (max-width: 1100px) {
+  .shell.opts .optchain, .shell.opts .optticket, .shell.opts .bottom { grid-column: 1; grid-row: auto; } .shell.opts .optchain { height: 460px; }
+}
