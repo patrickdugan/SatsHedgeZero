@@ -9,7 +9,8 @@
 #
 # Env: BITCOIN_BIN (folder with bitcoind/bitcoin-cli), TRADER_KEYS (venue owner keys file),
 # RECEIPTS (default research/lightninger_dlc_batcher/artifacts/epochs/regtest-drill), MAX_EPOCHS (4),
-# DAEMON_FLAGS (default "--prove --table 4 --rows 2"; "--stage" runs the testnet4 no-broadcast path).
+# DAEMON_FLAGS (default "--prove --table 4 --rows 2"; "--stage" runs the testnet4 no-broadcast path),
+# PLAN (default ops/shz-batcher/drill_plan.json), TRADER_FLAGS (default "--refuse 2:2 --withdraw 5:2").
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 CRATE="$REPO/research/lightninger_dlc_batcher"
@@ -42,12 +43,12 @@ echo "setup: $SETUP"
 OPERATOR=$(python -c "import json,sys;print(json.loads(sys.argv[1])['operator'])" "$SETUP")
 BKEY=$("$SB" pubkeys --keys "$KEYS" | python -c "import json,sys;print(json.load(sys.stdin)['batcher'])")
 NOW=$(date +%s); T0=$(( (NOW + 45 + 89) / 90 * 90 ))
-python "$REPO/ops/shz-batcher/mock_venue.py" --port $VPORT --source "$CRATE/artifacts/venue_batches.json" --plan "$REPO/ops/shz-batcher/drill_plan.json" \
+python "$REPO/ops/shz-batcher/mock_venue.py" --port $VPORT --source "$CRATE/artifacts/venue_batches.json" --plan "${PLAN:-$REPO/ops/shz-batcher/drill_plan.json}" \
   --registry "$W/registry.json" --batcher-key "$BKEY" --t0 $T0 --log "$W/logs/venue.log" >"$W/logs/venue.out" 2>&1 &
 pids+=($!)
 sleep 1
 "$SB" init "${COMMON[@]}" --epoch-secs 90 --operator "$OPERATOR" --start-seq 0 --t0 $T0
-"$SB" traders --venue "http://127.0.0.1:$VPORT" --trader-keys "$TRADER_KEYS" --refuse 2:2 --withdraw 5:2 --for-secs 900 >"$W/logs/traders.log" 2>&1 &
+"$SB" traders --venue "http://127.0.0.1:$VPORT" --trader-keys "$TRADER_KEYS" ${TRADER_FLAGS:---refuse 2:2 --withdraw 5:2} --for-secs 900 >"$W/logs/traders.log" 2>&1 &
 pids+=($!)
 ( while true; do sleep 25; cli generatetoaddress 1 "$SINK" >/dev/null 2>&1 || break; done ) &
 pids+=($!)

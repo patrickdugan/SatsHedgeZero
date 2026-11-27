@@ -42,3 +42,14 @@ window: it resumed the posted package with its original deadline and settled it 
 
 Settlements built, signed and `testmempoolaccept`ed, written with their `sendrawtransaction` command;
 nothing broadcast and the batches stay unsettled, so each later epoch re-settles from the same seq.
+
+## `regtest-batchless/` — epochs with no new batches (`drill_plan_batchless.json`)
+
+One epoch of batches (306, 307, 310) where trader 0 leaves its package unsigned (−28 carried) and trader 3
+asks to withdraw, then epochs with no batches.
+
+| Epoch | Batches | Settlement | Paid |
+| --- | --- | --- | --- |
+| 18:48:00Z | 1..3 | `867d5912…` | 3 signers; trader 0 rolled (−28 carried) |
+| 18:49:30Z | none | `e146f2a3…` | trader 0 rolled to 19,972 (carry −28); trader 3 withdrew 20,036 |
+| 18:51:00Z | none | — | nothing to settle |

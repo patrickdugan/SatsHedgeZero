@@ -1,0 +1,7 @@
+[1795805286.079] trader 0: leaving SHZ-BTCUSD-20261127T184800Z#0 unsigned (drill non-signer)
+[1795805286.395] trader 1: signed SHZ-BTCUSD-20261127T184800Z#0 (payout 20000 "roll", net 0)
+[1795805286.584] trader 2: signed SHZ-BTCUSD-20261127T184800Z#0 (payout 20000 "roll", net 0)
+[1795805286.876] trader 3: signed SHZ-BTCUSD-20261127T184800Z#0 (payout 20036 "roll", net 36)
+[1795805287.113] trader 3: asked to withdraw to <T> CHECKSIG: Ok(200)
+[1795805374.255] trader 0: signed SHZ-BTCUSD-20261127T184930Z#0 (payout 19972 "roll", net 0)
+[1795805374.707] trader 3: signed SHZ-BTCUSD-20261127T184930Z#0 (payout 20036 "withdraw", net 0)

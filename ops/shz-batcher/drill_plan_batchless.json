@@ -1,0 +1,10 @@
+{
+  "epoch_secs": 90,
+  "note": "One epoch of batches (306, 307, 310), then epochs with none: carried nets and withdrawals settle without new batches.",
+  "batches": [
+    {"src": 306, "seq": 1, "epoch": 0, "at": 10},
+    {"src": 307, "seq": 2, "epoch": 0, "at": 20},
+    {"src": 310, "seq": 3, "epoch": 0, "at": 30}
+  ],
+  "unattestable": []
+}

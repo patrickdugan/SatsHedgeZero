@@ -585,8 +585,15 @@ impl Daemon {
             segments.iter().map(|s| format!("{}..{}", s[0]["seq"], s.last().unwrap()["seq"])).collect::<Vec<_>>()
         ));
         let mut summary = Vec::new();
+        // no new batches: one batch-less settlement still pays carried nets, withdrawals and refreshes
+        if segments.is_empty() {
+            segments.push(vec![]);
+        }
         for (k, seg) in segments.into_iter().enumerate() {
-            let (first, last) = (seg[0]["seq"].as_u64().unwrap(), seg.last().unwrap()["seq"].as_u64().unwrap());
+            let (first, last) = match (seg.first(), seg.last()) {
+                (Some(a), Some(b)) => (a["seq"].as_u64().unwrap(), b["seq"].as_u64().unwrap()),
+                _ => (self.st.last_settled_seq, self.st.last_settled_seq),
+            };
             let r = self.settle_segment(&event, k, seg).unwrap_or_else(|e| Outcome::Rolled(e));
             let (status, stop) = match &r {
                 Outcome::Settled => ("settled".to_string(), false),
@@ -608,7 +615,10 @@ impl Daemon {
     #[allow(clippy::too_many_lines)]
     fn settle_segment(&mut self, event: &str, k: usize, seg: Vec<Value>) -> Result<Outcome, String> {
         let rb = venue_batches(&json!({ "batches": seg }))?;
-        let (first, last) = (rb[0].seq, rb.last().unwrap().seq);
+        let (first, last) = match (rb.first(), rb.last()) {
+            (Some(a), Some(b)) => (a.seq, b.seq),
+            _ => (self.st.last_settled_seq, self.st.last_settled_seq),
+        };
         let dir = self.cfg.receipts.join(event).join(format!("seg{k}"));
         let tip = self.node.height();
         // per-channel nets and rows, owners from the batches' account lists
@@ -879,13 +889,15 @@ impl Daemon {
                      "slots": slots, "m17_flags": M17_FLAGS, "how_validated": format!("testmempoolaccept {}", accept[0])}]),
         );
         let (fund0, carry0) = self.pre_fund_carry();
-        let cash0 = seg[0]["clearing"]["cash_before"].as_i64().unwrap_or(0);
-        write_json(
+        let cash0 = seg.first().map_or(0, |b| b["clearing"]["cash_before"].as_i64().unwrap_or(0));
+        if !seg.is_empty() {
+            write_json(
             &dir.join("venue_batches.json"),
             &json!({"name": format!("{event}-seg{k}"), "venue": self.cfg.venue,
                     "status_before": {"clearing": {"cash": cash0, "fund": fund0, "carry": carry0, "claims": 0, "book": cash0 - fund0 as i64 + carry0 as i64}},
                     "batches": seg.iter().map(|b| json!({"batch": b})).collect::<Vec<_>>()}),
-        );
+            );
+        }
         if !allowed {
             self.st.collecting = None;
             let res = json!({"epoch": event, "segment": k, "status": "failed", "txid": txid, "error": format!("testmempoolaccept {}", accept[0]), "rolled": rolled});
@@ -894,7 +906,7 @@ impl Daemon {
             return Ok(Outcome::Rolled(format!("testmempoolaccept refused: {}", accept[0])));
         }
         let mut res = json!({
-            "epoch": event, "segment": k, "first_seq": first, "last_seq": last, "txid": txid, "hex": hex::encode(&raw),
+            "epoch": event, "segment": k, "first_seq": first, "last_seq": last, "batch_count": rb.len(), "txid": txid, "hex": hex::encode(&raw),
             "manifest_hash": hex::encode(manifest.hash()), "statement_sha256": null, "fee": fee, "fee_rate": self.cfg.fee_rate, "vsize": vs,
             "operator_change": change, "fronted": settled.fronted, "height": null,
             "payouts": signers.iter().map(|e| json!({"owner": e["owner"], "value": e["output"]["value"], "kind": e["output"]["kind"], "net": e["net"], "carry_in": e["carry_in"]})).collect::<Vec<_>>(),
@@ -956,7 +968,8 @@ impl Daemon {
         if let Err(e) = self.venue.post("/api/settlement/result", &res) {
             log(&format!("{event} segment {k}: posting the result: {e}"));
         }
-        if let Some(tx) = &self.prove_tx {
+        // a batch-less settlement has no clearing fold to prove
+        if let (Some(tx), false) = (&self.prove_tx, rb.is_empty()) {
             let _ = tx.send(ProveJob { dir: dir.clone(), result: res.clone() });
         }
         Ok(Outcome::Settled)
@@ -973,7 +986,7 @@ impl Daemon {
     }
 
     fn advance(&mut self, rb: &[rel::Batch]) {
-        let l = rb.last().unwrap();
+        let Some(l) = rb.last() else { return };
         self.st.last_settled_seq = l.seq;
         self.st.fund_after = Some(l.fund_after);
         self.st.carry_after = Some(l.carry_after);
@@ -1102,6 +1115,17 @@ fn write_readme(dir: &Path, cfg: &Cfg, res: &Value) {
     let full = norm(dir);
     let base = norm(crate_dir);
     let rd = full.strip_prefix(&format!("{base}/")).map(String::from).unwrap_or(full.clone());
+    if res["batch_count"] == 0 {
+        let s = format!(
+            "# {} segment {}
+
+Settlement `{}` ({}, {}) with no new venue batches: it pays carried nets, withdrawals and              refund-height refreshes only (`settlement.json`). There is no clearing fold to prove; the carried nets were              stated in the manifests of the segments that left them unpaid.
+",
+            res["epoch"].as_str().unwrap_or(""), res["segment"], res["txid"].as_str().unwrap_or(""), res["status"].as_str().unwrap_or(""), cfg.network
+        );
+        std::fs::write(dir.join("README.md"), s).unwrap();
+        return;
+    }
     let s = format!(
         "# {epoch} segment {seg}\n\n\
 Settlement `{txid}` ({status}, {network}): batches {first}..{last}, fee {fee} sats at {rate} sat/vB, {vs} vB.\n\n\

@@ -1,0 +1,177 @@
+{
+  "network": "regtest",
+  "batcher": "11bebcb5e84da76e44101b48bbf940dc58f9f5a1dba5f0b720eaf738efd23362",
+  "operator": {
+    "txid": "4dcc234f3592e3eb529d9f142963590477199a68e90e1e43a9cd16b12874d830",
+    "vout": 0,
+    "amount": 193177
+  },
+  "last_settled_seq": 3,
+  "last_maturity_s": 1795805460,
+  "fund_after": 1000002,
+  "carry_after": 0,
+  "accounts": {
+    "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2": {
+      "owner": "070bd95ece302426a2d1d7bd4f454ac45a672fd67e57234c060cf2f075fa95e2",
+      "channel_txid": "eab8afcdda7c269f72d18ea66cf5edb0931462f91da69a85a406e3f7d734b8b7",
+      "channel_vout": 0,
+      "txid": "20c0549480100a2aaa2230b929a724b539c197a5cde4d6ead260e690d5254bda",
+      "vout": 7,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080": {
+      "owner": "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080",
+      "channel_txid": "f8ddae7f6d2243939b7cdd048d67ae11bced66f5490d083f72e5e59b04b528f3",
+      "channel_vout": 0,
+      "txid": "e146f2a37ef73fc83726d6d80b599aa8f8792d8fd4ed511fbc8afd04fbd3e7b3",
+      "vout": 0,
+      "collateral": 20036,
+      "refund_height": 156,
+      "carry_in": 0,
+      "status": "withdrawn"
+    },
+    "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9": {
+      "owner": "3cb535cdfa9d9a529362895f76a47415654d0da79dab93fc353f529cf101d8f9",
+      "channel_txid": "847e8ad858cc9aa9d3113d518a8d2b82de797fc95e2c6b1f5a07f7023d27f9bb",
+      "channel_vout": 0,
+      "txid": "e146f2a37ef73fc83726d6d80b599aa8f8792d8fd4ed511fbc8afd04fbd3e7b3",
+      "vout": 1,
+      "collateral": 19972,
+      "refund_height": 159,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9": {
+      "owner": "47c70a0d781167c25b13ca457875d8fa9df10336dbcf56c7f14d1a9b643b62c9",
+      "channel_txid": "4546245283a757be999edd0730db4845d1265d9a894fea91bc4738c84c344828",
+      "channel_vout": 0,
+      "txid": "867d59121fe3ba5ec6c0cb5a1da5116e2563c7e595b314949c584ce2bf0fc135",
+      "vout": 1,
+      "collateral": 20000,
+      "refund_height": 156,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea": {
+      "owner": "65f25feef13bc0c40301ce797b5e04f6e2e5531f90ad662fa6a4d084568446ea",
+      "channel_txid": "24a02ee586c829605a62619ff8e6ff0fc034b6e500c51991031a0b517937ff60",
+      "channel_vout": 0,
+      "txid": "20c0549480100a2aaa2230b929a724b539c197a5cde4d6ead260e690d5254bda",
+      "vout": 2,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483": {
+      "owner": "7ab402610fd97f1915018ca122609f2218c3d7c378969a93ff1a7d8299da0483",
+      "channel_txid": "ad4b18dd5b3a881e898765e1a13be308bda935c50cd496b67773a4be64452ca5",
+      "channel_vout": 0,
+      "txid": "20c0549480100a2aaa2230b929a724b539c197a5cde4d6ead260e690d5254bda",
+      "vout": 1,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd": {
+      "owner": "9b87774e09971efac127792493b13ce9751801d2cf2bd33cdfe4a653506489bd",
+      "channel_txid": "aaa6c7b7f77face6b3376d3a80cca977bd8233f46fcf5db234c28df34091cb1a",
+      "channel_vout": 0,
+      "txid": "867d59121fe3ba5ec6c0cb5a1da5116e2563c7e595b314949c584ce2bf0fc135",
+      "vout": 2,
+      "collateral": 20000,
+      "refund_height": 156,
+      "carry_in": 0,
+      "status": "active"
+    },
+    "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95": {
+      "owner": "ec03825fc256d8d1d55bc51ec0c0b01ebfcdd53d3c3764682960f1fe697b6d95",
+      "channel_txid": "4487f6904fd28e80a4058185cfab1e31e39a4b8d6398a640753a16967ce50b73",
+      "channel_vout": 0,
+      "txid": "20c0549480100a2aaa2230b929a724b539c197a5cde4d6ead260e690d5254bda",
+      "vout": 8,
+      "collateral": 20000,
+      "refund_height": 150,
+      "carry_in": 0,
+      "status": "active"
+    }
+  },
+  "pending": [
+    {
+      "event": "SHZ-BTCUSD-20261127T184800Z",
+      "segment": 0,
+      "txid": "867d59121fe3ba5ec6c0cb5a1da5116e2563c7e595b314949c584ce2bf0fc135",
+      "fee": 628,
+      "vsize": 628,
+      "broadcast_height": 116,
+      "broadcast_us": 1795805306315646,
+      "confirmed_height": 118,
+      "bumped_by": "30c504290bc02950a957feb25f9ee1fcd2ff712598d51a8e74d7f8ef1533cd37",
+      "receipts": "D:/shz/SatsHedgeZero/research/lightninger_dlc_batcher/artifacts/epochs/regtest-batchless\\SHZ-BTCUSD-20261127T184800Z\\seg0"
+    },
+    {
+      "event": "SHZ-BTCUSD-20261127T184930Z",
+      "segment": 0,
+      "txid": "e146f2a37ef73fc83726d6d80b599aa8f8792d8fd4ed511fbc8afd04fbd3e7b3",
+      "fee": 477,
+      "vsize": 477,
+      "broadcast_height": 119,
+      "broadcast_us": 1795805376038425,
+      "confirmed_height": 121,
+      "bumped_by": "4dcc234f3592e3eb529d9f142963590477199a68e90e1e43a9cd16b12874d830",
+      "receipts": "D:/shz/SatsHedgeZero/research/lightninger_dlc_batcher/artifacts/epochs/regtest-batchless\\SHZ-BTCUSD-20261127T184930Z\\seg0"
+    }
+  ],
+  "collecting": null,
+  "withdrawals_done": [
+    "3861b37102e09ff89512a4d3a7789ebba22805b0f4b1509fa9e13ea152660080:1795805286876604"
+  ],
+  "epochs": [
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T184800Z",
+      "maturity_unix": 1795805280,
+      "segments": [
+        {
+          "first_seq": 1,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "settled"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T184930Z",
+      "maturity_unix": 1795805370,
+      "segments": [
+        {
+          "first_seq": 3,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "settled"
+        }
+      ],
+      "status": "processed"
+    },
+    {
+      "aborted_seqs": [],
+      "event": "SHZ-BTCUSD-20261127T185100Z",
+      "maturity_unix": 1795805460,
+      "segments": [
+        {
+          "first_seq": 3,
+          "last_seq": 3,
+          "segment": 0,
+          "status": "nothing-on-chain"
+        }
+      ],
+      "status": "processed"
+    }
+  ]
+}
