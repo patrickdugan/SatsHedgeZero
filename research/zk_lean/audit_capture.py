@@ -26,7 +26,10 @@ def line(stream):
         raise ValueError("oversized or unterminated JSONL record")
     if not raw:
         return None
-    return json.loads(raw, object_pairs_hook=unique_object)
+    value = json.loads(raw, object_pairs_hook=unique_object)
+    if value is None:
+        raise ValueError("null is not a valid stream record")
+    return value
 
 
 def stream_audit(path):
@@ -59,9 +62,14 @@ def stream_audit(path):
                 raise ValueError("invalid row or excess rows")
             row = []
             for j, terms in enumerate(raw):
+                if not isinstance(terms, list):
+                    raise ValueError("linear combination is not a list")
                 out = []
                 previous = -1
-                for i, coeff in terms:
+                for term in terms:
+                    if not isinstance(term, list) or len(term) != 2:
+                        raise ValueError("invalid sparse term")
+                    i, coeff = term
                     i, c = index(i, n), number(coeff)
                     if not previous < i or not 0 < c < p:
                         raise ValueError("noncanonical sparse column order or coefficient")

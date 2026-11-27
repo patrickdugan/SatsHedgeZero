@@ -36,6 +36,17 @@ class CaptureTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     stream_audit(self.write(root, BN254_FR, [[terms, [], []]]))
 
+    def test_null_and_trailing_records_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.write(Path(tmp), BN254_FR, [])
+            with path.open("ab") as stream:
+                stream.write(b"null\n")
+            with self.assertRaises(ValueError):
+                stream_audit(path)
+            path = self.write(Path(tmp), BN254_FR, [[{}, [], []]])
+            with self.assertRaises(ValueError):
+                stream_audit(path)
+
 
 if __name__ == "__main__":
     unittest.main()
