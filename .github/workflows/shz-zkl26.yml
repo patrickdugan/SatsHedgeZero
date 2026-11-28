@@ -1,0 +1,135 @@
+name: ZKL-26 expanded algebraic search
+on:
+  pull_request:
+    paths:
+      - 'research/zk_lean/graph_dependency.py'
+      - 'research/zk_lean/full_matrix_scan.py'
+      - 'research/zk_lean/scan_findings.py'
+      - 'research/zk_lean/emit_zkl26_replay.py'
+      - 'research/zk_lean/test_zkl26.py'
+      - '.github/workflows/shz-zkl26.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fixture regressions and Lean fixture emission
+        run: |
+          cd research/zk_lean
+          python -m unittest test_zkl26 test_graph_dependency -v
+          python emit_zkl26_replay.py "${GITHUB_WORKSPACE}/zkl26-fixtures"
+      - uses: actions/download-artifact@v4
+        with:
+          name: zkl22-nova-setup-capture
+          path: captured
+          run-id: 46042490831
+          github-token: ${{ github.token }}
+      - name: Full-matrix scan, scan findings and 512-target search on both matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          ulimit -v 524288
+          test "$(cat captured/source-commit.txt)" = 7b8d60305a8338f9fe26403d031383377bcf3d4c
+          echo 'ffb298ecbb4e923beba2ad1ee907588507ddc57c1bd91237156c18d6f8f5684a  captured/capture.json' | sha256sum -c -
+          echo '3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6  captured/vk.bin' | sha256sum -c -
+          mkdir -p zkl26-actual zkl26-export
+          for side in primary secondary; do
+            gzip -d "captured/$side.rows.jsonl.gz"
+            pin="$(python -c 'import json,sys; print(json.load(open("research/zk_lean/zkl22_capture_pins.json"))[sys.argv[1]])' "$side")"
+            mkdir -p "zkl26-actual/$side-scan"
+            /usr/bin/time -v python research/zk_lean/full_matrix_scan.py "captured/$side.rows.jsonl" \
+              --expected-original "$pin" --out "zkl26-actual/$side-scan/scan.json" 2> "zkl26-export/$side-scan.time.txt" \
+              | tee "zkl26-export/$side-scan.summary.json"
+            /usr/bin/time -v python research/zk_lean/scan_findings.py "captured/$side.rows.jsonl" \
+              --expected-original "$pin" --scan "zkl26-actual/$side-scan/scan.json" --out "zkl26-actual/$side-scan" \
+              2> "zkl26-export/$side-findings.time.txt"
+            /usr/bin/time -v python research/zk_lean/graph_dependency.py --zkl26 "captured/$side.rows.jsonl" \
+              --expected-original "$pin" --target-count 512 --out "zkl26-actual/$side" \
+              2> "zkl26-export/$side-search.time.txt" > /dev/null
+            grep -hE 'Maximum resident|Elapsed|User time' zkl26-export/$side-*.time.txt
+            cp "zkl26-actual/$side/summary.json" "zkl26-export/$side-summary.json"
+            cp "zkl26-actual/$side-scan/findings.json" "zkl26-export/$side-findings.json"
+            cp zkl26-actual/$side/*_degree*.json zkl26-export/ 2>/dev/null || true
+            python - "$side" <<'EOF'
+          import json, sys
+          side = sys.argv[1]
+          s = json.load(open(f"zkl26-actual/{side}-scan/scan.json"))
+          for k in ("duplicate_pairs", "dead_output_sample", "zero_rows"):
+              s[k] = s[k][:64]
+          json.dump(s, open(f"zkl26-export/{side}-scan-lite.json", "w"), sort_keys=True)
+          c = json.load(open(f"zkl26-actual/{side}/campaign.json"))
+          arms = ["window", "graph", "adaptive", "directed"]
+          outs = ["verified_redundancy", "counterexample", "exhausted_span", "incomplete"]
+          caps = [None, "work", "cpu", "support", "degree"]
+          rows = []
+          for t in c["tasks"]:
+              for arm, r in t["arms"].items():
+                  rows.append([t["target"], t["degree"], arms.index(arm), outs.index(r["outcome"]),
+                               caps.index(r["cap"]), r["work"], len(r["retained_global_indices"]),
+                               r["cpu_ns"] // 1000, r["info"].get("pivots", -1)])
+          json.dump({"columns": ["target", "degree", "arm", "outcome", "cap", "work", "rows", "cpu_us",
+                                 "pivots"], "arms": arms, "outcomes": outs, "caps": caps,
+                     "pools": c["pools"], "motif_stats": c["motif_stats"], "rows": rows},
+                    open(f"zkl26-export/{side}-attempts.json", "w"), separators=(",", ":"))
+          EOF
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl26-results
+          path: |
+            zkl26-fixtures
+            zkl26-actual
+            zkl26-export
+      - uses: actions/checkout@v4
+        with:
+          repository: patrickdugan/MathCan
+          ref: 45747ba240e2c941e7e2590af415ccf670b64452
+          path: mathcan
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: mathcan
+          auto-config: false
+          build: true
+          build-args: MathCan.ZKLeanCompose
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Kernel replay of fixture and actual sources with axiom audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mathcan
+          shopt -s nullglob
+          files=(../zkl26-fixtures/*.lean ../zkl26-actual/*/*.lean)
+          test "${#files[@]}" -ge 10
+          for f in "${files[@]}"; do
+            printf 'REPLAY %s\n' "$f" | tee -a ../zkl26-export/replay-axioms.txt
+            lake env lean "$f" | tee -a ../zkl26-export/replay-axioms.txt
+          done
+          test "$(grep -cE "'indexed_(context|dead_output)_delete' depends on axioms" ../zkl26-export/replay-axioms.txt)" -eq "${#files[@]}"
+          if grep -Eq 'sorryAx|ofReduceBool|Classical.choice' ../zkl26-export/replay-axioms.txt; then exit 1; fi
+          ls ../zkl26-actual/*/*.lean > ../zkl26-export/actual-lean-files.txt || true
+      - name: Export (slice 0)
+        if: always()
+        run: python research/zk_lean/ci_export.py --name zkl26 --slice 0 zkl26-export
+      - name: Export (slice 1)
+        if: always()
+        run: python research/zk_lean/ci_export.py --name zkl26 --slice 1 zkl26-export
+      - name: Export (slice 2)
+        if: always()
+        run: python research/zk_lean/ci_export.py --name zkl26 --slice 2 zkl26-export
+      - name: Export (slice 3)
+        if: always()
+        run: python research/zk_lean/ci_export.py --name zkl26 --slice 3 zkl26-export
+      - name: Export (slice 4)
+        if: always()
+        run: python research/zk_lean/ci_export.py --name zkl26 --slice 4 zkl26-export

@@ -1,0 +1,59 @@
+name: ZKL-23 local subset binding and contextual proof
+on:
+  pull_request:
+    paths:
+      - 'research/zk_lean/local_binding.py'
+      - 'research/zk_lean/test_local_binding.py'
+      - 'research/zk_lean/emit_local_replay.py'
+      - 'research/zk_lean/audit_capture.py'
+      - '.github/workflows/shz-zkl23.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Stream and subset regressions
+        run: |
+          cd research/zk_lean
+          python -m unittest test_audit_capture test_local_binding -v
+          python emit_local_replay.py "${GITHUB_WORKSPACE}/zkl23-fixtures"
+      - uses: actions/checkout@v4
+        with:
+          repository: patrickdugan/MathCan
+          ref: f7f5cf1c00ca4b3c2f12eb4fb8a68ae852524f67
+          path: mathcan
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: mathcan
+          auto-config: false
+          build: true
+          build-args: MathCan.ZKLeanLocal
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Replay contextual implications in both fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mathcan
+          lake env lean MathCan/ZKLeanLocal.lean | tee zkl23-axioms.txt
+          for f in ../zkl23-fixtures/*.lean; do
+            lake env lean "$f" | tee -a zkl23-axioms.txt
+          done
+          test "$(grep -c "'bound_context_delete' depends on axioms" zkl23-axioms.txt)" -eq 2
+          if grep -Eq 'sorryAx|ofReduceBool|Classical.choice' zkl23-axioms.txt; then
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zkl23-local-replay
+          path: |
+            zkl23-fixtures
+            mathcan/zkl23-axioms.txt

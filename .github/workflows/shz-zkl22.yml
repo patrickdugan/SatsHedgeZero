@@ -1,0 +1,91 @@
+name: ZKL-22 actual augmented Nova shape capture
+# Manual only. The capture is pinned (run 46042490831, artifact 15220907562);
+# PR path filters match the whole PR diff, so a pull_request trigger re-ran
+# the full Nova setup on every push to PR #36.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      RAYON_NUM_THREADS: '2'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate independent streaming checker
+        run: |
+          cd research/zk_lean
+          python -m unittest test_audit_capture -v
+      - name: Compile and test capture bridge
+        run: |
+          cargo clippy --locked --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --example zkl_capture -- -D warnings
+          cargo test --locked --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --example zkl_capture
+          cargo build --locked --release --manifest-path research/mnr05_bitvm3_ln_dlc/Cargo.toml --example zkl_capture
+      - name: Capture actual setup matrices and verification key
+        run: |
+          set -euo pipefail
+          ulimit -v 6291456
+          /usr/bin/time -v research/mnr05_bitvm3_ln_dlc/target/release/examples/zkl_capture zkl22-capture
+          /usr/bin/time -v python research/zk_lean/audit_capture.py zkl22-capture
+          git rev-parse HEAD > zkl22-capture/source-commit.txt
+          sha256sum research/mnr05_bitvm3_ln_dlc/Cargo.lock > zkl22-capture/cargo-lock.sha256
+          for side in primary secondary; do
+            pin="$(python -c 'import json,sys; print(json.load(open("zkl22-capture/stream-audit.json"))[sys.argv[1]]["canonical_shape_sha256"])' "$side")"
+            /usr/bin/time -v python research/zk_lean/local_binding.py "zkl22-capture/$side.rows.jsonl" \
+              --expected-original "$pin" --out "zkl22-capture/$side-local"
+          done
+          du -sh zkl22-capture
+          gzip -1 zkl22-capture/*.shape.bin zkl22-capture/*.rows.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl22-nova-setup-capture
+          path: zkl22-capture
+          compression-level: 0
+          if-no-files-found: warn
+      - uses: actions/checkout@v4
+        with:
+          repository: patrickdugan/MathCan
+          ref: f7f5cf1c00ca4b3c2f12eb4fb8a68ae852524f67
+          path: mathcan
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: mathcan
+          auto-config: false
+          build: true
+          build-args: MathCan.ZKLeanLocal
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Replay discovered local identities in their abstract context
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C mathcan rev-parse HEAD)" = f7f5cf1c00ca4b3c2f12eb4fb8a68ae852524f67
+          cd mathcan
+          shopt -s nullglob
+          files=(../zkl22-capture/*-local/*.lean)
+          printf 'Candidate files: %s\n' "${#files[@]}" | tee zkl22-local-axioms.txt
+          for f in "${files[@]}"; do
+            printf 'REPLAY %s\n' "$f" | tee -a zkl22-local-axioms.txt
+            lake env lean "$f" | tee -a zkl22-local-axioms.txt
+          done
+          count="$(grep -c "'bound_context_delete' depends on axioms" zkl22-local-axioms.txt || true)"
+          test "$count" -eq "${#files[@]}"
+          if grep -Eq 'sorryAx|ofReduceBool|Classical.choice' zkl22-local-axioms.txt; then
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl22-local-axiom-replay
+          path: mathcan/zkl22-local-axioms.txt

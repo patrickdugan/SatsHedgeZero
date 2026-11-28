@@ -1,0 +1,111 @@
+name: ZKL-25 receipt recovery
+on:
+  pull_request:
+    paths:
+      - 'research/zk_lean/recover_zkl25.py'
+      - 'research/zk_lean/ci_export.py'
+      - '.github/workflows/shz-zkl25-recover.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download pinned ZKL-25 results (run 46072770036)
+        uses: actions/download-artifact@v4
+        with:
+          name: zkl25-graph-results
+          path: prior
+          run-id: 46072770036
+          github-token: ${{ github.token }}
+      - name: Download pinned ZKL-25 axiom log (run 46072770036)
+        uses: actions/download-artifact@v4
+        with:
+          name: zkl25-indexed-axioms
+          path: prior-axioms
+          run-id: 46072770036
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: zkl22-nova-setup-capture
+          path: captured
+          run-id: 46042490831
+          github-token: ${{ github.token }}
+      - name: Recheck capture pins, rebind and re-verify every ZKL-25 certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ulimit -v 524288
+          test "$(cat captured/source-commit.txt)" = 7b8d60305a8338f9fe26403d031383377bcf3d4c
+          echo 'ffb298ecbb4e923beba2ad1ee907588507ddc57c1bd91237156c18d6f8f5684a  captured/capture.json' | sha256sum -c -
+          echo '3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6  captured/vk.bin' | sha256sum -c -
+          find prior prior-axioms -type f | sort | xargs sha256sum | tee recovered-manifest.txt
+          mkdir recovered
+          python - <<'EOF'
+          import json
+          def small(v, depth=0):
+              if isinstance(v, dict) and depth < 3:
+                  return {k: small(x, depth+1) for k, x in v.items() if not isinstance(x, list) or len(x) <= 8}
+              return v if not isinstance(v, (dict, list)) or len(json.dumps(v)) < 400 else "<omitted>"
+          json.dump(small(json.load(open("captured/capture.json"))), open("recovered/capture-scalars.json", "w"), indent=1, sort_keys=True)
+          EOF
+          ls -la captured
+          for side in primary secondary; do
+            gzip -d "captured/$side.rows.jsonl.gz"
+            pin="$(python -c 'import json,sys; print(json.load(open("research/zk_lean/zkl22_capture_pins.json"))[sys.argv[1]])' "$side")"
+            res="$(dirname "$(find prior -path "*/$side/campaign.json")")"
+            /usr/bin/time -v python research/zk_lean/recover_zkl25.py "captured/$side.rows.jsonl" \
+              --expected-original "$pin" --results "$res" --out "recovered/$side.json" 2> "recovered/$side.time.txt"
+            grep -E 'Maximum resident|Elapsed' "recovered/$side.time.txt"
+          done
+          cp recovered-manifest.txt prior-axioms/*.txt recovered/
+      - uses: actions/checkout@v4
+        with:
+          repository: patrickdugan/MathCan
+          ref: 8040c011f2fda4031cc6833a6e6f867d8eaaf095
+          path: mathcan
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: mathcan
+          auto-config: false
+          build: true
+          build-args: MathCan.ZKLeanLocal
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Re-replay the recovered Lean sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mathcan
+          shopt -s nullglob
+          files=(../prior/zkl25-fixtures/*.lean ../prior/zkl25-actual/*/*.lean)
+          test "${#files[@]}" -ge 4
+          for f in "${files[@]}"; do
+            printf 'REPLAY %s\n' "$f" | tee -a ../recovered/replay-axioms.txt
+            lake env lean "$f" | tee -a ../recovered/replay-axioms.txt
+          done
+          test "$(grep -c "'indexed_context_delete' depends on axioms" ../recovered/replay-axioms.txt)" -eq "${#files[@]}"
+          if grep -Eq 'sorryAx|ofReduceBool|Classical.choice' ../recovered/replay-axioms.txt; then exit 1; fi
+      - name: Export recovered receipts (slice 0)
+        run: python research/zk_lean/ci_export.py --name zkl25 --slice 0 recovered prior
+      - name: Export recovered receipts (slice 1)
+        run: python research/zk_lean/ci_export.py --name zkl25 --slice 1 recovered prior
+      - name: Export recovered receipts (slice 2)
+        run: python research/zk_lean/ci_export.py --name zkl25 --slice 2 recovered prior
+      - name: Export recovered receipts (slice 3)
+        run: python research/zk_lean/ci_export.py --name zkl25 --slice 3 recovered prior
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl25-recovered
+          path: |
+            recovered
+            prior

@@ -1,0 +1,16 @@
+{
+ "dead_output_receipt": {
+  "coefficient": "1",
+  "dead_wire": 4269,
+  "inverse": "1",
+  "lean_source_sha256": "d1577f100de8f556a72656a2d8b17807106ca9e1b9d3799d9bb55f488b3fa7a3",
+  "occurrence_premise": "streaming scan (external to Lean)",
+  "original_full_sha256": "acf5a8b094824d9aac8e8b5a875f931a5e72f06f5333268db98f9199433f5c0e",
+  "production_accepted": false,
+  "replacement_full_sha256": "0f41a2d99d469ec73040df25dfd145def8028d7e43315cfb0473ebe97e073f7e",
+  "schema": "zkl26-dead-output-v1",
+  "target_global_index": 4219
+ },
+ "original_full_sha256": "acf5a8b094824d9aac8e8b5a875f931a5e72f06f5333268db98f9199433f5c0e",
+ "schema": "zkl26-scan-findings-v1"
+}

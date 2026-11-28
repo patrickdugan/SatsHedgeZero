@@ -1,0 +1,56 @@
+name: ZKL-12 polynomial certificate replay
+on:
+  pull_request:
+    paths:
+      - 'research/zk_lean/**'
+      - '.github/workflows/shz-zkl12.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python independent verifier and generated fixtures
+        run: |
+          cd research/zk_lean
+          python -m unittest discover -v
+          python emit_poly_replay.py "${GITHUB_WORKSPACE}/generated-zkl12"
+      - uses: actions/checkout@v4
+        with:
+          repository: patrickdugan/MathCan
+          ref: a29a46d465ddecb3a94a0367707befdc7f27ff28
+          path: mathcan
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: mathcan
+          auto-config: false
+          build: true
+          build-args: MathCan.ZKLeanPoly
+          test: false
+          lint: false
+          use-mathlib-cache: false
+      - name: Replay exact generated certificates and inspect axioms
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mathcan
+          lake env lean MathCan/ZKLeanPoly.lean | tee zkl12-axioms.txt
+          for f in ../generated-zkl12/*.lean; do
+            lake env lean "$f" | tee -a zkl12-axioms.txt
+          done
+          if grep -Eq 'sorryAx|ofReduceBool|Classical.choice' zkl12-axioms.txt; then
+            echo "Disallowed axiom"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zkl12-replay
+          path: |
+            generated-zkl12
+            mathcan/zkl12-axioms.txt

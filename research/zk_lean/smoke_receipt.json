@@ -1,0 +1,55 @@
+{
+  "status": "LOCAL_DEVELOPMENT_REPLAY",
+  "source_commits": {
+    "SatsHedgeZero": "c40217852709245c7f2f73ae73fcc74e5f3cf05c",
+    "DataGoblin": "5ac5fcfec7baa507082c05de7a100aa6afacbee4"
+  },
+  "source_blob_sha1": {
+    "audit": "bf95ea90d65cef44b6b9a7485eab7c6f3cafbfa5",
+    "clearing_spec": "6258325c5283874f5ab92b4b07f9af740643aff5",
+    "test_audit": "80cbabfeb4e4c79f2a8c6aac28b0c8168fa73631",
+    "gym": "2f7bcd4b16a270efe16ad0c741e48edd26d20280",
+    "gym_tests": "5ab1718861fc4d28ac1f98c56e5b86ee869eee77",
+    "replay_smoke": "377fc99df3d42d0a4252f5b6a416b156031f0766"
+  },
+  "tests": {
+    "shz_passed": 5,
+    "datagoblin_passed": 3
+  },
+  "cases": 48,
+  "baseline_assignments_enumerated": 150208,
+  "matching_shape_hashes": 96,
+  "validated_counterexamples": 22,
+  "redundant_rows_removed": 12,
+  "accepted_edits": 12,
+  "defect_mutations": 24,
+  "unsound": 22,
+  "incomplete": 12,
+  "crossfield_range2": {
+    "bit_decomposition_sha256": "a306bb0ecd10e4df0ae6175b546ed62ca228a1bf38e9890100ef4e49b96f20d2",
+    "vanishing_polynomial_sha256": "8ba28e79255351e767057bb7a405410987aa40ecc8c6a823add64d68e8dc4527",
+    "accepted": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "mutant_accepted": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "lean_replayed": false,
+  "rust_compiled": false,
+  "clean_clap_executed": false,
+  "production_accepted": false
+}

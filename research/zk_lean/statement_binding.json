@@ -1,0 +1,102 @@
+{
+  "schema": "zkl-bitvm3-binding-v1",
+  "status": "UNPROVED",
+  "source_blob": "2ebdf87247e13651c85b57406dfcdc0b2a94b7ef",
+  "statement_bytes": 304,
+  "hash": "SHA256(canonical bytes)",
+  "public_limbs": [
+    "digest[0:16] big-endian u128",
+    "digest[16:32] big-endian u128"
+  ],
+  "fields": [
+    [
+      "magic",
+      0,
+      33,
+      "constant domain and trailing NUL"
+    ],
+    [
+      "reserved",
+      33,
+      35,
+      "zero LE"
+    ],
+    [
+      "network_code",
+      35,
+      36,
+      "expected network 0 or 1"
+    ],
+    [
+      "chain_genesis_hash",
+      36,
+      68,
+      "expected chain pin"
+    ],
+    [
+      "contract_id",
+      68,
+      100,
+      "contract identity pin"
+    ],
+    [
+      "commitment_hash",
+      100,
+      132,
+      "derived commitment preimage and state root"
+    ],
+    [
+      "assertion_txid",
+      132,
+      164,
+      "independent assertion transaction pin"
+    ],
+    [
+      "settlement_txid",
+      164,
+      196,
+      "derived transaction ID"
+    ],
+    [
+      "program_hash",
+      196,
+      228,
+      "relation/program identity pin"
+    ],
+    [
+      "verifying_key_hash",
+      228,
+      260,
+      "verified VK identity pin"
+    ],
+    [
+      "policy_hash",
+      260,
+      292,
+      "derived policy or independent pin"
+    ],
+    [
+      "epoch_id",
+      292,
+      300,
+      "expected epoch u64le"
+    ],
+    [
+      "assertion_vout",
+      300,
+      304,
+      "expected output u32le"
+    ]
+  ],
+  "required": [
+    "full constraint matrix identity (both augmented circuits)",
+    "field and input map",
+    "initial state",
+    "terminal state",
+    "exact fold count",
+    "verifier key identity",
+    "all hash preimages",
+    "authorized statement, not prover supplied pins"
+  ],
+  "production_accepted": false
+}

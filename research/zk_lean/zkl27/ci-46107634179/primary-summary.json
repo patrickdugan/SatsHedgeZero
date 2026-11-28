@@ -1,0 +1,189 @@
+{
+ "arms": [
+  "indexed",
+  "periodic",
+  "row_random",
+  "recurrent",
+  "reset",
+  "trm",
+  "ldt"
+ ],
+ "production_accepted": false,
+ "real": {
+  "sampled/792/indexed": {
+   "certified": 0,
+   "columns": 88788,
+   "cpu_ns": 2731555917,
+   "explore": 0,
+   "loops": 0,
+   "tasks": 128,
+   "work": 2139118
+  },
+  "sampled/792/ldt": {
+   "certified": 0,
+   "columns": 88788,
+   "cpu_ns": 6253603051,
+   "explore": 84222,
+   "loops": 349790,
+   "tasks": 128,
+   "work": 1992253
+  },
+  "sampled/792/periodic": {
+   "certified": 0,
+   "columns": 88788,
+   "cpu_ns": 3513432227,
+   "explore": 29596,
+   "loops": 0,
+   "tasks": 128,
+   "work": 2100424
+  },
+  "sampled/792/recurrent": {
+   "certified": 0,
+   "columns": 88788,
+   "cpu_ns": 5324519603,
+   "explore": 76902,
+   "loops": 88788,
+   "tasks": 128,
+   "work": 2016284
+  },
+  "sampled/792/reset": {
+   "certified": 0,
+   "columns": 88788,
+   "cpu_ns": 5483619039,
+   "explore": 0,
+   "loops": 88788,
+   "tasks": 128,
+   "work": 2139118
+  },
+  "sampled/792/row_random": {
+   "certified": 0,
+   "columns": 88788,
+   "cpu_ns": 4489648438,
+   "explore": 88788,
+   "loops": 0,
+   "tasks": 128,
+   "work": 1976546
+  },
+  "sampled/792/trm": {
+   "certified": 0,
+   "columns": 88788,
+   "cpu_ns": 6100704482,
+   "explore": 84694,
+   "loops": 266364,
+   "tasks": 128,
+   "work": 1993506
+  },
+  "sampled/96/indexed": {
+   "certified": 0,
+   "columns": 10944,
+   "cpu_ns": 1107949147,
+   "explore": 0,
+   "loops": 0,
+   "tasks": 128,
+   "work": 250417
+  },
+  "sampled/96/ldt": {
+   "certified": 0,
+   "columns": 10944,
+   "cpu_ns": 1784275868,
+   "explore": 6558,
+   "loops": 38414,
+   "tasks": 128,
+   "work": 222586
+  },
+  "sampled/96/periodic": {
+   "certified": 0,
+   "columns": 10944,
+   "cpu_ns": 1078686031,
+   "explore": 3648,
+   "loops": 0,
+   "tasks": 128,
+   "work": 228176
+  },
+  "sampled/96/recurrent": {
+   "certified": 0,
+   "columns": 10944,
+   "cpu_ns": 1563327871,
+   "explore": 5085,
+   "loops": 10944,
+   "tasks": 128,
+   "work": 225922
+  },
+  "sampled/96/reset": {
+   "certified": 0,
+   "columns": 10944,
+   "cpu_ns": 1690723787,
+   "explore": 0,
+   "loops": 10944,
+   "tasks": 128,
+   "work": 250417
+  },
+  "sampled/96/row_random": {
+   "certified": 0,
+   "columns": 10944,
+   "cpu_ns": 1423256152,
+   "explore": 10944,
+   "loops": 0,
+   "tasks": 128,
+   "work": 192800
+  },
+  "sampled/96/trm": {
+   "certified": 0,
+   "columns": 10944,
+   "cpu_ns": 1762337516,
+   "explore": 6978,
+   "loops": 32832,
+   "tasks": 128,
+   "work": 219911
+  }
+ },
+ "schema": "zkl27-controller-campaign-v1",
+ "training": {
+  "collection": {
+   "collection_cpu_ns": 4343750000,
+   "exploit_labels": 212,
+   "exploit_only_pairs": 8,
+   "explore_labels": 28,
+   "explore_only_pairs": 23,
+   "fork_columns": 24672,
+   "fork_pairs": 962,
+   "fork_verifier_calls": 937,
+   "fork_verify_ns": 703125000,
+   "fork_work": 269168,
+   "masked": 834,
+   "reference_columns": 9048,
+   "sequences": 80,
+   "teacher_solves": 69,
+   "trajectory_steps": 1074
+  },
+  "collection_cpu_ns": 4359375000,
+  "fits": {
+   "ldt": {
+    "fit_cpu_ns": 2093750000,
+    "parameters": 177,
+    "updates": 1200
+   },
+   "rnn": {
+    "fit_cpu_ns": 718750000,
+    "parameters": 177,
+    "updates": 1200
+   },
+   "trm": {
+    "fit_cpu_ns": 1859375000,
+    "parameters": 177,
+    "updates": 1200
+   }
+  },
+  "train_families": [
+   "linear_chain3",
+   "product_zero",
+   "inverse_square",
+   "square_transport",
+   "product_chain_zero"
+  ],
+  "train_roots": [
+   18001,
+   18008
+  ]
+ }
+}

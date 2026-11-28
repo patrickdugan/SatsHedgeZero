@@ -1,0 +1,4 @@
+REPLAY primary
+'pruned_matrix_equiv' depends on axioms: [propext, Quot.sound]
+REPLAY secondary
+'pruned_matrix_equiv' depends on axioms: [propext, Quot.sound]

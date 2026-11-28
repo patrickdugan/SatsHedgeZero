@@ -1,0 +1,8 @@
+REPLAY ../prior/zkl25-fixtures/fq_1.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../prior/zkl25-fixtures/fq_2.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../prior/zkl25-fixtures/fr_1.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../prior/zkl25-fixtures/fr_2.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
