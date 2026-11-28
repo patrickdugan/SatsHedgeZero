@@ -1,13 +1,8 @@
 name: ZKL-22 actual augmented Nova shape capture
+# Manual only. The capture is pinned (run 46042490831, artifact 15220907562);
+# PR path filters match the whole PR diff, so a pull_request trigger re-ran
+# the full Nova setup on every push to PR #36.
 on:
-  pull_request:
-    paths:
-      - 'research/mnr05_bitvm3_ln_dlc/examples/zkl_capture.rs'
-      - 'research/zk_lean/audit_capture.py'
-      - 'research/zk_lean/test_audit_capture.py'
-      - 'research/zk_lean/local_binding.py'
-      - 'research/zk_lean/test_local_binding.py'
-      - '.github/workflows/shz-zkl22.yml'
   workflow_dispatch:
 permissions:
   contents: read
