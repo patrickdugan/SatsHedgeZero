@@ -1,0 +1,447 @@
+{
+  "batches": [
+    {
+      "batch": {
+        "accounts": [
+          {
+            "approved": true,
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 0
+            },
+            "fee_sats": 0,
+            "margin_sats": 16684,
+            "owner": "4d79de39119ddae9920c11dc126bcdcf04fafe58ce24bb0aa4699137585dcb65"
+          },
+          {
+            "approved": true,
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 1
+            },
+            "fee_sats": 0,
+            "margin_sats": 16684,
+            "owner": "19172bd32529d9ad62422b39d5b506b167205e8b5370e6fea1afc618c7a52e6b"
+          }
+        ],
+        "acks": [
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 0
+            },
+            "evidence": "2c2c3d459ff09283b2fb35e44f8109a289b60489e02c0af540b752f0b8c32a89",
+            "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+            "monitor_signature": "3eaba783e29ba5c1556d6e7bc16b45416ad3f769b50b933925aa3443895fdee545bde85efe26fbc3eb4a9dbd1b5aefadaf9d296657dc25f66d6a95c2082fd135",
+            "next_commitment": 1,
+            "owner_signed": true,
+            "peer_signature": "9c9a5da3c211b8999770e770491f0b62fd605026b2073b4d34c9a78422c4436184391117d97933564a6956f18d1dff549749f98d713f102e7c424568daf2630a",
+            "previous_commitment": 0
+          },
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 1
+            },
+            "evidence": "fa258989ffa08c8b23e7683fff14acffaac82a527a2dd67ba498edb7427921e3",
+            "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+            "monitor_signature": "fef24e5cefe0ea97e18690ff30e47fe07e1b1a359256a34efbae26bd7d4fa9cee24bc42f0c6f1bd70752033c61a1b253769fcebc85fa93da3c3acec936bc4bba",
+            "next_commitment": 1,
+            "owner_signed": true,
+            "peer_signature": "b941c7a140aa81e865926d8a3dbf0ed7b8216d83a19709b9d0a8ee433211d6bfa172861d8e7c10b57d48de66327d7a3079478cd7a4ff41a53ce630d22c6e3986",
+            "previous_commitment": 0
+          }
+        ],
+        "clearing": {
+          "carry_after": 0,
+          "cash_after": 1000000,
+          "cash_before": 1000000,
+          "claim_haircuts": [],
+          "claims_after": 0,
+          "fund_absorbed": 0,
+          "fund_after": 1000000,
+          "haircut": 0,
+          "layer": "None",
+          "rows": [
+            {
+              "channel": {
+                "txid": [
+                  143,
+                  156,
+                  227,
+                  134,
+                  61,
+                  71,
+                  77,
+                  153,
+                  128,
+                  8,
+                  237,
+                  214,
+                  98,
+                  36,
+                  194,
+                  139,
+                  86,
+                  94,
+                  145,
+                  108,
+                  221,
+                  239,
+                  184,
+                  61,
+                  196,
+                  140,
+                  247,
+                  227,
+                  89,
+                  32,
+                  252,
+                  185
+                ],
+                "vout": 0
+              },
+              "claim_after": 0,
+              "claim_before": 0,
+              "collected": 0,
+              "haircut": 0,
+              "net": 0,
+              "own_claim_used": 0,
+              "paid": 0,
+              "pnl": 0,
+              "released": 0,
+              "shortfall": 0
+            },
+            {
+              "channel": {
+                "txid": [
+                  143,
+                  156,
+                  227,
+                  134,
+                  61,
+                  71,
+                  77,
+                  153,
+                  128,
+                  8,
+                  237,
+                  214,
+                  98,
+                  36,
+                  194,
+                  139,
+                  86,
+                  94,
+                  145,
+                  108,
+                  221,
+                  239,
+                  184,
+                  61,
+                  196,
+                  140,
+                  247,
+                  227,
+                  89,
+                  32,
+                  252,
+                  185
+                ],
+                "vout": 1
+              },
+              "claim_after": 0,
+              "claim_before": 0,
+              "collected": 0,
+              "haircut": 0,
+              "net": 0,
+              "own_claim_used": 0,
+              "paid": 0,
+              "pnl": 0,
+              "released": 0,
+              "shortfall": 0
+            }
+          ],
+          "shortfall": 0
+        },
+        "committed_us": 1795835451126436,
+        "created_us": 1795835448303679,
+        "digest": "90caebf9fab51e10f258ef6d476a38d3ff281743eb08e6151a959c96ef10ff28",
+        "ledger_state": "Committed",
+        "legs": [
+          "63305020c8a8466b62c7326242741a3a605401fea4a4019647ccb5c818703a0e"
+        ],
+        "oracle_due_sats": 0,
+        "phase": "committed",
+        "prepared_us": 1795835449264979,
+        "router_due_sats": 0,
+        "seq": 1,
+        "settlements": [
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 0
+            },
+            "closed_leg_margin_sats": 0,
+            "closed_usd": 0,
+            "margin_after_sats": 16684,
+            "net_after_usd": -100,
+            "net_before_usd": 0,
+            "opened_margin_sats": 16684,
+            "owner": "4d79de39119ddae9920c11dc126bcdcf04fafe58ce24bb0aa4699137585dcb65",
+            "payout_sats": 0,
+            "realized_pnl_sats": 0,
+            "released_margin_sats": 0
+          },
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 1
+            },
+            "closed_leg_margin_sats": 0,
+            "closed_usd": 0,
+            "margin_after_sats": 16684,
+            "net_after_usd": 100,
+            "net_before_usd": 0,
+            "opened_margin_sats": 16684,
+            "owner": "19172bd32529d9ad62422b39d5b506b167205e8b5370e6fea1afc618c7a52e6b",
+            "payout_sats": 0,
+            "realized_pnl_sats": 0,
+            "released_margin_sats": 0
+          }
+        ],
+        "window_us": [
+          1795835448200000,
+          1795835448300000
+        ]
+      }
+    },
+    {
+      "batch": {
+        "accounts": [
+          {
+            "approved": true,
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 0
+            },
+            "fee_sats": 0,
+            "margin_sats": 16670,
+            "owner": "4d79de39119ddae9920c11dc126bcdcf04fafe58ce24bb0aa4699137585dcb65"
+          },
+          {
+            "approved": true,
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 1
+            },
+            "fee_sats": 0,
+            "margin_sats": 16670,
+            "owner": "19172bd32529d9ad62422b39d5b506b167205e8b5370e6fea1afc618c7a52e6b"
+          }
+        ],
+        "acks": [
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 0
+            },
+            "evidence": "f902db40f5cf5ef60192280ae1250b336876a1fbec7466ffc17f78ff75d09050",
+            "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+            "monitor_signature": "d93f6668554a888acaf3d751c20d4cf3214afc26279815f5a36b53472ae5cf0379eb4211323824739932bc77facaf0150f66290811b4e9a0ade9277e46c83a33",
+            "next_commitment": 2,
+            "owner_signed": true,
+            "peer_signature": "21070314f4800f5e3601ed72c2be3fcdb25eddba4646c51832827eeeb8b859aed07887970ad8e280d57e4d505a26041feb695bf54503ecc14bf4b2c021f7162d",
+            "previous_commitment": 1
+          },
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 1
+            },
+            "evidence": "4491290acefeae97cad26f5010323e0a4c61ddf437d1f11c2e6531b560612ded",
+            "fee_evidence": "0000000000000000000000000000000000000000000000000000000000000000",
+            "monitor_signature": "6707ee62dfc80083094d39b4ac68f1003c60c081747ff8cabf3c2b7cd70009c1a10cd7aadef0dee63c42c1f2f280ce54ca91d053fb39eeac7637d2b9f86add00",
+            "next_commitment": 2,
+            "owner_signed": true,
+            "peer_signature": "b045b16a8d93e8810079b4e035df83c82c4de20a992da64f9b0ae57498c8af84665dd38046b994a413a840c8d85887f6f71e635d461a6e77ef5b375ca22ba472",
+            "previous_commitment": 1
+          }
+        ],
+        "clearing": {
+          "carry_after": 0,
+          "cash_after": 1000000,
+          "cash_before": 1000000,
+          "claim_haircuts": [],
+          "claims_after": 0,
+          "fund_absorbed": 0,
+          "fund_after": 1000000,
+          "haircut": 0,
+          "layer": "Margin",
+          "rows": [
+            {
+              "channel": {
+                "txid": [
+                  143,
+                  156,
+                  227,
+                  134,
+                  61,
+                  71,
+                  77,
+                  153,
+                  128,
+                  8,
+                  237,
+                  214,
+                  98,
+                  36,
+                  194,
+                  139,
+                  86,
+                  94,
+                  145,
+                  108,
+                  221,
+                  239,
+                  184,
+                  61,
+                  196,
+                  140,
+                  247,
+                  227,
+                  89,
+                  32,
+                  252,
+                  185
+                ],
+                "vout": 0
+              },
+              "claim_after": 0,
+              "claim_before": 0,
+              "collected": 139,
+              "haircut": 0,
+              "net": -139,
+              "own_claim_used": 0,
+              "paid": 0,
+              "pnl": -139,
+              "released": 16684,
+              "shortfall": 0
+            },
+            {
+              "channel": {
+                "txid": [
+                  143,
+                  156,
+                  227,
+                  134,
+                  61,
+                  71,
+                  77,
+                  153,
+                  128,
+                  8,
+                  237,
+                  214,
+                  98,
+                  36,
+                  194,
+                  139,
+                  86,
+                  94,
+                  145,
+                  108,
+                  221,
+                  239,
+                  184,
+                  61,
+                  196,
+                  140,
+                  247,
+                  227,
+                  89,
+                  32,
+                  252,
+                  185
+                ],
+                "vout": 1
+              },
+              "claim_after": 0,
+              "claim_before": 0,
+              "collected": 0,
+              "haircut": 0,
+              "net": 139,
+              "own_claim_used": 0,
+              "paid": 139,
+              "pnl": 139,
+              "released": 16684,
+              "shortfall": 0
+            }
+          ],
+          "shortfall": 0
+        },
+        "committed_us": 1795835455579670,
+        "created_us": 1795835452203180,
+        "digest": "cac83f8ad5a54c27dc7cb0e80d578e168e76533eb9e3c83be4ad7339454b8b03",
+        "ledger_state": "Committed",
+        "legs": [
+          "bb713dc4f45b0e5b16ff30015e0695f51485f7556cc8ed2b447fa5f23ee45f1b"
+        ],
+        "oracle_due_sats": 0,
+        "phase": "committed",
+        "prepared_us": 1795835453870529,
+        "router_due_sats": 0,
+        "seq": 2,
+        "settlements": [
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 0
+            },
+            "closed_leg_margin_sats": 16670,
+            "closed_usd": 100,
+            "margin_after_sats": 0,
+            "net_after_usd": 0,
+            "net_before_usd": -100,
+            "opened_margin_sats": 0,
+            "owner": "4d79de39119ddae9920c11dc126bcdcf04fafe58ce24bb0aa4699137585dcb65",
+            "payout_sats": 16545,
+            "realized_pnl_sats": -139,
+            "released_margin_sats": 16684
+          },
+          {
+            "channel": {
+              "txid": "8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9",
+              "vout": 1
+            },
+            "closed_leg_margin_sats": 16670,
+            "closed_usd": 100,
+            "margin_after_sats": 0,
+            "net_after_usd": 0,
+            "net_before_usd": 100,
+            "opened_margin_sats": 0,
+            "owner": "19172bd32529d9ad62422b39d5b506b167205e8b5370e6fea1afc618c7a52e6b",
+            "payout_sats": 16823,
+            "realized_pnl_sats": 139,
+            "released_margin_sats": 16684
+          }
+        ],
+        "window_us": [
+          1795835452100000,
+          1795835452200000
+        ]
+      }
+    }
+  ],
+  "name": "SHZ-BTCUSD-20261128T0315Z-seg0",
+  "status_before": {
+    "clearing": {
+      "book": 0,
+      "carry": 0,
+      "cash": 1000000,
+      "claims": 0,
+      "fund": 1000000
+    }
+  },
+  "venue": "http://127.0.0.1:8099"
+}
