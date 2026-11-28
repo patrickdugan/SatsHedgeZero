@@ -1,0 +1,50 @@
+REPLAY ../zkl26-fixtures/fq_chain1_adaptive.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_chain1_directed.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_chain1_graph.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_chain2_adaptive.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_chain2_directed.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_chain2_graph.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_dead.lean
+'indexed_dead_output_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_duplicate.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_subst_adaptive.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_subst_directed.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fq_subst_graph.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_chain1_adaptive.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_chain1_directed.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_chain1_graph.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_chain2_adaptive.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_chain2_directed.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_chain2_graph.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_dead.lean
+'indexed_dead_output_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_duplicate.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_subst_adaptive.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_subst_directed.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-fixtures/fr_subst_graph.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-actual/primary-scan/dead_output.lean
+'indexed_dead_output_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-actual/secondary-scan/dead_output.lean
+'indexed_dead_output_delete' depends on axioms: [propext, Quot.sound]
+REPLAY ../zkl26-actual/secondary/directed_degree1.lean
+'indexed_context_delete' depends on axioms: [propext, Quot.sound]
