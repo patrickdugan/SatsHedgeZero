@@ -55,7 +55,7 @@ downloaded artifact files; recovered-manifest.txt their SHA256).
 No actual-matrix certificate exists, so there are no bound actual receipts
 and the six replayed sources of the ZKL-25 run are the four synthetic
 fixtures (all `[propext, Quot.sound]`). Failure modes of the 256 attempts:
-244 exhausted the selected degree-0/1/2 span, 8 hit the 100000-unit work cap
+248 exhausted the selected degree-0/1/2 span, 8 hit the 100000-unit work cap
 (primary graph 2, window 3; secondary graph 2, window 1), 0 hit the support
 cap. The 10-wire multiplier pool was truncated in 237 of 256 attempts; the
 graph arm had 16 empty neighborhoods (2 primary, 14 secondary) because every
