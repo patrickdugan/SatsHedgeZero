@@ -50,3 +50,17 @@ adaptive first-round neighborhood (12 rows, 10 multiplier wires, 792
 columns), budgets 96 and 792 (full span), plus any verified duplicate pairs
 from full_matrix_scan as positive tasks. Every certificate goes through
 poly_certificate.verify; controllers only order columns.
+
+## Results
+
+Synthetic (local, reproduced exactly in CI 46107634179/46108263340):
+certified at 96 columns indexed 42, periodic 41, row_random 39, recurrent
+43, reset 42, trm 44, ldt 41 of 64 (16 essential); at 24 columns
+34/34/24/36/34/38/36. Held-out families at 96: 37/36/36/38/37/40/38 of 56.
+Single block; the 1–3 task gaps carry no significance claim.
+
+Real held-out: 0/128 for every arm, both matrices, at 96 and 792 (full
+span) columns. The verified secondary row 5209 as a positive task, its
+retained rows forced in: 0/1 for every arm after all 792 columns, so its
+certificate is outside the fixed 10-wire degree-2 span. Results in
+zkl27/ci-46107634179 and zkl27/ci-46108263340.
