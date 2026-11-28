@@ -1,0 +1,11 @@
+03:10:45 activated {"trader":0,"outpoint":"8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9:0","value":50000,"height":163743,"confirmations":4}
+03:10:46 activated {"trader":1,"outpoint":"8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9:1","value":50000,"height":163743,"confirmations":4}
+03:10:51 fill {"name":"open","maker":0,"taker":1,"side":"short","limit_usd":59941,"qty_usd":100,"leverage_bps":100000,"batch":1,"fill":"63305020c8a8466b62c7326242741a3a605401fea4a4019647ccb5c818703a0e"}
+03:10:56 fill {"name":"close","maker":1,"taker":0,"side":"short","limit_usd":59991,"qty_usd":100,"leverage_bps":100000,"batch":2,"fill":"bb713dc4f45b0e5b16ff30015e0695f51485f7556cc8ed2b447fa5f23ee45f1b"}
+03:10:57 traded {"open_price":59941,"close_price":59991,"close_batch":2,"realized":{"0":-139,"1":139}}
+03:15:13 signed {"trader":0,"epoch":"SHZ-BTCUSD-20261128T0315Z","segment":0,"batches":[1,2],"value_in":50000,"net":-139,"roll":{"value":49861,"refund_height":164179},"sighash":"980054a0c6932c1063a7b278efc4b0a328e8dd586040b89c88e72ae22d4f3d7c"}
+03:15:14 signed {"trader":1,"epoch":"SHZ-BTCUSD-20261128T0315Z","segment":0,"batches":[1,2],"value_in":50000,"net":139,"roll":{"value":50139,"refund_height":164179},"sighash":"eda324a7a2bf5b00d042f261cfda7ad852780226c606c3f0effadcbfbef9fd78"}
+04:34:13 settled {"trader":0,"outpoint":"84c2f2f8cc521fa8ade0e9fb9366d54f41cfb1bf24b50f41e476c7e38c610664:1","value":49861,"want_deposit_plus_pnl":49861,"ok":true,"refund_height":164179,"mempool_space":{"confirmed":true,"block_height":163750,"output_value":49861,"output_spk":"5120d61eb21d8fbc9d684b9968fe9568be639f18beb997fdfcca695fa2e97134ea31","url":"https://mempool.space/testnet4/tx/84c2f2f8cc521fa8ade0e9fb9366d54f41cfb1bf24b50f41e476c7e38c610664"}}
+04:34:13 settled {"trader":1,"outpoint":"84c2f2f8cc521fa8ade0e9fb9366d54f41cfb1bf24b50f41e476c7e38c610664:0","value":50139,"want_deposit_plus_pnl":50139,"ok":true,"refund_height":164179,"mempool_space":{"confirmed":true,"block_height":163750,"output_value":50139,"output_spk":"5120bbb1c0b97e5f0739006863d028b9d6cf8c6df94d51f6a3a0e59549d23103e992","url":"https://mempool.space/testnet4/tx/84c2f2f8cc521fa8ade0e9fb9366d54f41cfb1bf24b50f41e476c7e38c610664"}}
+04:34:18 epoch complete; receipt ops/mvp-drill/receipt-testnet4/receipt.json
+exit 0

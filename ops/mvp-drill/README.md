@@ -29,6 +29,19 @@ steps) compare each account's on-chain value with its realized PnL: both hold. T
 no proof for the carry-only settlement of `1849Z`; the client was stopped after the three other
 statements arrived, and `venue_settlements.json` was rebuilt from the venue's journal.
 
+## First testnet4 epoch (`receipt-testnet4/`, 2026-11-28 03:10-04:34 local, `testnet4_epoch.mjs`)
+
+Venue https://lightninger-testnet4.170-75-168-145.sslip.io/ (box port 8099, `--collateral-chain
+testnet4`), daemon `shz_batcher` a1e3619 with `BROADCAST=1` and operator liquidity `9c3f2827…:0`.
+
+| Step | Result |
+| --- | --- |
+| Deposit | `8f9ce3863d474d998008edd66224c28b565e916cddefb83dc48cf7e35920fcb9`: 50,000 sats to each trader's `account(T, B, 164164)` (outputs 0 and 1), mined at 163,743; both addresses recomputed locally before funding; credited and activated at 4 confirmations |
+| Fill | $100 at 10x: trader 0 short at 59,941 (batch 1), closed at 59,991 (batch 2); realized −139 / +139 sats |
+| Settlement | epoch `SHZ-BTCUSD-20261128T0315Z`, both traders signed their 0x83 entries (sighash recomputed by `settle.js` and the venue); `84c2f2f8cc521fa8ade0e9fb9366d54f41cfb1bf24b50f41e476c7e38c610664`, 477 vB, fee 477, mined at 163,750 |
+| Payouts | trader 0 `84c2f2f8…:1` 49,861 = 50,000 − 139; trader 1 `84c2f2f8…:0` 50,139 = 50,000 + 139; both read back from mempool.space testnet4; refund height 164,179 |
+| Statement | prover inputs in `research/lightninger_dlc_batcher/artifacts/epochs/testnet4/SHZ-BTCUSD-20261128T0315Z/seg0/`, proved on Colab (no local proof) |
+
 ## Staging on the witness box
 
 `~/shz-staging` holds `bin/shz-venue` and `bin/shz_batcher` (built in WSL Ubuntu 24.04 from this
