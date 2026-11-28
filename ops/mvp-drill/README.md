@@ -6,7 +6,7 @@ the settlement daemon `shz_batcher` ([`ops/shz-batcher/README.md`](../shz-batche
 | File | |
 | --- | --- |
 | `client.mjs` | three browser-less traders over three epochs: deposit, activate, trade, review and sign every settlement entry with `ui/venue/settle.js` (the browser's code), leave one package unsigned (`--refuse 2:1`), withdraw, wait for statements |
-| `drill_regtest.sh` | regtest node + `shz-venue --collateral-chain regtest` (live FROST marks from the relay) + `shz_batcher run --prove` (60 s epochs) + miner + `client.mjs`; receipt in `receipt-regtest/` |
+| `drill_regtest.sh` | regtest node + `shz-venue --collateral-chain regtest` (live FROST marks from the relay) + `shz_batcher run` (60 s epochs; segment prover inputs written for Colab, no local proving) + miner + `client.mjs`; receipt in `receipt-regtest/` |
 | `staging_box.sh` | the same stack on the witness box beside the live units: `NET=regtest` on port 8098, `NET=testnet4` (read-only venue on the box's pruned node) on port 8099 |
 
 ## Regtest drill receipt (`receipt-regtest/`, 2026-11-27 18:45-18:54 UTC)

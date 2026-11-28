@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Lightninger MVP drill on regtest: a regtest node, the venue with --collateral-chain regtest (live
-# FROST marks from the relay), the settlement daemon shz_batcher (60 s epochs, --prove: each settled
-# segment's joint statement), a miner every 5 s, and three browser-less traders
+# FROST marks from the relay), the settlement daemon shz_batcher (60 s epochs; it writes each settled
+# segment's prover inputs and README, and proofs run on Colab, never locally), a miner every 5 s, and
+# three browser-less traders
 # (ops/mvp-drill/client.mjs) that deposit, activate, trade over three epochs, co-sign settlements in
 # ui/venue/settle.js (one trader leaves one package unsigned), and withdraw.
 #
@@ -60,12 +61,12 @@ NOW=$(date +%s); T0=$(( (NOW + 60) / 60 * 60 ))
 ( while true; do sleep 5; cli generatetoaddress 1 "$SINK" >/dev/null 2>&1 || break; done ) &
 pids+=($!)
 "$SB" run "${COMMON[@]}" --epoch-secs 60 --sign-secs 25 --settle-delay-secs 3 --refund-delta 40 --fee-rate 1 --bump-rate 5 \
-  --bump-after-blocks 3 --prove --table 4 --rows 2 >"$W/logs/daemon.log" 2>&1 &
+  --bump-after-blocks 3 --table 4 --rows 2 >"$W/logs/daemon.log" 2>&1 &
 pids+=($!)
 echo "venue http://127.0.0.1:$VPORT  batcher $BKEY  operator $OPTX:$OPVOUT  t0 $T0"
 
 "$NODE" "$REPO/ops/mvp-drill/client.mjs" --venue "http://127.0.0.1:$VPORT" --cli "$BIN/bitcoin-cli$EXE" --cli-args "$CLI_ARGS" \
-  --keys "$W/trader-keys.json" --out "$OUT/receipt.json" --epoch-secs 60 --refuse 2:1 --await-proofs 1 --proof-wait-s "${PROOF_WAIT_S:-1800}" 2>&1 \
+  --keys "$W/trader-keys.json" --out "$OUT/receipt.json" --epoch-secs 60 --refuse 2:1 2>&1 \
   | tee "$W/logs/client.log" && RC=0 || RC=$?
 
 # Receipts are collected whatever the client's outcome.
