@@ -1,0 +1,80 @@
+name: ZKL-27 exploration controllers on held-out real neighborhoods
+on:
+  pull_request:
+    paths:
+      - 'research/zk_lean/controller_campaign.py'
+      - 'research/zk_lean/zkl27/**'
+      - '.github/workflows/shz-zkl27.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  controllers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: MoralityLabAI/DataGoblin
+          ref: a7fa01660bde00d7ce1286e263d2498b37d14612
+          path: datagoblin
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'numpy==2.5.4'
+      - uses: actions/download-artifact@v4
+        with:
+          name: zkl22-nova-setup-capture
+          path: captured
+          run-id: 46042490831
+          github-token: ${{ github.token }}
+      - name: Retrain (must equal committed models), synthetic block, real held-out neighborhoods
+        shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/datagoblin/src:${{ github.workspace }}/research/zk_lean
+          OPENBLAS_NUM_THREADS: "1"
+        run: |
+          set -euo pipefail
+          ulimit -v 524288
+          test "$(cat captured/source-commit.txt)" = 7b8d60305a8338f9fe26403d031383377bcf3d4c
+          echo 'ffb298ecbb4e923beba2ad1ee907588507ddc57c1bd91237156c18d6f8f5684a  captured/capture.json' | sha256sum -c -
+          mkdir -p zkl27-out/retrain zkl27-export
+          python research/zk_lean/controller_campaign.py --out zkl27-out/retrain --synthetic
+          python - <<'EOF'
+          import json
+          a = json.load(open("zkl27-out/retrain/models.json"))["models"]
+          b = json.load(open("research/zk_lean/zkl27/models.json"))["models"]
+          diff = max(abs(x-y) for n in a for k in a[n] for x, y in zip(
+              __import__("numpy").ravel(a[n][k]), __import__("numpy").ravel(b[n][k])))
+          print("max parameter difference vs committed models", diff)
+          assert diff < 1e-6
+          EOF
+          cp zkl27-out/retrain/summary.json zkl27-export/synthetic-summary.json
+          for side in primary secondary; do
+            gzip -d "captured/$side.rows.jsonl.gz"
+            pin="$(python -c 'import json,sys; print(json.load(open("research/zk_lean/zkl22_capture_pins.json"))[sys.argv[1]])' "$side")"
+            python research/zk_lean/full_matrix_scan.py "captured/$side.rows.jsonl" --expected-original "$pin" \
+              --out "zkl27-out/$side-scan.json" > /dev/null
+            python -c "import json,sys; s=json.load(open(sys.argv[1])); print(json.dumps([q for q in s['duplicate_pairs'] if max(q) < 65536][:16]))" \
+              "zkl27-out/$side-scan.json" > "zkl27-out/$side-positive.json"
+            /usr/bin/time -v python research/zk_lean/controller_campaign.py --out "zkl27-out/$side" \
+              --models research/zk_lean/zkl27/models.json --stream "captured/$side.rows.jsonl" \
+              --expected-original "$pin" --real-count 128 --positive "zkl27-out/$side-positive.json" \
+              2> "zkl27-export/$side.time.txt" > /dev/null
+            grep -E 'Maximum resident|Elapsed' "zkl27-export/$side.time.txt"
+            cp "zkl27-out/$side/summary.json" "zkl27-export/$side-summary.json"
+            cp "zkl27-out/$side-positive.json" zkl27-export/
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkl27-results
+          path: zkl27-out
+      - name: Export (slice 0)
+        if: always()
+        run: python research/zk_lean/ci_export.py --name zkl27 --slice 0 zkl27-export
+      - name: Export (slice 1)
+        if: always()
+        run: python research/zk_lean/ci_export.py --name zkl27 --slice 1 zkl27-export
