@@ -3,13 +3,14 @@
 # four 90 s epochs over replayed venue batches 306..313 with an aborted seq (two segments), a
 # non-signer (trader 2 leaves its second package unsigned; its net is carried), an unattestable
 # epoch (its batch rolls into the next), a withdrawal (trader 5), CPFP of slow settlements, and the
-# joint-statement prover per settled segment.
+# prover inputs per settled segment (proved on Colab from the segment READMEs).
 #
 #   ops/shz-batcher/drill_regtest.sh [WORKDIR]      (WORKDIR default D:/shz/tmp/shz-batcher/drill)
 #
 # Env: BITCOIN_BIN (folder with bitcoind/bitcoin-cli), TRADER_KEYS (venue owner keys file),
 # RECEIPTS (default research/lightninger_dlc_batcher/artifacts/epochs/regtest-drill), MAX_EPOCHS (4),
-# DAEMON_FLAGS (default "--prove --table 4 --rows 2"; "--stage" runs the testnet4 no-broadcast path),
+# DAEMON_FLAGS (default "--table 4 --rows 2": prover inputs only, proofs run on Colab; "--stage" runs the
+# testnet4 no-broadcast path),
 # PLAN (default ops/shz-batcher/drill_plan.json), TRADER_FLAGS (default "--refuse 2:2 --withdraw 5:2").
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -54,7 +55,7 @@ pids+=($!)
 pids+=($!)
 echo "t0 $T0 ($(( T0 - NOW ))s from now); daemon log $W/logs/daemon.log"
 "$SB" run "${COMMON[@]}" --epoch-secs 90 --sign-secs 20 --settle-delay-secs 3 --oracle --attest-wait-secs 15 --refund-delta 40 \
-  --fee-rate 1 --bump-rate 5 --bump-after-blocks 0 --bump-after-secs 6 --max-epochs "${MAX_EPOCHS:-4}" ${DAEMON_FLAGS:---prove --table 4 --rows 2} 2>&1 | tee "$W/logs/daemon.log"
+  --fee-rate 1 --bump-rate 5 --bump-after-blocks 0 --bump-after-secs 6 --max-epochs "${MAX_EPOCHS:-4}" ${DAEMON_FLAGS:---table 4 --rows 2} 2>&1 | tee "$W/logs/daemon.log"
 cli generatetoaddress 1 "$SINK" >/dev/null
 "$SB" status "${COMMON[@]}" > "$RECEIPTS/state_after.json"
 cp "$W/logs/daemon.log" "$W/logs/traders.log" "$W/logs/venue.log" "$RECEIPTS/"

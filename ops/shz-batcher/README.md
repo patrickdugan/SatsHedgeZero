@@ -36,7 +36,10 @@ CARGO_INCREMENTAL=0 cargo +1.99.0-x86_64-pc-windows-msvc build --release --bin s
 7. **Broadcast** on regtest, or testnet4 with `--broadcast`; otherwise write the staged package
    (`settlement.json`: hex, txid, `testmempoolaccept`, the `sendrawtransaction` command) and leave the
    batches unsettled. Result posted to `POST /api/settlement/result`.
-8. **Proof** (`--prove`): `dlc-batcher prove <seg dir> A R` in a background queue (clearing fold of the
+8. **Proof inputs**: every settled segment writes `manifest.json`, `batches.json`, `txs.json`,
+   `venue_batches.json` and a `README.md` with the exact `dlc-batcher prove` and `prove-clearing journal:`
+   commands; Antigravity proves them on Colab from a clean checkout. Nothing is proved on the laptop.
+   `--prove` (only on a prover host): `dlc-batcher prove <seg dir> A R` in a background queue (clearing fold of the
    segment, M17 + TapSighash bind + Secq over the settlement, the 304-byte joint statement); the
    statement SHA-256 is posted to the venue with the txid.
 
