@@ -29,30 +29,34 @@ from poly_certificate import verify
 
 
 def deletion_digest(path, pin, deleted):
-    """Canonical hash of the matrix with every row in `deleted` removed."""
+    """Canonical hash of the matrix with every row in `deleted` removed (streamed)."""
     deleted = set(deleted)
+    with path.open("rb") as f:
+        header = json.loads(f.readline())
+    shape = canonical({"format": "zkl-r1cs-v1", "modulus": header["modulus"], "wires": header["wires"],
+                       "public": header["public"], "rows": []})
+    h = hashlib.sha256()
+    prefix = compact({"format": shape["format"], "modulus": shape["modulus"], "public": shape["public"]})
+    h.update(prefix[:-1] + b',"rows":[')
     rows = {}
     nonzeros = [0, 0, 0]
+    kept = [0]
 
     def visit(i, row, _p):
         if i in deleted:
             rows[i] = row
             return
+        if kept[0]:
+            h.update(b",")
+        h.update(compact(row))
+        kept[0] += 1
         for j in range(3):
             nonzeros[j] += len(row[j])
-        enc.append(compact(row))
 
-    enc = []
     full = stream_audit(path, visit=visit)
     require_pin(full["canonical_shape_sha256"], pin)
-    shape = canonical({"format": "zkl-r1cs-v1", "modulus": full["modulus"], "wires": full["wires"],
-                       "public": full["public"], "rows": []})
-    h = hashlib.sha256()
-    prefix = compact({"format": shape["format"], "modulus": shape["modulus"], "public": shape["public"]})
-    h.update(prefix[:-1] + b',"rows":[')
-    h.update(b",".join(enc))
     h.update(b'],"wires":' + compact(full["wires"]) + b"}")
-    return {"pruned_sha256": h.hexdigest(), "constraints": len(enc), "canonical_nonzeros": nonzeros,
+    return {"pruned_sha256": h.hexdigest(), "constraints": kept[0], "canonical_nonzeros": nonzeros,
             "original_constraints": full["constraints"],
             "original_nonzeros": full["canonical_nonzeros"]}, rows, full
 
