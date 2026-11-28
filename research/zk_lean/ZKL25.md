@@ -35,3 +35,31 @@ has an explicit violating assignment. Each deletion is independent; no
 composition, circuit rewrite, relaxed-Nova equivalence, production VK
 match or key reuse is claimed. Global row lookups and well-formedness
 remain the external premises of the indexed Lean theorem.
+
+## Recovery (ZKL-25 receipts, run 46072770036)
+
+Run 46072770036 (head 14d03d8) passed: 21:49:45–21:50:04 UTC for both
+actual searches, Lean replay 21:50:24–21:50:27. Workflow 46103947349
+(73a613c, recover_zkl25.py) downloaded artifacts 15234030635 and
+15234005619 and the pinned capture 15220907562, rechecked the source
+commit, capture.json and vk.bin hashes, re-streamed both matrices against
+their canonical pins and re-replayed every Lean source in MathCan 8040c01.
+The files are in zkl25_recovered/ (annotation-bundle.tar.gz holds the exact
+downloaded artifact files; recovered-manifest.txt their SHA256).
+
+| matrix | rows | wires | eligible prefix rows | size skips | targets | certificates |
+|---|---|---|---|---|---|---|
+| primary (Fr) | 962221 | 956072 | 64447 | 1089 | 64 × 2 arms | 0 |
+| secondary (Fq) | 10538 | 10523 | 9518 | 1020 | 64 × 2 arms | 0 |
+
+No actual-matrix certificate exists, so there are no bound actual receipts
+and the six replayed sources of the ZKL-25 run are the four synthetic
+fixtures (all `[propext, Quot.sound]`). Failure modes of the 256 attempts:
+244 exhausted the selected degree-0/1/2 span, 8 hit the 100000-unit work cap
+(primary graph 2, window 3; secondary graph 2, window 1), 0 hit the support
+cap. The 10-wire multiplier pool was truncated in 237 of 256 attempts; the
+graph arm had 16 empty neighborhoods (2 primary, 14 secondary) because every
+target wire was a saturated hub (posting list over 64) and 61 neighborhoods
+with fewer than 12 rows. These are bounded misses, not essentiality.
+Recovery CPU: primary stream 15.9 s wall, 20608 KiB peak RSS; secondary
+0.34 s, 19280 KiB.

@@ -1,0 +1,127 @@
+{
+ "bound_receipts": [],
+ "constraints": 10538,
+ "corpus_counts": {
+  "eligible": 9518,
+  "size_skip": 1020
+ },
+ "failure_modes": {
+  "graph": {
+   "cap": {
+    "None": 62,
+    "work": 2
+   },
+   "coefficient_work": 1849328,
+   "complete_through": {
+    "1": 2,
+    "2": 62
+   },
+   "cpu_ns": 849182874,
+   "empty_neighborhood": 14,
+   "multiplier_pool_truncated": 49,
+   "short_neighborhood": 36,
+   "solved": 0,
+   "solved_by_target_degree": {},
+   "targets": 64,
+   "unsolved_by_target_degree": {
+    "1": 32,
+    "2": 32
+   }
+  },
+  "window": {
+   "cap": {
+    "None": 63,
+    "work": 1
+   },
+   "coefficient_work": 986638,
+   "complete_through": {
+    "1": 1,
+    "2": 63
+   },
+   "cpu_ns": 581217726,
+   "empty_neighborhood": 0,
+   "multiplier_pool_truncated": 64,
+   "short_neighborhood": 0,
+   "solved": 0,
+   "solved_by_target_degree": {},
+   "targets": 64,
+   "unsolved_by_target_degree": {
+    "1": 32,
+    "2": 32
+   }
+  }
+ },
+ "local_certificates_rechecked": 0,
+ "original_full_sha256": "e3288035b42da6ab7084a8f7397d61ade7c03e1b4c27f8940ccd230c6325f25f",
+ "production_accepted": false,
+ "schema": "zkl25-recovery-v1",
+ "search_prefix": 10538,
+ "stored_terms": 45271,
+ "targets": [
+  14,
+  20,
+  21,
+  24,
+  100,
+  630,
+  809,
+  1065,
+  1115,
+  1172,
+  1695,
+  1697,
+  1730,
+  1733,
+  1734,
+  1736,
+  1737,
+  1752,
+  1757,
+  1761,
+  1763,
+  1764,
+  1769,
+  2601,
+  3222,
+  3440,
+  3508,
+  3785,
+  3906,
+  4005,
+  4100,
+  4326,
+  4608,
+  4703,
+  5150,
+  5205,
+  5230,
+  5540,
+  5541,
+  5543,
+  5960,
+  6227,
+  6423,
+  6472,
+  6519,
+  6553,
+  6654,
+  6797,
+  6913,
+  7157,
+  7451,
+  7462,
+  8151,
+  8440,
+  8707,
+  8708,
+  8858,
+  9124,
+  9362,
+  9367,
+  9388,
+  9390,
+  9462,
+  9947
+ ],
+ "wires": 10523
+}

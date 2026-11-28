@@ -1,0 +1,58 @@
+{
+ "capture_path": "PublicParams::setup ck_floor callbacks",
+ "circuit": "Mnr05UnifiedBatchStep",
+ "nova_version": "0.76.0",
+ "pp_digest": "0x0306bc1d5101fc8fedef05cc5f384d989bfab3a85d2629df3a311520eb87e2c1",
+ "primary": {
+  "audit_column_order": "[one, public, auxiliary]",
+  "capture": {
+   "auxiliary": 956069,
+   "ck_floor": 0,
+   "constraints": 962221,
+   "native_shape_digest": "0x03f63a2b48e94c23b6ec738c34ae1da176fd8afdf1e05864aa15da7047bc0836",
+   "public": 2,
+   "raw_file": "primary.shape.bin",
+   "raw_sha256": "8bffb35a0aeba600c7898f4f4667a191f8c2cce3a257a297d1afa108e52b27fb"
+  },
+  "mirror_roundtrip_sha256": "8bffb35a0aeba600c7898f4f4667a191f8c2cce3a257a297d1afa108e52b27fb",
+  "modulus": "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+  "native_column_order": "[auxiliary, one, public]",
+  "native_nonzeros": [
+   2296187,
+   1020899,
+   2065605
+  ],
+  "stream_file": "primary.rows.jsonl",
+  "stream_sha256": "b6854ef52b6e8668334753a9030a1dc54a124bee00869f8c013c5b877b95bd63",
+  "wires": 956072
+ },
+ "production_accepted": false,
+ "production_vk_matched": false,
+ "proof_replayed": false,
+ "schema": "zkl-nova-setup-capture-v1",
+ "secondary": {
+  "audit_column_order": "[one, public, auxiliary]",
+  "capture": {
+   "auxiliary": 10520,
+   "ck_floor": 0,
+   "constraints": 10538,
+   "native_shape_digest": "0x00e54c2cfcb32fd34b4f81091f0a1c079908cb43ba7bafba9b6afb964411fe55",
+   "public": 2,
+   "raw_file": "secondary.shape.bin",
+   "raw_sha256": "e072933576d785f8808d3a763c83c52837c00c8232da3dc1b6a12eb6851f14f2"
+  },
+  "mirror_roundtrip_sha256": "e072933576d785f8808d3a763c83c52837c00c8232da3dc1b6a12eb6851f14f2",
+  "modulus": "21888242871839275222246405745257275088696311157297823662689037894645226208583",
+  "native_column_order": "[auxiliary, one, public]",
+  "native_nonzeros": [
+   72539,
+   44316,
+   10002
+  ],
+  "stream_file": "secondary.rows.jsonl",
+  "stream_sha256": "57a0cf883412557cd9bbb23153c1899474c66786a98a33065aab8691e9e2f195",
+  "wires": 10523
+ },
+ "vk_file": "vk.bin",
+ "vk_sha256": "3d35e9d007cb300a0977248aa4b04a283aae4ef0ce4cc7a66aba6a05104ad9d6"
+}
