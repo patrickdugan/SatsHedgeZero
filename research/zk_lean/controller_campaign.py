@@ -149,12 +149,16 @@ def real(path, pin, models, count, seed, budgets, positive_pairs=()):
     rng = random.Random(seed)
     pool = sorted(corpus.rows)
     targets = [("sampled", t, None) for t in sorted(rng.sample(pool, min(count, len(pool))))]
-    targets += [("positive", t, q) for t, q in positive_pairs if t in corpus.rows and q in corpus.rows]
+    # Positive tasks: (target, retained rows of a verified certificate); those rows are forced in.
+    for t, q in positive_pairs:
+        q = [q] if isinstance(q, int) else list(q)
+        if t in corpus.rows and all(j in corpus.rows for j in q):
+            targets.append(("positive", t, q))
     rows = []
-    for kind, target, prior in targets:
+    for kind, target, forced in targets:
         nb = corpus.adaptive(target, 12, 4, 3)
-        if prior is not None and prior not in nb:
-            nb = sorted({prior, *nb[:11]})
+        if forced:
+            nb = sorted(set(forced) | set([j for j in nb if j not in forced][:12-len(set(forced))]))
         a, b = local_shapes(full, corpus, target, nb)
         focus = corpus.wires[target]
         freq = {}
@@ -214,6 +218,10 @@ def main():
         (args.out / "synthetic_rows.json").write_text(json.dumps(rows)+"\n", encoding="utf-8")
     if args.stream:
         pairs = json.loads(args.positive.read_text()) if args.positive and args.positive.exists() else []
+        for f in sorted(Path(__file__).with_name("zkl26_results").glob("*_degree*.json")):
+            rec = json.loads(f.read_text())
+            if rec["original_full_sha256"] == args.expected_original:
+                pairs.append([rec["target_global_index"], rec["retained_global_indices"]])
         rows = real(args.stream, args.expected_original, models, args.real_count, 270027, (96, 792), pairs)
         result["real"] = summarize(rows, ("kind", "budget", "arm"))
         (args.out / "real_rows.json").write_text(json.dumps(rows)+"\n", encoding="utf-8")
